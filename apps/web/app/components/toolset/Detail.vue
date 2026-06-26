@@ -150,8 +150,8 @@ const handleResourceUpdated = (res: ToolsetResource) => {
         <KunContent :content="renderKatex(data.contentHtml)" />
       </div>
 
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div class="space-y-3 md:col-span-2">
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div class="space-y-3 md:col-span-1">
           <template v-if="practicalityData">
             <ToolsetPracticalityChart
               :practicality-data="practicalityData"
