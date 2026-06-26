@@ -26,11 +26,15 @@ const isLoadComplete = computed(
   () => total.value > 0 && results.value.length >= total.value
 )
 
-const searchQuery = async (): Promise<SearchPage> => {
+const searchQuery = async (searchType?: string): Promise<SearchPage> => {
   isLoading.value = true
   const result = await kunFetch<SearchPage>('/search', {
     method: 'GET',
-    query: { keywords: keywords.value, type: activeType.value, ...pageData }
+    query: {
+      keywords: keywords.value,
+      type: searchType || activeType.value,
+      ...pageData
+    }
   })
   isLoading.value = false
   return result ?? { items: [], total: 0 }
@@ -43,7 +47,7 @@ const handleSetType = async (value: SearchType) => {
   total.value = 0
 
   if (keywords.value) {
-    const page = await searchQuery()
+    const page = await searchQuery(value)
     results.value = page.items
     total.value = page.total
   } else {
