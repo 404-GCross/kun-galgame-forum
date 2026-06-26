@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"kun-galgame-api/internal/infrastructure/markdown"
 	msgService "kun-galgame-api/internal/message/service"
@@ -103,9 +104,10 @@ func (s *CommentService) GetComments(ctx context.Context, websiteID int) []*dto.
 // ──────────────────────────────────────────
 
 func (s *CommentService) CreateComment(
+	ctx context.Context,
 	userID int,
 	req *dto.CreateCommentRequest,
-) (*dto.CreatedCommentResponse, *errors.AppError) {
+) (*dto.CommentItem, *errors.AppError) {
 	comment := model.GalgameWebsiteComment{
 		Content:   req.Content,
 		WebsiteID: req.WebsiteID,
@@ -118,10 +120,13 @@ func (s *CommentService) CreateComment(
 
 	s.websiteRepo.AdjustCommentCount(req.WebsiteID, 1)
 
-	// Notify the parent-comment author (nitro legacy: only when replying
-	// to an existing comment, using the website.url slug as the link key).
+	// Notify the parent-comment author (nitro legacy: only when replying to an
+	// existing comment, using the website.url slug as the link key). Capture the
+	// parent author so the response can fill targetUser too.
+	parentUserID := 0
 	if req.ParentID != nil {
 		if parent, err := s.commentRepo.FindByID(*req.ParentID); err == nil {
+			parentUserID = parent.UserID
 			url := s.websiteRepo.GetURL(req.WebsiteID)
 			_ = s.notifier.Emit(nil, msgService.Spec{
 				SenderID:   userID,
@@ -133,7 +138,34 @@ func (s *CommentService) CreateComment(
 		}
 	}
 
-	return &comment, nil
+	// Return the SAME enriched shape as the list (CommentItem) with the author —
+	// and the parent author for a reply — hydrated, so the (reactive) frontend
+	// can render the freshly-posted comment directly. Returning the raw model
+	// left `user` empty and crashed the list on comment.user.name.
+	uids := []int{userID}
+	if parentUserID != 0 {
+		uids = append(uids, parentUserID)
+	}
+	userMap := s.userClient.Hydrate(ctx, uids)
+	u := userMap[userID]
+
+	item := &dto.CommentItem{
+		ID:         comment.ID,
+		Content:    comment.Content,
+		ParentID:   comment.ParentID,
+		UserID:     comment.UserID,
+		WebsiteID:  comment.WebsiteID,
+		Created:    comment.CreatedAt.Format(time.RFC3339),
+		Edited:     nil,
+		Reply:      []*dto.CommentItem{},
+		User:       dto.CommentUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
+		TargetUser: nil,
+	}
+	if parentUserID != 0 {
+		pu := userMap[parentUserID]
+		item.TargetUser = dto.CommentUser{ID: pu.ID, Name: pu.Name, Avatar: pu.Avatar}
+	}
+	return item, nil
 }
 
 // ──────────────────────────────────────────

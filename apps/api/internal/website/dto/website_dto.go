@@ -2,8 +2,6 @@ package dto
 
 import (
 	"time"
-
-	"kun-galgame-api/internal/website/model"
 )
 
 // ──────────────────────────────────────────
@@ -130,6 +128,3 @@ type WebsiteDetailResponse struct {
 	Created       time.Time              `json:"created"`
 	Updated       time.Time              `json:"updated"`
 }
-
-// CreatedCommentResponse is the comment row returned by POST /website/:domain/comment.
-type CreatedCommentResponse = model.GalgameWebsiteComment
