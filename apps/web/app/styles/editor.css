@@ -9,8 +9,11 @@
  * CodeMirror (codeBlockComponent), while the render shows a .kun-code-container
  * — those two can't and shouldn't look identical.
  */
+/* The 500px cap + scrolling now live on the <KunOverlayScroll> wrapper around
+   <Milkdown /> (see Editor.vue) — NOT here — so the editor gets a thin,
+   auto-hiding overlay scrollbar instead of the glaring native dark-mode one. */
 .milkdown {
-  @apply text-default-800 max-h-[500px] overflow-y-scroll leading-7 whitespace-pre-line;
+  @apply text-default-800 leading-7 whitespace-pre-line;
 }
 
 .milkdown .ProseMirror[data-placeholder]::before {

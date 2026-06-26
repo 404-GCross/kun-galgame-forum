@@ -67,16 +67,9 @@ onMounted(async () => {
 
     <KunDivider />
 
-    <div
-      v-if="data.items.length"
-      class="scrollbar-hide h-full overflow-y-auto"
-    >
-      <MessageAsideWiki
-        v-for="msg in data.items"
-        :key="msg.id"
-        :message="msg"
-      />
-    </div>
+    <KunOverlayScroll v-if="data.items.length" class="h-full">
+      <MessageAsideWiki v-for="msg in data.items" :key="msg.id" :message="msg" />
+    </KunOverlayScroll>
 
     <KunNull v-if="!data.total" />
 

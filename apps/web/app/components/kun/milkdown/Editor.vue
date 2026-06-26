@@ -369,7 +369,12 @@ watch(
     />
 
     <template v-if="activeTab === 'preview'">
-      <Milkdown />
+      <!-- KunOverlayScroll wraps <Milkdown /> as an ANCESTOR (.os-host >
+           .os-viewport > .os-content > .milkdown), so ProseMirror's own DOM is
+           left untouched. The 500px cap + scrolling moved here off .milkdown. -->
+      <KunOverlayScroll class="max-h-[500px]">
+        <Milkdown />
+      </KunOverlayScroll>
 
       <div class="flex items-center justify-between text-sm">
         <slot name="footer" />

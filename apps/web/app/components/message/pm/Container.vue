@@ -3,7 +3,13 @@ const props = defineProps<{
   userId: number
 }>()
 
-const historyContainer = ref<HTMLDivElement | null>(null)
+// The chat-history scroller is a <KunOverlayScroll>; its real scrolling element
+// is the overlayscrollbars viewport (NOT the host div), so every imperative
+// scrollTo / scrollHeight / scrollTop must go through the exposed getViewport().
+const historyScroll = useTemplateRef<{
+  getViewport: () => HTMLElement | null
+}>('historyScroll')
+const getHistoryViewport = () => historyScroll.value?.getViewport() ?? null
 const messageInput = ref('')
 const messages = ref<ChatMessage[]>([])
 const isLoadHistoryMessageComplete = ref(false)
@@ -36,9 +42,10 @@ const pageData = reactive({
 })
 
 const scrollToBottom = () => {
-  if (historyContainer.value) {
-    historyContainer.value.scrollTo({
-      top: historyContainer.value.scrollHeight,
+  const viewport = getHistoryViewport()
+  if (viewport) {
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
       behavior: 'smooth'
     })
   }
@@ -237,12 +244,13 @@ const handleRecallContextMenu = async (payload: {
 }
 
 const handleLoadHistoryMessages = async () => {
-  if (!historyContainer.value) {
+  const viewport = getHistoryViewport()
+  if (!viewport) {
     return
   }
 
-  const previousScrollHeight = historyContainer.value.scrollHeight
-  const previousScrollTop = historyContainer.value.scrollTop
+  const previousScrollHeight = viewport.scrollHeight
+  const previousScrollTop = viewport.scrollTop
 
   pageData.page += 1
   const histories = await getMessageHistory()
@@ -251,9 +259,12 @@ const handleLoadHistoryMessages = async () => {
     messages.value.unshift(...histories)
 
     nextTick(() => {
-      if (historyContainer.value) {
-        const newScrollHeight = historyContainer.value.scrollHeight
-        historyContainer.value.scrollTo({
+      // Re-read the viewport: prepending history grew the content, so anchor the
+      // scroll to keep the user's current message in place (no visual jump).
+      const next = getHistoryViewport()
+      if (next) {
+        const newScrollHeight = next.scrollHeight
+        next.scrollTo({
           top: previousScrollTop + (newScrollHeight - previousScrollHeight)
         })
       }
@@ -279,33 +290,37 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    ref="historyContainer"
-    class="min-h-0 flex-1 space-y-3 overflow-y-auto py-3"
-  >
-    <div class="flex justify-center">
-      <KunButton
-        v-if="isShowLoader"
-        @click="handleLoadHistoryMessages"
-        size="sm"
-        variant="light"
-      >
-        加载更多
-      </KunButton>
-    </div>
+  <!-- :defer="false" so overlayscrollbars initializes synchronously on mount —
+       the onMounted scroll-to-bottom reads getViewport() right after, and a
+       deferred (idle) init would leave it null and skip the initial scroll. The
+       space-y / padding live on an INNER div: they must wrap the messages, not
+       the OS host (whose direct child is the .os-viewport, not the items). -->
+  <KunOverlayScroll ref="historyScroll" :defer="false" class="min-h-0 flex-1">
+    <div class="space-y-3 py-3">
+      <div class="flex justify-center">
+        <KunButton
+          v-if="isShowLoader"
+          @click="handleLoadHistoryMessages"
+          size="sm"
+          variant="light"
+        >
+          加载更多
+        </KunButton>
+      </div>
 
-    <MessagePmItem
-      v-for="message in messages"
-      :key="message.id"
-      :message="message"
-      :is-sent="message.sender.id === currentUserId"
-      @context-menu="handleRecallContextMenu"
-    />
+      <MessagePmItem
+        v-for="message in messages"
+        :key="message.id"
+        :message="message"
+        :is-sent="message.sender.id === currentUserId"
+        @context-menu="handleRecallContextMenu"
+      />
 
-    <div v-if="!messages.length" class="text-default-500 py-10 text-center">
-      暂无消息，发送一条消息开始聊天吧
+      <div v-if="!messages.length" class="text-default-500 py-10 text-center">
+        暂无消息，发送一条消息开始聊天吧
+      </div>
     </div>
-  </div>
+  </KunOverlayScroll>
 
   <div
     class="shrink-0 border-t px-3 py-3"

@@ -254,6 +254,12 @@ importers:
       nodemailer-smtp-transport:
         specifier: ^2.7.4
         version: 2.7.4
+      overlayscrollbars:
+        specifier: ^2.16.0
+        version: 2.16.0
+      overlayscrollbars-vue:
+        specifier: ^0.5.10
+        version: 0.5.10(overlayscrollbars@2.16.0)(vue@3.5.35(typescript@5.9.3))
       pg:
         specifier: ^8.16.3
         version: 8.20.0
@@ -5803,6 +5809,15 @@ packages:
 
   orderedmap@2.1.1:
     resolution: {integrity: sha512-TvAWxi0nDe1j/rtMcWcIj94+Ffe6n7zhow33h40SKxmsmozs6dz/e+EajymfoFcHd7sxNn8yHM8839uixMOV6g==}
+
+  overlayscrollbars-vue@0.5.10:
+    resolution: {integrity: sha512-vu35CJj/kzGBgkxsQyXCCCRRBz/3AvXhkDckuiRHphRE6CwXjbWATY0PVbn2KRy30NbaZhHqueH5yqPo8ItqTA==}
+    peerDependencies:
+      overlayscrollbars: ^2.0.0
+      vue: ^3.2.25
+
+  overlayscrollbars@2.16.0:
+    resolution: {integrity: sha512-N03oje/q7j93D0aLZtoCdsDSYLmhheSsv8H7oSLE7HhdV9P/bmCURtLV/KbPye7P/bpfyt/obSfDpGUYoJ0OWg==}
 
   oxc-minify@0.133.0:
     resolution: {integrity: sha512-6bNsYU+5WNIaNHB16zHnL24cUaJuKiPzUvjENoMale3+U8ZBMbGYgdgt//frx0ge7UcgEGIpqtukGGNPT0kxfQ==}
@@ -14597,6 +14612,13 @@ snapshots:
       word-wrap: 1.2.5
 
   orderedmap@2.1.1: {}
+
+  overlayscrollbars-vue@0.5.10(overlayscrollbars@2.16.0)(vue@3.5.35(typescript@5.9.3)):
+    dependencies:
+      overlayscrollbars: 2.16.0
+      vue: 3.5.35(typescript@5.9.3)
+
+  overlayscrollbars@2.16.0: {}
 
   oxc-minify@0.133.0:
     optionalDependencies:

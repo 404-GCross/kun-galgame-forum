@@ -49,39 +49,40 @@ const tab = ref<'emoji' | 'sticker'>('emoji')
       </button>
     </div>
 
-    <div
-      v-show="tab === 'emoji'"
-      class="scrollbar-hide grid h-56 grid-cols-8 gap-0.5 overflow-y-auto"
-    >
-      <button
-        v-for="(e, i) in emojiArray"
-        :key="i"
-        type="button"
-        @click="emit('emoji', e)"
-        class="hover:bg-default-100 flex aspect-square items-center justify-center rounded-md text-xl"
-      >
-        {{ e }}
-      </button>
-    </div>
+    <!-- grid lives on an INNER div: the OS host can't be the grid itself (it
+         gets restructured into .os-viewport > .os-content). Height stays on the
+         host so the grid overflows and scrolls. -->
+    <KunOverlayScroll v-show="tab === 'emoji'" class="h-56">
+      <div class="grid grid-cols-8 gap-0.5">
+        <button
+          v-for="(e, i) in emojiArray"
+          :key="i"
+          type="button"
+          @click="emit('emoji', e)"
+          class="hover:bg-default-100 flex aspect-square items-center justify-center rounded-md text-xl"
+        >
+          {{ e }}
+        </button>
+      </div>
+    </KunOverlayScroll>
 
-    <div
-      v-show="tab === 'sticker'"
-      class="scrollbar-hide grid h-56 grid-cols-4 gap-1 overflow-y-auto"
-    >
-      <button
-        v-for="url in stickerArray"
-        :key="url"
-        type="button"
-        @click="emit('sticker', url)"
-        class="hover:bg-default-100 aspect-square rounded-md p-1"
-      >
-        <img
-          :src="url"
-          alt="sticker"
-          loading="lazy"
-          class="size-full object-contain"
-        />
-      </button>
-    </div>
+    <KunOverlayScroll v-show="tab === 'sticker'" class="h-56">
+      <div class="grid grid-cols-4 gap-1">
+        <button
+          v-for="url in stickerArray"
+          :key="url"
+          type="button"
+          @click="emit('sticker', url)"
+          class="hover:bg-default-100 aspect-square rounded-md p-1"
+        >
+          <img
+            :src="url"
+            alt="sticker"
+            loading="lazy"
+            class="size-full object-contain"
+          />
+        </button>
+      </div>
+    </KunOverlayScroll>
   </div>
 </template>

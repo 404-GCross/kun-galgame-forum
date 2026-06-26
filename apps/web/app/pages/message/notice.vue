@@ -38,17 +38,14 @@ onMounted(async () => {
 
     <KunDivider />
 
-    <div
-      v-if="data.messages.length"
-      class="scrollbar-hide h-full overflow-y-auto"
-    >
+    <KunOverlayScroll v-if="data.messages.length" class="h-full">
       <MessageAsideNotice
         v-for="(message, index) in data.messages"
         :key="index"
         :message="message"
         :refresh="refresh"
       />
-    </div>
+    </KunOverlayScroll>
 
     <KunNull v-if="!data.total" />
 
