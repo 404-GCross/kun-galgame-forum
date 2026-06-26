@@ -18,10 +18,12 @@ type CommentListRequest struct {
 }
 
 // ToolsetCommentItem is the camelCase shape returned by GET
-// /toolset/:id/comment/all. Mirrors the legacy nitro `ToolsetComment`
-// frontend type one-for-one (parentId null when top-level, targetUser nil
-// when not a reply). The `reply` field is intentionally always [] — the
-// frontend renders the tree from the flat list itself.
+// /toolset/:id/comment/all. Matches the galgame comment view: GET returns
+// ROOTS only (paginated), each carrying its FULL set of descendants flattened
+// into `reply` (oldest-first, any DB depth → one visual tier), plus
+// `replyCount`. `targetUser` is the replied-to comment's author ("A → B").
+// Unlike galgame the replies aren't capped/lazy — the frontend's "展开更多"
+// reveals them inline from this payload (no thread endpoint).
 type ToolsetCommentItem struct {
 	ID         int                  `json:"id"`
 	ToolsetID  int                  `json:"toolsetId"`
@@ -31,6 +33,7 @@ type ToolsetCommentItem struct {
 	ParentID   *int                 `json:"parentId"`
 	UserID     int                  `json:"userId"`
 	Reply      []ToolsetCommentItem `json:"reply"`
+	ReplyCount int                  `json:"replyCount"`
 	User       userModel.UserBrief  `json:"user"`
 	TargetUser *userModel.UserBrief `json:"targetUser"`
 }

@@ -17,14 +17,14 @@ import type { SerializeObject } from 'nitropack'
 
 type Node = SerializeObject<GalgameComment>
 
-// Prepend `newReply` at the TOP of root.replies and bump replyCount.
-// The inline + drawer views both render replies newest-first, so a
-// just-posted reply must land at index 0 to be immediately visible
-// at the top of the list. Always returns a fresh root object.
-export const prependReplyToRoot = (root: Node, newReply: Node): Node => {
+// Append `newReply` at the BOTTOM of root.replies and bump replyCount.
+// The inline + drawer views render replies oldest-first (先发布在上), so a
+// just-posted reply — the newest — lands at the end to stay visible at the
+// bottom of the list. Always returns a fresh root object.
+export const appendReplyToRoot = (root: Node, newReply: Node): Node => {
   return {
     ...root,
-    replies: [newReply, ...(root.replies ?? [])],
+    replies: [...(root.replies ?? []), newReply],
     replyCount: (root.replyCount ?? 0) + 1
   }
 }

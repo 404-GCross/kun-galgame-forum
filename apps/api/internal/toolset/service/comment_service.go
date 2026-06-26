@@ -41,23 +41,66 @@ func (s *CommentService) GetComments(
 	toolsetID int,
 	req *dto.CommentListRequest,
 ) *dto.ToolsetCommentListResponse {
-	total := s.commentRepo.CountByToolset(toolsetID)
-	rows := s.commentRepo.FindPaginated(toolsetID, req.Page, req.Limit, req.SortOrder)
+	all := s.commentRepo.FindAllByToolset(toolsetID) // oldest-first
+	if len(all) == 0 {
+		return &dto.ToolsetCommentListResponse{CommentData: []dto.ToolsetCommentItem{}, Total: 0}
+	}
 
-	// Batch-resolve unique authors + parent authors to avoid N+1 lookups.
-	userIDSet := map[int]struct{}{}
-	parentIDs := []int{}
-	for _, cm := range rows {
-		userIDSet[cm.UserID] = struct{}{}
-		if cm.ParentID != nil {
-			parentIDs = append(parentIDs, *cm.ParentID)
+	// Index every comment, then group non-roots under their thread ROOT by
+	// walking parent_id (replies are shallow). `all` is oldest-first, so each
+	// root's flattened replies come out oldest-first too.
+	byID := make(map[int]model.GalgameToolsetComment, len(all))
+	for _, c := range all {
+		byID[c.ID] = c
+	}
+	rootOf := func(c model.GalgameToolsetComment) int {
+		cur := c
+		for cur.ParentID != nil {
+			parent, ok := byID[*cur.ParentID]
+			if !ok {
+				break
+			}
+			cur = parent
+		}
+		return cur.ID
+	}
+
+	roots := make([]model.GalgameToolsetComment, 0)
+	repliesByRoot := make(map[int][]model.GalgameToolsetComment)
+	for _, c := range all {
+		if c.ParentID == nil {
+			roots = append(roots, c)
+			continue
+		}
+		repliesByRoot[rootOf(c)] = append(repliesByRoot[rootOf(c)], c)
+	}
+
+	// Roots honor the sort toggle (default newest-first); replies stay
+	// oldest-first regardless.
+	if req.SortOrder != "asc" {
+		for i, j := 0, len(roots)-1; i < j; i, j = i+1, j-1 {
+			roots[i], roots[j] = roots[j], roots[i]
 		}
 	}
-	parentUserByID := map[int]int{}
-	for _, pid := range parentIDs {
-		if parent, err := s.commentRepo.FindByID(pid); err == nil {
-			parentUserByID[pid] = parent.UserID
-			userIDSet[parent.UserID] = struct{}{}
+
+	// Paginate ROOTS.
+	total := int64(len(roots))
+	start := min(max((req.Page-1)*req.Limit, 0), len(roots))
+	end := min(start+req.Limit, len(roots))
+	pageRoots := roots[start:end]
+
+	// Hydrate authors of the page's roots + their replies + each reply's parent
+	// author (for the "A → B" targetUser), in one batch.
+	userIDSet := map[int]struct{}{}
+	for _, r := range pageRoots {
+		userIDSet[r.UserID] = struct{}{}
+		for _, rep := range repliesByRoot[r.ID] {
+			userIDSet[rep.UserID] = struct{}{}
+			if rep.ParentID != nil {
+				if p, ok := byID[*rep.ParentID]; ok {
+					userIDSet[p.UserID] = struct{}{}
+				}
+			}
 		}
 	}
 	uids := make([]int, 0, len(userIDSet))
@@ -66,26 +109,37 @@ func (s *CommentService) GetComments(
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
 
-	items := make([]dto.ToolsetCommentItem, 0, len(rows))
-	for _, cm := range rows {
+	build := func(c model.GalgameToolsetComment) dto.ToolsetCommentItem {
 		item := dto.ToolsetCommentItem{
-			ID:        cm.ID,
-			ToolsetID: cm.ToolsetID,
-			Content:   cm.Content,
-			Created:   cm.CreatedAt,
-			Edited:    cm.Edited,
-			ParentID:  cm.ParentID,
-			UserID:    cm.UserID,
+			ID:        c.ID,
+			ToolsetID: c.ToolsetID,
+			Content:   c.Content,
+			Created:   c.CreatedAt,
+			Edited:    c.Edited,
+			ParentID:  c.ParentID,
+			UserID:    c.UserID,
 			Reply:     []dto.ToolsetCommentItem{},
-			User:      userBriefFromClient(userMap[cm.UserID]),
+			User:      userBriefFromClient(userMap[c.UserID]),
 		}
-		if cm.ParentID != nil {
-			if parentUserID, ok := parentUserByID[*cm.ParentID]; ok {
-				pu := userBriefFromClient(userMap[parentUserID])
+		if c.ParentID != nil {
+			if p, ok := byID[*c.ParentID]; ok {
+				pu := userBriefFromClient(userMap[p.UserID])
 				item.TargetUser = &pu
 			}
 		}
-		items = append(items, item)
+		return item
+	}
+
+	items := make([]dto.ToolsetCommentItem, 0, len(pageRoots))
+	for _, r := range pageRoots {
+		root := build(r)
+		reps := repliesByRoot[r.ID]
+		root.Reply = make([]dto.ToolsetCommentItem, 0, len(reps))
+		for _, rep := range reps {
+			root.Reply = append(root.Reply, build(rep))
+		}
+		root.ReplyCount = len(reps)
+		items = append(items, root)
 	}
 
 	return &dto.ToolsetCommentListResponse{CommentData: items, Total: total}

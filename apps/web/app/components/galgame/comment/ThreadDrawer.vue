@@ -66,7 +66,7 @@ const handleNewComment = (newComment: GalgameComment) => {
   if (reply.parentCommentId == null) return
   if (reply.rootCommentId !== thread.value.id) return
 
-  thread.value = prependReplyToRoot(thread.value, reply)
+  thread.value = appendReplyToRoot(thread.value, reply)
 }
 
 const handleReplyEdited = (updated: GalgameComment) => {

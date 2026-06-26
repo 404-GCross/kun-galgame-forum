@@ -102,10 +102,10 @@ func (r *CommentRepository) FindRootsPaginated(galgameID, page, limit int, sortO
 // visual tier: the 3 picked here are whichever 3 are freshest in the
 // thread, regardless of DB depth.
 //
-// Sorted DESC by created so the newest reply appears at the top of
-// the inline list (the user's own just-posted reply is immediately
-// visible). Anything older lives behind the "查看更多 N 条回复"
-// lazy drawer.
+// Picks the N most-recent descendants per root (inner ROW_NUMBER DESC) but
+// returns them oldest-first (outer ORDER ASC), so the inline list reads
+// 先发布在上 — the just-posted reply still shows (it's in the recent N) but at
+// the BOTTOM. Older replies live behind the "查看更多 N 条回复" lazy drawer.
 func (r *CommentRepository) FindLatestDescendantsByRoots(rootIDs []int, perRoot int) []CommentRow {
 	if len(rootIDs) == 0 {
 		return nil
@@ -127,7 +127,7 @@ func (r *CommentRepository) FindLatestDescendantsByRoots(rootIDs []int, perRoot 
 			WHERE gc.root_comment_id IN ?
 		) sub
 		WHERE rn <= ?
-		ORDER BY root_comment_id, created_at DESC
+		ORDER BY root_comment_id, created_at ASC
 	`, rootIDs, perRoot).Scan(&rows)
 	return rows
 }
@@ -159,16 +159,16 @@ func (r *CommentRepository) CountDescendantsByRoots(rootIDs []int) map[int]int {
 // FindThreadByRoot returns root + all descendants for a single root.
 // Used by the "回复详情" drawer; depth is unbounded.
 //
-// Sorted DESC by created so the drawer also presents newest-first,
-// matching the inline list's order. The service layer separates the
-// root from descendants before returning, so the relative position of
-// root in this slice doesn't matter.
+// Sorted ASC by created so the drawer presents oldest-first (先发布在上),
+// matching the inline list. The service layer separates the root from
+// descendants before returning, so the relative position of root in this
+// slice doesn't matter.
 func (r *CommentRepository) FindThreadByRoot(rootID int) []CommentRow {
 	var rows []CommentRow
 	r.db.Table("galgame_comment gc").
 		Select(commentSelect).
 		Where("gc.id = ? OR gc.root_comment_id = ?", rootID, rootID).
-		Order("gc.created DESC").
+		Order("gc.created ASC").
 		Find(&rows)
 	return rows
 }

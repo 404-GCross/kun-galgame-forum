@@ -85,7 +85,10 @@ export interface WebsiteComment {
   userId: number
   created: Date | string
   edited: Date | string | null
+  // Roots carry their full set of descendants flattened here (oldest-first, one
+  // visual tier); replies leave it empty. replyCount = reply.length.
   reply: WebsiteComment[]
+  replyCount: number
   user: KunUser
   targetUser?: KunUser | null
 }

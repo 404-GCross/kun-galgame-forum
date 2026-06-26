@@ -42,61 +42,83 @@ func NewCommentService(
 // hydrated from OAuth via userclient since the repo no longer joins on the
 // user table; rows authored by banned users are dropped.
 func (s *CommentService) GetComments(ctx context.Context, websiteID int) []*dto.CommentItem {
-	rows := s.commentRepo.FindByWebsite(websiteID)
+	rows := s.commentRepo.FindByWebsite(websiteID) // newest-first
 
 	uids := userclient.CollectIDs(rows, func(r repository.CommentRow) int { return r.UserID })
 	userMap := s.userClient.Hydrate(ctx, uids)
 
-	flat := make([]*dto.CommentItem, 0, len(rows))
-	idMap := make(map[int]*dto.CommentItem, len(rows))
+	// Index rows; group non-roots under their thread ROOT by walking parent_id.
+	// The view is two flat tiers (root + replies) regardless of DB depth.
+	rowByID := make(map[int]repository.CommentRow, len(rows))
 	for _, r := range rows {
-		u := userMap[r.UserID]
-		if !userclient.IsRenderable(u) {
-			continue
+		rowByID[r.ID] = r
+	}
+	rootOf := func(r repository.CommentRow) int {
+		cur := r
+		for cur.ParentID != nil {
+			parent, ok := rowByID[*cur.ParentID]
+			if !ok {
+				break
+			}
+			cur = parent
 		}
+		return cur.ID
+	}
+	build := func(r repository.CommentRow) *dto.CommentItem {
+		u := userMap[r.UserID]
 		item := &dto.CommentItem{
-			ID:        r.ID,
-			Content:   r.Content,
-			ParentID:  r.ParentID,
-			UserID:    r.UserID,
-			WebsiteID: websiteID,
-			Created:   r.Created,
-			Edited:    r.Edited,
-			Reply:     []*dto.CommentItem{},
-			User: dto.CommentUser{
-				ID: u.ID, Name: u.Name, Avatar: u.Avatar,
-			},
+			ID:         r.ID,
+			Content:    r.Content,
+			ParentID:   r.ParentID,
+			UserID:     r.UserID,
+			WebsiteID:  websiteID,
+			Created:    r.Created,
+			Edited:     r.Edited,
+			Reply:      []*dto.CommentItem{},
+			User:       dto.CommentUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			TargetUser: nil,
 		}
-		flat = append(flat, item)
-		idMap[r.ID] = item
+		// targetUser = the replied-to comment's author ("A → B").
+		if r.ParentID != nil {
+			if p, ok := rowByID[*r.ParentID]; ok {
+				if pu := userMap[p.UserID]; userclient.IsRenderable(pu) {
+					item.TargetUser = dto.CommentUser{ID: pu.ID, Name: pu.Name, Avatar: pu.Avatar}
+				}
+			}
+		}
+		return item
 	}
 
-	var nested []*dto.CommentItem
-	for _, item := range flat {
-		if item.ParentID != nil {
-			parent, ok := idMap[*item.ParentID]
-			if !ok {
-				// Parent was dropped (banned author) — its reply has no
-				// visible thread to attach to and TargetUser would be
-				// nil, so the FE would render an orphan as a top-level
-				// comment with a dangling "回复 (deleted)" affordance.
-				// Drop the reply to keep the website comment tree
-				// consistent with the galgame side, which also discards
-				// descendants whose root row was filtered.
-				continue
-			}
-			item.TargetUser = parent.User
-			parent.Reply = append(parent.Reply, item)
+	// rows is newest-first; walk it in reverse so roots and each root's
+	// flattened replies come out oldest-first.
+	rootItems := make(map[int]*dto.CommentItem, len(rows))
+	roots := make([]*dto.CommentItem, 0)
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		if r.ParentID != nil || !userclient.IsRenderable(userMap[r.UserID]) {
 			continue
 		}
-		nested = append(nested, item)
+		item := build(r)
+		rootItems[r.ID] = item
+		roots = append(roots, item)
 	}
-
-	if nested == nil {
-		nested = []*dto.CommentItem{}
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		if r.ParentID == nil || !userclient.IsRenderable(userMap[r.UserID]) {
+			continue
+		}
+		root, ok := rootItems[rootOf(r)]
+		if !ok {
+			// Root was dropped (banned author) — the reply has no visible
+			// thread to attach to; drop it (as the prior tree did for orphans).
+			continue
+		}
+		root.Reply = append(root.Reply, build(r))
 	}
-	return nested
+	for _, root := range roots {
+		root.ReplyCount = len(root.Reply)
+	}
+	return roots
 }
 
 // ──────────────────────────────────────────

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { scrollIntoComment } from './_scrollIntoComment'
+
 const props = defineProps<{
   websiteId: number
 }>()
@@ -12,42 +13,65 @@ const { data } = await useKunFetch<WebsiteComment[]>(
   }
 )
 
-const comments = ref<WebsiteComment[]>(data.value ? data.value : [])
+// Roots (each carrying its replies flattened oldest-first). Owned locally so
+// publish / delete stay reactive (the fetch data ref is shallow).
+const comments = ref<WebsiteComment[]>(data.value ?? [])
 
-const handlePublishSuccess = (newComment: WebsiteComment) => {
-  comments.value = [newComment, ...comments.value]
-  nextTick(() => scrollIntoComment(newComment.id))
+const addNewComment = (newComment: WebsiteComment) => {
+  if (newComment.parentId == null) {
+    // Root: append (the list is oldest-first) and scroll to it.
+    comments.value.push(newComment)
+    nextTick(() => scrollIntoComment(newComment.id))
+    return
+  }
+  // Reply: attach to the root that IS, or CONTAINS, the parent.
+  const root = comments.value.find(
+    (r) =>
+      r.id === newComment.parentId ||
+      r.reply.some((c) => c.id === newComment.parentId)
+  )
+  if (root) {
+    root.reply.push(newComment)
+    root.replyCount = (root.replyCount ?? 0) + 1
+  }
 }
 
-const handleRemoveComment = (commentId: number) => {
-  const index = comments.value.findIndex((c) => c.id === commentId)
-  if (index !== -1) {
-    comments.value.splice(index, 1)
+const removeComment = (commentId: number) => {
+  const rootIdx = comments.value.findIndex((c) => c.id === commentId)
+  if (rootIdx !== -1) {
+    comments.value.splice(rootIdx, 1)
+    return
+  }
+  for (const root of comments.value) {
+    const idx = root.reply.findIndex((c) => c.id === commentId)
+    if (idx !== -1) {
+      root.reply.splice(idx, 1)
+      root.replyCount = Math.max(0, (root.replyCount ?? 0) - 1)
+      return
+    }
   }
 }
 </script>
 
 <template>
-  <KunCard
-    :is-transparent="false"
-    :is-hoverable="false"
-    class-name="p-6"
-  >
+  <KunCard :is-transparent="false" :is-hoverable="false" class-name="p-6">
     <h2 class="text-default-900 mb-6 text-2xl font-bold">用户评论</h2>
 
     <div class="mb-8">
       <WebsiteCommentPublish
         :website-id="websiteId"
-        @set-new-comment="handlePublishSuccess"
+        @set-new-comment="addNewComment"
       />
     </div>
 
     <div v-if="comments.length" class="space-y-6">
       <WebsiteCommentRender
-        :comments="comments"
+        v-for="comment in comments"
+        :key="comment.id"
+        :comment="comment"
         :website-id="websiteId"
-        @set-new-comment="handlePublishSuccess"
-        @remove-comment="handleRemoveComment"
+        @reply-added="addNewComment"
+        @reply-removed="removeComment"
       />
     </div>
   </KunCard>

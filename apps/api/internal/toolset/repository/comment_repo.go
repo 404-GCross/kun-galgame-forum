@@ -70,6 +70,18 @@ func (r *CommentRepository) FindPaginated(toolsetID, page, limit int, sortOrder 
 	return comments
 }
 
+// FindAllByToolset returns every comment for a toolset, oldest-first, so the
+// service can group roots + flattened descendants for the 2-tier view. Comment
+// volumes per toolset are small, so loading the whole set in one query (then
+// grouping in memory) is simpler and cheaper than recursive root resolution.
+func (r *CommentRepository) FindAllByToolset(toolsetID int) []model.GalgameToolsetComment {
+	var comments []model.GalgameToolsetComment
+	r.db.Where("toolset_id = ?", toolsetID).
+		Order("created ASC").
+		Find(&comments)
+	return comments
+}
+
 // FindLatest returns the N most recent comments for a toolset.
 func (r *CommentRepository) FindLatest(toolsetID, limit int) []model.GalgameToolsetComment {
 	var comments []model.GalgameToolsetComment

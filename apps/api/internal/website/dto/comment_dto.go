@@ -29,8 +29,11 @@ type CommentUser struct {
 	Avatar string `json:"avatar"`
 }
 
-// CommentItem is a single nested comment returned by GET /website/:domain/comment.
-// Field names (camelCase) mirror the pre-refactor handler exactly.
+// CommentItem matches the galgame comment view: GET returns ROOTS only, each
+// carrying its FULL set of descendants flattened into `reply` (oldest-first, any
+// DB depth → one visual tier) plus `replyCount`. `targetUser` is the replied-to
+// comment's author ("A → B"). The frontend's "展开更多" reveals the replies inline
+// from this payload (no lazy thread fetch).
 type CommentItem struct {
 	ID         int            `json:"id"`
 	Content    string         `json:"content"`
@@ -40,6 +43,7 @@ type CommentItem struct {
 	Created    string         `json:"created"`
 	Edited     *string        `json:"edited"`
 	Reply      []*CommentItem `json:"reply"`
+	ReplyCount int            `json:"replyCount"`
 	User       CommentUser    `json:"user"`
 	TargetUser any            `json:"targetUser"`
 }

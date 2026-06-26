@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { scrollIntoComment } from './_scrollIntoComment'
-
-withDefaults(
+// One node in the website comment view. Same two-tier flat model as the galgame
+// comment area: depth 0 (root) + depth 1 (replies, flattened from any DB depth);
+// "A => B" survives via targetUser. A root shows up to 3 replies inline +
+// "展开更多 N 条回复" that reveals the rest INLINE (all loaded — no drawer / fetch).
+// Website comments have no edit, only reply + delete. Mutations bubble to
+// Container, which owns the list.
+const props = withDefaults(
   defineProps<{
-    comments: WebsiteComment[]
+    comment: WebsiteComment
     websiteId: number
     depth?: number
   }>(),
@@ -11,111 +15,114 @@ withDefaults(
 )
 
 const emits = defineEmits<{
-  setNewComment: [comment: WebsiteComment]
-  removeComment: [commentId: number]
+  replyAdded: [comment: WebsiteComment]
+  replyRemoved: [commentId: number]
 }>()
 
-const replyTo = ref<number | null>(null)
+const isShowReply = ref(false)
+const showAllReplies = ref(false)
 
-const handleClickReply = (comment: WebsiteComment) => {
-  const idCurrentComment = replyTo.value === comment.id
-  replyTo.value = idCurrentComment ? null : comment.id
-}
+const visibleReplies = computed(() => {
+  if (props.depth !== 0) {
+    return []
+  }
+  const all = props.comment.reply ?? []
+  return showAllReplies.value ? all : all.slice(0, 3)
+})
+const hiddenReplyCount = computed(
+  () => (props.comment.reply?.length ?? 0) - visibleReplies.value.length
+)
 
-const handleCommitNewComment = (comment: WebsiteComment) => {
-  emits('setNewComment', comment)
+const onReplyPublished = (comment: WebsiteComment) => {
+  isShowReply.value = false
+  emits('replyAdded', comment)
 }
 </script>
 
 <template>
-  <template v-for="(com, index) in comments" :key="index">
-    <div
-      :class="cn(depth <= 3 && depth !== 0 ? `mt-3 ml-3` : 'ml-0', 'space-y-4')"
-    >
-      <div class="flex space-x-3">
-        <div
-          :class="
-            cn(
-              'flex flex-col items-center gap-1',
-              com.targetUser && 'bg-primary-500/10 rounded-2xl p-2'
-            )
-          "
-        >
-          <KunAvatar :user="com.user" />
-          <template v-if="com.targetUser">
-            <KunIcon
-              class-name="text-xl text-primary"
-              name="lucide:arrow-down"
-            />
-            <KunAvatar :user="com.targetUser" />
-          </template>
-        </div>
-        <div class="space-y-1">
-          <div class="flex items-center space-x-2">
-            <span class="text-default-900 font-medium">
-              {{ com.user.name }}
-            </span>
+  <div class="flex gap-3">
+    <KunAvatar :user="comment.user" :size="depth === 0 ? 'md' : 'sm'" />
 
-            <span v-if="com.targetUser" class="text-default-500">回复</span>
-
-            <KunTooltip
-              v-if="com.targetUser"
-              :text="`定位到 ${com.targetUser.name} 的回复`"
-            >
-              <KunLink
-                underline="hover"
-                @click="scrollIntoComment(com.parentId)"
-                v-if="com.targetUser"
-                class="text-primary cursor-pointer font-medium"
-              >
-                {{ com.user.name }}
-              </KunLink>
-            </KunTooltip>
-
-            <span class="text-default-500 text-sm">
-              <KunTime :time="com.created" type="datetime" />
-            </span>
-          </div>
-
-          <p
-            :id="`comment-${com.id}`"
-            class="text-default-700 rounded-lg p-2 leading-relaxed"
+    <div class="min-w-0 flex-1 space-y-1.5">
+      <div class="flex flex-wrap items-baseline gap-1.5">
+        <span class="text-default-800 text-sm font-medium">
+          {{ comment.user.name }}
+        </span>
+        <template v-if="comment.targetUser">
+          <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
+          <KunLink
+            underline="hover"
+            size="sm"
+            :to="`/user/${comment.targetUser.id}/info`"
           >
-            {{ com.content }}
-          </p>
+            {{ comment.targetUser.name }}
+          </KunLink>
+        </template>
+        <span class="text-default-400 text-xs">
+          <KunTime :time="comment.created" type="datetime" />
+        </span>
+      </div>
 
-          <div class="flex gap-1">
-            <KunButton @click="handleClickReply(com)" size="sm" variant="flat">
-              回复
-            </KunButton>
+      <p
+        :id="`comment-${comment.id}`"
+        class="text-default-700 text-sm break-all whitespace-pre-line"
+      >
+        {{ comment.content }}
+      </p>
 
-            <WebsiteCommentDelete
-              @remove-comment="(commentId) => emits('removeComment', commentId)"
-              :comment="com"
-            />
-          </div>
-        </div>
+      <div class="-ml-2 flex items-center gap-1">
+        <KunButton
+          variant="light"
+          size="sm"
+          class-name="gap-1"
+          @click="isShowReply = !isShowReply"
+        >
+          <KunIcon name="lucide:reply" />
+          回复
+        </KunButton>
+
+        <WebsiteCommentDelete
+          :comment="comment"
+          @remove-comment="(id) => emits('replyRemoved', id)"
+        />
       </div>
 
       <KunFadeCard>
-        <div class="mt-2" v-if="replyTo === com.id">
+        <div v-if="isShowReply" class="mt-2">
           <WebsiteCommentPublish
             :website-id="websiteId"
-            :parent-id="com.id"
-            :receiver="com.user"
-            @on-success="replyTo = null"
-            @set-new-comment="handleCommitNewComment"
+            :parent-id="comment.id"
+            :receiver="comment.user"
+            @on-success="isShowReply = false"
+            @set-new-comment="onReplyPublished"
           />
         </div>
       </KunFadeCard>
 
-      <div v-if="com.reply && com.reply.length > 0" className="mt-2">
+      <div v-if="visibleReplies.length" class="mt-3 space-y-4">
         <WebsiteCommentRender
-          :comments="com.reply"
-          :depth="depth + 1"
+          v-for="reply in visibleReplies"
+          :key="reply.id"
+          :comment="reply"
           :website-id="websiteId"
+          :depth="1"
+          @reply-added="(c) => emits('replyAdded', c)"
+          @reply-removed="(id) => emits('replyRemoved', id)"
         />
       </div>
+
+      <KunButton
+        v-if="depth === 0 && hiddenReplyCount > 0"
+        variant="light"
+        color="primary"
+        size="sm"
+        full-width
+        class-name="mt-2"
+        @click="showAllReplies = true"
+      >
+        <KunIcon name="lucide:messages-square" />
+        展开更多 {{ hiddenReplyCount }} 条回复
+      </KunButton>
     </div>
-  </template>
+  </div>
 </template>

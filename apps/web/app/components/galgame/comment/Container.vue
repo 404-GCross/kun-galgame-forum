@@ -16,7 +16,8 @@ const pageData = reactive({
   galgameId: gid,
   page: 1,
   limit: 30,
-  sortOrder: 'desc'
+  // Roots default oldest-first (先发布在上); the toggle can flip it.
+  sortOrder: 'asc'
 })
 
 // data.items holds ROOTS only; each root carries up to 3 of its most
@@ -75,7 +76,7 @@ const handleNewComment = (newComment: GalgameComment) => {
   if (rootIdx < 0) return
 
   const nextItems = [...data.value.items]
-  nextItems[rootIdx] = prependReplyToRoot(data.value.items[rootIdx]!, reply)
+  nextItems[rootIdx] = appendReplyToRoot(data.value.items[rootIdx]!, reply)
   data.value = { items: nextItems, total: data.value.total }
 }
 

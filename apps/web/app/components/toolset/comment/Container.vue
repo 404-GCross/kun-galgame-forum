@@ -7,10 +7,12 @@ const pageData = reactive({
   toolsetId: props.toolsetId,
   page: 1,
   limit: 30,
-  sortOrder: 'desc'
+  // Roots default oldest-first (先发布在上), consistent with the galgame
+  // comment area; changing it re-runs the fetch via the reactive query.
+  sortOrder: 'asc'
 })
 
-const { data, status, refresh } = await useKunFetch<{
+const { data, status } = await useKunFetch<{
   commentData: SerializeObject<ToolsetComment>[]
   total: number
 }>(`/toolset/${props.toolsetId}/comment/all`, {
@@ -34,21 +36,60 @@ watch(
   { immediate: true }
 )
 
+// `total` counts ROOTS (drives pagination + the empty state), so a new root
+// adjusts it but a new reply doesn't.
 const addNewComment = (comment: ToolsetComment) => {
-  comments.value.unshift(comment as SerializeObject<ToolsetComment>)
-  total.value++
+  const node = comment as SerializeObject<ToolsetComment>
+  if (node.parentId == null) {
+    // Root: end under asc (oldest-first), top under desc.
+    if (pageData.sortOrder === 'asc') {
+      comments.value.push(node)
+    } else {
+      comments.value.unshift(node)
+    }
+    total.value++
+    return
+  }
+  // Reply: attach to the root that IS, or CONTAINS, the parent.
+  const root = comments.value.find(
+    (r) => r.id === node.parentId || r.reply.some((c) => c.id === node.parentId)
+  )
+  if (root) {
+    root.reply.push(node)
+    root.replyCount = (root.replyCount ?? 0) + 1
+  }
 }
 
 const removeComment = (commentId: number) => {
-  comments.value = comments.value.filter((c) => c.id !== commentId)
-  total.value = Math.max(0, total.value - 1)
+  const rootIdx = comments.value.findIndex((c) => c.id === commentId)
+  if (rootIdx !== -1) {
+    comments.value.splice(rootIdx, 1)
+    total.value = Math.max(0, total.value - 1)
+    return
+  }
+  for (const root of comments.value) {
+    const idx = root.reply.findIndex((c) => c.id === commentId)
+    if (idx !== -1) {
+      root.reply.splice(idx, 1)
+      root.replyCount = Math.max(0, (root.replyCount ?? 0) - 1)
+      return
+    }
+  }
 }
 
 const updateComment = (commentId: number, content: string, edited: string) => {
-  const target = comments.value.find((c) => c.id === commentId)
-  if (target) {
-    target.content = content
-    target.edited = edited
+  for (const root of comments.value) {
+    if (root.id === commentId) {
+      root.content = content
+      root.edited = edited
+      return
+    }
+    const reply = root.reply.find((c) => c.id === commentId)
+    if (reply) {
+      reply.content = content
+      reply.edited = edited
+      return
+    }
   }
 }
 </script>
@@ -95,10 +136,11 @@ const updateComment = (commentId: number, content: string, edited: string) => {
         v-for="comment in comments"
         :key="comment.id"
         :comment="comment"
+        :toolset-id="toolsetId"
         :owner-id="ownerId || 0"
-        @remove="removeComment"
-        @replied="refresh()"
-        @updated="updateComment"
+        @reply-added="addNewComment"
+        @reply-edited="updateComment"
+        @reply-removed="removeComment"
       />
 
       <KunPagination
