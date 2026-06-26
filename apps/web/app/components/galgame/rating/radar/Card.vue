@@ -14,11 +14,18 @@ defineProps<{
 </script>
 
 <template>
+  <!-- KunScrollShadow 2.5+ real props: `wheel="contain"` = vertical mouse wheel
+       scrolls the strip sideways AND keeps the wheel on the strip at its edges so
+       the page doesn't move (only while the strip is actually scrollable, so it
+       can't freeze the page), `draggable` = click-drag to scroll, `scrollbar="thin"`
+       = slim themed bar. Replaces the old dead `scrollbar-visible` class + native
+       `:draggable="true"` attr. -->
   <KunScrollShadow
-    class-name="scrollbar-visible"
-    :draggable="true"
     axis="horizontal"
     shadow-size="5rem"
+    wheel="contain"
+    draggable
+    scrollbar="thin"
   >
     <div class="flex" v-for="rating in ratings" :key="rating.id">
       <KunCard
