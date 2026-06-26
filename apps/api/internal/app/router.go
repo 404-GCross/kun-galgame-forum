@@ -436,6 +436,7 @@ func (a *App) setupRoutes() {
 	authed.Delete("/toolset/:id/resource", a.ToolsetResourceHandler.DeleteResource)
 	authed.Post("/toolset/:id/upload/init", a.ToolsetUploadHandler.UploadInit)
 	authed.Post("/toolset/:id/upload/complete", a.ToolsetUploadHandler.UploadComplete)
+	authed.Post("/toolset/:id/upload/resume", a.ToolsetUploadHandler.UploadResume)
 	authed.Post("/toolset/:id/upload/abort", a.ToolsetUploadHandler.UploadAbort)
 
 	// ════════════════════════════════════════════

@@ -71,12 +71,49 @@ export interface ToolsetUploadCompleteResponse {
   size: number
 }
 
+// Resume an interrupted multipart upload: uploadedParts are already stored in B2
+// (skip them, reuse the etag at complete), parts are fresh presigned URLs for
+// only the missing parts. Same shape as init so the multipart PUT loop is shared;
+// a single-part upload comes back multipart=false + a fresh uploadUrl.
+export interface ToolsetUploadResumeResponse {
+  artifactUuid: string
+  multipart: boolean
+  uploadUrl?: string
+  partSize?: number
+  parts?: {
+    partNumber: number
+    url: string
+  }[]
+  uploadedParts?: {
+    partNumber: number
+    etag: string
+    size: number
+  }[]
+  expiresAt: string
+}
+
 // Result emitted from the S3 upload widget once a full upload (init → PUT →
 // complete) succeeds. The artifact uuid binds the upload to a toolset_resource
 // row at create time; size pre-fills the file size input.
 export interface ToolsetUploadResult {
   artifactUuid: string
   size: number
+}
+
+// A multipart upload started but not completed, persisted in localStorage per
+// toolset so the upload modal can surface "you have unfinished uploads" across
+// page reloads. The browser can't read a file by path, so resuming needs the
+// user to re-select it (matched by size+lastModified, so a moved/renamed file
+// still resumes); the uploaded parts live in B2 on the artifact side. name is
+// display-only. progress is the last-known % (updated
+// as parts upload + on interruption) so the resume list can show how far it got.
+export interface ToolsetPendingUpload {
+  artifactUuid: string
+  name: string
+  size: number
+  lastModified: number
+  progress: number
+  updatedAt: number
 }
 
 export interface ToolsetResource {

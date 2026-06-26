@@ -31,6 +31,10 @@ type UploadAbortRequest struct {
 	ArtifactUUID string `json:"artifactUuid" validate:"required"`
 }
 
+type UploadResumeRequest struct {
+	ArtifactUUID string `json:"artifactUuid" validate:"required"`
+}
+
 // ──────────────────────────────────────────
 // Responses
 // ──────────────────────────────────────────
@@ -55,4 +59,27 @@ type UploadInitResponse struct {
 type UploadCompleteResponse struct {
 	ArtifactUUID string `json:"artifactUuid"`
 	Size         int64  `json:"size"`
+}
+
+// UploadResumePart is a part already stored on the artifact side — the frontend
+// skips re-uploading it and reuses ETag at complete.
+type UploadResumePart struct {
+	PartNumber int    `json:"partNumber"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}
+
+// UploadResumeResponse lets the frontend continue an interrupted upload without
+// starting over: UploadedParts are already stored (skip + reuse ETag), Parts are
+// fresh presigned URLs for only the missing parts. Mirrors UploadInitResponse so
+// the frontend's multipart loop is identical. For a single-part upload Multipart
+// is false and the whole file is re-PUT to UploadURL.
+type UploadResumeResponse struct {
+	ArtifactUUID  string             `json:"artifactUuid"`
+	Multipart     bool               `json:"multipart"`
+	UploadURL     string             `json:"uploadUrl,omitempty"`
+	PartSize      int64              `json:"partSize,omitempty"`
+	Parts         []UploadInitPart   `json:"parts,omitempty"`
+	UploadedParts []UploadResumePart `json:"uploadedParts,omitempty"`
+	ExpiresAt     string             `json:"expiresAt"`
 }

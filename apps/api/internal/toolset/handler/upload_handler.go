@@ -66,6 +66,27 @@ func (h *UploadHandler) UploadComplete(c *fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
+// UploadResume continues an interrupted upload: the artifact service lists the
+// parts already stored and re-presigns only the missing ones, so the frontend
+// can finish without re-sending bytes already in B2 (pause / drop / refresh).
+// POST /api/toolset/:id/upload/resume
+func (h *UploadHandler) UploadResume(c *fiber.Ctx) error {
+	if _, appErr := middleware.MustGetUser(c); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	var req dto.UploadResumeRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	result, appErr := h.uploadService.Resume(c.Context(), &req)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, result)
+}
+
 // UploadAbort soft-deletes an unfinished upload (GC reclaims the bytes).
 // POST /api/toolset/:id/upload/abort
 func (h *UploadHandler) UploadAbort(c *fiber.Ctx) error {

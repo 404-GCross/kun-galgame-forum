@@ -179,6 +179,10 @@ export const completeToolsetUploadSchema = z.object({
     .optional()
 })
 
+export const resumeToolsetUploadSchema = z.object({
+  artifactUuid: z.string().min(1).max(36)
+})
+
 export const abortToolsetUploadSchema = z.object({
   artifactUuid: z.string().min(1).max(36)
 })

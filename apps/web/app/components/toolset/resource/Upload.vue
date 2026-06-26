@@ -8,6 +8,7 @@ import {
 import {
   initToolsetUploadSchema,
   completeToolsetUploadSchema,
+  resumeToolsetUploadSchema,
   abortToolsetUploadSchema
 } from '~/validations/toolset'
 import {
@@ -53,6 +54,11 @@ const selectedFile = ref<File | null>(null)
 const progress = ref(0)
 const isDragging = ref(false)
 const uploadStatus = ref<ToolsetUploadStatus>('idle')
+// Set when the selected file matches an interrupted multipart upload — persisted
+// across a page refresh, or failed mid-flight this session. While set, submit
+// RESUMES (skips parts already in B2) instead of starting over. Cleared on a
+// fresh select / successful complete / abort.
+const resumeUuid = ref<string | null>(null)
 
 const isLarge = computed(() => {
   const f = selectedFile.value
@@ -102,6 +108,14 @@ const resetUploadState = () => {
 const setSelectedUploadFile = (file: File) => {
   selectedFile.value = file
   resetUploadState()
+  // Re-selecting the file of an interrupted upload offers to resume from the
+  // breakpoint. Matched by size+lastModified (NOT name) so a moved OR renamed
+  // file still resumes; any content edit changes size/mtime, so it still
+  // guarantees the same file version.
+  const match = resumeStore
+    .list()
+    .find((p) => p.size === file.size && p.lastModified === file.lastModified)
+  resumeUuid.value = match ? match.artifactUuid : null
 }
 
 const throwIfUploadFailed = (response: Response) => {
@@ -211,11 +225,127 @@ const clearSelected = () => {
     fileInput.value.value = ''
   }
   resetUploadState()
+  // Drop the in-memory resume offer; the persisted record stays so re-selecting
+  // the same file can still continue the interrupted upload.
+  resumeUuid.value = null
+}
+
+// Interrupted multipart uploads are recoverable: the artifact's uploaded parts
+// live in B2, so we persist {uuid + file identity + progress} per toolset (via
+// useToolsetResumeUploads) and a resume only re-sends the missing parts. The
+// browser can't read a file by path, so resuming needs the user to re-select it
+// (matched by size+lastModified) — surfaced both by re-dragging it here and by
+// the on-open <ToolsetResourceResumeList>.
+const resumeStore = useToolsetResumeUploads(props.toolsetId)
+const pending = ref<ToolsetPendingUpload[]>([])
+
+const refreshPending = () => {
+  pending.value = resumeStore.list()
+}
+
+// Remember (insert / replace) an in-flight multipart upload so it can be resumed.
+const rememberPending = (f: File, artifactUuid: string, prog: number) => {
+  resumeStore.upsert({
+    artifactUuid,
+    name: f.name,
+    size: f.size,
+    lastModified: f.lastModified,
+    progress: prog,
+    updatedAt: Date.now()
+  })
+}
+
+// Forget a finished / aborted upload and refresh the banner list.
+const forgetPending = (artifactUuid: string) => {
+  resumeStore.remove(artifactUuid)
+  if (resumeUuid.value === artifactUuid) {
+    resumeUuid.value = null
+  }
+  refreshPending()
+}
+
+// PUT a set of parts (slices of f by partSize), collecting their ETags and
+// advancing progress against the WHOLE file (doneCount = parts already stored,
+// so a resumed upload's bar starts where it left off).
+const putParts = async (
+  artifactUuid: string,
+  f: File,
+  partList: { partNumber: number; url: string }[],
+  partSize: number,
+  contentType: string,
+  totalParts: number,
+  doneCount: number
+): Promise<ToolsetUploadPart[]> => {
+  const out: ToolsetUploadPart[] = []
+  for (let i = 0; i < partList.length; i++) {
+    const cur = partList[i]
+    if (!cur) {
+      throw new Error('Missing upload part')
+    }
+    const start = (cur.partNumber - 1) * partSize
+    const end = Math.min(start + partSize, f.size)
+    const resp = await fetch(cur.url, {
+      headers: { 'Content-Type': contentType },
+      method: 'PUT',
+      body: f.slice(start, end)
+    })
+    throwIfUploadFailed(resp)
+    const etag = resp.headers.get('ETag') || resp.headers.get('etag')
+    if (!etag) {
+      throw new Error('Missing ETag')
+    }
+    out.push({ partNumber: cur.partNumber, etag })
+    progress.value = Math.round(((doneCount + i + 1) / totalParts) * 100)
+    // Persist after each part so the resume list stays accurate even if the tab
+    // is closed mid-upload (no interruption event fires then).
+    resumeStore.setProgress(artifactUuid, progress.value)
+  }
+  return out
+}
+
+// Finalize with kungal; on success emit the result and drop the resume record.
+const completeUpload = async (
+  artifactUuid: string,
+  parts: ToolsetUploadPart[] | undefined
+): Promise<boolean> => {
+  const completeData = {
+    artifactUuid,
+    parts: parts && parts.length ? parts : undefined
+  }
+  if (!useKunSchemaValidator(completeToolsetUploadSchema, completeData)) {
+    return false
+  }
+  const done = await kunFetch<ToolsetUploadCompleteResponse>(
+    `/toolset/${props.toolsetId}/upload/complete`,
+    { method: 'POST', body: completeData }
+  )
+  if (!done) {
+    return false
+  }
+  useMessage('上传成功', 'success')
+  emits('onUploadSuccess', { artifactUuid: done.artifactUuid, size: done.size })
+  progress.value = 100
+  uploadStatus.value = 'complete'
+  forgetPending(artifactUuid)
+  return true
+}
+
+// Park an interrupted multipart upload as resumable: its uploaded parts stay in
+// B2, so the user continues from the breakpoint (re-PUTting only the rest) by
+// clicking 继续上传 — no abort, no re-sending bytes. Reused for a failed complete
+// too: resuming then re-attempts complete (parts already all present).
+const registerResumable = (artifactUuid: string, f: File) => {
+  rememberPending(f, artifactUuid, progress.value)
+  resumeUuid.value = artifactUuid
+  uploadStatus.value = 'idle'
+  refreshPending()
 }
 
 // One server-driven flow: init → PUT (single or multipart, per the init
 // response) → complete. Bytes go straight to B2 via the presigned URLs the
-// artifact service returns; kungal only brokers the JSON calls.
+// artifact service returns; kungal only brokers the JSON calls. A multipart
+// upload is registered resumable on init so an interruption continues from the
+// breakpoint (resumeUploadToArtifact) instead of restarting.
 const uploadToArtifact = async (f: File) => {
   const contentType = resolveContentType(f)
   const initData = {
@@ -239,80 +369,136 @@ const uploadToArtifact = async (f: File) => {
     return
   }
 
-  let isUploadComplete = false
-  try {
-    const parts: ToolsetUploadPart[] = []
-
-    if (init.multipart) {
+  if (init.multipart) {
+    // Persist BEFORE the first PUT so even an immediate failure is resumable.
+    rememberPending(f, init.artifactUuid, 0)
+    refreshPending()
+    const partList = init.parts ?? []
+    const partSize = init.partSize || LARGE_CHUNK_SIZE
+    try {
       uploadStatus.value = 'largeUploading'
-      const partList = init.parts ?? []
-      const partSize = init.partSize || LARGE_CHUNK_SIZE
-      for (let i = 0; i < partList.length; i++) {
-        const cur = partList[i]
-        if (!cur) {
-          throw new Error('Missing upload part')
-        }
-        const start = (cur.partNumber - 1) * partSize
-        const end = Math.min(start + partSize, f.size)
-        const blob = f.slice(start, end)
-        const resp = await fetch(cur.url, {
-          headers: { 'Content-Type': contentType },
-          method: 'PUT',
-          body: blob
-        })
-        throwIfUploadFailed(resp)
-        const etag = resp.headers.get('ETag') || resp.headers.get('etag')
-        if (!etag) {
-          throw new Error('Missing ETag')
-        }
-        parts.push({ partNumber: cur.partNumber, etag })
-        progress.value = Math.round(((i + 1) / partList.length) * 100)
-      }
+      const parts = await putParts(
+        init.artifactUuid,
+        f,
+        partList,
+        partSize,
+        contentType,
+        partList.length,
+        0
+      )
       uploadStatus.value = 'largeComplete'
-    } else {
+      if (!(await completeUpload(init.artifactUuid, parts))) {
+        registerResumable(init.artifactUuid, f)
+      }
+    } catch (error) {
+      // Keep the artifact — its uploaded parts stay in B2 for resume.
+      registerResumable(init.artifactUuid, f)
+      notifyUploadTransferError(error)
+    }
+    return
+  }
+
+  // Single-part (small file): no resume bookkeeping — a failure just re-inits.
+  try {
+    uploadStatus.value = 'smallUploading'
+    if (!init.uploadUrl) {
+      throw new Error('Missing upload URL')
+    }
+    const resp = await fetch(init.uploadUrl, {
+      headers: { 'Content-Type': contentType },
+      method: 'PUT',
+      body: f
+    })
+    throwIfUploadFailed(resp)
+    uploadStatus.value = 'smallComplete'
+    progress.value = 100
+    if (!(await completeUpload(init.artifactUuid, undefined))) {
+      resetUploadState()
+    }
+  } catch (error) {
+    await abortUpload(init.artifactUuid)
+    notifyUploadTransferError(error)
+    resetUploadState()
+  }
+}
+
+// Resume an interrupted upload: ask kungal which parts are already stored (skip
+// them, reuse their ETags) and PUT only the missing ones, then complete with the
+// full set. Falls back to a fresh upload if the session is gone (GC'd / already
+// completed / expired → resume 404s).
+const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
+  const contentType = resolveContentType(f)
+  const resumeData = { artifactUuid }
+  if (!useKunSchemaValidator(resumeToolsetUploadSchema, resumeData)) {
+    return
+  }
+
+  progress.value = 0
+  uploadStatus.value = 'largeInit'
+  const resume = await kunFetch<ToolsetUploadResumeResponse>(
+    `/toolset/${props.toolsetId}/upload/resume`,
+    { method: 'POST', body: resumeData }
+  )
+  if (!resume) {
+    // No longer resumable (GC'd / completed / expired) — drop the stale record
+    // and start fresh.
+    forgetPending(artifactUuid)
+    await uploadToArtifact(f)
+    return
+  }
+
+  // Single-part resume = re-PUT the whole file to the fresh URL.
+  if (!resume.multipart) {
+    try {
       uploadStatus.value = 'smallUploading'
-      if (!init.uploadUrl) {
+      if (!resume.uploadUrl) {
         throw new Error('Missing upload URL')
       }
-      const resp = await fetch(init.uploadUrl, {
+      const resp = await fetch(resume.uploadUrl, {
         headers: { 'Content-Type': contentType },
         method: 'PUT',
         body: f
       })
       throwIfUploadFailed(resp)
-      uploadStatus.value = 'smallComplete'
       progress.value = 100
+      if (!(await completeUpload(artifactUuid, undefined))) {
+        registerResumable(artifactUuid, f)
+      }
+    } catch (error) {
+      registerResumable(artifactUuid, f)
+      notifyUploadTransferError(error)
     }
+    return
+  }
 
-    const completeData = {
-      artifactUuid: init.artifactUuid,
-      parts: init.multipart ? parts : undefined
-    }
-    if (!useKunSchemaValidator(completeToolsetUploadSchema, completeData)) {
-      return
-    }
-
-    const done = await kunFetch<ToolsetUploadCompleteResponse>(
-      `/toolset/${props.toolsetId}/upload/complete`,
-      { method: 'POST', body: completeData }
+  const partSize = resume.partSize || LARGE_CHUNK_SIZE
+  const uploaded = resume.uploadedParts ?? []
+  const missing = resume.parts ?? []
+  const totalParts = uploaded.length + missing.length
+  try {
+    uploadStatus.value = 'largeUploading'
+    progress.value =
+      totalParts > 0 ? Math.round((uploaded.length / totalParts) * 100) : 0
+    const fresh = await putParts(
+      artifactUuid,
+      f,
+      missing,
+      partSize,
+      contentType,
+      totalParts,
+      uploaded.length
     )
-    if (done) {
-      useMessage('上传成功', 'success')
-      emits('onUploadSuccess', {
-        artifactUuid: done.artifactUuid,
-        size: done.size
-      })
-      progress.value = 100
-      uploadStatus.value = 'complete'
-      isUploadComplete = true
+    const parts: ToolsetUploadPart[] = [
+      ...uploaded.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
+      ...fresh
+    ].sort((a, b) => a.partNumber - b.partNumber)
+    uploadStatus.value = 'largeComplete'
+    if (!(await completeUpload(artifactUuid, parts))) {
+      registerResumable(artifactUuid, f)
     }
   } catch (error) {
-    await abortUpload(init.artifactUuid)
+    registerResumable(artifactUuid, f)
     notifyUploadTransferError(error)
-  } finally {
-    if (!isUploadComplete) {
-      resetUploadState()
-    }
   }
 }
 
@@ -322,13 +508,55 @@ const submit = async () => {
     useMessage('请选择文件', 'warn')
     return
   }
-  await uploadToArtifact(f)
+  if (resumeUuid.value) {
+    await resumeUploadToArtifact(f, resumeUuid.value)
+  } else {
+    await uploadToArtifact(f)
+  }
 }
+
+// From the on-open resume list: the user re-picked the matching file (validated
+// in ResumeList), so select it and continue from the breakpoint.
+const handleContinuePending = (record: ToolsetPendingUpload, file: File) => {
+  setSelectedUploadFile(file)
+  resumeUploadToArtifact(file, record.artifactUuid)
+}
+
+// Discard an unfinished upload: soft-delete the artifact (its B2 parts are
+// reclaimed by GC) and drop the local record.
+const handleDeletePending = async (artifactUuid: string) => {
+  await abortUpload(artifactUuid)
+  forgetPending(artifactUuid)
+}
+
+onMounted(refreshPending)
 </script>
 
 <template>
   <div class="space-y-4">
     <input ref="fileInput" type="file" hidden @change="onChange" />
+
+    <!-- Surfaced on open: any uploads started-but-not-finished for this toolset
+         (persisted across reloads). Resuming needs the user to re-pick the file
+         (the browser can't read it by path), so the hint spells that out and the
+         list is shown directly. -->
+    <div v-if="pending.length && uploadStatus === 'idle'" class="space-y-2">
+      <div
+        class="text-warning border-warning/30 bg-warning/10 flex items-start gap-2 rounded-lg border p-3 text-sm"
+      >
+        <KunIcon name="lucide:history" class="mt-0.5 shrink-0" />
+        <span>
+          您有 {{ pending.length }}
+          个未完成的上传，您可以点击「继续上传」后选择未传完的文件继续上传
+        </span>
+      </div>
+
+      <ToolsetResourceResumeList
+        :pending="pending"
+        @continue="handleContinuePending"
+        @delete="handleDeletePending"
+      />
+    </div>
 
     <KunCard :is-hoverable="false" :is-transparent="true">
       <div
@@ -383,6 +611,14 @@ const submit = async () => {
           <KunProgress :value="progress" />
 
           <div
+            v-if="resumeUuid && uploadStatus === 'idle'"
+            class="text-warning flex items-center justify-center gap-1.5 text-center text-xs"
+          >
+            <KunIcon name="lucide:history" />
+            检测到未完成的上传，将从断点继续
+          </div>
+
+          <div
             class="text-default-500 flex items-center justify-center gap-2 text-sm"
           >
             <span>{{ statusMessage }}</span>
@@ -415,7 +651,7 @@ const submit = async () => {
         :disabled="!selectedFile || uploadStatus === 'complete'"
         @click="submit"
       >
-        确认上传
+        {{ resumeUuid ? '继续上传' : '确认上传' }}
       </KunButton>
     </div>
   </div>

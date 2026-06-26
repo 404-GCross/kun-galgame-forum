@@ -182,6 +182,57 @@ func (s *UploadService) Complete(
 }
 
 // ──────────────────────────────────────────
+// Resume — POST /toolset/:id/upload/resume
+// ──────────────────────────────────────────
+
+// Resume continues an interrupted multipart upload: it asks the artifact service
+// which parts are already stored (skip them) and returns fresh presigned URLs for
+// only the missing parts, so a paused / dropped / page-refreshed upload finishes
+// without re-sending bytes already in B2. No quota is touched here — the daily
+// budget is reserved at Init and accrued once at Complete; calling resume also
+// refreshes the artifact's activity timestamp so GC won't reap it mid-resume.
+func (s *UploadService) Resume(
+	ctx context.Context,
+	req *dto.UploadResumeRequest,
+) (*dto.UploadResumeResponse, *errors.AppError) {
+	out, err := s.art.Resume(ctx, req.ArtifactUUID)
+	if err != nil {
+		return nil, mapArtifactErr(err)
+	}
+
+	resp := &dto.UploadResumeResponse{
+		ArtifactUUID: out.Uuid,
+		Multipart:    out.Multipart,
+		ExpiresAt:    out.ExpiresAt,
+	}
+	if out.Multipart {
+		if out.PartSize != nil {
+			resp.PartSize = *out.PartSize
+		}
+		if out.PartUrls != nil {
+			for _, p := range *out.PartUrls {
+				resp.Parts = append(resp.Parts, dto.UploadInitPart{
+					PartNumber: int(p.PartNumber),
+					URL:        p.Url,
+				})
+			}
+		}
+		if out.UploadedParts != nil {
+			for _, p := range *out.UploadedParts {
+				resp.UploadedParts = append(resp.UploadedParts, dto.UploadResumePart{
+					PartNumber: int(p.PartNumber),
+					ETag:       p.Etag,
+					Size:       p.Size,
+				})
+			}
+		}
+	} else if out.UploadUrl != nil {
+		resp.UploadURL = *out.UploadUrl
+	}
+	return resp, nil
+}
+
+// ──────────────────────────────────────────
 // Abort — POST /toolset/:id/upload/abort
 // ──────────────────────────────────────────
 
