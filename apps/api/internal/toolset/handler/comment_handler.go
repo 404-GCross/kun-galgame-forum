@@ -63,7 +63,7 @@ func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	comment, appErr := h.commentService.CreateComment(user.ID, id, &req)
+	comment, appErr := h.commentService.CreateComment(c.Context(), user.ID, id, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

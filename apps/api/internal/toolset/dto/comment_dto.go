@@ -105,10 +105,6 @@ func NewCommentDetailItem(c model.GalgameToolsetComment, user userModel.UserBrie
 	}
 }
 
-// CreatedCommentResponse mirrors the raw comment row returned by POST.
-// (The original handler returned the model directly; we preserve that.)
-type CreatedCommentResponse = model.GalgameToolsetComment
-
 // UpdatedCommentResponse carries the fields the UpdateComment service modifies.
 type UpdatedCommentResponse struct {
 	Content string     `json:"content"`

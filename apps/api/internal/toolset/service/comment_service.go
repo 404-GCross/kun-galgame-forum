@@ -112,9 +112,10 @@ func (s *CommentService) GetLatestForDetail(ctx context.Context, toolsetID, limi
 // ──────────────────────────────────────────
 
 func (s *CommentService) CreateComment(
+	ctx context.Context,
 	userID, toolsetID int,
 	req *dto.CreateCommentRequest,
-) (*dto.CreatedCommentResponse, *errors.AppError) {
+) (*dto.ToolsetCommentItem, *errors.AppError) {
 	// Verify toolset exists
 	toolset, err := s.toolsetRepo.FindByID(toolsetID)
 	if err != nil {
@@ -134,7 +135,37 @@ func (s *CommentService) CreateComment(
 	// Send notification to toolset owner or parent comment owner
 	go s.notifyCommentReceiver(userID, toolsetID, toolset.UserID, req)
 
-	return &comment, nil
+	// Return the SAME enriched shape as the list (ToolsetCommentItem) with the
+	// author — and the parent author for a reply — hydrated, so the frontend can
+	// render the freshly-posted comment directly. Returning the raw model left
+	// `user` empty (and snake_case keys), which crashed the list on
+	// `comment.user.name` once the list became reactive.
+	uids := []int{userID}
+	parentUserID := 0
+	if comment.ParentID != nil {
+		if parent, err := s.commentRepo.FindByID(*comment.ParentID); err == nil {
+			parentUserID = parent.UserID
+			uids = append(uids, parentUserID)
+		}
+	}
+	userMap := s.userClient.Hydrate(ctx, uids)
+
+	item := &dto.ToolsetCommentItem{
+		ID:        comment.ID,
+		ToolsetID: comment.ToolsetID,
+		Content:   comment.Content,
+		Created:   comment.CreatedAt,
+		Edited:    comment.Edited,
+		ParentID:  comment.ParentID,
+		UserID:    comment.UserID,
+		Reply:     []dto.ToolsetCommentItem{},
+		User:      userBriefFromClient(userMap[userID]),
+	}
+	if parentUserID != 0 {
+		pu := userBriefFromClient(userMap[parentUserID])
+		item.TargetUser = &pu
+	}
+	return item, nil
 }
 
 // notifyCommentReceiver sends a "commented" or "replied" notification.

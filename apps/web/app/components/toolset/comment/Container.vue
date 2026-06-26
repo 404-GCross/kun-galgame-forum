@@ -19,25 +19,33 @@ const { data, status, refresh } = await useKunFetch<{
   lazy: true
 })
 
+// Own the comment list locally so publish / edit / delete are reactive: the
+// fetch returns a SHALLOW data ref (Nuxt's default deep:false), so mutating the
+// nested data.value.commentData wouldn't re-render. Re-seed from each fetch
+// (sort change / page / refresh re-assign data.value → shallow ref fires).
+const comments = ref<SerializeObject<ToolsetComment>[]>([])
+const total = ref(0)
+watch(
+  data,
+  (d) => {
+    comments.value = d?.commentData ?? []
+    total.value = d?.total ?? 0
+  },
+  { immediate: true }
+)
+
 const addNewComment = (comment: ToolsetComment) => {
-  if (!data.value) {
-    return
-  }
-  data.value.commentData.unshift(comment as SerializeObject<ToolsetComment>)
+  comments.value.unshift(comment as SerializeObject<ToolsetComment>)
+  total.value++
 }
 
 const removeComment = (commentId: number) => {
-  if (!data.value) {
-    return
-  }
-  data.value.commentData = data.value.commentData.filter(
-    (c) => c.id !== commentId
-  )
+  comments.value = comments.value.filter((c) => c.id !== commentId)
+  total.value = Math.max(0, total.value - 1)
 }
 
 const updateComment = (commentId: number, content: string, edited: string) => {
-  if (!data.value) return
-  const target = data.value.commentData.find((c) => c.id === commentId)
+  const target = comments.value.find((c) => c.id === commentId)
   if (target) {
     target.content = content
     target.edited = edited
@@ -60,12 +68,9 @@ const updateComment = (commentId: number, content: string, edited: string) => {
 
     <KunLoading v-if="status === 'pending'" />
 
-    <KunNull v-if="data && data.total === 0 && status !== 'pending'" />
+    <KunNull v-if="total === 0 && status !== 'pending'" />
 
-    <div
-      class="space-y-3"
-      v-if="data && data.total > 0 && status !== 'pending'"
-    >
+    <div class="space-y-3" v-if="total > 0 && status !== 'pending'">
       <div class="flex items-center gap-2">
         <KunButton
           :is-icon-only="true"
@@ -87,7 +92,7 @@ const updateComment = (commentId: number, content: string, edited: string) => {
       </div>
 
       <ToolsetComment
-        v-for="comment in data.commentData"
+        v-for="comment in comments"
         :key="comment.id"
         :comment="comment"
         :owner-id="ownerId || 0"
@@ -97,9 +102,9 @@ const updateComment = (commentId: number, content: string, edited: string) => {
       />
 
       <KunPagination
-        v-if="data.total >= pageData.limit"
+        v-if="total >= pageData.limit"
         v-model:current-page="pageData.page"
-        :total-page="Math.ceil(data.total / pageData.limit)"
+        :total-page="Math.ceil(total / pageData.limit)"
       />
     </div>
   </div>

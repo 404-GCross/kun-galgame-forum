@@ -18,6 +18,12 @@ const canManageToolset = computed(
   () => data.value.user.id === userId || role >= 2
 )
 
+// Own the resource list locally so add / edit / delete are reactive. The detail
+// fetch (useKunFetch) returns a SHALLOW data ref (Nuxt's default deep:false), so
+// mutating the nested props.toolset.resource wouldn't re-render the list — a
+// plain ref([...]) is deeply reactive and decoupled from the fetch.
+const resources = ref<ToolsetResource[]>([...props.toolset.resource])
+
 const isDeleting = ref(false)
 const handleDeleteToolset = async () => {
   if (!userId) {
@@ -25,7 +31,7 @@ const handleDeleteToolset = async () => {
     return
   }
 
-  const moemoePointToConsume = 3 + data.value.resource.length * 3
+  const moemoePointToConsume = 3 + resources.value.length * 3
   const res = await useComponentMessageStore().alert(
     '确定删除该工具？',
     `删除这个工具将会消耗 ${moemoePointToConsume} 萌萌点, 计算公式为 3 + 这个工具下所有的资源数 * 3, 删除是永久性的, 不可撤销`
@@ -99,16 +105,18 @@ const handleSetStar = async (val: number) => {
   await loadPracticalityMine()
 }
 
+const handleResourceAdded = (res: ToolsetResource) => {
+  resources.value.push(res)
+}
+
 const handleResourceDeleted = (toolsetResourceId: number) => {
-  data.value.resource = data.value.resource.filter(
-    (r) => r.id !== toolsetResourceId
-  )
+  resources.value = resources.value.filter((r) => r.id !== toolsetResourceId)
 }
 
 const handleResourceUpdated = (res: ToolsetResource) => {
-  const idx = data.value.resource.findIndex((r) => r.id === res.id)
+  const idx = resources.value.findIndex((r) => r.id === res.id)
   if (idx !== -1) {
-    data.value.resource[idx] = res
+    resources.value[idx] = res
   }
 }
 </script>
@@ -241,7 +249,7 @@ const handleResourceUpdated = (res: ToolsetResource) => {
     >
       <ToolsetResourceList
         :toolset-id="data.id"
-        :resources="data.resource"
+        :resources="resources"
         @deleted="handleResourceDeleted"
         @updated="handleResourceUpdated"
       />
@@ -264,7 +272,7 @@ const handleResourceUpdated = (res: ToolsetResource) => {
       <ToolsetResourceContainer
         :toolset-id="data.id"
         @on-close="() => (showResourceModal = false)"
-        @on-success="(value) => data!.resource.push(value)"
+        @on-success="handleResourceAdded"
       />
     </KunModal>
   </div>
