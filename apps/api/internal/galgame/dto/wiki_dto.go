@@ -33,9 +33,12 @@ type WikiGalgameItem struct {
 	// client.rewriteBanners BEFORE we unmarshal — capture it
 	// explicitly or Go's unmarshal drops the walker's work.
 	// banner_image_hash was retired in wiki PR5 (K-PR6) — no field.
-	EffectiveBannerHash string `json:"effective_banner_hash"`
-	EffectiveBannerURL  string `json:"effective_banner_url"`
-	UserID              int    `json:"user_id"`
+	EffectiveBannerHash      string `json:"effective_banner_hash"`
+	EffectiveBannerURL       string `json:"effective_banner_url"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
+	UserID                   int    `json:"user_id"`
 }
 
 // U2 cover/screenshot row shapes (snake_case, matches wiki wire). Both
@@ -55,6 +58,9 @@ type WikiGalgameCover struct {
 	Source    string `json:"source"`
 	SourceKey string `json:"source_key"`
 	CDNURL    string `json:"cdn_url"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Thumbhash string `json:"thumbhash,omitempty"`
 }
 
 type WikiGalgameScreenshot struct {
@@ -66,6 +72,9 @@ type WikiGalgameScreenshot struct {
 	Source    string `json:"source"`
 	SourceKey string `json:"source_key"`
 	CDNURL    string `json:"cdn_url"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Thumbhash string `json:"thumbhash,omitempty"`
 }
 
 // WikiOfficial is a company/publisher/developer entity from the wiki.
@@ -132,20 +141,23 @@ type WikiContributor struct {
 // WikiGalgameDetail is the core galgame payload returned by /galgame/:id.
 // It contains the fields commonly consumed by the gateway service.
 type WikiGalgameDetail struct {
-	ID               int    `json:"id"`
-	NameEnUs         string `json:"name_en_us"`
-	NameJaJp         string `json:"name_ja_jp"`
-	NameZhCn         string `json:"name_zh_cn"`
-	NameZhTw         string `json:"name_zh_tw"`
-	Banner           string `json:"banner"`
+	ID       int    `json:"id"`
+	NameEnUs string `json:"name_en_us"`
+	NameJaJp string `json:"name_ja_jp"`
+	NameZhCn string `json:"name_zh_cn"`
+	NameZhTw string `json:"name_zh_tw"`
+	Banner   string `json:"banner"`
 	// U2 derived banner pair (wiki PR5). Forwarded so consumers like the
 	// rating detail service can ship them downstream — without these,
 	// covers-only galgames render an empty hero on the FE.
-	EffectiveBannerHash string `json:"effective_banner_hash"`
-	EffectiveBannerURL  string `json:"effective_banner_url"`
-	ContentLimit        string `json:"content_limit"`
-	AgeLimit            string `json:"age_limit"`
-	OriginalLanguage    string `json:"original_language"`
+	EffectiveBannerHash      string `json:"effective_banner_hash"`
+	EffectiveBannerURL       string `json:"effective_banner_url"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
+	ContentLimit             string `json:"content_limit"`
+	AgeLimit                 string `json:"age_limit"`
+	OriginalLanguage         string `json:"original_language"`
 	// nil when the galgame isn't part of any series. Used by the rating
 	// detail service to attach the minimal series brief for JSON-LD.
 	SeriesID     *int              `json:"series_id"`
@@ -181,49 +193,52 @@ type WikiEngineAlias []string
 // WikiGalgameDetailFull is the superset of fields returned by GET /galgame/:id.
 // It includes nested alias/official/engine/tag/contributor/intro/user_id.
 type WikiGalgameDetailFull struct {
-	ID                 int                  `json:"id"`
-	VndbID             string               `json:"vndb_id"`
-	NameEnUs           string               `json:"name_en_us"`
-	NameJaJp           string               `json:"name_ja_jp"`
-	NameZhCn           string               `json:"name_zh_cn"`
-	NameZhTw           string               `json:"name_zh_tw"`
-	Banner             string               `json:"banner"`
-	IntroEnUs          string               `json:"intro_en_us"`
-	IntroJaJp          string               `json:"intro_ja_jp"`
-	IntroZhCn          string               `json:"intro_zh_cn"`
-	IntroZhTw          string               `json:"intro_zh_tw"`
-	ContentLimit       string               `json:"content_limit"`
+	ID           int    `json:"id"`
+	VndbID       string `json:"vndb_id"`
+	NameEnUs     string `json:"name_en_us"`
+	NameJaJp     string `json:"name_ja_jp"`
+	NameZhCn     string `json:"name_zh_cn"`
+	NameZhTw     string `json:"name_zh_tw"`
+	Banner       string `json:"banner"`
+	IntroEnUs    string `json:"intro_en_us"`
+	IntroJaJp    string `json:"intro_ja_jp"`
+	IntroZhCn    string `json:"intro_zh_cn"`
+	IntroZhTw    string `json:"intro_zh_tw"`
+	ContentLimit string `json:"content_limit"`
 	// Wiki also returns `view`, but kungal owns view as a per-site stat
 	// (each site has its own user base, so wiki's cross-site view doesn't
 	// fit the on-page "this many people viewed on kungal" semantics).
 	// Intentionally not parsed — see GetDetail in galgame_service.go which
 	// reads view from the local galgame stats row instead.
-	ResourceUpdateTime string               `json:"resource_update_time"`
+	ResourceUpdateTime string `json:"resource_update_time"`
 	// Wiki upgrade U1: `released` (free-form string) was replaced by a
 	// proper date column + a TBA flag. `*string "YYYY-MM-DD"` keeps tz/
 	// precision out of revision diffs (wire is plain string, not Time).
-	ReleaseDate        *string              `json:"release_date"`
-	ReleaseDateTBA     bool                 `json:"release_date_tba"`
-	OriginalLanguage   string               `json:"original_language"`
-	AgeLimit           string               `json:"age_limit"`
-	UserID             int                  `json:"user_id"`
-	SeriesID           *int                 `json:"series_id"`
-	Status             int                  `json:"status"`
+	ReleaseDate      *string `json:"release_date"`
+	ReleaseDateTBA   bool    `json:"release_date_tba"`
+	OriginalLanguage string  `json:"original_language"`
+	AgeLimit         string  `json:"age_limit"`
+	UserID           int     `json:"user_id"`
+	SeriesID         *int    `json:"series_id"`
+	Status           int     `json:"status"`
 	// U2: cover candidate set + screenshot gallery + derived effective
 	// banner. wiki PR5 (K-PR6) dropped the legacy banner_image_hash
 	// top-level field — banner is now expressed solely through
 	// covers[sort_order=0] and its derived effective_banner_hash.
-	EffectiveBannerHash string                  `json:"effective_banner_hash"`
-	EffectiveBannerURL  string                  `json:"effective_banner_url"`
-	Covers              []WikiGalgameCover      `json:"covers"`
-	Screenshots         []WikiGalgameScreenshot `json:"screenshots"`
-	Alias              []WikiAlias          `json:"alias"`
-	Official           []WikiOfficialRel    `json:"official"`
-	Engine             []WikiEngineWithAlias `json:"engine"`
-	Tag                []WikiTagWithSpoiler `json:"tag"`
-	Contributor        []WikiContributor    `json:"contributor"`
-	Created            string               `json:"created"`
-	Updated            string               `json:"updated"`
+	EffectiveBannerHash      string                  `json:"effective_banner_hash"`
+	EffectiveBannerURL       string                  `json:"effective_banner_url"`
+	EffectiveBannerWidth     int                     `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int                     `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string                  `json:"effective_banner_thumbhash,omitempty"`
+	Covers                   []WikiGalgameCover      `json:"covers"`
+	Screenshots              []WikiGalgameScreenshot `json:"screenshots"`
+	Alias                    []WikiAlias             `json:"alias"`
+	Official                 []WikiOfficialRel       `json:"official"`
+	Engine                   []WikiEngineWithAlias   `json:"engine"`
+	Tag                      []WikiTagWithSpoiler    `json:"tag"`
+	Contributor              []WikiContributor       `json:"contributor"`
+	Created                  string                  `json:"created"`
+	Updated                  string                  `json:"updated"`
 }
 
 // WikiEngineWithAlias matches the engine-embedded-in-galgame shape (alias is []string).
@@ -254,14 +269,17 @@ type WikiGalgameDetailFullResp struct {
 // not declared on the target struct, leaving the FE carousel without the
 // U2 hash/URL pair for newly-uploaded (covers-only) galgames.
 type WikiSeriesSample struct {
-	NameEnUs            string `json:"name_en_us"`
-	NameJaJp            string `json:"name_ja_jp"`
-	NameZhCn            string `json:"name_zh_cn"`
-	NameZhTw            string `json:"name_zh_tw"`
-	Banner              string `json:"banner"`
-	ContentLimit        string `json:"content_limit"`
-	EffectiveBannerHash string `json:"effective_banner_hash"`
-	EffectiveBannerURL  string `json:"effective_banner_url"`
+	NameEnUs                 string `json:"name_en_us"`
+	NameJaJp                 string `json:"name_ja_jp"`
+	NameZhCn                 string `json:"name_zh_cn"`
+	NameZhTw                 string `json:"name_zh_tw"`
+	Banner                   string `json:"banner"`
+	ContentLimit             string `json:"content_limit"`
+	EffectiveBannerHash      string `json:"effective_banner_hash"`
+	EffectiveBannerURL       string `json:"effective_banner_url"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 }
 
 // WikiSeriesBrief is the shape of /series/:id used inside GalgameDetail.

@@ -77,17 +77,20 @@ func galgameDetailFromWiki(g dto.WikiGalgameDetailFull, users map[string]dto.Wik
 		// declare the fields on WikiGalgameDetailFull so they survive,
 		// then pipe through here. banner_image_hash retired in wiki
 		// PR5 (K-PR6).
-		EffectiveBannerHash: g.EffectiveBannerHash,
-		EffectiveBannerURL:  g.EffectiveBannerURL,
-		Covers:              coversFromWiki(g.Covers),
-		Screenshots:         screenshotsFromWiki(g.Screenshots),
-		Contributor:        contributorsFromWiki(g.Contributor, users),
-		Alias:              wikiAliasesToNames(g.Alias),
-		Engine:             enginesFromWiki(g.Engine),
-		Official:           officialsFromWiki(g.Official),
-		Tag:                tagsFromWiki(g.Tag),
-		Created:            g.Created,
-		Updated:            g.Updated,
+		EffectiveBannerHash:      g.EffectiveBannerHash,
+		EffectiveBannerURL:       g.EffectiveBannerURL,
+		EffectiveBannerWidth:     g.EffectiveBannerWidth,
+		EffectiveBannerHeight:    g.EffectiveBannerHeight,
+		EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
+		Covers:                   coversFromWiki(g.Covers),
+		Screenshots:              screenshotsFromWiki(g.Screenshots),
+		Contributor:              contributorsFromWiki(g.Contributor, users),
+		Alias:                    wikiAliasesToNames(g.Alias),
+		Engine:                   enginesFromWiki(g.Engine),
+		Official:                 officialsFromWiki(g.Official),
+		Tag:                      tagsFromWiki(g.Tag),
+		Created:                  g.Created,
+		Updated:                  g.Updated,
 	}
 }
 
@@ -109,7 +112,10 @@ func coversFromWiki(rows []dto.WikiGalgameCover) []dto.GalgameCover {
 			ImageHash: r.ImageHash, SortOrder: r.SortOrder,
 			Sexual: r.Sexual, Violence: r.Violence,
 			Source: r.Source, SourceKey: r.SourceKey,
-			CDNURL: r.CDNURL,
+			CDNURL:    r.CDNURL,
+			Width:     r.Width,
+			Height:    r.Height,
+			Thumbhash: r.Thumbhash,
 		}
 	}
 	return out
@@ -122,7 +128,10 @@ func screenshotsFromWiki(rows []dto.WikiGalgameScreenshot) []dto.GalgameScreensh
 			ImageHash: r.ImageHash, SortOrder: r.SortOrder, Caption: r.Caption,
 			Sexual: r.Sexual, Violence: r.Violence,
 			Source: r.Source, SourceKey: r.SourceKey,
-			CDNURL: r.CDNURL,
+			CDNURL:    r.CDNURL,
+			Width:     r.Width,
+			Height:    r.Height,
+			Thumbhash: r.Thumbhash,
 		}
 	}
 	return out
@@ -232,4 +241,3 @@ func detailRatingFromRow(
 		},
 	}
 }
-

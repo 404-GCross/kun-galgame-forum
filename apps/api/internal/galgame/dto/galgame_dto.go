@@ -63,8 +63,11 @@ type GalgameCover struct {
 	SourceKey string `json:"source_key"`
 	// Kind is the VNDB cover type (main/pkgfront/dig/pkgback/…); empty for user
 	// uploads. Sync-managed; the wiki restores it on edit, so echoing it is optional.
-	Kind   string `json:"kind,omitempty"`
-	CDNURL string `json:"cdn_url,omitempty"`
+	Kind      string `json:"kind,omitempty"`
+	CDNURL    string `json:"cdn_url,omitempty"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Thumbhash string `json:"thumbhash,omitempty"`
 }
 
 type GalgameScreenshot struct {
@@ -76,6 +79,9 @@ type GalgameScreenshot struct {
 	Source    string `json:"source"`
 	SourceKey string `json:"source_key"`
 	CDNURL    string `json:"cdn_url,omitempty"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Thumbhash string `json:"thumbhash,omitempty"`
 }
 
 // GalgameListCard matches the existing frontend card used on galgame listings.
@@ -101,8 +107,11 @@ type GalgameListCard struct {
 	// U2: list cards only need the derived banner. Full covers[] /
 	// screenshots[] are detail-only. URL injected by rewriteBanners.
 	// banner_image_hash retired in wiki PR5 (K-PR6).
-	EffectiveBannerHash string `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string `json:"effective_banner_url,omitempty"`
+	EffectiveBannerHash      string `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 }
 
 // GalgameListPage is the {galgames, total} envelope for GET /galgame.
@@ -212,24 +221,27 @@ type GalgameDetail struct {
 	// own. covers/screenshots also receive a `cdn_url` per row from the
 	// same walker. banner_image_hash retired in wiki PR5 (K-PR6);
 	// covers[sort_order=0] is now the canonical banner source.
-	EffectiveBannerHash string                  `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string                  `json:"effective_banner_url,omitempty"`
-	Covers              []GalgameCover          `json:"covers"`
-	Screenshots         []GalgameScreenshot     `json:"screenshots"`
-	Platform            []string                `json:"platform"`
-	Language            []string                `json:"language"`
-	Type                []string                `json:"type"`
-	Contributor         []UserBrief             `json:"contributor"`
-	LikeCount           int                     `json:"likeCount"`
-	IsLiked             bool                    `json:"isLiked"`
-	FavoriteCount       int                     `json:"favoriteCount"`
-	IsFavorited         bool                    `json:"isFavorited"`
-	Alias               []string                `json:"alias"`
-	Series              *GalgameDetailSeries    `json:"series"`
-	Engine              []GalgameDetailEngine   `json:"engine"`
-	Official            []GalgameDetailOfficial `json:"official"`
-	Tag                 []GalgameDetailTag      `json:"tag"`
-	Ratings             []GalgameDetailRating   `json:"ratings"`
-	Created             string                  `json:"created"`
-	Updated             string                  `json:"updated"`
+	EffectiveBannerHash      string                  `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string                  `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int                     `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int                     `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string                  `json:"effective_banner_thumbhash,omitempty"`
+	Covers                   []GalgameCover          `json:"covers"`
+	Screenshots              []GalgameScreenshot     `json:"screenshots"`
+	Platform                 []string                `json:"platform"`
+	Language                 []string                `json:"language"`
+	Type                     []string                `json:"type"`
+	Contributor              []UserBrief             `json:"contributor"`
+	LikeCount                int                     `json:"likeCount"`
+	IsLiked                  bool                    `json:"isLiked"`
+	FavoriteCount            int                     `json:"favoriteCount"`
+	IsFavorited              bool                    `json:"isFavorited"`
+	Alias                    []string                `json:"alias"`
+	Series                   *GalgameDetailSeries    `json:"series"`
+	Engine                   []GalgameDetailEngine   `json:"engine"`
+	Official                 []GalgameDetailOfficial `json:"official"`
+	Tag                      []GalgameDetailTag      `json:"tag"`
+	Ratings                  []GalgameDetailRating   `json:"ratings"`
+	Created                  string                  `json:"created"`
+	Updated                  string                  `json:"updated"`
 }

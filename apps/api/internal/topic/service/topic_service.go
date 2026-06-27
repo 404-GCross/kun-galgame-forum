@@ -298,6 +298,8 @@ func (s *TopicService) GetDetail(
 		Sections:    sections,
 		Tags:        tags,
 		CoverImages: covers,
+		// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.
+		CoverImageMeta: markdown.ResolveContentImageMeta(covers),
 		User: dto.KunUserWithMoemoepoint{
 			ID:          author.ID,
 			Name:        author.Name,

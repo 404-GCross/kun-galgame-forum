@@ -212,6 +212,13 @@ func New(cfg *config.Config) *App {
 			ClientSecret: cfg.ImageClient.ClientSecret,
 		})
 		slog.Info("image_service client configured", "base_url", cfg.ImageClient.BaseURL)
+
+		// Enrich server-rendered content <img> tags with intrinsic dims +
+		// ThumbHash (no-CLS aspect-ratio reservation + blur-up). The resolver
+		// caches forever and the markdown renderer calls it synchronously, so
+		// warm renders touch no network. Only wired when image_service is
+		// configured; otherwise content images render as plain lazy <img>.
+		markdown.SetContentImageMetaResolver(imgCli.NewMetaResolver(0).Resolve)
 	} else {
 		slog.Warn("image_service client NOT configured; /image/galgame upload will return 未配置 — set KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET")
 	}

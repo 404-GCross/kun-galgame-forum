@@ -107,6 +107,7 @@ type UploadResult struct {
 	VariantURLs  map[string]string `json:"variant_urls"`
 	Width        int               `json:"width"`
 	Height       int               `json:"height"`
+	Thumbhash    string            `json:"thumbhash,omitempty"`
 	SizeBytes    int64             `json:"size_bytes"`
 	Deduplicated bool              `json:"deduplicated"`
 }
@@ -205,6 +206,80 @@ func parseUploadResponse(resp *http.Response) (*UploadResult, error) {
 		return nil, fmt.Errorf("parse upload response: %w", err)
 	}
 	return &env.Data, nil
+}
+
+// Configured reports whether the client has a base URL and credentials — i.e.
+// it can actually reach image_service. Lets callers (e.g. the content-image
+// meta resolver) skip work when image_service is intentionally unconfigured.
+func (c *Client) Configured() bool {
+	return c.cfg.BaseURL != "" && c.cfg.ClientID != "" && c.cfg.ClientSecret != ""
+}
+
+// ImageMeta is an image's intrinsic display metadata: pixel dimensions + the
+// base64 ThumbHash placeholder. Immutable per content-addressed hash, so it is
+// safe to cache forever. Mirrors one element of /image/meta-batch's response.
+type ImageMeta struct {
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	Thumbhash string `json:"thumbhash,omitempty"`
+}
+
+// MetaBatch fetches width/height/thumbhash for a batch of hashes in one
+// roundtrip, keyed by hash. Hashes image_service doesn't know are simply absent
+// from the result. The server caps a batch at 1000. Lets a consumer reserve the
+// correct aspect ratio + render a ThumbHash blur-up for a page of images without
+// a per-image lookup. Metadata is immutable per hash (see MetaResolver for the
+// cached render-path wrapper).
+func (c *Client) MetaBatch(ctx context.Context, hashes []string) (map[string]ImageMeta, error) {
+	if len(hashes) == 0 {
+		return map[string]ImageMeta{}, nil
+	}
+	if !c.Configured() {
+		return nil, ErrUnauthorized
+	}
+	if len(hashes) > 1000 {
+		return nil, fmt.Errorf("imageclient: batch size %d exceeds limit 1000", len(hashes))
+	}
+
+	body, _ := json.Marshal(struct {
+		Hashes []string `json:"hashes"`
+	}{Hashes: hashes})
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.BaseURL+"/image/meta-batch", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", c.basicAuthHeader())
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("meta-batch http: %w", err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		var e Error
+		_ = json.Unmarshal(raw, &e)
+		e.StatusCode = resp.StatusCode
+		return nil, classifyError(&e)
+	}
+	var env struct {
+		Data struct {
+			Metas map[string]ImageMeta `json:"metas"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return nil, fmt.Errorf("parse meta-batch response: %w", err)
+	}
+	if env.Data.Metas == nil {
+		return map[string]ImageMeta{}, nil
+	}
+	return env.Data.Metas, nil
 }
 
 // ReferencePingResult mirrors the image service response.

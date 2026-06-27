@@ -161,16 +161,19 @@ type ResourceGalgameSummary struct {
 	// `getEffectiveBanner(galgame)` which reads these before falling
 	// back to legacy `banner`. Missing them broke the hero on
 	// covers-only (post wiki PR5) galgames.
-	EffectiveBannerHash string   `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string   `json:"effective_banner_url,omitempty"`
-	ContentLimit        string   `json:"contentLimit"`
-	View                int      `json:"view"`
-	ResourceUpdateTime  string   `json:"resourceUpdateTime"`
-	OriginalLanguage    string   `json:"originalLanguage"`
-	AgeLimit            string   `json:"ageLimit"`
-	Platform            []string `json:"platform"`
-	Language            []string `json:"language"`
-	Type                []string `json:"type"`
+	EffectiveBannerHash      string   `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string   `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int      `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int      `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string   `json:"effective_banner_thumbhash,omitempty"`
+	ContentLimit             string   `json:"contentLimit"`
+	View                     int      `json:"view"`
+	ResourceUpdateTime       string   `json:"resourceUpdateTime"`
+	OriginalLanguage         string   `json:"originalLanguage"`
+	AgeLimit                 string   `json:"ageLimit"`
+	Platform                 []string `json:"platform"`
+	Language                 []string `json:"language"`
+	Type                     []string `json:"type"`
 }
 
 // ResourceDetailPage is the full response for GET /galgame-resource/:id.

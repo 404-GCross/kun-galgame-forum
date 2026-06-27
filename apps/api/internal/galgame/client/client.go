@@ -420,8 +420,11 @@ type GalgameBrief struct {
 	// Go's unmarshal silently drops the walker's work and downstream
 	// DTOs are stuck with only the hash. banner_image_hash retired in
 	// wiki PR5 (K-PR6).
-	EffectiveBannerHash string `json:"effective_banner_hash"`
-	EffectiveBannerURL  string `json:"effective_banner_url"`
+	EffectiveBannerHash      string `json:"effective_banner_hash"`
+	EffectiveBannerURL       string `json:"effective_banner_url"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 }
 
 // GalgameDetailBrief is GalgameBrief plus the introduction + officials a richer

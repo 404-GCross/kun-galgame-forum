@@ -3,6 +3,8 @@ package markdown
 import (
 	"strings"
 	"testing"
+
+	"kun-galgame-api/pkg/imageclient"
 )
 
 // A real 64-hex content hash (from prod): aa=78, bb=35.
@@ -35,6 +37,39 @@ func TestResolveContentImageRef(t *testing.T) {
 				t.Errorf("resolveContentImageRef(%q) = %q, want %q", c.in, got, c.want)
 			}
 		})
+	}
+}
+
+// The content-image meta transformer must stamp width/height (aspect-ratio
+// reservation, no CLS) + data-thumbhash (blur-up) onto the rendered <img>, and
+// the sanitizer must keep them. A hash the resolver doesn't know stays a plain
+// <img> (graceful — e.g. before the image_service thumbhash backfill runs).
+func TestRenderInjectsContentImageMeta(t *testing.T) {
+	SetContentImageCDNBase("https://image.kungal.iloveren.link")
+	defer SetContentImageCDNBase("")
+
+	SetContentImageMetaResolver(func(hashes []string) map[string]imageclient.ImageMeta {
+		out := map[string]imageclient.ImageMeta{}
+		for _, h := range hashes {
+			if h == testHash {
+				out[h] = imageclient.ImageMeta{Width: 1280, Height: 720, Thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI"}
+			}
+		}
+		return out
+	})
+	defer SetContentImageMetaResolver(nil)
+
+	out := Render("![pic](/image/" + testHash + ")")
+	for _, want := range []string{`width="1280"`, `height="720"`, `data-thumbhash="1QcSHQRnh493V4dIh4eXh1h4kJUI"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("want %q in output\n got: %s", want, out)
+		}
+	}
+
+	// An unknown hash (resolver returns nothing) must NOT gain meta attrs.
+	const otherHash = "0000000000000000000000000000000000000000000000000000000000000000"
+	if got := Render("![x](/image/" + otherHash + ")"); strings.Contains(got, "width=") {
+		t.Errorf("unknown hash must not gain width attr\n got: %s", got)
 	}
 }
 

@@ -86,20 +86,20 @@ type DeleteRatingCommentRequest struct {
 // CreatedRating is the response shape for POST /galgame-rating — matches
 // GalgameRatingCardOnGalgamePage in the frontend types.
 type CreatedRating struct {
-	ID           int             `json:"id"`
-	User         UserBrief       `json:"user"`
-	Recommend    string          `json:"recommend"`
-	Overall      int             `json:"overall"`
-	View         int             `json:"view"`
-	GalgameType  json.RawMessage `json:"galgameType"`
-	PlayStatus   string          `json:"play_status"`
-	ShortSummary string          `json:"short_summary"`
-	SpoilerLevel string          `json:"spoiler_level"`
-	RatingScores                 // embedded scores
-	LikeCount    int             `json:"likeCount"`
-	IsLiked      bool            `json:"isLiked"`
-	Created      string          `json:"created"`
-	Updated      string          `json:"updated"`
+	ID           int                `json:"id"`
+	User         UserBrief          `json:"user"`
+	Recommend    string             `json:"recommend"`
+	Overall      int                `json:"overall"`
+	View         int                `json:"view"`
+	GalgameType  json.RawMessage    `json:"galgameType"`
+	PlayStatus   string             `json:"play_status"`
+	ShortSummary string             `json:"short_summary"`
+	SpoilerLevel string             `json:"spoiler_level"`
+	RatingScores                    // embedded scores
+	LikeCount    int                `json:"likeCount"`
+	IsLiked      bool               `json:"isLiked"`
+	Created      string             `json:"created"`
+	Updated      string             `json:"updated"`
 	Galgame      RatingGalgameBrief `json:"galgame"`
 }
 
@@ -181,21 +181,24 @@ type RatingOfficial struct {
 
 // RatingGalgameDetail is the full galgame panel on the rating detail page.
 type RatingGalgameDetail struct {
-	ID               int    `json:"id"`
-	ContentLimit     string `json:"contentLimit"`
-	Banner           string `json:"banner"`
+	ID           int    `json:"id"`
+	ContentLimit string `json:"contentLimit"`
+	Banner       string `json:"banner"`
 	// U2 banner pair — FE getEffectiveBanner reads these first and only
 	// falls back to legacy `banner` when both are empty. New
 	// covers-only galgames (post wiki PR5) have empty `banner`, so
 	// omitting these here renders an empty hero on the rating page.
-	EffectiveBannerHash string           `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string           `json:"effective_banner_url,omitempty"`
-	AgeLimit            string           `json:"ageLimit"`
-	OriginalLanguage    string           `json:"originalLanguage"`
-	Rating              int64            `json:"rating"`
-	RatingCount         int64            `json:"ratingCount"`
-	Official            []RatingOfficial `json:"official"`
-	Name                KunLanguage      `json:"name"`
+	EffectiveBannerHash      string           `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string           `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int              `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int              `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string           `json:"effective_banner_thumbhash,omitempty"`
+	AgeLimit                 string           `json:"ageLimit"`
+	OriginalLanguage         string           `json:"originalLanguage"`
+	Rating                   int64            `json:"rating"`
+	RatingCount              int64            `json:"ratingCount"`
+	Official                 []RatingOfficial `json:"official"`
+	Name                     KunLanguage      `json:"name"`
 }
 
 // RatingCommentItem is a reply on a rating.

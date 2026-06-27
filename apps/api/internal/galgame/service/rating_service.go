@@ -583,6 +583,9 @@ func (s *RatingService) buildRatingGalgame(
 			summary.Banner = g.Banner
 			summary.EffectiveBannerHash = g.EffectiveBannerHash
 			summary.EffectiveBannerURL = g.EffectiveBannerURL
+			summary.EffectiveBannerWidth = g.EffectiveBannerWidth
+			summary.EffectiveBannerHeight = g.EffectiveBannerHeight
+			summary.EffectiveBannerThumbhash = g.EffectiveBannerThumbhash
 			summary.ContentLimit = g.ContentLimit
 			summary.AgeLimit = g.AgeLimit
 			summary.OriginalLanguage = g.OriginalLanguage
@@ -651,9 +654,12 @@ func (s *RatingService) fetchSeriesBrief(ctx context.Context, seriesID int) *dto
 				ZhCn: g.NameZhCn,
 				ZhTw: g.NameZhTw,
 			},
-			Banner:              g.Banner,
-			EffectiveBannerHash: g.EffectiveBannerHash,
-			EffectiveBannerURL:  g.EffectiveBannerURL,
+			Banner:                   g.Banner,
+			EffectiveBannerHash:      g.EffectiveBannerHash,
+			EffectiveBannerURL:       g.EffectiveBannerURL,
+			EffectiveBannerWidth:     g.EffectiveBannerWidth,
+			EffectiveBannerHeight:    g.EffectiveBannerHeight,
+			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
 		})
 		if g.ContentLimit == "nsfw" {
 			isNSFW = true

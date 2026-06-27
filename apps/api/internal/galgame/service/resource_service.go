@@ -521,19 +521,22 @@ func (s *ResourceService) buildGalgameSummary(
 	localView := s.resourceRepo.FindGalgameView(galgameID)
 
 	return dto.ResourceGalgameSummary{
-		ID:                  b.ID,
-		Name:                briefToName(b),
-		Banner:              b.Banner,
-		EffectiveBannerHash: b.EffectiveBannerHash,
-		EffectiveBannerURL:  b.EffectiveBannerURL,
-		ContentLimit:        b.ContentLimit,
-		View:                localView,
-		ResourceUpdateTime:  b.ResourceUpdateTime,
-		OriginalLanguage:    b.OriginalLanguage,
-		AgeLimit:            b.AgeLimit,
-		Platform:            platforms,
-		Language:            languages,
-		Type:                types,
+		ID:                       b.ID,
+		Name:                     briefToName(b),
+		Banner:                   b.Banner,
+		EffectiveBannerHash:      b.EffectiveBannerHash,
+		EffectiveBannerURL:       b.EffectiveBannerURL,
+		EffectiveBannerWidth:     b.EffectiveBannerWidth,
+		EffectiveBannerHeight:    b.EffectiveBannerHeight,
+		EffectiveBannerThumbhash: b.EffectiveBannerThumbhash,
+		ContentLimit:             b.ContentLimit,
+		View:                     localView,
+		ResourceUpdateTime:       b.ResourceUpdateTime,
+		OriginalLanguage:         b.OriginalLanguage,
+		AgeLimit:                 b.AgeLimit,
+		Platform:                 platforms,
+		Language:                 languages,
+		Type:                     types,
 	}
 }
 

@@ -38,20 +38,23 @@ func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {
 	out := make([]dto.GalgameCard, len(cards))
 	for i, c := range cards {
 		out[i] = dto.GalgameCard{
-			ID:                  c.ID,
-			Name:                c.Name,
-			Banner:              c.Banner,
-			User:                c.User,
-			ContentLimit:        c.ContentLimit,
-			View:                c.View,
-			LikeCount:           c.LikeCount,
-			ResourceUpdateTime:  c.ResourceUpdateTime,
-			Platform:            c.Platform,
-			Language:            c.Language,
-			ReleaseDate:         c.ReleaseDate,
-			ReleaseDateTBA:      c.ReleaseDateTBA,
-			EffectiveBannerHash: c.EffectiveBannerHash,
-			EffectiveBannerURL:  c.EffectiveBannerURL,
+			ID:                       c.ID,
+			Name:                     c.Name,
+			Banner:                   c.Banner,
+			User:                     c.User,
+			ContentLimit:             c.ContentLimit,
+			View:                     c.View,
+			LikeCount:                c.LikeCount,
+			ResourceUpdateTime:       c.ResourceUpdateTime,
+			Platform:                 c.Platform,
+			Language:                 c.Language,
+			ReleaseDate:              c.ReleaseDate,
+			ReleaseDateTBA:           c.ReleaseDateTBA,
+			EffectiveBannerHash:      c.EffectiveBannerHash,
+			EffectiveBannerURL:       c.EffectiveBannerURL,
+			EffectiveBannerWidth:     c.EffectiveBannerWidth,
+			EffectiveBannerHeight:    c.EffectiveBannerHeight,
+			EffectiveBannerThumbhash: c.EffectiveBannerThumbhash,
 		}
 	}
 	return out

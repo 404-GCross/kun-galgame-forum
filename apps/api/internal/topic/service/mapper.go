@@ -300,6 +300,8 @@ func toTopicCard(r repository.TopicCardRow, tags, sections []string, isPollTopic
 		Tags:        tags,
 		Sections:    sections,
 		CoverImages: covers,
+		// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.
+		CoverImageMeta: markdown.ResolveContentImageMeta(covers),
 		User: dto.KunUser{
 			ID:     r.UserID,
 			Name:   r.UserName,

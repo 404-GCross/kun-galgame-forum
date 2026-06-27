@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -178,6 +179,12 @@ func newGoldmark(hardWraps bool) goldmark.Markdown {
 		// of being stripped to empty strings.
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
+			// Attach each content image's dims + ThumbHash (one batched lookup
+			// per document) so the rendered <img> reserves its aspect ratio and
+			// blurs up — see contentImageMetaTransformer.
+			parser.WithASTTransformers(
+				util.Prioritized(&contentImageMetaTransformer{}, 100),
+			),
 		),
 		goldmark.WithRendererOptions(rendererOpts...),
 	)
@@ -202,6 +209,12 @@ func newSanitizePolicy() *bluemonday.Policy {
 	p.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 	// lazyImageRenderer attributes.
 	p.AllowAttrs("loading", "decoding", "data-kun-lazy-image").OnElements("img")
+	// Content-image metadata stamped by contentImageMetaTransformer: width /
+	// height reserve the aspect ratio (no CLS), data-thumbhash drives the
+	// frontend blur-up. Value-constrained (digits / base64) so raw user HTML
+	// can't smuggle anything else through these attributes.
+	p.AllowAttrs("width", "height").Matching(regexp.MustCompile(`^[0-9]+$`)).OnElements("img")
+	p.AllowAttrs("data-thumbhash").Matching(regexp.MustCompile(`^[A-Za-z0-9+/=]+$`)).OnElements("img")
 	// Markup added by the post-render transforms (the <video> src is regex-
 	// constrained to https?://….mp4; the button carries no handler).
 	p.AllowElements("video", "button")
@@ -601,10 +614,151 @@ func (r *lazyImageRenderer) renderImage(
 	w.Write(util.EscapeHTML(dest))
 	w.WriteString(`" alt="`)
 	w.Write(util.EscapeHTML(altBuf.Bytes()))
+	w.WriteString(`"`)
 	if n.Title != nil {
-		w.WriteString(`" title="`)
+		w.WriteString(` title="`)
 		w.Write(util.EscapeHTML(n.Title))
+		w.WriteString(`"`)
 	}
-	w.WriteString(`" loading="lazy" decoding="async" data-kun-lazy-image="true" />`)
+	// Dims + ThumbHash attached by contentImageMetaTransformer (absent when the
+	// image_service meta lookup missed or is disabled — then it's a plain
+	// lazy <img>, exactly as before).
+	writeImageAttr(w, n, "width")
+	writeImageAttr(w, n, "height")
+	writeImageAttr(w, n, "data-thumbhash")
+	w.WriteString(` loading="lazy" decoding="async" data-kun-lazy-image="true" />`)
 	return ast.WalkSkipChildren, nil
+}
+
+// writeImageAttr writes ` name="value"` for an attribute the meta transformer
+// stamped on the image node, escaping the value. No-op if the attr is absent.
+func writeImageAttr(w util.BufWriter, n *ast.Image, name string) {
+	v, ok := n.AttributeString(name)
+	if !ok {
+		return
+	}
+	b, ok := v.([]byte)
+	if !ok || len(b) == 0 {
+		return
+	}
+	w.WriteByte(' ')
+	w.WriteString(name)
+	w.WriteString(`="`)
+	w.Write(util.EscapeHTML(b))
+	w.WriteByte('"')
+}
+
+// ──────────────────────────────────────────
+// Extension: content image metadata (dims + ThumbHash)
+// ──────────────────────────────────────────
+//
+// Stamps each content image with its intrinsic width/height (so the rendered
+// <img> reserves its aspect ratio — no layout shift as it loads) and its
+// base64 ThumbHash (data-thumbhash, which the frontend KunContent renderer
+// blurs up in place). Runs as a parse-time AST transformer so it can batch-
+// resolve EVERY image in the document through a single image_service meta
+// lookup; the MetaResolver caches forever, so warm renders touch no network.
+// No-op when the resolver is unset (image_service disabled) — images then
+// render as a plain lazy <img>, exactly as before.
+
+// contentImageMetaResolve resolves a batch of content-image hashes to their
+// dims + ThumbHash. Set once at startup via SetContentImageMetaResolver; nil =
+// no enrichment.
+var contentImageMetaResolve func(hashes []string) map[string]imageclient.ImageMeta
+
+// SetContentImageMetaResolver wires the image-metadata resolver used to enrich
+// content <img> tags. Call once at startup with the image client's
+// MetaResolver.Resolve; leave unset to disable enrichment.
+func SetContentImageMetaResolver(fn func(hashes []string) map[string]imageclient.ImageMeta) {
+	contentImageMetaResolve = fn
+}
+
+// ResolveContentImageMeta returns dims + ThumbHash for a set of /image/<hash>
+// content tokens (e.g. a topic's cover tokens), keyed by the INPUT token so the
+// caller can look meta up by what it already holds. Best-effort: tokens the
+// resolver doesn't know (or non-tokens) are simply absent; returns nil when no
+// resolver is wired (image_service disabled) so the caller renders plain images.
+// Reuses the same cached resolver as the content-image render path.
+func ResolveContentImageMeta(tokens []string) map[string]imageclient.ImageMeta {
+	resolve := contentImageMetaResolve
+	if resolve == nil || len(tokens) == 0 {
+		return nil
+	}
+	hashByToken := make(map[string]string, len(tokens))
+	hashes := make([]string, 0, len(tokens))
+	for _, tk := range tokens {
+		if h := contentImageHash(tk); h != "" {
+			hashByToken[tk] = h
+			hashes = append(hashes, h)
+		}
+	}
+	if len(hashes) == 0 {
+		return nil
+	}
+	metas := resolve(hashes)
+	out := make(map[string]imageclient.ImageMeta, len(hashByToken))
+	for tk, h := range hashByToken {
+		if m, ok := metas[h]; ok {
+			out[tk] = m
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// contentImageHash extracts the base 64-hex content hash from a /image/<hash>
+// token, ignoring any _variant suffix (every variant of a hash shares the main
+// image's aspect ratio). Returns "" for non-token destinations.
+func contentImageHash(dest string) string {
+	m := contentImageRefRe.FindStringSubmatch(dest)
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
+type contentImageMetaTransformer struct{}
+
+func (t *contentImageMetaTransformer) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	resolve := contentImageMetaResolve
+	if resolve == nil {
+		return
+	}
+
+	var imgs []*ast.Image
+	var hashes []string
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if img, ok := n.(*ast.Image); ok {
+			if h := contentImageHash(string(img.Destination)); h != "" {
+				imgs = append(imgs, img)
+				hashes = append(hashes, h)
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	if len(imgs) == 0 {
+		return
+	}
+
+	metas := resolve(hashes)
+	for i, img := range imgs {
+		m, ok := metas[hashes[i]]
+		if !ok {
+			continue
+		}
+		if m.Width > 0 {
+			img.SetAttributeString("width", []byte(strconv.Itoa(m.Width)))
+		}
+		if m.Height > 0 {
+			img.SetAttributeString("height", []byte(strconv.Itoa(m.Height)))
+		}
+		if m.Thumbhash != "" {
+			img.SetAttributeString("data-thumbhash", []byte(m.Thumbhash))
+		}
+	}
 }

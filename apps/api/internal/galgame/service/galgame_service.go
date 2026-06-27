@@ -499,9 +499,12 @@ func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isS
 					EnUs: sg.NameEnUs, JaJp: sg.NameJaJp,
 					ZhCn: sg.NameZhCn, ZhTw: sg.NameZhTw,
 				},
-				Banner:              sg.Banner,
-				EffectiveBannerHash: sg.EffectiveBannerHash,
-				EffectiveBannerURL:  sg.EffectiveBannerURL,
+				Banner:                   sg.Banner,
+				EffectiveBannerHash:      sg.EffectiveBannerHash,
+				EffectiveBannerURL:       sg.EffectiveBannerURL,
+				EffectiveBannerWidth:     sg.EffectiveBannerWidth,
+				EffectiveBannerHeight:    sg.EffectiveBannerHeight,
+				EffectiveBannerThumbhash: sg.EffectiveBannerThumbhash,
 			})
 		}
 	}
@@ -671,13 +674,16 @@ func (s *GalgameService) hydrateListCards(
 			// kungal's own list: the displayed "最近更新" comes from the LOCAL
 			// resource_update_time (the sort key), NOT the wiki's (which never
 			// tracks kungal resource activity) — so order and label agree.
-			ResourceUpdateTime:  localMap[id].ResourceUpdateTime.Format(time.RFC3339),
-			ReleaseDate:         b.ReleaseDate,
-			ReleaseDateTBA:      b.ReleaseDateTBA,
-			EffectiveBannerHash: b.EffectiveBannerHash,
-			EffectiveBannerURL:  b.EffectiveBannerURL,
-			Platform:            emptyStrSliceIfNil(platformMap[id]),
-			Language:            emptyStrSliceIfNil(languageMap[id]),
+			ResourceUpdateTime:       localMap[id].ResourceUpdateTime.Format(time.RFC3339),
+			ReleaseDate:              b.ReleaseDate,
+			ReleaseDateTBA:           b.ReleaseDateTBA,
+			EffectiveBannerHash:      b.EffectiveBannerHash,
+			EffectiveBannerURL:       b.EffectiveBannerURL,
+			EffectiveBannerWidth:     b.EffectiveBannerWidth,
+			EffectiveBannerHeight:    b.EffectiveBannerHeight,
+			EffectiveBannerThumbhash: b.EffectiveBannerThumbhash,
+			Platform:                 emptyStrSliceIfNil(platformMap[id]),
+			Language:                 emptyStrSliceIfNil(languageMap[id]),
 		})
 	}
 	return &dto.GalgameListPage{Galgames: cards, Total: total}, nil
