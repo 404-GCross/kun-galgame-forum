@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { useContentBlurUp } from '@kungal/ui-vue'
+
 // Renders a topic's covers. Each entry is a /image/<hash> content token resolved
 // to an absolute CDN URL (imageTokenUrl: skips @nuxt/image IPX + the /image 302
 // hop). `meta` (keyed by the same token) carries each cover's intrinsic dims +
-// ThumbHash, so the image reserves its aspect ratio (no CLS) and blurs up while
-// loading. Images keep their ORIGINAL aspect ratio and are never cropped
-// (object-contain); height is only capped so a tall image can't dominate.
+// ThumbHash.
+//
+// Multi-cover layout is a SINGLE uniform-height row: every cover shares one
+// height and keeps its OWN aspect ratio (width = height × ratio), so nothing is
+// ever cropped and there are no letterbox bars — a tall cover (text screenshot)
+// is just a narrow full-height column next to wider ones. The row never wraps;
+// it scrolls horizontally when it overflows (KunScrollShadow fades the edges to
+// hint there's more). Width is reserved up-front from the real dims when known
+// (no reflow); otherwise the browser sizes it from the natural image on load.
 const props = defineProps<{
   images: string[]
   meta?: Record<string, KunImageMeta>
@@ -12,55 +20,64 @@ const props = defineProps<{
 
 const shown = computed(() => props.images.slice(0, 9))
 const isSingle = computed(() => shown.value.length === 1)
-// 2/4 = 2-col, everything else = 3-col (single is rendered on its own below).
-const gridClass = computed(() =>
-  shown.value.length === 2 || shown.value.length === 4
-    ? 'grid-cols-2'
-    : 'grid-cols-3'
-)
 
 const metaOf = (token: string): KunImageMeta | undefined => props.meta?.[token]
-// Only reserve the single cover's box when we know its real dims — otherwise let
-// it keep its natural (capped) height, exactly as before (no pre-backfill regression).
-const singleAspect = computed(() => {
-  const m = metaOf(shown.value[0]!)
+
+// CSS aspect-ratio from real dims so the slot reserves its width before the image
+// loads (no layout shift); undefined → natural width resolves on load.
+const aspectOf = (token: string): string | undefined => {
+  const m = metaOf(token)
   return m?.width && m?.height ? `${m.width} / ${m.height}` : undefined
-})
+}
+
+// Blur-up via plain <img data-thumbhash> + the kun-ui composable. (KunImage can't
+// size itself to the image's natural width, which is exactly what keeps every
+// cover uncropped here — so we drive the placeholder ourselves.)
+const root = ref<HTMLElement | null>(null)
+useContentBlurUp(root)
 </script>
 
 <template>
-  <div v-if="shown.length">
-    <!-- Single: at the image's own ratio (no crop), just cap the height. A tall
-         image is letterboxed within the full width — keep it LEFT-aligned
-         (object-left), never centered. -->
-    <KunImage
+  <div v-if="shown.length" ref="root">
+    <!-- Single: the element is sized to the image itself (capped at the card
+         width / 24rem height, ratio preserved) — NOT w-full + object-contain,
+         which would letterbox a portrait into the left of a full-width box and
+         leave the rounded right corners stranded in the empty area (square-right
+         bug). Here the box equals the image, so all four corners round cleanly. -->
+    <img
       v-if="isSingle"
       :src="imageTokenUrl(shown[0]!)"
+      :data-thumbhash="metaOf(shown[0]!)?.thumbhash || undefined"
+      :style="
+        aspectOf(shown[0]!) ? { aspectRatio: aspectOf(shown[0]!) } : undefined
+      "
       alt="话题封面"
       loading="lazy"
-      object-fit="contain"
-      :aspect-ratio="singleAspect"
-      :thumbhash="metaOf(shown[0]!)?.thumbhash"
-      class="bg-default-100 max-h-96 w-full rounded-lg object-contain object-left"
+      class="block max-h-96 max-w-full rounded-lg"
     />
 
-    <!-- Multi: uniform grid; object-contain keeps each image's ratio (no crop),
-         letterboxed in the cell against the neutral card fill. -->
-    <div v-else :class="cn('grid w-full gap-1.5', gridClass)">
-      <div
-        v-for="(token, idx) in shown"
-        :key="`${idx}-${token}`"
-        class="bg-default-100 h-40 overflow-hidden rounded-lg"
-      >
-        <KunImage
+    <!-- Multi: one uniform-height row, each cover at its own aspect ratio (no crop,
+         no bars); overflow scrolls horizontally instead of wrapping. -->
+    <KunScrollShadow
+      v-else
+      axis="horizontal"
+      shadow-size="2rem"
+      scrollbar="thin"
+    >
+      <div class="flex gap-1.5">
+        <img
+          v-for="(token, idx) in shown"
+          :key="`${idx}-${token}`"
           :src="imageTokenUrl(token)"
+          :data-thumbhash="metaOf(token)?.thumbhash || undefined"
+          :style="
+            aspectOf(token) ? { aspectRatio: aspectOf(token) } : undefined
+          "
           alt="话题封面"
           loading="lazy"
-          object-fit="contain"
-          :thumbhash="metaOf(token)?.thumbhash"
-          class="h-full w-full object-contain"
+          class="h-40 w-auto shrink-0 rounded-lg object-contain"
         />
       </div>
-    </div>
+    </KunScrollShadow>
   </div>
 </template>
