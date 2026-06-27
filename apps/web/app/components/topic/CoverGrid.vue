@@ -1,10 +1,13 @@
 <script setup lang="ts">
 // Renders a topic's covers. Each entry is a /image/<hash> content token resolved
 // to an absolute CDN URL (imageTokenUrl: skips @nuxt/image IPX + the /image 302
-// hop). Images keep their ORIGINAL aspect ratio and are never cropped
+// hop). `meta` (keyed by the same token) carries each cover's intrinsic dims +
+// ThumbHash, so the image reserves its aspect ratio (no CLS) and blurs up while
+// loading. Images keep their ORIGINAL aspect ratio and are never cropped
 // (object-contain); height is only capped so a tall image can't dominate.
 const props = defineProps<{
   images: string[]
+  meta?: Record<string, KunImageMeta>
 }>()
 
 const shown = computed(() => props.images.slice(0, 9))
@@ -15,6 +18,14 @@ const gridClass = computed(() =>
     ? 'grid-cols-2'
     : 'grid-cols-3'
 )
+
+const metaOf = (token: string): KunImageMeta | undefined => props.meta?.[token]
+// Only reserve the single cover's box when we know its real dims — otherwise let
+// it keep its natural (capped) height, exactly as before (no pre-backfill regression).
+const singleAspect = computed(() => {
+  const m = metaOf(shown.value[0]!)
+  return m?.width && m?.height ? `${m.width} / ${m.height}` : undefined
+})
 </script>
 
 <template>
@@ -22,11 +33,14 @@ const gridClass = computed(() =>
     <!-- Single: at the image's own ratio (no crop), just cap the height. A tall
          image is letterboxed within the full width — keep it LEFT-aligned
          (object-left), never centered. -->
-    <img
+    <KunImage
       v-if="isSingle"
       :src="imageTokenUrl(shown[0]!)"
       alt="话题封面"
       loading="lazy"
+      object-fit="contain"
+      :aspect-ratio="singleAspect"
+      :thumbhash="metaOf(shown[0]!)?.thumbhash"
       class="bg-default-100 max-h-96 w-full rounded-lg object-contain object-left"
     />
 
@@ -38,10 +52,12 @@ const gridClass = computed(() =>
         :key="`${idx}-${token}`"
         class="bg-default-100 h-40 overflow-hidden rounded-lg"
       >
-        <img
+        <KunImage
           :src="imageTokenUrl(token)"
           alt="话题封面"
           loading="lazy"
+          object-fit="contain"
+          :thumbhash="metaOf(token)?.thumbhash"
           class="h-full w-full object-contain"
         />
       </div>

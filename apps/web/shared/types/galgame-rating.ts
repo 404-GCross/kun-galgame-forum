@@ -11,6 +11,10 @@ export interface GalgameRatingGalgameInfo {
   banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
+  // Derived banner's intrinsic metadata for no-CLS aspect-ratio + blur-up.
+  effective_banner_width?: number
+  effective_banner_height?: number
+  effective_banner_thumbhash?: string
   // rating overall average
   rating: number
   ratingCount: number

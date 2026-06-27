@@ -11,7 +11,9 @@ import { randomUpvoteDescription } from '~/constants/upvote'
 
 const props = defineProps<{ activity: ActivityItem }>()
 
-const data = computed(() => props.activity.data as TopicActivityData | undefined)
+const data = computed(
+  () => props.activity.data as TopicActivityData | undefined
+)
 const topicId = computed(() => data.value?.topicId ?? 0)
 const covers = computed(() => (data.value?.coverImages ?? []).slice(0, 3))
 
@@ -74,7 +76,11 @@ provide(
         >
           {{ markdownToText(data.excerpt) }}
         </p>
-        <TopicCoverGrid v-if="covers.length" :images="covers" />
+        <TopicCoverGrid
+          v-if="covers.length"
+          :images="covers"
+          :meta="data?.coverImageMeta"
+        />
       </KunLink>
 
       <!-- Footer: 收藏 + reactions (clickable) · 浏览 + 查看详情. -->

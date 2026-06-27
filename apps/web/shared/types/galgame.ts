@@ -27,6 +27,12 @@ export interface GalgameCover {
   // VNDB cover type (main/pkgfront/dig/pkgback/…); '' for user uploads.
   kind?: string
   cdn_url?: string
+  // Intrinsic display metadata (image_service): pixel dims reserve the aspect
+  // ratio (no CLS) + base64 ThumbHash drives the blur-up. Optional — empty for
+  // images predating the image_service thumbhash backfill.
+  width?: number
+  height?: number
+  thumbhash?: string
 }
 
 export interface GalgameScreenshot extends GalgameCover {
@@ -54,6 +60,11 @@ export interface GalgameDetail {
   // wiki PR5; legacy `banner` URL field is still emitted for old data.)
   effective_banner_hash?: string
   effective_banner_url?: string
+  // Derived banner's intrinsic metadata (covers[sort_order=0]); also available
+  // per-cover. See resolveBannerThumbhash / imageAspectRatio.
+  effective_banner_width?: number
+  effective_banner_height?: number
+  effective_banner_thumbhash?: string
   covers: GalgameCover[]
   screenshots: GalgameScreenshot[]
   view: number
@@ -110,6 +121,10 @@ export interface GalgameCard {
   // kungal. banner_image_hash retired in wiki PR5.
   effective_banner_hash?: string
   effective_banner_url?: string
+  // Derived banner's intrinsic metadata for no-CLS aspect-ratio + blur-up.
+  effective_banner_width?: number
+  effective_banner_height?: number
+  effective_banner_thumbhash?: string
 }
 
 // MineGalgameItem matches the per-row shape of GET /api/galgame/mine.

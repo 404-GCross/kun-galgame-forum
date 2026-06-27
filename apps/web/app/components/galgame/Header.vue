@@ -57,6 +57,7 @@ const isRatingOpen = ref(false)
             :src="getEffectiveBanner(galgame)"
             loading="eager"
             fetchpriority="high"
+            :thumbhash="resolveBannerThumbhash(galgame)"
             :alt="getPreferredLanguageText(galgame.name)"
             @click="open"
           />

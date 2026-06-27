@@ -5,6 +5,9 @@ export interface TopicCard {
   tag: string[]
   section: string[]
   coverImages: string[]
+  // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
+  // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
+  coverImageMeta?: Record<string, KunImageMeta>
   user: KunUser
   status: number
   hasBestAnswer: boolean
@@ -50,6 +53,8 @@ export interface TopicDetail {
   // Optional 1..9 cover images as /image/<hash> tokens; used to prefill the
   // cover picker when editing, and (empty = none) for the feed card.
   coverImages: string[]
+  // See TopicCard.coverImageMeta — keyed by the /image/<hash> cover token.
+  coverImageMeta?: Record<string, KunImageMeta>
   user: KunUser & { moemoepoint: number }
 
   likeCount: number

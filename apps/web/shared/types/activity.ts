@@ -44,6 +44,9 @@ export interface TopicActivityData {
   excerpt: string
   sections: string[]
   coverImages: string[]
+  // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
+  // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
+  coverImageMeta?: Record<string, KunImageMeta>
   view: number
   likeCount: number
   favoriteCount: number

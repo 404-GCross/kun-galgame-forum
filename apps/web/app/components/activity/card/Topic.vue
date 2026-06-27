@@ -7,7 +7,9 @@ import { KUN_TOPIC_SECTION } from '~/constants/topic'
 
 const props = defineProps<{ activity: ActivityItem }>()
 
-const data = computed(() => props.activity.data as TopicActivityData | undefined)
+const data = computed(
+  () => props.activity.data as TopicActivityData | undefined
+)
 const covers = computed(() => (data.value?.coverImages ?? []).slice(0, 3))
 const topicId = computed(() => data.value?.topicId ?? 0)
 const hasBadge = computed(() => {
@@ -26,7 +28,9 @@ const upvotes = computed(() => {
   const all = data.value?.upvotes ?? []
   if (all.length <= 1) return all
   return [...all]
-    .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+    .sort(
+      (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()
+    )
     .slice(0, 1)
 })
 const sameReply = computed(
@@ -109,7 +113,11 @@ provide(
         >
           {{ markdownToText(data.excerpt) }}
         </p>
-        <TopicCoverGrid v-if="covers.length" :images="covers" />
+        <TopicCoverGrid
+          v-if="covers.length"
+          :images="covers"
+          :meta="data?.coverImageMeta"
+        />
       </KunLink>
 
       <!-- Badges (NSFW / 有解答 / 投票 / 被推), then the section chips after them. -->
@@ -186,7 +194,11 @@ provide(
         <div class="min-w-0 flex-1 space-y-1 text-sm">
           <div class="flex items-center justify-between gap-2">
             <span class="flex min-w-0 items-center gap-1.5">
-              <KunAvatar :user="topReply.user" size="sm" :is-navigation="false" />
+              <KunAvatar
+                :user="topReply.user"
+                size="sm"
+                :is-navigation="false"
+              />
               <span class="text-default-700 line-clamp-1 font-medium">
                 {{ topReply.user.name }}
               </span>
@@ -214,7 +226,11 @@ provide(
         <div class="min-w-0 flex-1 space-y-1 text-sm">
           <div class="flex items-center justify-between gap-2">
             <span class="flex min-w-0 items-center gap-1.5">
-              <KunAvatar :user="bestAnswer.user" size="sm" :is-navigation="false" />
+              <KunAvatar
+                :user="bestAnswer.user"
+                size="sm"
+                :is-navigation="false"
+              />
               <span
                 class="text-success-700 dark:text-success-300 line-clamp-1 font-medium"
               >
@@ -259,7 +275,9 @@ provide(
             <span class="flex items-center gap-1">
               <KunIcon name="lucide:message-square" class="size-4" />
               {{
-                formatNumber((data?.replyCount ?? 0) + (data?.commentCount ?? 0))
+                formatNumber(
+                  (data?.replyCount ?? 0) + (data?.commentCount ?? 0)
+                )
               }}
             </span>
             <span class="flex items-center gap-1">

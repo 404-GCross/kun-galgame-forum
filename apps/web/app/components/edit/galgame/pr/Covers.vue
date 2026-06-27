@@ -76,6 +76,7 @@ const handleRemove = (hash: string) => {
             <KunImage
               :src="galgameImageSrc(cover)"
               loading="lazy"
+              :thumbhash="cover.thumbhash"
               class-name="aspect-video w-full cursor-zoom-in object-cover"
               @click="open"
             />
@@ -94,7 +95,7 @@ const handleRemove = (hash: string) => {
 
           <!-- per-tile toolbar: visible on touch, hover-revealed on desktop -->
           <div
-            class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+            class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
           >
             <KunTooltip v-if="cover.sort_order !== 0" text="钉为封面">
               <KunButton
@@ -144,7 +145,12 @@ const handleRemove = (hash: string) => {
             v-if="cover.sexual || cover.violence"
             class="pointer-events-none absolute bottom-1.5 left-1.5 flex gap-1"
           >
-            <KunChip v-if="cover.sexual" size="sm" color="warning" variant="solid">
+            <KunChip
+              v-if="cover.sexual"
+              size="sm"
+              color="warning"
+              variant="solid"
+            >
               性 {{ cover.sexual }}
             </KunChip>
             <KunChip

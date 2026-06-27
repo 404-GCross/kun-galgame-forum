@@ -972,12 +972,14 @@ func (s *ActivityService) enrichTopicItems(ctx context.Context, items []dto.Acti
 			}
 		}
 		payload := dto.TopicActivityData{
-			TopicID:        id,
-			Title:          c.Title,
-			AuthorID:       c.AuthorID,
-			Excerpt:        c.Excerpt,
-			Sections:       sec,
-			CoverImages:    covers,
+			TopicID:     id,
+			Title:       c.Title,
+			AuthorID:    c.AuthorID,
+			Excerpt:     c.Excerpt,
+			Sections:    sec,
+			CoverImages: covers,
+			// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.
+			CoverImageMeta: markdown.ResolveContentImageMeta(covers),
 			View:           c.View,
 			LikeCount:      c.LikeCount,
 			FavoriteCount:  c.FavoriteCount,

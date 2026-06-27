@@ -16,6 +16,9 @@ export interface HomeTopic {
   // Optional 1..9 feed-card cover images, as /image/<hash> content tokens
   // (usable directly as an <img src>). Empty array = no covers.
   coverImages: string[]
+  // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
+  // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
+  coverImageMeta?: Record<string, KunImageMeta>
   user: KunUser
   status: number
   hasBestAnswer: boolean

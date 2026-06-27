@@ -64,7 +64,8 @@ const handleShift = (target: GalgameScreenshot, dir: -1 | 1) => {
   <div class="space-y-3">
     <h2 class="text-xl">画廊 / 截图</h2>
     <p class="text-default-500 text-sm">
-      游戏截图 / CG / 立绘等。用箭头调整顺序,⚙ 可填写说明与分级。提交后整组替换。
+      游戏截图 / CG / 立绘等。用箭头调整顺序,⚙
+      可填写说明与分级。提交后整组替换。
     </p>
 
     <KunLightboxGallery>
@@ -84,6 +85,7 @@ const handleShift = (target: GalgameScreenshot, dir: -1 | 1) => {
               :src="galgameImageSrc(shot)"
               :alt="shot.caption || ''"
               loading="lazy"
+              :thumbhash="shot.thumbhash"
               class-name="aspect-video w-full cursor-zoom-in object-cover"
               @click="open"
             />
@@ -91,7 +93,7 @@ const handleShift = (target: GalgameScreenshot, dir: -1 | 1) => {
 
           <!-- per-tile toolbar: visible on touch, hover-revealed on desktop -->
           <div
-            class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+            class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
           >
             <KunTooltip text="前移">
               <KunButton
@@ -131,7 +133,10 @@ const handleShift = (target: GalgameScreenshot, dir: -1 | 1) => {
                 </KunButton>
               </template>
               <div class="space-y-2">
-                <KunInput v-model="shot.caption" placeholder="说明文字 (可选)" />
+                <KunInput
+                  v-model="shot.caption"
+                  placeholder="说明文字 (可选)"
+                />
                 <EditGalgamePrImageRatingFields
                   v-model:sexual="shot.sexual"
                   v-model:violence="shot.violence"
@@ -157,10 +162,20 @@ const handleShift = (target: GalgameScreenshot, dir: -1 | 1) => {
             v-if="shot.sexual || shot.violence"
             class="pointer-events-none absolute top-1.5 left-1.5 flex gap-1"
           >
-            <KunChip v-if="shot.sexual" size="sm" color="warning" variant="solid">
+            <KunChip
+              v-if="shot.sexual"
+              size="sm"
+              color="warning"
+              variant="solid"
+            >
               性 {{ shot.sexual }}
             </KunChip>
-            <KunChip v-if="shot.violence" size="sm" color="danger" variant="solid">
+            <KunChip
+              v-if="shot.violence"
+              size="sm"
+              color="danger"
+              variant="solid"
+            >
               暴 {{ shot.violence }}
             </KunChip>
           </div>

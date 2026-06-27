@@ -46,6 +46,10 @@ export interface GalgameResourceSummary {
   banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
+  // Derived banner's intrinsic metadata for no-CLS aspect-ratio + blur-up.
+  effective_banner_width?: number
+  effective_banner_height?: number
+  effective_banner_thumbhash?: string
   contentLimit: string
   resourceUpdateTime: Date | string
   view: number

@@ -40,6 +40,7 @@ const {
           loading="lazy"
           :alt="getPreferredLanguageText(galgame.name)"
           placeholder="/placeholder.webp"
+          :thumbhash="resolveBannerThumbhash(galgame)"
           class="h-full w-full object-cover transition-transform duration-300"
           :style="{ aspectRatio: '16/9' }"
         />

@@ -20,6 +20,7 @@ const getLanguageName = getGalgameOriginalLanguageName
         class="size-full rounded-lg object-cover"
         :src="getEffectiveBanner(galgame)"
         loading="lazy"
+        :thumbhash="resolveBannerThumbhash(galgame)"
         :alt="getPreferredLanguageText(galgame.name)"
       />
     </div>

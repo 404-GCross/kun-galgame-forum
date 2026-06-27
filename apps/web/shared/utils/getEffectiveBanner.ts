@@ -84,3 +84,38 @@ export const getEffectiveBanner = (
   if (!base || !opts?.variant) return base
   return withBannerVariant(base, opts.variant)
 }
+
+// ── ThumbHash blur-up + aspect-ratio (image_service dims) ──
+//
+// image_service now ships each image's intrinsic width/height + a base64
+// ThumbHash. Together they let a not-yet-loaded image reserve its box (no CLS)
+// and paint a blurred preview. These helpers centralize how galgame surfaces
+// read that metadata off the various card/detail shapes.
+
+// imageAspectRatio turns intrinsic pixel dims into a CSS `aspect-ratio` value.
+// Falls back to `fallback` (16/9 = the mini-cover ratio) when dims are unknown
+// — e.g. images predating the image_service thumbhash/dims backfill.
+export const imageAspectRatio = (
+  width?: number,
+  height?: number,
+  fallback = '16 / 9'
+): string => (width && height ? `${width} / ${height}` : fallback)
+
+// resolveBannerThumbhash returns a galgame head image's ThumbHash placeholder:
+// the derived `effective_banner_thumbhash` when present (list cards / resource
+// summaries), else the pinned cover's (`covers[sort_order=0]` — the detail page
+// only ships covers[]). '' when neither is set → KunImage shows its plain
+// skeleton (graceful pre-backfill).
+export const resolveBannerThumbhash = (
+  g?: {
+    effective_banner_thumbhash?: string
+    covers?: { sort_order: number; thumbhash?: string }[]
+  } | null
+): string => {
+  if (!g) return ''
+  if (g.effective_banner_thumbhash) return g.effective_banner_thumbhash
+  const covers = g.covers
+  if (!covers?.length) return ''
+  const pinned = covers.find((c) => c.sort_order === 0) ?? covers[0]
+  return pinned?.thumbhash ?? ''
+}

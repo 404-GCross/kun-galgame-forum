@@ -42,6 +42,7 @@ const platformLabels = computed(() => {
           :src="getEffectiveBanner(galgame)"
           loading="eager"
           fetchpriority="high"
+          :thumbhash="resolveBannerThumbhash(galgame)"
           :alt="getPreferredLanguageText(galgame.name)"
         />
 
@@ -73,7 +74,8 @@ const platformLabels = computed(() => {
             </KunChip>
           </h2>
           <p class="text-default-500 mt-1 text-sm">
-            最近更新 <KunTime :time="galgame.resourceUpdateTime" /> · {{ galgame.view.toLocaleString() }} 次浏览
+            最近更新 <KunTime :time="galgame.resourceUpdateTime" /> ·
+            {{ galgame.view.toLocaleString() }} 次浏览
           </p>
         </div>
 

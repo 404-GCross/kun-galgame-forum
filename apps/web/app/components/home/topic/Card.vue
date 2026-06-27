@@ -26,6 +26,7 @@ defineProps<{
     <TopicCoverGrid
       v-if="topic.coverImages?.length"
       :images="topic.coverImages"
+      :meta="topic.coverImageMeta"
       class="my-1"
     />
 

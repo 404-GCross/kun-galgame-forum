@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"kun-galgame-api/pkg/imageclient"
+)
 
 // ──────────────────────────────────────────
 // Requests
@@ -80,17 +84,22 @@ type TopicActivityData struct {
 	// Title is the topic title. For TOPIC_CREATION the title is also in Content
 	// (the card uses that); the 推话题 (TOPIC_UPVOTE) card reads it here, since
 	// its Content carries the push description instead.
-	Title         string     `json:"title,omitempty"`
-	AuthorID      int        `json:"authorId,omitempty"`
-	Excerpt       string     `json:"excerpt"`
-	Sections      []string   `json:"sections"`
-	CoverImages   []string   `json:"coverImages"`
-	View          int        `json:"view"`
-	LikeCount     int        `json:"likeCount"`
-	FavoriteCount int        `json:"favoriteCount"`
-	ReplyCount    int        `json:"replyCount"`
-	CommentCount  int        `json:"commentCount"`
-	UpvoteTime    *time.Time `json:"upvoteTime"`
+	Title       string   `json:"title,omitempty"`
+	AuthorID    int      `json:"authorId,omitempty"`
+	Excerpt     string   `json:"excerpt"`
+	Sections    []string `json:"sections"`
+	CoverImages []string `json:"coverImages"`
+	// Per-cover-token image metadata (dims + ThumbHash), keyed by the
+	// /image/<hash> token in CoverImages — lets the feed card reserve each
+	// cover's aspect ratio (no CLS) and blur it up. Output-only; empty when
+	// image_service is unconfigured or its thumbhash backfill hasn't run.
+	CoverImageMeta map[string]imageclient.ImageMeta `json:"coverImageMeta,omitempty"`
+	View           int                              `json:"view"`
+	LikeCount      int                              `json:"likeCount"`
+	FavoriteCount  int                              `json:"favoriteCount"`
+	ReplyCount     int                              `json:"replyCount"`
+	CommentCount   int                              `json:"commentCount"`
+	UpvoteTime     *time.Time                       `json:"upvoteTime"`
 	// Edited is the topic's last edit time (null = never edited); the card shows an
 	// edit icon + relative time after the timestamp.
 	Edited        *time.Time `json:"edited"`

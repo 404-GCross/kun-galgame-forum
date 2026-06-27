@@ -111,7 +111,11 @@ const ratingRing = (s: GalgameScreenshot) => {
 <template>
   <div v-if="allShots.length" class="space-y-3">
     <div class="flex flex-wrap items-end justify-between gap-2">
-      <KunHeader name="画廊" description="该 Galgame 的截图 / CG 集" scale="h3" />
+      <KunHeader
+        name="画廊"
+        description="该 Galgame 的截图 / CG 集"
+        scale="h3"
+      />
       <GalgameGalleryFilter
         v-if="hasRated"
         :show-nsfw="showNsfw"
@@ -147,6 +151,7 @@ const ratingRing = (s: GalgameScreenshot) => {
               :alt="s.caption || ''"
               loading="lazy"
               object-fit="cover"
+              :thumbhash="s.thumbhash"
               class="h-full w-full cursor-zoom-in object-cover transition-transform duration-200 group-hover:scale-105"
               :style="{ aspectRatio: '16/9' }"
             />
