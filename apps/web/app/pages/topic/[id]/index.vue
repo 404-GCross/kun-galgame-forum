@@ -38,16 +38,16 @@ const topicId = computed(() => {
 })
 provide<number>('topicId', topicId.value)
 
-const { data } = await useKunFetch<TopicDetail>(
-  `/topic/${topicId.value}`,
-  {
-    method: 'GET',
-    watch: false,
-    query: { topicId: topicId.value }
-  }
-)
+const { data } = await useKunFetch<TopicDetail>(`/topic/${topicId.value}`, {
+  method: 'GET',
+  watch: false,
+  query: { topicId: topicId.value }
+})
 
-onBeforeRouteLeave(async (_, __, next) => {
+onBeforeRouteLeave(async () => {
+  // Vue Router 4: return a value instead of calling next() (deprecated).
+  // false = stay; anything else = proceed.
+  let proceed = true
   if (isReplyRewriting.value) {
     const res =
       await useComponentMessageStore().alert(
@@ -55,15 +55,12 @@ onBeforeRouteLeave(async (_, __, next) => {
       )
     if (res) {
       useTempReplyStore().resetRewriteReplyData()
-      isEdit.value = false
-      next()
     } else {
-      next(false)
+      proceed = false
     }
-  } else {
-    next()
   }
   isEdit.value = false
+  return proceed
 })
 
 onBeforeMount(() => {
@@ -134,9 +131,7 @@ if (data.value) {
     const acceptedAnswerSchema: Comment | undefined = ba
       ? {
           '@type': 'Comment',
-          text: markdownToText(ba.contentMarkdown)
-            .trim()
-            .slice(0, 5000),
+          text: markdownToText(ba.contentMarkdown).trim().slice(0, 5000),
           datePublished: new Date(ba.created).toISOString(),
           url: `${topicUrl}#k${ba.floor}`,
           author: {

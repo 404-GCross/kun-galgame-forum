@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useIntersectionObserver, useThrottleFn } from '@vueuse/core'
 
+// NOTE: the template must keep a SINGLE root element with NO sibling top-level
+// comment — index.vue renders this with `keepalive: true`, and a leading
+// template comment compiles to a multi-root Fragment, which warns under
+// <KeepAlive>. (The grid rationale lives inside the root div, not above it.)
+
 // Home page = the activity feed. Tabs are USER-CONFIGURABLE (设置 → 动态): each tab
 // is a set of activity "kinds" stored in the settings store, sent to the backend
 // as GET /activity/tab?types=…. The defaults replicate the previous fixed five
@@ -134,16 +139,17 @@ useIntersectionObserver(
 </script>
 
 <template>
-  <!-- Grid (not flex) so all column tracks exist the moment the container is
-       parsed, BEFORE the children stream in. The right track is reserved empty
-       up front, so on a slow connection the center feed can't grow into it and
-       then reflow when the aside finally arrives — kills the layout shift. The
-       track widths mirror the children (7rem=w-28 rail, 18/20rem=w-72/80 aside,
-       1fr center). `display:none` children (mobile tabs / hidden rails) don't
-       occupy a track, so the mobile→sm→lg responsive steps are unchanged. -->
   <div
     class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] lg:grid-cols-[7rem_minmax(0,1fr)_18rem] xl:grid-cols-[7rem_minmax(0,1fr)_20rem]"
   >
+    <!-- Grid (not flex) so all column tracks exist the moment the container is
+         parsed, BEFORE the children stream in. The right track is reserved empty
+         up front, so on a slow connection the center feed can't grow into it and
+         then reflow when the aside finally arrives — kills the layout shift. The
+         track widths mirror the children (7rem=w-28 rail, 18/20rem=w-72/80 aside,
+         1fr center). `display:none` children (mobile tabs / hidden rails) don't
+         occupy a track, so the mobile→sm→lg responsive steps are unchanged. -->
+
     <!-- Mobile: horizontal underline tabs on top. `scrollable` (not full-width)
          so the user-configurable tab set scrolls sideways instead of overflowing
          the viewport once there are more tabs than fit. -->

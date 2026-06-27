@@ -1,20 +1,18 @@
 <script setup lang="ts">
 const tempStore = useTempEditStore()
 
-onBeforeRouteLeave(async (to, from, next) => {
+onBeforeRouteLeave(async () => {
+  // Vue Router 4: return a value instead of calling next() (deprecated).
+  // false = stay; anything else = proceed.
   if (tempStore.isTopicRewriting) {
     const res =
       await useComponentMessageStore().alert(
         '确认离开界面吗？您的更改将不会保存。'
       )
-    if (res) {
-      tempStore.resetRewriteTopicData()
-      next()
-    } else {
-      next(false)
+    if (!res) {
+      return false
     }
-  } else {
-    next()
+    tempStore.resetRewriteTopicData()
   }
 })
 </script>
@@ -35,22 +33,13 @@ onBeforeRouteLeave(async (to, from, next) => {
         </KunCard>
 
         <div class="order-1 space-y-3 sm:order-2 lg:col-span-2">
-          <KunCard
-            :is-hoverable="false"
-            :is-transparent="false"
-          >
+          <KunCard :is-hoverable="false" :is-transparent="false">
             <EditTopicTitle />
           </KunCard>
-          <KunCard
-            :is-hoverable="false"
-            :is-transparent="false"
-          >
+          <KunCard :is-hoverable="false" :is-transparent="false">
             <EditTopicEditor />
           </KunCard>
-          <KunCard
-            :is-hoverable="false"
-            :is-transparent="false"
-          >
+          <KunCard :is-hoverable="false" :is-transparent="false">
             <EditTopicCoverPicker />
           </KunCard>
         </div>
