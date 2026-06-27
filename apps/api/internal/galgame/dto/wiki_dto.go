@@ -57,6 +57,10 @@ type WikiGalgameCover struct {
 	Violence  int    `json:"violence"`
 	Source    string `json:"source"`
 	SourceKey string `json:"source_key"`
+	// Kind labels the VNDB cover type (main/pkgfront/dig/pkgback/…); "" for user
+	// uploads. Declared so it survives unmarshal — the "查看所有封面" modal groups
+	// covers by it (without this every cover fell into 其它).
+	Kind      string `json:"kind,omitempty"`
 	CDNURL    string `json:"cdn_url"`
 	Width     int    `json:"width,omitempty"`
 	Height    int    `json:"height,omitempty"`

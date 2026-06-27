@@ -28,6 +28,11 @@ const galgameAliasArray = computed(() => {
 })
 
 const isRatingOpen = ref(false)
+
+// "查看所有封面" modal — only worth offering when there's more than the pinned
+// banner cover (covers[] includes the banner at sort_order 0).
+const coversOpen = ref(false)
+const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 </script>
 
 <template>
@@ -76,6 +81,19 @@ const isRatingOpen = ref(false)
           {{ galgame.contentLimit.toLocaleUpperCase() }}
         </KunTooltip>
       </KunChip>
+
+      <!-- 查看所有封面 — sibling of the lightbox (not nested) so it doesn't trigger
+           the banner lightbox; opens the covers modal. -->
+      <button
+        v-if="hasMoreCovers"
+        type="button"
+        class="bg-background/80 hover:bg-background shadow-kun-sm absolute right-2 bottom-2 z-10 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors"
+        @click="coversOpen = true"
+      >
+        <KunIcon name="lucide:images" class="size-4" />
+        查看所有封面
+      </button>
+      <GalgameCovers v-model="coversOpen" :covers="galgame.covers" />
     </div>
 
     <div className="flex flex-col gap-3 md:col-span-2">

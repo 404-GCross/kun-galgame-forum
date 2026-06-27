@@ -112,6 +112,7 @@ func coversFromWiki(rows []dto.WikiGalgameCover) []dto.GalgameCover {
 			ImageHash: r.ImageHash, SortOrder: r.SortOrder,
 			Sexual: r.Sexual, Violence: r.Violence,
 			Source: r.Source, SourceKey: r.SourceKey,
+			Kind:      r.Kind,
 			CDNURL:    r.CDNURL,
 			Width:     r.Width,
 			Height:    r.Height,
