@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const props = defineProps<{
   resource: GalgameResource
@@ -221,7 +222,7 @@ const handleEditDone = () => {
         variant="flat"
         @click="handleRewriteResource"
         :loading="isFetching"
-        v-if="resource.user.id === id || role > 1"
+        v-if="resource.user.id === id || canModerate"
       >
         编辑资源
         <KunIcon name="lucide:pencil" />
@@ -231,7 +232,7 @@ const handleEditDone = () => {
         variant="flat"
         @click="handleDeleteResource"
         :loading="isFetching"
-        v-if="resource.user.id === id || role > 1"
+        v-if="resource.user.id === id || canModerate"
       >
         删除资源
         <KunIcon name="lucide:trash-2" />

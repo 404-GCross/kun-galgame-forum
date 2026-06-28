@@ -3,10 +3,11 @@ const props = defineProps<{
   topicId: number
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 const topicUserId = inject<number>('topicUserId')
 
-const isDisabled = role < 2 && topicUserId !== id
+const isDisabled = !canModerate.value && topicUserId !== id
 
 const handleUpdateTopicHideStatus = async () => {
   const res = await useComponentMessageStore().alert(
@@ -16,10 +17,9 @@ const handleUpdateTopicHideStatus = async () => {
     return
   }
 
-  const result = await kunFetch<string>(
-    `/topic/${props.topicId}/hide`,
-    { method: 'PUT' }
-  )
+  const result = await kunFetch<string>(`/topic/${props.topicId}/hide`, {
+    method: 'PUT'
+  })
 
   if (result) {
     useMessage('隐藏话题成功', 'success')

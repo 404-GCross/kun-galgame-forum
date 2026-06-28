@@ -12,10 +12,11 @@ const props = defineProps<{
   toolset: ToolsetDetail
 }>()
 
-const { id: userId, role } = usePersistUserStore()
+const { id: userId } = usePersistUserStore()
+const { canModerate } = useRole()
 const data = computed(() => props.toolset)
 const canManageToolset = computed(
-  () => data.value.user.id === userId || role >= 2
+  () => data.value.user.id === userId || canModerate.value
 )
 
 // Own the resource list locally so add / edit / delete are reactive. The detail

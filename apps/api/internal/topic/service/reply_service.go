@@ -278,20 +278,22 @@ func (s *ReplyService) UpdateReply(
 
 func (s *ReplyService) DeleteReply(
 	ctx context.Context,
-	userID, role, replyID int,
+	userID int,
+	canModerate bool,
+	replyID int,
 ) *errors.AppError {
 	reply, err := s.replyRepo.FindByID(replyID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该回复")
 	}
-	if reply.UserID != userID && role < 2 {
+	if reply.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此回复")
 	}
 
 	commentCount, likeCount, _ := s.replyRepo.CountReplyRelated(replyID)
 
 	penalty := 3
-	if reply.UserID == userID && role < 2 {
+	if reply.UserID == userID && !canModerate {
 		penalty = 3 * int(commentCount+likeCount+1)
 	}
 
@@ -449,12 +451,12 @@ func (s *ReplyService) clearReplyReaction(tx *gorm.DB, replyID, userID, ownerID 
 	return nil
 }
 
-func (s *ReplyService) PinReply(ctx context.Context, userID, role, topicID, replyID int) *errors.AppError {
+func (s *ReplyService) PinReply(ctx context.Context, userID int, canModerate bool, topicID, replyID int) *errors.AppError {
 	topic, err := s.topicRepo.FindByID(topicID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && role < 2 {
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限置顶回复")
 	}
 

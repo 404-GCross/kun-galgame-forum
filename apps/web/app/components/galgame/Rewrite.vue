@@ -4,7 +4,8 @@ defineProps<{
 }>()
 
 const { galgamePR } = storeToRefs(useTempGalgamePRStore())
-const { id: currentUserId, role: currentUserRole } = usePersistUserStore()
+const { id: currentUserId } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const isOpening = ref(false)
 
@@ -74,15 +75,16 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
     // the images. Untouched → omit covers/screenshots from the payload so an
     // intro/tag-only edit can't roll the live cover back to this (possibly
     // stale) hydration. Stringified from the same row shape Footer compares.
-    coversBaseline: JSON.stringify((galgame.covers ?? []).map((c) => ({ ...c }))),
+    coversBaseline: JSON.stringify(
+      (galgame.covers ?? []).map((c) => ({ ...c }))
+    ),
     screenshotsBaseline: JSON.stringify(
       (galgame.screenshots ?? []).map((s) => ({ ...s }))
     ),
     // Creator or admin/moderator → wiki allows direct PUT (instant).
     // Everyone else → PR. Decided here (we have galgame.user + the user
     // store); Footer.vue branches the submit endpoint on this.
-    canDirectEdit:
-      galgame.user.id === currentUserId || currentUserRole >= 2
+    canDirectEdit: galgame.user.id === currentUserId || canModerate.value
   }
 
   isOpening.value = false

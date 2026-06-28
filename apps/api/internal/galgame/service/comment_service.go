@@ -49,8 +49,8 @@ type UserObj struct {
 // only direct + transitive descendants of THIS node (not the whole
 // thread under the root), so a mid-tree "查看更多" button can use it.
 type CommentItem struct {
-	ID        int    `json:"id"`
-	Content   string `json:"content"`
+	ID      int    `json:"id"`
+	Content string `json:"content"`
 	// ContentHtml: server-rendered HTML via the project's goldmark
 	// pipeline (apps/api/internal/infrastructure/markdown). Same
 	// pipeline as topic / galgame intro / toolset / doc, so KunContent
@@ -58,20 +58,20 @@ type CommentItem struct {
 	// MathJax, tables, and KaTeX consistently with the rest of the
 	// site. Keeps Content as the raw source for the edit-mode
 	// textarea to round-trip cleanly.
-	ContentHtml     string         `json:"contentHtml"`
-	GalgameID       int            `json:"galgameId"`
-	User            UserObj        `json:"user"`
-	TargetUser      *UserObj       `json:"targetUser"`
-	ParentCommentID *int           `json:"parentCommentId"`
-	RootCommentID   *int           `json:"rootCommentId"`
-	LikeCount       int            `json:"likeCount"`
+	ContentHtml     string   `json:"contentHtml"`
+	GalgameID       int      `json:"galgameId"`
+	User            UserObj  `json:"user"`
+	TargetUser      *UserObj `json:"targetUser"`
+	ParentCommentID *int     `json:"parentCommentId"`
+	RootCommentID   *int     `json:"rootCommentId"`
+	LikeCount       int      `json:"likeCount"`
 	// IsLiked is per-viewer: set by GetComments/GetCommentThread from a
 	// batch query against galgame_comment_like. Anonymous callers see
 	// false. The FE Like component initialises its toggled state from
 	// this flag — without it the heart icon would always render off
 	// even after the user has already clicked it.
-	IsLiked    bool           `json:"isLiked"`
-	Created    string         `json:"created"`
+	IsLiked bool   `json:"isLiked"`
+	Created string `json:"created"`
 	// Edited: ISO timestamp when the author last rewrote this comment;
 	// null if untouched. Drives the "已编辑" badge in the UI.
 	Edited     *string        `json:"edited"`
@@ -374,12 +374,12 @@ func (s *CommentService) CreateComment(
 // DeleteComment removes a comment. Cascading FK deletes child rows in
 // galgame_comment (parent_comment_id ON DELETE CASCADE), so the
 // comment_count adjustment subtracts the size of the destroyed subtree.
-func (s *CommentService) DeleteComment(userID, role, commentID int) *errors.AppError {
+func (s *CommentService) DeleteComment(userID int, canModerate bool, commentID int) *errors.AppError {
 	comment, err := s.commentRepo.FindByID(commentID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该评论")
 	}
-	if comment.UserID != userID && role < 2 {
+	if comment.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此评论")
 	}
 
@@ -428,21 +428,21 @@ func (s *CommentService) DeleteComment(userID, role, commentID int) *errors.AppE
 // ──────────────────────────────────────────
 
 // UpdateComment rewrites the content of an existing comment and stamps
-// the `edited` column. Author-only: moderators (role >= 2) can also
+// the `edited` column. Author-only: moderators (CanModerate) can also
 // edit, matching the same authority used by DeleteComment.
 //
 // Returns the patched comment so the frontend can drop the response
 // straight into its tree without re-fetching.
 func (s *CommentService) UpdateComment(
 	ctx context.Context,
-	userID, role, commentID int,
+	userID int, canModerate bool, commentID int,
 	content string,
 ) (*CommentItem, *errors.AppError) {
 	comment, err := s.commentRepo.FindByID(commentID)
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该评论")
 	}
-	if comment.UserID != userID && role < 2 {
+	if comment.UserID != userID && !canModerate {
 		return nil, errors.ErrForbidden("您没有权限编辑此评论")
 	}
 

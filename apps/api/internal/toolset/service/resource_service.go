@@ -136,7 +136,7 @@ func (s *ResourceService) CreateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) UpdateResource(
-	userID, userRole int,
+	userID int, canModerate bool,
 	req *dto.UpdateResourceRequest,
 ) (*model.GalgameToolsetResource, *errors.AppError) {
 	resource, err := s.resourceRepo.FindByID(req.ResourceID)
@@ -144,7 +144,7 @@ func (s *ResourceService) UpdateResource(
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
-	if resource.UserID != userID && userRole < 2 {
+	if resource.UserID != userID && !canModerate {
 		return nil, errors.ErrForbidden("您没有权限编辑此资源")
 	}
 
@@ -182,7 +182,7 @@ func (s *ResourceService) UpdateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) DeleteResource(
-	userID, userRole int,
+	userID int, canModerate bool,
 	req *dto.DeleteResourceRequest,
 ) *errors.AppError {
 	resource, err := s.resourceRepo.FindByID(req.ResourceID)
@@ -190,7 +190,7 @@ func (s *ResourceService) DeleteResource(
 		return errors.ErrNotFound("未找到该资源")
 	}
 
-	if resource.UserID != userID && userRole < 2 {
+	if resource.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此资源")
 	}
 

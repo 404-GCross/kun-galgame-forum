@@ -211,7 +211,8 @@ func (s *TopicWriteService) Create(
 
 func (s *TopicWriteService) Update(
 	ctx context.Context,
-	userID, role int,
+	userID int,
+	canModerate bool,
 	topicID int,
 	req *dto.UpdateTopicRequest,
 ) *errors.AppError {
@@ -219,7 +220,7 @@ func (s *TopicWriteService) Update(
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && role < 2 {
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限编辑此话题")
 	}
 
@@ -562,12 +563,12 @@ func (s *TopicWriteService) ToggleFavorite(ctx context.Context, userID, topicID 
 	return nil
 }
 
-func (s *TopicWriteService) ToggleHide(ctx context.Context, userID, role, topicID int) *errors.AppError {
+func (s *TopicWriteService) ToggleHide(ctx context.Context, userID int, canModerate bool, topicID int) *errors.AppError {
 	topic, err := s.topicRepo.FindByID(topicID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && role < 2 {
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限操作此话题")
 	}
 
@@ -585,12 +586,12 @@ func (s *TopicWriteService) ToggleHide(ctx context.Context, userID, role, topicI
 // already the current best answer it is cleared, otherwise it becomes the
 // best answer. The reply author's moemoepoint is adjusted by ±7 to match
 // the legacy Nitro behavior.
-func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID, role, topicID, replyID int) *errors.AppError {
+func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID int, canModerate bool, topicID, replyID int) *errors.AppError {
 	topic, err := s.topicRepo.FindByID(topicID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && role < 2 {
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("只有话题作者或管理员可以设置最佳回答")
 	}
 

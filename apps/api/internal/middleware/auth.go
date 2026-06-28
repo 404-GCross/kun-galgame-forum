@@ -33,7 +33,13 @@ const (
 	SessionCookieName = "kungal_session"
 	// SessionPrefix namespaces session keys in Redis so a shared Redis
 	// instance can't collide kungal vs moyu. kungal: "kungal:session:".
-	SessionPrefix = "kungal:session:"
+	//
+	// The ":v2:" generation suffix was added when UserInfo dropped the legacy
+	// numeric `role` field for the OAuth named-role set (`Roles []string`).
+	// Bumping the namespace abandons every pre-cutover session whose blob still
+	// carries the old shape, forcing a clean re-login into the new shape (an
+	// explicitly authorized one-time logout) — no decode shim required.
+	SessionPrefix = "kungal:session:v2:"
 	// SessionTTL is the SLIDING lifetime of a kungal session — applied to
 	// both the Redis entry and the browser cookie, and re-extended while the
 	// user is active (see renewSlidingSession). 90 days matches the OAuth
@@ -66,33 +72,15 @@ type UserInfo struct {
 	Sub   string `json:"sub"` // OAuth UUID
 	Name  string `json:"name"`
 	Email string `json:"email"`
-	Role  int    `json:"role"` // derived from OAuth roles claim — see RoleFromOAuthRoles
+	// Roles is the raw OAuth `roles` claim — an UNORDERED SET of name strings
+	// (contract docs/oauth/11-roles.md). The implicit `user` default never
+	// appears, so a plain logged-in user has an empty slice. Authorization is
+	// expressed as a capability over this set via pkg/role (CanModerate /
+	// CanAdminister / IsCreator) — never a number, never an ordered rank.
+	Roles []string `json:"roles"`
 }
 
-// RoleFromOAuthRoles maps the OAuth `roles` claim (e.g. ["user", "admin"])
-// to kungal's internal numeric hierarchy used by RequireRole(N) middleware:
-//
-//	3 — super admin (delete users, sensitive admin ops)
-//	2 — moderator  (ban, content moderation, doc/website/update writes)
-//	1 — normal user
-//
-// Anything else falls through to 1. The mapping is centralized here so
-// every place that derives Role from OAuth uses the same rules.
-func RoleFromOAuthRoles(roles []string) int {
-	for _, r := range roles {
-		if r == "admin" || r == "super_admin" {
-			return 3
-		}
-	}
-	for _, r := range roles {
-		if r == "moderator" || r == "mod" {
-			return 2
-		}
-	}
-	return 1
-}
-
-// SessionData is stored in Redis under "session:{token}".
+// SessionData is stored in Redis under SessionKey(token).
 type SessionData struct {
 	UserInfo
 	OAuthAccessToken  string `json:"oauth_access_token"`
@@ -314,19 +302,19 @@ func refreshSession(
 	session.OAuthRefreshToken = refreshed.RefreshToken
 	session.OAuthExpiresAt = time.Now().Unix() + int64(refreshed.ExpiresIn)
 
-	// Re-derive Role from fresh userinfo so an upstream role change (a demoted
-	// admin / promoted mod) takes effect at the next token refresh instead of
-	// being frozen at login for the whole session. A ban surfaced here is
-	// enforced immediately; a transient userinfo failure is non-fatal — the
-	// tokens already refreshed, so we keep the previously cached Role.
+	// Re-read the roles claim from fresh userinfo so an upstream role change (a
+	// demoted admin / promoted mod) takes effect at the next token refresh
+	// instead of being frozen at login for the whole session. A ban surfaced
+	// here is enforced immediately; a transient userinfo failure is non-fatal —
+	// the tokens already refreshed, so we keep the previously cached roles.
 	if info, uErr := oauthClient.FetchUserInfo(refreshed.AccessToken); uErr == nil {
-		session.Role = RoleFromOAuthRoles(info.Roles)
+		session.Roles = info.Roles
 	} else if oauth.IsBanned(uErr) {
 		slog.Warn("刷新后 userinfo 返回账号封禁, 清除 session", "error", uErr)
 		rdb.Del(ctx, SessionKey(token))
 		return errors.ErrAccountBanned()
 	} else {
-		slog.Warn("刷新后拉取 userinfo 失败, 保留旧 Role", "error", uErr)
+		slog.Warn("刷新后拉取 userinfo 失败, 保留旧 roles", "error", uErr)
 	}
 
 	data, mErr := json.Marshal(session)

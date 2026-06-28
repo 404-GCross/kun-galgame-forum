@@ -226,18 +226,18 @@ func (s *CommentService) ToggleCommentLike(ctx context.Context, userID, commentI
 // Delete comment
 // ──────────────────────────────────────────
 
-func (s *CommentService) DeleteComment(ctx context.Context, userID, role, commentID int) *errors.AppError {
+func (s *CommentService) DeleteComment(ctx context.Context, userID int, canModerate bool, commentID int) *errors.AppError {
 	comment, err := s.commentRepo.FindCommentByID(commentID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该评论")
 	}
-	if comment.UserID != userID && role < 2 {
+	if comment.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此评论")
 	}
 
 	likeCount, _ := s.commentRepo.CountCommentLikes(commentID)
 	penalty := 3
-	if comment.UserID == userID && role < 2 {
+	if comment.UserID == userID && !canModerate {
 		penalty = 3 * int(likeCount+1)
 	}
 

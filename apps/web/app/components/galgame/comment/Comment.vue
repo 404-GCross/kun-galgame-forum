@@ -33,7 +33,8 @@ const emit = defineEmits<{
 }>()
 
 const galgame = inject<GalgameDetail>('galgame')
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const isShowReply = ref(false)
 const isEditing = ref(false)
@@ -41,7 +42,10 @@ const editingContent = ref('')
 const isSavingEdit = ref(false)
 
 const isShowDelete = computed(
-  () => props.comment.user?.id === id || galgame?.user.id === id || role >= 2
+  () =>
+    props.comment.user?.id === id ||
+    galgame?.user.id === id ||
+    canModerate.value
 )
 // Only the author can edit. Moderators can delete but not silently
 // rewrite — that's a deliberate authority boundary.

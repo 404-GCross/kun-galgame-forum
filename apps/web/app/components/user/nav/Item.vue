@@ -2,7 +2,7 @@
 import { KUN_USER_PAGE_NAV_MAP } from '~/constants/user'
 import type { Nav } from '../utils/routeName'
 
-const { id: storeUid, role } = storeToRefs(usePersistUserStore())
+const { id: storeUid } = storeToRefs(usePersistUserStore())
 
 const props = defineProps<{
   userId: number
@@ -29,17 +29,11 @@ const iconMap: Record<string, string> = {
   comment: 'uil:comment-dots'
 }
 
-const currentPageUserRoles = computed(() => {
-  if (!storeUid.value) {
-    return 1
-  }
-
-  if (props.userId === storeUid.value) {
-    return 4
-  } else {
-    return role.value
-  }
-})
+// Owner = the logged-in viewer is looking at their OWN profile (id match,
+// never a role). Gates the owner-only nav entries (e.g. 设置).
+const isOwner = computed(
+  () => !!storeUid.value && props.userId === storeUid.value
+)
 
 const handleCollapsed = async (item: Nav) => {
   if (item.collapsed !== undefined) {
@@ -59,7 +53,7 @@ const handleCollapsed = async (item: Nav) => {
     <div
       v-for="(kun, index) in nav"
       :key="index"
-      v-show="kun.permission?.includes(currentPageUserRoles)"
+      v-show="!kun.ownerOnly || isOwner"
     >
       <KunButton
         :full-width="true"

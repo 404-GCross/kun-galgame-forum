@@ -74,7 +74,7 @@ export interface GalgameEditStoreTemp {
   // links are preserved instead of being wiped to nothing on merge.
   linksBaseline?: string
   // True when the current user is the galgame's creator or an
-  // admin/moderator (role>=2): wiki lets them edit directly via
+  // admin/moderator (canModerate): wiki lets them edit directly via
   // PUT /galgame/:gid (instant, new revision) instead of opening a PR.
   // Computed once at hydration (Rewrite.vue has galgame.user + the user
   // store); Footer.vue branches the submit endpoint on it. Draft.vue

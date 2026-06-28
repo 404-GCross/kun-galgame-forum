@@ -18,8 +18,11 @@ const {
   coverImages,
   isTopicRewriting
 } = storeToRefs(useTempEditStore())
-const { id: userId, role } = usePersistUserStore()
-const isShowRewrite = computed(() => userId === props.topic.user.id || role > 1)
+const { id: userId } = usePersistUserStore()
+const { canModerate } = useRole()
+const isShowRewrite = computed(
+  () => userId === props.topic.user.id || canModerate.value
+)
 
 const rewriteTopic = async () => {
   id.value = props.topic.id

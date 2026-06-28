@@ -1,4 +1,4 @@
-// SWR revalidation of the current user's display fields (name / avatar / role /
+// SWR revalidation of the current user's display fields (name / avatar /
 // roles). The persisted KUNGalgameUser store renders these INSTANTLY (the stale
 // layer, survives SSR with no flash); this refreshes them in the background at
 // smart moments — full page load, tab refocus, network back online — so a
@@ -7,7 +7,7 @@
 // logout+login.
 //
 // Why /auth/me: /user/status is hit on every load but returns only moemoepoint /
-// check-in / message flags — NOT name/avatar/role. /auth/me is the only endpoint
+// check-in / message flags — NOT name/avatar/roles. /auth/me is the only endpoint
 // that returns the display fields fresh, yet the app otherwise calls it just
 // once, at the OAuth callback. This closes that gap.
 //
@@ -22,7 +22,6 @@ interface MeResponse {
   sub: string
   name: string
   avatar: string
-  role: number
   roles: string[]
   moemoepoint: number
   bio: string
@@ -75,7 +74,6 @@ export const useRefreshMe = () => {
         userStore.setProfileInfo({
           name: me.name,
           avatar: me.avatar,
-          role: me.role,
           roles: me.roles ?? []
         })
       }

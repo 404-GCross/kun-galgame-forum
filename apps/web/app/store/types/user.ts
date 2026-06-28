@@ -7,13 +7,12 @@ export interface UserStore {
   avatar: string
   avatarMin: string
   moemoepoint: number
-  role: number
-  // Raw OAuth role list (e.g. ["user","admin"]) — drives the account-switcher's
-  // admin badge; `role` is the derived numeric.
+  // Raw OAuth role list (e.g. ["admin"]) — an unordered SET of capability
+  // claims. `user` is implicit and NEVER appears; a plain logged-in user has
+  // roles = []. Every capability (canModerate / canAdminister / isCreator,
+  // including the avatar-menu "创作者申请" gate) is derived from this set via
+  // useRole(); there is no numeric tier and no separate creator flag.
   roles: string[]
-  // Holds the creator role (orthogonal to the numeric role). Refreshed per page
-  // from /user/status; gates the avatar-menu "创作者申请" entry.
-  isCreator: boolean
   isCheckIn: boolean
   dailyToolsetUploadBytes: number
 }

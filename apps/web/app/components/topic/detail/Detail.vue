@@ -7,10 +7,13 @@ const props = defineProps<{
   topic: TopicDetail
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 const tempReplyStore = useTempReplyStore()
 const { lastSuccessfulReply } = storeToRefs(tempReplyStore)
-const isTopicAdmin = computed(() => role > 1 || props.topic.user.id === id)
+const isTopicAdmin = computed(
+  () => canModerate.value || props.topic.user.id === id
+)
 
 const {
   replies,
@@ -48,7 +51,9 @@ if (targetFloor > 0 || targetCommentId > 0) {
     commentId: number
   }>(`/topic/${props.topic.id}/reply/locate`, {
     query:
-      targetCommentId > 0 ? { comment: targetCommentId } : { reply: targetFloor }
+      targetCommentId > 0
+        ? { comment: targetCommentId }
+        : { reply: targetFloor }
   })
   if (located?.page) {
     startPage = located.page

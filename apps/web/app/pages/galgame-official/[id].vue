@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_OFFICIAL_TYPE
 } from '~/constants/galgameOfficial'
 
-const { role } = usePersistUserStore()
+const { canModerate } = useRole()
 const route = useRoute()
 const officialId = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -77,7 +77,7 @@ const handleUpdateOfficial = async (data: UpdateGalgameOfficialPayload) => {
 // Two-stage safe delete (docs 04-taxonomy / 00-handbook): plain DELETE
 // is rejected while still referenced (wiki toasts the count); only after
 // an explicit second confirm do we retry ?force=true to purge relations
-// + hard delete. admin/moderator only — wiki gates; UI role>=2 (§15.2).
+// + hard delete. admin/moderator only — wiki gates; UI canModerate (§15.2).
 const isDeleting = ref(false)
 const handleDeleteOfficial = async () => {
   const ok = await useComponentMessageStore().alert(
@@ -132,9 +132,9 @@ if (data.value) {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 / 排序筛选），
-            数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame, 查看 NSFW
-            Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
+            本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 /
+            排序筛选）， 数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame,
+            查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
@@ -170,9 +170,9 @@ if (data.value) {
               entity="official"
               :id="officialId"
               :entity-label="`会社「${data.name}」`"
-              :can-revert="role >= 2"
+              :can-revert="canModerate"
             />
-            <template v-if="role >= 2">
+            <template v-if="canModerate">
               <KunButton @click="openEditOfficialModal">编辑会社</KunButton>
               <KunButton
                 variant="flat"

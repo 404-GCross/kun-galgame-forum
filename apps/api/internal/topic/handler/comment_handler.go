@@ -8,6 +8,7 @@ import (
 	"kun-galgame-api/internal/topic/service"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -103,7 +104,7 @@ func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("无效的评论 ID"))
 	}
 
-	if appErr := h.commentService.DeleteComment(c.Context(), user.ID, user.Role, commentID); appErr != nil {
+	if appErr := h.commentService.DeleteComment(c.Context(), user.ID, role.CanModerate(user.Roles), commentID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

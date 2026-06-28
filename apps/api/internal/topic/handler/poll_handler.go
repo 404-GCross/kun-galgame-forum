@@ -5,6 +5,7 @@ import (
 	"kun-galgame-api/internal/topic/dto"
 	"kun-galgame-api/internal/topic/service"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,7 +32,7 @@ func (h *PollHandler) CreatePoll(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.pollService.CreatePoll(c.Context(), user.ID, user.Role, &req); appErr != nil {
+	if appErr := h.pollService.CreatePoll(c.Context(), user.ID, role.CanModerate(user.Roles), &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -51,7 +52,7 @@ func (h *PollHandler) UpdatePoll(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.pollService.UpdatePoll(c.Context(), user.ID, user.Role, &req); appErr != nil {
+	if appErr := h.pollService.UpdatePoll(c.Context(), user.ID, role.CanModerate(user.Roles), &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -112,7 +113,7 @@ func (h *PollHandler) DeletePoll(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.pollService.DeletePoll(c.Context(), user.ID, user.Role, req.PollID); appErr != nil {
+	if appErr := h.pollService.DeletePoll(c.Context(), user.ID, role.CanModerate(user.Roles), req.PollID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

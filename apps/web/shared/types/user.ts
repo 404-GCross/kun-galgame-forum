@@ -4,8 +4,10 @@ export interface UserInfo {
   id: number
   name: string
   avatar: string
-  role: number
-  is_creator?: boolean
+  // OAuth named-role set (empty for a plain user; `user` never appears). Drives
+  // the profile badge via managementRoleLabel + a creator chip. `creator` is
+  // orthogonal — no moderation/admin power.
+  roles: string[]
   status: number
   moemoepoint: number
   bio: string

@@ -55,7 +55,6 @@ interface WikiTaxonomyRevisionRow {
   action: string
   note?: string
   user_id?: number
-  user_role?: number
   changed_fields?: string[]
   ref_count?: number
   created: string
@@ -183,9 +182,7 @@ export const useRevisionHistory = (
   const diffCache = reactive<Record<number, SnapshotDiff>>({})
   const diffLoading = ref<number | null>(null)
 
-  const loadDiff = async (
-    rev: number
-  ): Promise<SnapshotDiff | null> => {
+  const loadDiff = async (rev: number): Promise<SnapshotDiff | null> => {
     if (diffCache[rev]) return diffCache[rev]!
     diffLoading.value = rev
     try {

@@ -13,7 +13,8 @@ const replyTo = ref<number | null>(null)
 const editingId = ref<number | null>(null)
 const editingContent = ref('')
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const handleClickReply = (comment: ToolsetComment) => {
   replyTo.value = replyTo.value === comment.id ? null : comment.id
@@ -75,7 +76,7 @@ const handleSaveEdit = async (commentId: number) => {
 }
 
 const canManage = (comment: ToolsetComment) =>
-  comment.user.id === id || role >= 2
+  comment.user.id === id || canModerate.value
 </script>
 
 <template>

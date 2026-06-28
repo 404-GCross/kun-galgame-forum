@@ -3,10 +3,11 @@ const props = defineProps<{
   reply: TopicReply
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 const topicUserId = inject<number>('topicUserId')
 
-const isDisabled = role < 2 && topicUserId !== id
+const isDisabled = !canModerate.value && topicUserId !== id
 
 const handleUpdateReplyPin = async () => {
   const res = await useComponentMessageStore().alert(

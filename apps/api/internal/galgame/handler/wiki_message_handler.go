@@ -39,8 +39,8 @@ func (h *WikiMessageHandler) MessagesMine(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"code": 0, "message": "成功", "data": json.RawMessage(data)})
 }
 
-// AdminMessages — GET /api/admin/galgame/messages (role >= 2)
-// Caller must already be in a RequireRole(2)-gated route group.
+// AdminMessages — GET /api/admin/galgame/messages (moderator+)
+// Caller must already be in a RequireModerator()-gated route group.
 func (h *WikiMessageHandler) AdminMessages(c *fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

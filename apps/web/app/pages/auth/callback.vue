@@ -52,7 +52,6 @@ onMounted(async () => {
     sub: string
     name: string
     avatar: string
-    role: number
     roles: string[]
     moemoepoint: number
     bio: string
@@ -75,10 +74,7 @@ onMounted(async () => {
       // active users.
       avatarMin: result.avatar ? withImageVariant(result.avatar, '100') : '',
       moemoepoint: result.moemoepoint,
-      role: result.role,
       roles: result.roles ?? [],
-      // Corrected on the next page by Nav.vue's /user/status fetch.
-      isCreator: false,
       isCheckIn: false,
       dailyToolsetUploadBytes: 0
     })

@@ -26,8 +26,8 @@ type UserProfile struct {
 	Sub    string `json:"sub"`
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
-	Role   int    `json:"role"`
-	// Roles is the raw OAuth role list — drives the account-switcher's admin badge.
+	// Roles is the raw OAuth role list — drives the account-switcher's admin
+	// badge and the FE-derived creator capability.
 	Roles       []string `json:"roles"`
 	Moemoepoint int      `json:"moemoepoint"`
 	Bio         string   `json:"bio"`
@@ -38,11 +38,12 @@ type UserProfile struct {
 // ──────────────────────────────────────────
 
 type UserProfileDetail struct {
-	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	Avatar      string    `json:"avatar"`
-	Role        int       `json:"role"`
-	IsCreator   bool      `json:"is_creator"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+	// Roles is the raw OAuth role list; the FE derives both the role badge and
+	// the creator capability from it.
+	Roles       []string  `json:"roles"`
 	Status      int       `json:"status"`
 	Moemoepoint int       `json:"moemoepoint"`
 	Bio         string    `json:"bio"`

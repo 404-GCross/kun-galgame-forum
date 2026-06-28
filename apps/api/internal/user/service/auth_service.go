@@ -94,8 +94,6 @@ func (s *AuthService) OAuthCallback(
 		moe = state.Moemoepoint
 	}
 
-	role := middleware.RoleFromOAuthRoles(oauthUser.Roles)
-
 	// /oauth/userinfo's `picture` only carries the legacy avatar URL (empty for
 	// users who set a new image_service avatar). Resolve through userclient,
 	// which maps avatar_image_hash → the image_service URL, and fall back to
@@ -117,7 +115,7 @@ func (s *AuthService) OAuthCallback(
 			Sub:   oauthUser.Sub,
 			Name:  oauthUser.Name,
 			Email: oauthUser.Email,
-			Role:  role,
+			Roles: oauthUser.Roles,
 		},
 		OAuthAccessToken:  tokenResp.AccessToken,
 		OAuthRefreshToken: tokenResp.RefreshToken,
@@ -137,7 +135,6 @@ func (s *AuthService) OAuthCallback(
 			Sub:         oauthUser.Sub,
 			Name:        oauthUser.Name,
 			Avatar:      avatar,
-			Role:        role,
 			Roles:       oauthUser.Roles,
 			Moemoepoint: moe,
 			Bio:         "", // bio is OAuth-owned, available via /auth/me
@@ -180,7 +177,6 @@ func (s *AuthService) GetProfile(
 		ID:          u.ID,
 		Name:        u.Name,
 		Avatar:      u.Avatar,
-		Role:        middleware.RoleFromOAuthRoles(u.Roles),
 		Roles:       u.Roles,
 		Moemoepoint: moe,
 		Bio:         u.Bio,

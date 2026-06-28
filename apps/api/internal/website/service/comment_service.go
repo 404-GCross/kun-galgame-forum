@@ -194,12 +194,12 @@ func (s *CommentService) CreateComment(
 // DeleteComment — DELETE /website/:domain/comment
 // ──────────────────────────────────────────
 
-func (s *CommentService) DeleteComment(userID, userRole, commentID int) *errors.AppError {
+func (s *CommentService) DeleteComment(userID int, canModerate bool, commentID int) *errors.AppError {
 	comment, err := s.commentRepo.FindByID(commentID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该评论")
 	}
-	if comment.UserID != userID && userRole < 2 {
+	if comment.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此评论")
 	}
 

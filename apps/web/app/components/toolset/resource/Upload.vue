@@ -45,9 +45,10 @@ type ToolsetUploadPart = {
 const resolveContentType = (file: File): string =>
   file.type && file.type.length > 0 ? file.type : DEFAULT_BINARY_CONTENT_TYPE
 
-const { moemoepoint, dailyToolsetUploadBytes, role } = storeToRefs(
+const { moemoepoint, dailyToolsetUploadBytes } = storeToRefs(
   usePersistUserStore()
 )
+const { canModerate } = useRole()
 const fileInput = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
 
@@ -64,9 +65,8 @@ const isLarge = computed(() => {
   const f = selectedFile.value
   return !!f && f.size > MAX_SMALL_FILE_SIZE
 })
-const isAdmin = computed(() => role.value > 1)
 const dailyUploadLimit = computed(() => {
-  if (isAdmin.value) {
+  if (canModerate.value) {
     return MAX_LARGE_FILE_SIZE
   }
 
@@ -79,7 +79,7 @@ const dailyUploadLimit = computed(() => {
   )
 })
 const maxSingleFileLimit = computed(() => {
-  if (isAdmin.value) {
+  if (canModerate.value) {
     return MAX_LARGE_FILE_SIZE
   }
 

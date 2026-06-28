@@ -5,9 +5,10 @@ import type { KnownAccount } from '~/composables/useKnownAccounts'
 
 const emit = defineEmits<{ close: [] }>()
 
-const { id, sub, name, moemoepoint, role, isCreator, isCheckIn } = storeToRefs(
+const { id, sub, name, moemoepoint, isCheckIn } = storeToRefs(
   usePersistUserStore()
 )
+const { canModerate, isCreator } = useRole()
 const { accounts } = useKnownAccounts()
 const route = useRoute()
 const {
@@ -18,14 +19,11 @@ const {
 } = storeToRefs(useTempSettingStore())
 
 const isShowMessageDot = computed(() => messageStatus.value === 'new')
-// role > 1 = 管理员 / 版主 (the /admin route is server-gated too; this just
-// hides the entry from regular users, matching moyu's isModerator check).
-const isAdmin = computed(() => role.value > 1)
 
-// "创作者申请" entry — only for regular users without the role. Moderators /
-// admins (role > 1) already publish galgames directly, and existing creators
-// don't need to apply, so both are excluded.
-const showCreatorApply = computed(() => role.value <= 1 && !isCreator.value)
+// "创作者申请" entry — only for plain users without the creator role.
+// Moderators / admins (canModerate) already publish galgames directly, and
+// existing creators don't need to apply, so both are excluded.
+const showCreatorApply = computed(() => !canModerate.value && !isCreator.value)
 
 // ── Account switching (docs/oauth/09-account-switching.md §3.6) ──────────────
 // Forum is a BFF, so the menu list is this device's localStorage "known accounts"
@@ -152,8 +150,11 @@ const openLogout = () => {
       />
     </NuxtLink>
 
+    <!-- 管理系统 — moderators / admins (canModerate). The /admin route is
+         server-gated too; this just hides the entry from plain users, matching
+         moyu's isModerator check. -->
     <NuxtLink
-      v-if="isAdmin"
+      v-if="canModerate"
       to="/admin/overview"
       class="hover:bg-default-100 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors"
       @click="emit('close')"

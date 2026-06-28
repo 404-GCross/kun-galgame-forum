@@ -6,6 +6,7 @@ import (
 	"kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -107,7 +108,7 @@ func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.commentService.DeleteComment(user.ID, user.Role, id, &req); appErr != nil {
+	if appErr := h.commentService.DeleteComment(user.ID, role.CanModerate(user.Roles), id, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "评论已删除")

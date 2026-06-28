@@ -12,9 +12,7 @@ export const usePersistUserStore = defineStore(
     const avatar = ref<UserStore['avatar']>('')
     const avatarMin = ref<UserStore['avatarMin']>('')
     const moemoepoint = ref<UserStore['moemoepoint']>(0)
-    const role = ref<UserStore['role']>(0)
     const roles = ref<UserStore['roles']>([])
-    const isCreator = ref<UserStore['isCreator']>(false)
     const isCheckIn = ref<UserStore['isCheckIn']>(false)
     const dailyToolsetUploadBytes = ref<UserStore['dailyToolsetUploadBytes']>(0)
 
@@ -28,22 +26,19 @@ export const usePersistUserStore = defineStore(
       // avatar paths get `-100`. Both coexist until the bulk migration.
       avatarMin.value = withImageVariant(user.avatar, '100')
       moemoepoint.value = user.moemoepoint
-      role.value = user.role
       roles.value = user.roles
-      isCreator.value = user.isCreator
       isCheckIn.value = user.isCheckIn
       dailyToolsetUploadBytes.value = user.dailyToolsetUploadBytes
     }
 
     // Merge ONLY the display fields /auth/me returns fresh (name / avatar /
-    // role / roles) — used by the SWR revalidation (useRefreshMe). Unlike
-    // setUserInfo it deliberately leaves the /user/status-owned fields
-    // (moemoepoint / isCheckIn / isCreator / dailyToolsetUploadBytes) untouched,
-    // so a background refetch can't reset them to their login-time defaults.
+    // roles) — used by the SWR revalidation (useRefreshMe). Unlike setUserInfo
+    // it deliberately leaves the /user/status-owned fields (moemoepoint /
+    // isCheckIn / dailyToolsetUploadBytes) untouched, so a background refetch
+    // can't reset them to their login-time defaults.
     const setProfileInfo = (profile: {
       name: string
       avatar: string
-      role: number
       roles: string[]
     }) => {
       name.value = profile.name
@@ -51,7 +46,6 @@ export const usePersistUserStore = defineStore(
       avatarMin.value = profile.avatar
         ? withImageVariant(profile.avatar, '100')
         : ''
-      role.value = profile.role
       roles.value = profile.roles
     }
 
@@ -62,9 +56,7 @@ export const usePersistUserStore = defineStore(
       avatar.value = ''
       avatarMin.value = ''
       moemoepoint.value = 0
-      role.value = 0
       roles.value = []
-      isCreator.value = false
       isCheckIn.value = false
       dailyToolsetUploadBytes.value = 0
     }
@@ -76,9 +68,7 @@ export const usePersistUserStore = defineStore(
       avatar,
       avatarMin,
       moemoepoint,
-      role,
       roles,
-      isCreator,
       isCheckIn,
       dailyToolsetUploadBytes,
       setUserInfo,

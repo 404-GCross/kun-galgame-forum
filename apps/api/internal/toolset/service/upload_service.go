@@ -60,13 +60,13 @@ func NewUploadService(art *artifactclient.Client, rdb *redis.Client, db *gorm.DB
 }
 
 // checkDailyUploadBudget rejects an upload that would push the user past their
-// daily byte budget (100MB + moemoepoint·MB; admins are bounded only by the
+// daily byte budget (100MB + moemoepoint·MB; moderators are bounded only by the
 // per-file cap). Read against the committed daily total; the per-upload
 // increment happens at Complete with the verified actual size. A missing state
 // row (brand-new user) reads as 0. Soft quota: concurrent inits can each pass
 // before any commits, but the per-file cap bounds the overshoot.
-func (s *UploadService) checkDailyUploadBudget(userID int, incoming int64, isAdmin bool) *errors.AppError {
-	if isAdmin {
+func (s *UploadService) checkDailyUploadBudget(userID int, incoming int64, canModerate bool) *errors.AppError {
+	if canModerate {
 		return nil
 	}
 	var state userModel.KungalUserState
@@ -92,7 +92,7 @@ func (s *UploadService) checkDailyUploadBudget(userID int, incoming int64, isAdm
 func (s *UploadService) Init(
 	ctx context.Context,
 	toolsetID, userID int,
-	isAdmin bool,
+	canModerate bool,
 	req *dto.UploadInitRequest,
 ) (*dto.UploadInitResponse, *errors.AppError) {
 	if req.FileSize > MaxLargeFileSize {
@@ -101,7 +101,7 @@ func (s *UploadService) Init(
 	if _, _, appErr := parseArchiveFilename(req.Filename); appErr != nil {
 		return nil, appErr
 	}
-	if appErr := s.checkDailyUploadBudget(userID, req.FileSize, isAdmin); appErr != nil {
+	if appErr := s.checkDailyUploadBudget(userID, req.FileSize, canModerate); appErr != nil {
 		return nil, appErr
 	}
 

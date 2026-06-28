@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KUN_USER_ROLE_MAP, KUN_USER_STATUS_MAP } from '~/constants/user'
+import { managementRoleLabel, KUN_USER_STATUS_MAP } from '~/constants/user'
 
 const props = defineProps<{
   user: UserInfo
@@ -74,9 +74,13 @@ const infoList = [
         </h1>
         <div class="mt-2 flex items-center space-x-3">
           <KunChip size="md" color="primary">
-            {{ KUN_USER_ROLE_MAP[user.role] }}
+            {{ managementRoleLabel(user.roles) }}
           </KunChip>
-          <KunChip v-if="user.is_creator" size="md" color="warning">
+          <KunChip
+            v-if="user.roles.includes('creator')"
+            size="md"
+            color="warning"
+          >
             创作者
           </KunChip>
           <KunChip size="md" color="success">

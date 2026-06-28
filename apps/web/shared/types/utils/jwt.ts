@@ -3,5 +3,4 @@ export interface KUNGalgamePayload {
   aud: string
   id: number
   name: string
-  role: number
 }

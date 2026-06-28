@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_TAG_TYPE
 } from '~/constants/galgameTag'
 
-const { role } = usePersistUserStore()
+const { canModerate, canAdminister } = useRole()
 const route = useRoute()
 const tagId = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -23,19 +23,22 @@ const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 const showTagModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
-const { data, status } = await useKunFetch<GalgameTagDetail>(`/galgame-tag/${tagId.value}`, {
-  method: 'GET',
-  query: {
-    page,
-    limit,
-    type,
-    language,
-    platform,
-    sortField,
-    sortOrder,
-    tagId
+const { data, status } = await useKunFetch<GalgameTagDetail>(
+  `/galgame-tag/${tagId.value}`,
+  {
+    method: 'GET',
+    query: {
+      page,
+      limit,
+      type,
+      language,
+      platform,
+      sortField,
+      sortOrder,
+      tagId
+    }
   }
-})
+)
 
 const openEditTagModal = () => {
   if (!data.value) {
@@ -88,9 +91,9 @@ if (data.value) {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 / 排序筛选），
-            数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame, 查看 NSFW
-            Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
+            本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 /
+            排序筛选）， 数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame,
+            查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
@@ -126,9 +129,9 @@ if (data.value) {
               entity="tag"
               :id="tagId"
               :entity-label="`标签「${data.name}」`"
-              :can-revert="role >= 2"
+              :can-revert="canModerate"
             />
-            <KunButton v-if="role > 2" @click="openEditTagModal">
+            <KunButton v-if="canAdminister" @click="openEditTagModal">
               编辑标签
             </KunButton>
           </div>

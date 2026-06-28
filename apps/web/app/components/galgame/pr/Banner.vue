@@ -13,10 +13,13 @@ const props = defineProps<{
   galgame: GalgameDetail
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 // Same gate as pr/Details.vue's merge/decline buttons: the galgame creator or
-// any admin/moderator (role >= 2) — i.e. exactly who can act on a PR.
-const canReview = computed(() => props.galgame.user.id === id || role >= 2)
+// any admin/moderator (canModerate) — i.e. exactly who can act on a PR.
+const canReview = computed(
+  () => props.galgame.user.id === id || canModerate.value
+)
 
 const activity = inject<{ open: boolean; tab: 'history' | 'pr' }>(
   'galgameActivity'

@@ -3,10 +3,10 @@
 // entity-specific routing lives in useRevisionHistory; this component
 // is the visual shell.
 //
-// Permission gate: `canRevert` is calculated by the parent (creator
-// match + role check are entity-specific — for galgame it's
-// `galgame.user.id === currentUser || role>=2`; for taxonomies it's
-// `role>=2` admin/mod). Parent decides, the list just renders the
+// Permission gate: `canRevert` is calculated by the parent (the creator
+// match + capability check are entity-specific — for galgame it's
+// `galgame.user.id === currentUser || canModerate`; for taxonomies it's
+// just `canModerate` admin/mod). Parent decides, the list just renders the
 // button conditionally.
 import type { RevisionEntity } from '~/composables/useRevisionHistory'
 
@@ -85,10 +85,7 @@ const handleRevert = async (rev: number) => {
 
     <KunLoading v-if="status === 'pending'" />
 
-    <KunNull
-      v-else-if="!items.length"
-      description="暂无编辑历史记录"
-    />
+    <KunNull v-else-if="!items.length" description="暂无编辑历史记录" />
 
     <div
       v-for="rev in items"

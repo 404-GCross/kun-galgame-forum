@@ -8,7 +8,7 @@ const pageData = ref({
   language: 'zh-cn'
 })
 
-const { role } = usePersistUserStore()
+const { canAdminister } = useRole()
 
 const { data, status, refresh } = await useKunFetch<UpdateHistoryList>(
   '/update/history',
@@ -56,7 +56,7 @@ const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
       description="本页面记录了网站所有的更新日志, 新特性, BUG 修复, 功能更改, 性能优化等等"
     >
       <template #endContent>
-        <div v-if="role > 2" class="flex justify-end">
+        <div v-if="canAdminister" class="flex justify-end">
           <KunButton @click="showUpdateLogModal = true">创建更新日志</KunButton>
         </div>
       </template>
@@ -81,7 +81,7 @@ const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
         <KunButton
           variant="flat"
           size="sm"
-          v-if="role > 2"
+          v-if="canAdminister"
           @click="openEditUpdateLogModal(update)"
         >
           编辑

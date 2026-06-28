@@ -37,8 +37,8 @@ func (s *WikiMessageService) MessagesMine(
 }
 
 // AdminMessages proxies the admin moderation queue. The handler must have
-// already checked RequireRole(2) — this is a thin pass-through and does
-// not re-validate role.
+// already checked RequireModerator() — this is a thin pass-through and does
+// not re-validate the caller's roles.
 func (s *WikiMessageService) AdminMessages(
 	ctx context.Context,
 	token string,

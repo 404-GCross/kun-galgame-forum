@@ -17,7 +17,8 @@ const props = defineProps<{
   refresh: () => void
 }>()
 
-const { id: userId, role } = usePersistUserStore()
+const { id: userId } = usePersistUserStore()
+const { canModerate } = useRole()
 
 // Even on the detail page (which the reader opened deliberately), a 严重剧透
 // review stays behind a one-click frosted overlay; 部分剧透 / 无剧透 show直接.
@@ -27,7 +28,9 @@ const isSummaryMasked = computed(
 )
 
 const canEdit = computed(() => props.data.user.id === userId)
-const canDelete = computed(() => props.data.user.id === userId || role >= 2)
+const canDelete = computed(
+  () => props.data.user.id === userId || canModerate.value
+)
 const rating = computed(() =>
   calcGalgameRating(
     { ...props.data },
@@ -221,11 +224,7 @@ const handleDeleteRating = async () => {
 
       <div class="flex items-center justify-between gap-2">
         <div class="space-x-1">
-          <KunButton
-            size="lg"
-            color="default"
-            variant="light"
-          >
+          <KunButton size="lg" color="default" variant="light">
             <KunIcon name="lucide:eye" />
             <span class="text-sm">浏览</span>
             <span class="text-sm">{{ data.view }}</span>

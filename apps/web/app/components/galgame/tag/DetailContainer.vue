@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_TAG_TYPE
 } from '~/constants/galgameTag'
 
-const { role } = usePersistUserStore()
+const { canModerate } = useRole()
 const route = useRoute()
 const tagId = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -20,10 +20,13 @@ const pageData = reactive({
 const showTagModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
-const { data, status } = await useKunFetch<GalgameTagDetail>(`/galgame-tag/${tagId.value}`, {
-  method: 'GET',
-  query: pageData
-})
+const { data, status } = await useKunFetch<GalgameTagDetail>(
+  `/galgame-tag/${tagId.value}`,
+  {
+    method: 'GET',
+    query: pageData
+  }
+)
 
 const openEditTagModal = () => {
   if (!data.value) {
@@ -56,7 +59,7 @@ const handleUpdateTag = async (data: UpdateGalgameTagPayload) => {
 // by any galgame (wiki returns the reference count, surfaced by
 // kunFetch as a toast). Only then, after an explicit second
 // confirmation, retry with ?force=true to purge all relations + hard
-// delete. admin/moderator only — wiki gates; UI gated role>=2 (§15.2).
+// delete. admin/moderator only — wiki gates; UI gated canModerate (§15.2).
 const isDeleting = ref(false)
 const handleDeleteTag = async () => {
   const ok = await useComponentMessageStore().alert(
@@ -136,7 +139,7 @@ const handleDeleteTag = async () => {
               {{ a }}
             </KunChip>
           </div>
-          <div v-if="role >= 2" class="flex justify-end gap-2">
+          <div v-if="canModerate" class="flex justify-end gap-2">
             <KunButton @click="openEditTagModal">编辑标签</KunButton>
             <KunButton
               variant="flat"
@@ -179,7 +182,7 @@ const handleDeleteTag = async () => {
       entity="tag"
       :id="tagId"
       :entity-label="`标签「${data.name}」`"
-      :can-revert="role >= 2"
+      :can-revert="canModerate"
     />
   </div>
 </template>

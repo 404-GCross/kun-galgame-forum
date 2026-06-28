@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"slices"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
 )
 
@@ -22,9 +22,6 @@ const (
 	creatorReviewMinLen   = 100  // 简评字数门槛
 	creatorMinMoemoepoint = 2000 // 萌萌点（数据源:OAuth 权威余额，单一来源）
 	creatorSource         = "forum"
-	// creatorRoleName is OAuth's granted-on-approval role string (matches infra
-	// CreatorRoleName); the profile badge keys off the same value.
-	creatorRoleName = "creator"
 )
 
 // CreatorEligibility is the forum-side eligibility snapshot (current counts vs
@@ -102,7 +99,7 @@ func (s *CreatorService) Status(ctx context.Context, userID int, token string) (
 	}
 	isCreator := false
 	if u, ok, uErr := s.userClient.User(ctx, userID); ok && uErr == nil {
-		isCreator = slices.Contains(u.Roles, creatorRoleName)
+		isCreator = role.IsCreator(u.Roles)
 	}
 	return e, app, isCreator, nil
 }

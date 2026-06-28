@@ -29,9 +29,10 @@ import (
 //
 // Scope: account identity is owned by OAuth; galgame ENTRIES are wiki-owned
 // (local `galgame` has no user_id) — both out of reach by design. Admin-only
-// content (doc_article / todo / update_log / unmoe, all RequireRole>=2) is
-// intentionally NOT handled here because the service refuses to purge any
-// user with role > 1, so such rows can never belong to a purgeable user.
+// content (doc_article / todo / update_log / unmoe, all RequireModerator()) is
+// intentionally NOT handled here because the service refuses to purge any user
+// with the moderation capability, so such rows can never belong to a purgeable
+// user.
 // For private chat we delete only the user's OWN sent messages (keeping the
 // counterparty's), then repair / remove the affected rooms.
 type PurgeRepository struct {

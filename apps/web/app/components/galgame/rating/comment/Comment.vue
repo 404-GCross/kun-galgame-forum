@@ -11,13 +11,16 @@ const emits = defineEmits<{
   onDeleteSuccess: [commentId: number]
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const isShowReply = ref(false)
 const isEditing = ref(false)
 const editingContent = ref('')
 
-const canDelete = computed(() => props.comment.user.id === id || role >= 2)
+const canDelete = computed(
+  () => props.comment.user.id === id || canModerate.value
+)
 const canEdit = computed(() => props.comment.user.id === id)
 
 const startEdit = () => {

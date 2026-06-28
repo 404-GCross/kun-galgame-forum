@@ -7,9 +7,10 @@ const emits = defineEmits<{
   removeComment: [commentId: number]
 }>()
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 
-const isAdmin = role > 1
+const isAdmin = canModerate.value
 const canDelete = computed(() => id === props.comment.user.id || isAdmin)
 
 const handleDeleteComment = async () => {
@@ -21,13 +22,10 @@ const handleDeleteComment = async () => {
     return
   }
 
-  const result = await kunFetch(
-    `/website/${props.comment.websiteId}/comment`,
-    {
-      method: 'DELETE',
-      query: { commentId: props.comment.id }
-    }
-  )
+  const result = await kunFetch(`/website/${props.comment.websiteId}/comment`, {
+    method: 'DELETE',
+    query: { commentId: props.comment.id }
+  })
 
   if (result) {
     emits('removeComment', props.comment.id)

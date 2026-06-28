@@ -16,7 +16,7 @@ const pagedGalgames = computed(() =>
   props.data.galgame.slice((page.value - 1) * limit, page.value * limit)
 )
 
-const { role } = usePersistUserStore()
+const { canModerate, canAdminister } = useRole()
 const showSeriesModal = ref(false)
 const editingSeries = ref<UpdateGalgameSeriesPayload>(
   {} as UpdateGalgameSeriesPayload
@@ -109,10 +109,10 @@ const handleDeleteSeries = async () => {
               entity="series"
               :id="data.id"
               :entity-label="`系列「${data.name}」`"
-              :can-revert="role >= 2"
+              :can-revert="canModerate"
             />
             <KunButton
-              v-if="role > 2"
+              v-if="canAdminister"
               variant="light"
               color="danger"
               @click="handleDeleteSeries"

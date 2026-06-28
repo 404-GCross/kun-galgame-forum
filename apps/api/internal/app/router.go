@@ -368,7 +368,7 @@ func (a *App) setupRoutes() {
 	// users go through POST /galgame/submit instead. We mirror the gate
 	// here so non-admin attempts fail fast before the wiki hop.
 	authed.Post("/galgame",
-		middleware.RequireRole(2),
+		middleware.RequireModerator(),
 		a.GalgameHandler.Create,
 	)
 	authed.Put("/galgame/:gid", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
@@ -440,10 +440,10 @@ func (a *App) setupRoutes() {
 	authed.Post("/toolset/:id/upload/abort", a.ToolsetUploadHandler.UploadAbort)
 
 	// ════════════════════════════════════════════
-	// ADMIN routes (require role >= 2 or 3)
+	// ADMIN routes (moderator / admin capability)
 	// ════════════════════════════════════════════
 
-	admin := authed.Group("", middleware.RequireRole(3))
+	admin := authed.Group("", middleware.RequireAdmin())
 	admin.Get("/admin/overview/all", a.AdminOverviewHandler.GetOverview)
 	admin.Get("/admin/overview/stats", a.AdminOverviewHandler.GetStats)
 
@@ -454,20 +454,20 @@ func (a *App) setupRoutes() {
 	admin.Get("/admin/user/:id/content-stats", a.AdminPurgeHandler.GetUserContentStats)
 	admin.Delete("/admin/user/:id/content", a.AdminPurgeHandler.PurgeUserContent)
 
-	// Galgame admin (role >= 2): wiki submission review queue +
+	// Galgame admin (moderator+): wiki submission review queue +
 	// approve/decline/ban actions. Wiki requires admin/moderator on these
 	// (per docs/galgame_wiki/06-admin.md + 08-messages.md); we mirror the
 	// gate locally and forward via ProxyWriteWithToken so the wiki sees
 	// the calling admin's identity for the revision/message side effects.
-	galgameAdmin := authed.Group("", middleware.RequireRole(2))
+	galgameAdmin := authed.Group("", middleware.RequireModerator())
 	galgameAdmin.Get("/admin/galgame/messages", a.GalgameMessageHandler.AdminMessages)
 	galgameAdmin.Put(
 		"/admin/galgame/:gid/status",
 		a.GalgameWikiHandler.ProxyWriteWithToken("PUT"),
 	)
 
-	// Doc admin (role >= 2)
-	docAdmin := authed.Group("", middleware.RequireRole(2))
+	// Doc admin (moderator+)
+	docAdmin := authed.Group("", middleware.RequireModerator())
 	docAdmin.Post("/doc/article", a.DocArticleHandler.CreateArticle)
 	docAdmin.Put("/doc/article", a.DocArticleHandler.UpdateArticle)
 	docAdmin.Delete("/doc/article", a.DocArticleHandler.DeleteArticle)
@@ -478,8 +478,8 @@ func (a *App) setupRoutes() {
 	docAdmin.Put("/doc/tag", a.DocTagHandler.UpdateTag)
 	docAdmin.Delete("/doc/tag", a.DocTagHandler.DeleteTag)
 
-	// Website admin (role >= 2)
-	wsAdmin := authed.Group("", middleware.RequireRole(2))
+	// Website admin (moderator+)
+	wsAdmin := authed.Group("", middleware.RequireModerator())
 	wsAdmin.Post("/website", a.WebsiteHandler.CreateWebsite)
 	wsAdmin.Put("/website/:domain", a.WebsiteHandler.UpdateWebsite)
 	wsAdmin.Delete("/website/:domain", a.WebsiteHandler.DeleteWebsite)
@@ -488,8 +488,8 @@ func (a *App) setupRoutes() {
 	wsAdmin.Put("/website-tag", a.WebsiteTagHandler.UpdateWebsiteTag)
 	wsAdmin.Delete("/website-tag", a.WebsiteTagHandler.DeleteWebsiteTag)
 
-	// Update admin (role >= 2)
-	updateAdmin := authed.Group("", middleware.RequireRole(2))
+	// Update admin (moderator+)
+	updateAdmin := authed.Group("", middleware.RequireModerator())
 	updateAdmin.Post("/update/history", a.UpdateHandler.CreateHistory)
 	updateAdmin.Put("/update/history", a.UpdateHandler.UpdateHistory)
 	updateAdmin.Delete("/update/history", a.UpdateHandler.DeleteHistory)
@@ -497,8 +497,8 @@ func (a *App) setupRoutes() {
 	updateAdmin.Put("/update/todo", a.UpdateHandler.UpdateTodo)
 	updateAdmin.Delete("/update/todo", a.UpdateHandler.DeleteTodo)
 
-	// Friend-link admin (role >= 2): CRUD + drag-reorder.
-	friendAdmin := authed.Group("", middleware.RequireRole(2))
+	// Friend-link admin (moderator+): CRUD + drag-reorder.
+	friendAdmin := authed.Group("", middleware.RequireModerator())
 	friendAdmin.Post("/admin/friend-link", a.FriendLinkHandler.Create)
 	friendAdmin.Put("/admin/friend-link", a.FriendLinkHandler.Update)
 	friendAdmin.Delete("/admin/friend-link", a.FriendLinkHandler.Delete)

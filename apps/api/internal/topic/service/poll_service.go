@@ -12,6 +12,7 @@ import (
 	"kun-galgame-api/internal/topic/repository"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -45,14 +46,15 @@ func NewPollService(
 
 func (s *PollService) CreatePoll(
 	ctx context.Context,
-	userID, role int,
+	userID int,
+	canModerate bool,
 	req *dto.CreatePollRequest,
 ) *errors.AppError {
 	topic, err := s.topicRepo.FindByID(req.TopicID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && role < 2 {
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限创建投票")
 	}
 
@@ -118,15 +120,16 @@ func (s *PollService) GetPollsByTopic(
 		return nil, errors.ErrInternal("获取投票失败")
 	}
 
-	userID, role := 0, 0
+	userID := 0
+	canModerate := false
 	if userInfo != nil {
 		userID = userInfo.ID
-		role = userInfo.Role
+		canModerate = role.CanModerate(userInfo.Roles)
 	}
 
 	responses := make([]dto.TopicPollResponse, 0, len(polls))
 	for _, poll := range polls {
-		responses = append(responses, s.buildPollResponse(ctx, &poll, userID, role))
+		responses = append(responses, s.buildPollResponse(ctx, &poll, userID, canModerate))
 	}
 	return responses, nil
 }
@@ -208,7 +211,8 @@ func (s *PollService) Vote(
 
 func (s *PollService) UpdatePoll(
 	ctx context.Context,
-	userID, role int,
+	userID int,
+	canModerate bool,
 	req *dto.UpdatePollRequest,
 ) *errors.AppError {
 	poll, err := s.pollRepo.FindByID(req.PollID)
@@ -220,11 +224,9 @@ func (s *PollService) UpdatePoll(
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	// `role < 2` not `<= 2` — role >= 2 is admin / moderator and MUST be
-	// allowed to edit polls on others' topics. The earlier `<= 2`
-	// inadvertently blocked role=2 (admin) from modifying any non-owned
-	// poll, leaving moderation effectively neutered.
-	if topic.UserID != userID && role < 2 {
+	// Moderators (CanModerate) MUST be allowed to edit polls on others'
+	// topics — otherwise moderation of non-owned polls is neutered.
+	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限修改此投票")
 	}
 
@@ -331,13 +333,15 @@ func collectOptionIDs(ops dto.PollOptionsUpdate) []int {
 
 func (s *PollService) DeletePoll(
 	ctx context.Context,
-	userID, role, pollID int,
+	userID int,
+	canModerate bool,
+	pollID int,
 ) *errors.AppError {
 	poll, err := s.pollRepo.FindByID(pollID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该投票")
 	}
-	if poll.UserID != userID && role < 2 {
+	if poll.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此投票")
 	}
 
@@ -365,14 +369,15 @@ func (s *PollService) GetVoteLog(
 		return nil, 0, errors.ErrNotFound("未找到该投票")
 	}
 
-	userID, role := 0, 0
+	userID := 0
+	canModerate := false
 	if userInfo != nil {
 		userID = userInfo.ID
-		role = userInfo.Role
+		canModerate = role.CanModerate(userInfo.Roles)
 	}
 
 	hasVoted, _ := s.pollRepo.HasUserVoted(pollID, userID)
-	if !canViewResults(poll, userID, role, hasVoted) || poll.IsAnonymous {
+	if !canViewResults(poll, userID, canModerate, hasVoted) || poll.IsAnonymous {
 		return []dto.PollVoteLogEntry{}, 0, nil
 	}
 

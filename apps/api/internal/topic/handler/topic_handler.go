@@ -8,6 +8,7 @@ import (
 	"kun-galgame-api/internal/topic/service"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -179,7 +180,7 @@ func (h *TopicHandler) Update(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.topicWriteService.Update(c.Context(), user.ID, user.Role, tid, &req); appErr != nil {
+	if appErr := h.topicWriteService.Update(c.Context(), user.ID, role.CanModerate(user.Roles), tid, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -327,7 +328,7 @@ func (h *TopicHandler) ToggleHide(c *fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("���效的话题 ID"))
 	}
 
-	if appErr := h.topicWriteService.ToggleHide(c.Context(), user.ID, user.Role, tid); appErr != nil {
+	if appErr := h.topicWriteService.ToggleHide(c.Context(), user.ID, role.CanModerate(user.Roles), tid); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -352,7 +353,7 @@ func (h *TopicHandler) SetBestAnswer(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.topicWriteService.SetBestAnswer(c.Context(), user.ID, user.Role, tid, req.ReplyID); appErr != nil {
+	if appErr := h.topicWriteService.SetBestAnswer(c.Context(), user.ID, role.CanModerate(user.Roles), tid, req.ReplyID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

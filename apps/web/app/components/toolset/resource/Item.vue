@@ -28,9 +28,10 @@ const isEditing = ref(false)
 const isDeleting = ref(false)
 const isSaving = ref(false)
 
-const { id: userId, role } = usePersistUserStore()
+const { id: userId } = usePersistUserStore()
+const { canModerate } = useRole()
 const canManage = computed(() => {
-  if (role >= 2) {
+  if (canModerate.value) {
     return true
   }
   return detail.value ? detail.value.user.id === userId : false
@@ -226,7 +227,7 @@ const handleSave = async () => {
         </KunButton>
 
         <KunButton
-          v-if="role >= 2 || (detail && canManage)"
+          v-if="canModerate || (detail && canManage)"
           :is-icon-only="true"
           variant="light"
           @click="isEditing = true"
@@ -234,7 +235,7 @@ const handleSave = async () => {
           <KunIcon name="lucide:pencil" />
         </KunButton>
         <KunButton
-          v-if="role >= 2 || (detail && canManage)"
+          v-if="canModerate || (detail && canManage)"
           :is-icon-only="true"
           color="danger"
           variant="light"

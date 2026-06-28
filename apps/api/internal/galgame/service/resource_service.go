@@ -267,14 +267,14 @@ func (s *ResourceService) CreateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) UpdateResource(
-	userID, role int,
+	userID int, canModerate bool,
 	req *dto.UpdateGalgameResourceRequest,
 ) *errors.AppError {
 	row, ok := s.resourceRepo.FindByID(req.GalgameResourceID)
 	if !ok {
 		return errors.ErrNotFound("未找到这个 Galgame 资源")
 	}
-	if row.UserID != userID && role < 2 {
+	if row.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限更新这个 Galgame 资源")
 	}
 
@@ -322,13 +322,13 @@ func (s *ResourceService) UpdateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) DeleteResource(
-	userID, role, resourceID int,
+	userID int, canModerate bool, resourceID int,
 ) *errors.AppError {
 	row, ok := s.resourceRepo.FindByID(resourceID)
 	if !ok {
 		return errors.ErrNotFound("未找到该 Galgame 资源")
 	}
-	if row.UserID != userID && role < 2 {
+	if row.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除这个 Galgame 资源")
 	}
 

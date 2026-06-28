@@ -22,7 +22,8 @@ const emits = defineEmits<{
   replyRemoved: [id: number]
 }>()
 
-const { id: myId, role } = usePersistUserStore()
+const { id: myId } = usePersistUserStore()
+const { canModerate } = useRole()
 
 const isShowReply = ref(false)
 const isEditing = ref(false)
@@ -31,7 +32,10 @@ const isSaving = ref(false)
 const showAllReplies = ref(false)
 
 const canDelete = computed(
-  () => props.comment.user.id === myId || props.ownerId === myId || role >= 2
+  () =>
+    props.comment.user.id === myId ||
+    props.ownerId === myId ||
+    canModerate.value
 )
 const canEdit = computed(() => props.comment.user.id === myId)
 const isEdited = computed(() => props.comment.edited != null)
@@ -136,7 +140,12 @@ const onReplyPublished = (comment: ToolsetComment) => {
       <div v-else class="space-y-2">
         <KunTextarea v-model="editContent" :rows="3" />
         <div class="flex justify-end gap-1">
-          <KunButton variant="light" color="danger" size="sm" @click="cancelEdit">
+          <KunButton
+            variant="light"
+            color="danger"
+            size="sm"
+            @click="cancelEdit"
+          >
             取消
           </KunButton>
           <KunButton size="sm" :loading="isSaving" @click="saveEdit">

@@ -11,9 +11,10 @@ const props = defineProps<{
 }>()
 const galgame = inject<GalgameDetail>('galgame')
 
-const { id, role } = usePersistUserStore()
+const { id } = usePersistUserStore()
+const { canModerate } = useRole()
 const isShowButton = computed(
-  () => galgame?.user.id === id || role >= 2
+  () => galgame?.user.id === id || canModerate.value
 )
 const isPending = computed(() => props.details.status === 0)
 const isFetching = ref(false)

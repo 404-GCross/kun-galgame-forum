@@ -249,14 +249,14 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 // ──────────────────────────────────────────
 
 func (s *ToolsetService) Update(
-	userID, userRole, id int,
+	userID int, canModerate bool, id int,
 	req *dto.UpdateToolsetRequest,
 ) *errors.AppError {
 	toolset, err := s.toolsetRepo.FindByID(id)
 	if err != nil {
 		return errors.ErrNotFound("未找到该工具")
 	}
-	if toolset.UserID != userID && userRole < 2 {
+	if toolset.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限编辑此工具")
 	}
 
@@ -287,12 +287,12 @@ func (s *ToolsetService) Update(
 // Delete — DELETE /toolset/:id
 // ──────────────────────────────────────────
 
-func (s *ToolsetService) Delete(userID, userRole, id int) *errors.AppError {
+func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.AppError {
 	toolset, err := s.toolsetRepo.FindByID(id)
 	if err != nil {
 		return errors.ErrNotFound("未找到该工具")
 	}
-	if toolset.UserID != userID && userRole < 2 {
+	if toolset.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此工具")
 	}
 

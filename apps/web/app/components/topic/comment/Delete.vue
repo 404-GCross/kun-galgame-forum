@@ -7,10 +7,11 @@ const emits = defineEmits<{
   removeComment: [commentId: number]
 }>()
 
-const { id, moemoepoint, role } = usePersistUserStore()
+const { id, moemoepoint } = usePersistUserStore()
+const { canModerate } = useRole()
 
-const isCommonUser = role < 2
-const isAdmin = role > 1
+const isCommonUser = !canModerate.value
+const isAdmin = canModerate.value
 const canDelete = computed(() => id === props.comment.user.id || isAdmin)
 
 const handleDeleteComment = async () => {

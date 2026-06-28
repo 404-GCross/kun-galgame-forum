@@ -79,7 +79,8 @@ onBeforeUnmount(teardownNoteObserver)
 // runWithContext.
 const nuxtApp = useNuxtApp()
 
-const { id: currentUserId, role: currentUserRole } = usePersistUserStore()
+const { id: currentUserId } = usePersistUserStore()
+const { canModerate } = useRole()
 
 // Local edit-modal state. Deliberately NOT going through
 // useTempGalgameResourceStore + Resource.vue's KunModal +
@@ -99,9 +100,9 @@ const detail = ref<null | GalgameResourceDetailLink>(null)
 const isFetching = ref(false)
 const isExpired = computed(() => props.resource.status === 1)
 const isOwner = computed(() => currentUserId === props.resource.user.id)
-// Admin/moderator (role > 1) can edit / delete any resource — mirrors
+// Admin/moderator (canModerate) can edit / delete any resource — mirrors
 // the rules on the dedicated detail page (resource/detail/Panel.vue).
-const canManage = computed(() => isOwner.value || currentUserRole > 1)
+const canManage = computed(() => isOwner.value || canModerate.value)
 
 const providerName = computed(() => {
   const names = props.resource.providerNames

@@ -18,12 +18,13 @@ import (
 
 // buildPollResponse assembles a TopicPollResponse from a poll model and the
 // associated option/voter data loaded via the repository. It does not perform
-// any DB writes; callers pass in the logged-in user context via userID/role.
-// Identity for voters/creator is hydrated from OAuth via userclient.
-func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.TopicPoll, userID, role int) dto.TopicPollResponse {
+// any DB writes; callers pass in the logged-in user context via userID plus the
+// caller's moderation capability. Identity for voters/creator is hydrated from
+// OAuth via userclient.
+func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.TopicPoll, userID int, canModerate bool) dto.TopicPollResponse {
 	options, _ := s.pollRepo.FindOptionsByPollID(poll.ID)
 	hasVoted, _ := s.pollRepo.HasUserVoted(poll.ID, userID)
-	canView := canViewResults(poll, userID, role, hasVoted)
+	canView := canViewResults(poll, userID, canModerate, hasVoted)
 
 	var userVotedOptionIDs map[int]bool
 	if userID > 0 {
@@ -95,8 +96,8 @@ func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.To
 
 // canViewResults returns true if the caller is allowed to see vote counts /
 // voter identities according to the poll's result_visibility setting.
-func canViewResults(poll *topicModel.TopicPoll, userID, role int, hasVoted bool) bool {
-	if userID == poll.UserID || role > 1 {
+func canViewResults(poll *topicModel.TopicPoll, userID int, canModerate, hasVoted bool) bool {
+	if userID == poll.UserID || canModerate {
 		return true
 	}
 	isPollFinished := poll.Status == "closed" ||

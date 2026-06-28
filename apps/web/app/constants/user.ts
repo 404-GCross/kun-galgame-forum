@@ -163,11 +163,26 @@ export const KUN_USER_PAGE_NAV_MAP: Record<string, string> = {
   comment: '评论'
 }
 
-export const KUN_USER_ROLE_MAP: Record<number, string> = {
-  1: '用户',
-  2: '管理员',
-  3: '超级管理员'
+// OAuth named roles → display label (docs/oauth/11-roles.md). `user` is implicit
+// (an empty role set) and has no entry — see managementRoleLabel's 普通用户 fallback.
+export const KUN_USER_ROLE_MAP: Record<string, string> = {
+  ren: '莲',
+  admin: '管理员',
+  moderator: '版主',
+  creator: '创作者'
 }
+
+// The single management-role label for a user's role set, picking the highest of
+// the inclusive management axis (ren > admin > moderator). `creator` is orthogonal
+// and rendered as its own chip, so it's excluded here; an empty set is 普通用户.
+export const managementRoleLabel = (roles: string[]): string =>
+  roles.includes('ren')
+    ? KUN_USER_ROLE_MAP.ren!
+    : roles.includes('admin')
+      ? KUN_USER_ROLE_MAP.admin!
+      : roles.includes('moderator')
+        ? KUN_USER_ROLE_MAP.moderator!
+        : '普通用户'
 
 export const KUN_USER_STATUS_MAP: Record<number, string> = {
   0: '正常',

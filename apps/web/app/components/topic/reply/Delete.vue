@@ -4,9 +4,10 @@ const props = defineProps<{
 }>()
 
 const tempReplyStore = useTempReplyStore()
-const { id, moemoepoint, role } = usePersistUserStore()
+const { id, moemoepoint } = usePersistUserStore()
+const { canModerate } = useRole()
 
-const isCommonUser = role < 2
+const isCommonUser = !canModerate.value
 const isDisabled = computed(() => id !== props.reply.user.id && isCommonUser)
 
 const handleDeleteReply = async () => {
@@ -33,13 +34,10 @@ const handleDeleteReply = async () => {
     return
   }
 
-  const result = await kunFetch<string>(
-    `/topic/${props.reply.topicId}/reply`,
-    {
-      method: 'DELETE',
-      query: { replyId: props.reply.id }
-    }
-  )
+  const result = await kunFetch<string>(`/topic/${props.reply.topicId}/reply`, {
+    method: 'DELETE',
+    query: { replyId: props.reply.id }
+  })
 
   if (result) {
     tempReplyStore.setSuccessfulReply({ data: props.reply, type: 'deleted' })

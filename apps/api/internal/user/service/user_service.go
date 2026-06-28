@@ -3,17 +3,16 @@ package service
 import (
 	"context"
 	"math/rand/v2"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	galgameClient "kun-galgame-api/internal/galgame/client"
-	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -80,8 +79,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID int) (*dto.User
 		ID:          u.ID,
 		Name:        u.Name,
 		Avatar:      u.Avatar,
-		Role:        middleware.RoleFromOAuthRoles(u.Roles),
-		IsCreator:   slices.Contains(u.Roles, "creator"),
+		Roles:       u.Roles,
 		Status:      u.Status,
 		Moemoepoint: moe,
 		Bio:         u.Bio,
@@ -187,7 +185,7 @@ func (s *UserService) GetUserStatus(ctx context.Context, userID int) (*dto.UserS
 	// "创作者申请" entry once the role is held. A lookup miss degrades to false.
 	isCreator := false
 	if u, ok, uErr := s.userClient.User(ctx, userID); ok && uErr == nil {
-		isCreator = slices.Contains(u.Roles, "creator")
+		isCreator = role.IsCreator(u.Roles)
 	}
 
 	return &dto.UserStatusResponse{

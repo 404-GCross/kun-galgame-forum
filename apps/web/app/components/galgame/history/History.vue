@@ -8,14 +8,13 @@
 // has moved to revision/List.vue so the 4 taxonomy detail pages can
 // reuse the same UI.
 const route = useRoute()
-const gid = computed(() =>
-  parseInt((route.params as { gid: string }).gid)
-)
+const gid = computed(() => parseInt((route.params as { gid: string }).gid))
 
 const galgame = inject<GalgameDetail>('galgame')
-const { id: currentUserId, role } = usePersistUserStore()
+const { id: currentUserId } = usePersistUserStore()
+const { canModerate } = useRole()
 const canRevert = computed(
-  () => galgame?.user.id === currentUserId || role >= 2
+  () => galgame?.user.id === currentUserId || canModerate.value
 )
 </script>
 

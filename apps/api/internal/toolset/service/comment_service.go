@@ -277,7 +277,7 @@ func (s *CommentService) UpdateComment(
 // ──────────────────────────────────────────
 
 func (s *CommentService) DeleteComment(
-	userID, userRole, toolsetID int,
+	userID int, canModerate bool, toolsetID int,
 	req *dto.DeleteCommentRequest,
 ) *errors.AppError {
 	comment, err := s.commentRepo.FindByID(req.CommentID)
@@ -294,7 +294,7 @@ func (s *CommentService) DeleteComment(
 		ownerID = 0
 	}
 
-	if comment.UserID != userID && ownerID != userID && userRole < 2 {
+	if comment.UserID != userID && ownerID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限删除此评论")
 	}
 

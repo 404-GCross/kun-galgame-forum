@@ -4,7 +4,7 @@ const props = defineProps<{
 }>()
 
 const metadata = computed(() => props.metadata)
-const { role } = usePersistUserStore()
+const { canAdminister } = useRole()
 const isDeleting = ref(false)
 
 const handleEdit = async () => {
@@ -87,7 +87,7 @@ const handleDelete = async () => {
           <span>{{ metadata.view }} 次浏览</span>
         </div>
 
-        <div v-if="role > 2" class="flex flex-wrap items-center gap-2">
+        <div v-if="canAdminister" class="flex flex-wrap items-center gap-2">
           <KunButton
             size="sm"
             variant="flat"
@@ -114,7 +114,11 @@ const handleDelete = async () => {
           <div class="text-default-500 flex items-center gap-2">
             <KunIcon name="lucide:calendar-days" />
             <p class="text-small text-inherit">
-              <KunTime :time="metadata.publishedTime" type="datetime" show-year />
+              <KunTime
+                :time="metadata.publishedTime"
+                type="datetime"
+                show-year
+              />
             </p>
           </div>
         </div>

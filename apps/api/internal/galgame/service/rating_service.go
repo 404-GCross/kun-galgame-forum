@@ -330,14 +330,14 @@ func (s *RatingService) UpdateRating(
 // ──────────────────────────────────────────
 
 func (s *RatingService) DeleteRating(
-	userID, role, ratingID int,
+	userID int, canModerate bool, ratingID int,
 ) *errors.AppError {
 	rating, err := s.ratingRepo.FindRatingForWrite(ratingID)
 	if err != nil {
 		return errors.ErrNotFound("未找到评分")
 	}
 	galgameOwner := s.ratingRepo.FindGalgameOwner(rating.GalgameID)
-	if rating.UserID != userID && galgameOwner != userID && role < 2 {
+	if rating.UserID != userID && galgameOwner != userID && !canModerate {
 		return errors.ErrForbidden("没有删除该评分的权限")
 	}
 
@@ -504,7 +504,7 @@ func (s *RatingService) UpdateRatingComment(
 // ──────────────────────────────────────────
 
 func (s *RatingService) DeleteRatingComment(
-	userID, role, commentID int,
+	userID int, canModerate bool, commentID int,
 ) *errors.AppError {
 	c, err := s.ratingRepo.FindCommentByID(commentID)
 	if err != nil {
@@ -512,7 +512,7 @@ func (s *RatingService) DeleteRatingComment(
 	}
 	galgameID := s.ratingRepo.FindRatingGalgameID(c.GalgameRatingID)
 	galgameOwner := s.ratingRepo.FindGalgameOwner(galgameID)
-	if c.UserID != userID && galgameOwner != userID && role < 2 {
+	if c.UserID != userID && galgameOwner != userID && !canModerate {
 		return errors.ErrForbidden("您没有删除该评论的权限")
 	}
 	if err := s.ratingRepo.DeleteCommentByID(s.ratingRepo.DB(), commentID); err != nil {
