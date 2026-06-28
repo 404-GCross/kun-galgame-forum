@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { kungal } from '~/config/kungal'
 
-const { role } = usePersistUserStore()
+// Hidden for any role beyond `user` (版主/管理员/创作者…); see useAdVisible.
+const showAd = useAdVisible()
 </script>
 
 <template>
@@ -9,7 +10,7 @@ const { role } = usePersistUserStore()
     class-name="flex"
     text="听说现在的 AI 比人还要 H ?"
     position="bottom"
-    v-if="role < 2"
+    v-if="showAd"
   >
     <KunLink target="_blank" :to="kungal.ad[0]!.link">
       <!-- `block` (was `hidden md:block`) so the ad shows on mobile too, where it

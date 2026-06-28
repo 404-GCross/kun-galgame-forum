@@ -10,7 +10,8 @@ const props = withDefaults(
   }
 )
 
-const { role } = usePersistUserStore()
+// Hidden for any role beyond `user` (版主/管理员/创作者…); see useAdVisible.
+const showAd = useAdVisible()
 </script>
 
 <template>
@@ -18,7 +19,7 @@ const { role } = usePersistUserStore()
     :class-name="cn(props.className)"
     target="_blank"
     :to="kungal.ad[0]!.link"
-    v-if="role < 2"
+    v-if="showAd"
   >
     <KunImage class-name="w-full rounded-lg" :src="kungal.ad[0]!.banner" />
   </KunLink>
