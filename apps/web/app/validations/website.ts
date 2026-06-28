@@ -15,12 +15,13 @@ const domainField = z
   .string()
   .min(1, '网站主域名不能为空')
   .max(500, '网站主域名最多 500 个字符')
-  .transform((value) =>
-    value
-      .trim()
-      .replace(/^https?:\/\//i, '') // tolerate a pasted scheme
-      .replace(/\/.*$/, '') // drop any path / trailing slash
-      .replace(/\.$/, '') // drop a trailing dot
+  .transform(
+    (value) =>
+      value
+        .trim()
+        .replace(/^https?:\/\//i, '') // tolerate a pasted scheme
+        .replace(/\/.*$/, '') // drop any path / trailing slash
+        .replace(/\.$/, '') // drop a trailing dot
   )
   .refine((value) => DOMAIN_RE.test(value), {
     message: '无效的网站主域名 (示例: www.kungal.com)'
@@ -36,14 +37,27 @@ export const getWebsiteDetailSchema = z.object({
 // Field names match the BE JSON tags exactly: `categoryId`, `ageLimit`,
 // `createTime` (camelCase) but `tag_ids` (snake_case — kept this way to
 // match the existing BE tag).
-export const createWebsiteSchema = z.object({
-  name: z.string().min(1, '网站名称不能为空').max(233, '网站名称最多 233 个字符'),
+// `icon` (legacy URL) is now optional — the content-addressed `iconImageHash`
+// from the cover uploader carries the image. The legacy URL is kept and
+// submitted unchanged so editing an un-migrated row without re-uploading the
+// icon never wipes it. The site still needs an icon, enforced by `requireIcon`
+// below (one of the two must be present).
+const websiteBaseSchema = z.object({
+  name: z
+    .string()
+    .min(1, '网站名称不能为空')
+    .max(233, '网站名称最多 233 个字符'),
   url: domainField,
   description: z
     .string()
     .min(10, '网站介绍最少 10 个字符')
     .max(1000, '网站介绍最多 1000 个字符'),
-  icon: z.url('无效的图标 URL').max(500, '图标 URL 最多 500 个字符'),
+  icon: z.string().max(500, '图标 URL 最多 500 个字符').optional().default(''),
+  iconImageHash: z
+    .string()
+    .max(128, '图标 hash 最多 128 个字符')
+    .optional()
+    .default(''),
   language: z.enum(['en-us', 'ja-jp', 'zh-cn', 'zh-tw']).default('zh-cn'),
   ageLimit: z.enum(['all', 'r18']).default('all'),
   categoryId: z.coerce.number<number>().min(1).max(9999999),
@@ -60,9 +74,22 @@ export const createWebsiteSchema = z.object({
   createTime: z.string().max(20, '网站创建时间描述最多 20 个字符').default('')
 })
 
-export const updateWebsiteSchema = createWebsiteSchema.extend({
-  websiteId: z.coerce.number<number>().min(1).max(9999999)
-})
+// Keep the icon effectively required: either the new hash or the legacy URL.
+// Root-level refine (no path) so the message renders cleanly on its own.
+const hasIcon = (data: { icon?: string; iconImageHash?: string }) =>
+  !!(data.iconImageHash || data.icon)
+const ICON_REQUIRED = { message: '请上传网站图标' }
+
+export const createWebsiteSchema = websiteBaseSchema.refine(
+  hasIcon,
+  ICON_REQUIRED
+)
+
+export const updateWebsiteSchema = websiteBaseSchema
+  .extend({
+    websiteId: z.coerce.number<number>().min(1).max(9999999)
+  })
+  .refine(hasIcon, ICON_REQUIRED)
 
 export const toggleLikeFavoriteSchema = z.object({
   websiteId: z.coerce.number<number>().min(1).max(9999999)

@@ -11,17 +11,20 @@ type TagService struct {
 	tagRepo      *repository.TagRepository
 	websiteRepo  *repository.WebsiteRepository
 	categoryRepo *repository.CategoryRepository
+	cdnBase      string
 }
 
 func NewTagService(
 	tagRepo *repository.TagRepository,
 	websiteRepo *repository.WebsiteRepository,
 	categoryRepo *repository.CategoryRepository,
+	cdnBase string,
 ) *TagService {
 	return &TagService{
 		tagRepo:      tagRepo,
 		websiteRepo:  websiteRepo,
 		categoryRepo: categoryRepo,
+		cdnBase:      cdnBase,
 	}
 }
 
@@ -52,7 +55,7 @@ func (s *TagService) GetDetail(name string, isSFW bool) (*dto.WebsiteTagDetailRe
 	websites := s.websiteRepo.FindByIDs(websiteIDs, isSFW)
 	catMap := s.categoryRepo.FindNamesByIDs(collectCategoryIDs(websites))
 	levelMap := s.tagRepo.LevelSumsByWebsiteIDs(collectWebsiteIDs(websites))
-	cards := websiteCardsFromRows(websites, catMap, levelMap)
+	cards := websiteCardsFromRows(websites, catMap, levelMap, s.cdnBase)
 
 	return &dto.WebsiteTagDetailResponse{
 		ID:           tag.ID,

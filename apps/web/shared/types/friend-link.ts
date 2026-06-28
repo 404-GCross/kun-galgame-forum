@@ -8,8 +8,12 @@ export interface FriendLink {
   name: string
   link: string
   description: string
-  /** Full image URL (image_service webp, or the legacy /friends/<name>.webp). */
+  /** Legacy full image URL (image_service webp, or the legacy /friends/<name>.webp). */
   banner: string
+  /** Content-addressed image hash driving the new uploader. */
+  bannerImageHash: string
+  /** Resolved CDN url for display (falls back to the legacy `banner`). */
+  bannerUrl: string
   status: FriendLinkStatus
   sortOrder: number
   created: string
@@ -30,6 +34,9 @@ export interface FriendLinkInput {
   name: string
   link: string
   description: string
+  /** Legacy URL, kept and submitted unchanged so un-migrated rows aren't wiped. */
   banner: string
+  /** Content-addressed image hash from the cover uploader. */
+  bannerImageHash: string
   status: FriendLinkStatus
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"kun-galgame-api/internal/website/dto"
 	"kun-galgame-api/internal/website/repository"
+	"kun-galgame-api/pkg/imageclient"
 )
 
 // websiteCardsFromRows maps slim website rows to WebsiteCard DTOs given the
@@ -13,20 +14,23 @@ func websiteCardsFromRows(
 	rows []repository.WebsiteListRow,
 	catMap map[int]string,
 	levelMap map[int]int,
+	cdnBase string,
 ) []dto.WebsiteCard {
 	cards := make([]dto.WebsiteCard, len(rows))
 	for i, r := range rows {
 		lvl := levelMap[r.ID]
 		cards[i] = dto.WebsiteCard{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Domain:      r.URL,
-			AgeLimit:    r.AgeLimit,
-			Level:       lvl,
-			Icon:        r.Icon,
-			Price:       lvl,
-			Category:    catMap[r.CategoryID],
+			ID:            r.ID,
+			Name:          r.Name,
+			Description:   r.Description,
+			Domain:        r.URL,
+			AgeLimit:      r.AgeLimit,
+			Level:         lvl,
+			Icon:          r.Icon,
+			IconImageHash: r.IconImageHash,
+			IconURL:       imageclient.ResolveURL(cdnBase, r.IconImageHash, r.Icon),
+			Price:         lvl,
+			Category:      catMap[r.CategoryID],
 		}
 	}
 	return cards
@@ -39,20 +43,23 @@ func websiteCardsFromRowsSingleCategory(
 	rows []repository.WebsiteListRow,
 	categoryName string,
 	levelMap map[int]int,
+	cdnBase string,
 ) []dto.WebsiteCard {
 	cards := make([]dto.WebsiteCard, len(rows))
 	for i, r := range rows {
 		lvl := levelMap[r.ID]
 		cards[i] = dto.WebsiteCard{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Domain:      r.URL,
-			AgeLimit:    r.AgeLimit,
-			Level:       lvl,
-			Icon:        r.Icon,
-			Price:       lvl,
-			Category:    categoryName,
+			ID:            r.ID,
+			Name:          r.Name,
+			Description:   r.Description,
+			Domain:        r.URL,
+			AgeLimit:      r.AgeLimit,
+			Level:         lvl,
+			Icon:          r.Icon,
+			IconImageHash: r.IconImageHash,
+			IconURL:       imageclient.ResolveURL(cdnBase, r.IconImageHash, r.Icon),
+			Price:         lvl,
+			Category:      categoryName,
 		}
 	}
 	return cards

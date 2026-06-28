@@ -51,7 +51,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
     description: website.description,
     inLanguage: website.language,
     isFamilyFriendly: website.ageLimit !== 'r18',
-    image: website.icon
+    image: website.iconUrl
   }
 
   const reviewsSchema: Review[] = website.comment.map((comment) => {
@@ -73,7 +73,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
     mainEntityOfPage: pageUrl,
     headline: `关于 ${website.name} 的介绍与评价`,
     description: website.description,
-    image: website.icon,
+    image: website.iconUrl,
     datePublished: new Date(website.created).toISOString(),
     dateModified: new Date(website.updated).toISOString(),
     author: publisherSchema,
@@ -107,7 +107,7 @@ if (data.value) {
     useKunSeoMeta({
       title: data.value.name,
       description: data.value.description,
-      ogImage: data.value.icon,
+      ogImage: data.value.iconUrl,
       articlePublishedTime: data.value.created.toString(),
       articleModifiedTime: data.value.updated.toString()
     })
@@ -131,7 +131,7 @@ if (data.value) {
         <div class="flex items-start space-x-6">
           <div class="flex-shrink-0">
             <KunImage
-              :src="data.icon"
+              :src="data.iconUrl"
               :alt="data.name"
               class="h-20 w-20 rounded-2xl object-cover"
             />
@@ -169,11 +169,7 @@ if (data.value) {
     <div class="space-y-3">
       <WebsiteDetailInfo :data="data" />
 
-      <KunCard
-        :is-transparent="false"
-        :is-hoverable="false"
-        class-name="p-6"
-      >
+      <KunCard :is-transparent="false" :is-hoverable="false" class-name="p-6">
         <h3 class="text-default-900 mb-4 text-lg font-semibold">相关标签</h3>
         <div class="flex flex-wrap gap-2">
           <WebsiteTag :tags="data.tags" :is-nav="true" />

@@ -10,17 +10,20 @@ type CategoryService struct {
 	categoryRepo *repository.CategoryRepository
 	websiteRepo  *repository.WebsiteRepository
 	tagRepo      *repository.TagRepository
+	cdnBase      string
 }
 
 func NewCategoryService(
 	categoryRepo *repository.CategoryRepository,
 	websiteRepo *repository.WebsiteRepository,
 	tagRepo *repository.TagRepository,
+	cdnBase string,
 ) *CategoryService {
 	return &CategoryService{
 		categoryRepo: categoryRepo,
 		websiteRepo:  websiteRepo,
 		tagRepo:      tagRepo,
+		cdnBase:      cdnBase,
 	}
 }
 
@@ -37,7 +40,7 @@ func (s *CategoryService) GetDetail(name string, isSFW bool) (*dto.WebsiteCatego
 	rows := s.websiteRepo.FindByCategoryID(category.ID, isSFW)
 	websiteIDs := collectWebsiteIDs(rows)
 	levelMap := s.tagRepo.LevelSumsByWebsiteIDs(websiteIDs)
-	cards := websiteCardsFromRowsSingleCategory(rows, category.Name, levelMap)
+	cards := websiteCardsFromRowsSingleCategory(rows, category.Name, levelMap, s.cdnBase)
 
 	return &dto.WebsiteCategoryDetailResponse{
 		ID:           category.ID,

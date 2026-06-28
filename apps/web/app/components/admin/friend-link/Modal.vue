@@ -29,7 +29,10 @@ const getInitial = (): FriendLinkInput => {
     name: d?.name ?? '',
     link: d?.link ?? '',
     description: d?.description ?? '',
+    // Keep the legacy URL so submitting an un-migrated friend preserves it; the
+    // hash drives the new uploader.
     banner: d?.banner ?? '',
+    bannerImageHash: d?.bannerImageHash ?? '',
     status: d?.status ?? 'normal'
   }
   return d?.id ? { ...base, id: d.id } : base
@@ -43,26 +46,8 @@ watch(
   }
 )
 
-// Banner upload goes through the same image_service path as inline images
-// (POST /image/topic → topic preset webp), returning a full CDN URL.
-const isUploading = ref(false)
-const handleBannerUpload = async (e: Event) => {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  isUploading.value = true
-  const fd = new FormData()
-  fd.append('image', file)
-  const url = await kunFetch<string>('/image/topic', {
-    method: 'POST',
-    body: fd,
-    watch: false
-  })
-  isUploading.value = false
-  if (url) {
-    form.banner = url
-    useMessage('图片上传成功', 'success')
-  }
-}
+// Resolved CDN url of the edited friend's banner — preview only (empty on create).
+const initialBannerUrl = computed(() => props.initialData?.bannerUrl ?? '')
 
 const handleSubmit = () => {
   if (!form.name.trim()) {
@@ -117,26 +102,11 @@ const handleSubmit = () => {
         />
 
         <div class="md:col-span-2">
-          <label class="mb-1 block text-sm font-medium">图标 / Banner</label>
-          <div class="flex items-start gap-3">
-            <KunImage
-              v-if="form.banner"
-              :src="form.banner"
-              class="border-default-200 h-20 w-32 shrink-0 rounded-md border object-cover"
-            />
-            <div class="flex flex-1 flex-col gap-2">
-              <input
-                type="file"
-                accept="image/*"
-                :disabled="isUploading"
-                @change="handleBannerUpload"
-              />
-              <KunInput v-model="form.banner" placeholder="或直接填图片 URL" />
-              <span v-if="isUploading" class="text-default-500 text-sm">
-                上传中...
-              </span>
-            </div>
-          </div>
+          <KunCoverUpload
+            v-model="form.bannerImageHash"
+            :preview-url="initialBannerUrl"
+            label="图标 / Banner"
+          />
         </div>
       </div>
 
@@ -144,11 +114,7 @@ const handleSubmit = () => {
         <KunButton variant="light" color="danger" @click="isOpen = false">
           取消
         </KunButton>
-        <KunButton
-          color="primary"
-          :disabled="isUploading"
-          @click="handleSubmit"
-        >
+        <KunButton color="primary" @click="handleSubmit">
           {{ isEditing ? '保存' : '添加' }}
         </KunButton>
       </div>

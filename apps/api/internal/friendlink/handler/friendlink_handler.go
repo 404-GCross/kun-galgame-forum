@@ -6,6 +6,7 @@ import (
 	"kun-galgame-api/internal/friendlink/repository"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -16,10 +17,12 @@ import (
 // no service layer (mirrors UpdateHandler).
 type FriendLinkHandler struct {
 	repo *repository.FriendLinkRepository
+	// cdnBase resolves a stored banner_image_hash into a full CDN URL on read.
+	cdnBase string
 }
 
-func NewFriendLinkHandler(repo *repository.FriendLinkRepository) *FriendLinkHandler {
-	return &FriendLinkHandler{repo: repo}
+func NewFriendLinkHandler(repo *repository.FriendLinkRepository, cdnBase string) *FriendLinkHandler {
+	return &FriendLinkHandler{repo: repo, cdnBase: cdnBase}
 }
 
 // List returns all friend links grouped by the 3 fixed categories, each ordered
@@ -35,6 +38,7 @@ func (h *FriendLinkHandler) List(c *fiber.Ctx) error {
 	}
 	for _, fl := range h.repo.FindAllOrdered() {
 		if _, ok := grouped[fl.Category]; ok {
+			fl.BannerURL = imageclient.ResolveURL(h.cdnBase, fl.BannerImageHash, fl.Banner)
 			grouped[fl.Category] = append(grouped[fl.Category], fl)
 		}
 	}
@@ -52,12 +56,13 @@ func (h *FriendLinkHandler) Create(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	fl := model.FriendLink{
-		Category:    req.Category,
-		Name:        req.Name,
-		Link:        req.Link,
-		Description: req.Description,
-		Banner:      req.Banner,
-		Status:      defaultStatus(req.Status),
+		Category:        req.Category,
+		Name:            req.Name,
+		Link:            req.Link,
+		Description:     req.Description,
+		Banner:          req.Banner,
+		BannerImageHash: req.BannerImageHash,
+		Status:          defaultStatus(req.Status),
 	}
 	if err := h.repo.Create(&fl); err != nil {
 		return response.Error(c, errors.ErrInternal("创建友链失败"))
@@ -76,12 +81,13 @@ func (h *FriendLinkHandler) Update(c *fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	fields := map[string]any{
-		"category":    req.Category,
-		"name":        req.Name,
-		"link":        req.Link,
-		"description": req.Description,
-		"banner":      req.Banner,
-		"status":      defaultStatus(req.Status),
+		"category":          req.Category,
+		"name":              req.Name,
+		"link":              req.Link,
+		"description":       req.Description,
+		"banner":            req.Banner,
+		"banner_image_hash": req.BannerImageHash,
+		"status":            defaultStatus(req.Status),
 	}
 	if err := h.repo.Update(req.ID, fields); err != nil {
 		return response.Error(c, errors.ErrInternal("更新友链失败"))

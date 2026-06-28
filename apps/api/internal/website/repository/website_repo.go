@@ -31,13 +31,14 @@ func (r *WebsiteRepository) GetURL(id int) string {
 
 // WebsiteListRow is the slim projection used by list queries.
 type WebsiteListRow struct {
-	ID          int    `gorm:"column:id"`
-	Name        string `gorm:"column:name"`
-	URL         string `gorm:"column:url"`
-	Description string `gorm:"column:description"`
-	Icon        string `gorm:"column:icon"`
-	AgeLimit    string `gorm:"column:age_limit"`
-	CategoryID  int    `gorm:"column:category_id"`
+	ID            int    `gorm:"column:id"`
+	Name          string `gorm:"column:name"`
+	URL           string `gorm:"column:url"`
+	Description   string `gorm:"column:description"`
+	Icon          string `gorm:"column:icon"`
+	IconImageHash string `gorm:"column:icon_image_hash"`
+	AgeLimit      string `gorm:"column:age_limit"`
+	CategoryID    int    `gorm:"column:category_id"`
 }
 
 // ──────────────────────────────────────────
@@ -62,7 +63,7 @@ func sfwScope(isSFW bool) func(*gorm.DB) *gorm.DB {
 func (r *WebsiteRepository) FindAll(isSFW bool) []WebsiteListRow {
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, age_limit, category_id").
+		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
 		Scopes(sfwScope(isSFW)).
 		Order("created DESC").
 		Scan(&rows)
@@ -73,7 +74,7 @@ func (r *WebsiteRepository) FindAll(isSFW bool) []WebsiteListRow {
 func (r *WebsiteRepository) FindByCategoryID(categoryID int, isSFW bool) []WebsiteListRow {
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, age_limit, category_id").
+		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
 		Where("category_id = ?", categoryID).
 		Scopes(sfwScope(isSFW)).
 		Scan(&rows)
@@ -87,7 +88,7 @@ func (r *WebsiteRepository) FindByIDs(ids []int, isSFW bool) []WebsiteListRow {
 	}
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, age_limit, category_id").
+		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
 		Where("id IN ?", ids).
 		Scopes(sfwScope(isSFW)).
 		Scan(&rows)

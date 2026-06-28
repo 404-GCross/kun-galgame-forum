@@ -10,16 +10,19 @@ import (
 // ──────────────────────────────────────────
 
 type GalgameWebsite struct {
-	ID          int             `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name        string          `gorm:"uniqueIndex;not null" json:"name"`
-	URL         string          `gorm:"column:url;uniqueIndex;not null" json:"url"`
-	CreateTime  string          `gorm:"column:create_time;not null" json:"create_time"`
-	Description string          `gorm:"default:''" json:"description"`
-	Icon        string          `gorm:"default:''" json:"icon"`
-	View        int             `gorm:"default:0" json:"view"`
-	Language    string          `gorm:"default:'JA'" json:"language"`
-	AgeLimit    string          `gorm:"column:age_limit;default:'all'" json:"age_limit"` // all, r18
-	Domain      json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"domain"`           // text[] → jsonb
+	ID          int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name        string `gorm:"uniqueIndex;not null" json:"name"`
+	URL         string `gorm:"column:url;uniqueIndex;not null" json:"url"`
+	CreateTime  string `gorm:"column:create_time;not null" json:"create_time"`
+	Description string `gorm:"default:''" json:"description"`
+	Icon        string `gorm:"default:''" json:"icon"`
+	// IconImageHash is the content-addressed image_service hash, preferred over
+	// the legacy Icon URL (kept as fallback).
+	IconImageHash string          `gorm:"column:icon_image_hash;default:''" json:"icon_image_hash"`
+	View          int             `gorm:"default:0" json:"view"`
+	Language      string          `gorm:"default:'JA'" json:"language"`
+	AgeLimit      string          `gorm:"column:age_limit;default:'all'" json:"age_limit"` // all, r18
+	Domain        json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"domain"`           // text[] → jsonb
 
 	// galgame_website.category_id references galgame_website_category(id)
 	// with `ON DELETE RESTRICT` at the DB level (see 000_baseline.up.sql).

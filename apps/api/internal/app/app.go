@@ -333,11 +333,11 @@ func New(cfg *config.Config) *App {
 	websiteTagRepo := websiteRepo.NewTagRepository(db)
 	websiteCommentRepo := websiteRepo.NewCommentRepository(db)
 	websiteCoreSvc := websiteService.NewWebsiteService(
-		websiteRepository, websiteCategoryRepo, websiteTagRepo, websiteCommentRepo, uc,
+		websiteRepository, websiteCategoryRepo, websiteTagRepo, websiteCommentRepo, uc, cfg.GalgameWiki.ImageCDNBase,
 	)
 	websiteCommentSvc := websiteService.NewCommentService(websiteCommentRepo, websiteRepository, notifier, uc)
-	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo)
-	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo)
+	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.GalgameWiki.ImageCDNBase)
+	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
 
 	// Admin
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
@@ -393,7 +393,7 @@ func New(cfg *config.Config) *App {
 		WebsiteCategoryHandler: websiteHandler.NewCategoryHandler(websiteCategorySvc),
 		WebsiteTagHandler:      websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:          updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
-		FriendLinkHandler:      friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db)),
+		FriendLinkHandler:      friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
 		ReportHandler:          reportHandler.NewReportHandler(reportRepo.NewReportRepository(db)),
 		RSSHandler:             rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:         galgameHandler.NewGalgameHandler(galgameCoreSvc),

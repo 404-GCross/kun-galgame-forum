@@ -9,8 +9,8 @@
 // are touched, and image_service dedups re-uploads.
 //
 //	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  backfill-cover-hashes            # do it
-//	  backfill-cover-hashes --dry-run  # report only, no upload/writes
+//	  backfill-cover-hashes -webroot /app   # prod (tools image bakes /app/content)
+//	  backfill-cover-hashes --dry-run        # report only, no upload/writes
 package main
 
 import (
@@ -45,7 +45,6 @@ type target struct {
 
 var targets = []target{
 	{"doc_article", "banner", "banner_image_hash"},
-	{"doc_category", "icon", "icon_image_hash"},
 	{"friend_link", "banner", "banner_image_hash"},
 	{"galgame_website", "icon", "icon_image_hash"},
 }

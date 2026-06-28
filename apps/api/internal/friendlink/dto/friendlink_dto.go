@@ -4,22 +4,24 @@ package dto
 // oneof= in the validate tags below is the source of truth enforced per-request.
 
 type CreateRequest struct {
-	Category    string `json:"category" validate:"required,oneof=official galgame others"`
-	Name        string `json:"name" validate:"required,max=100"`
-	Link        string `json:"link" validate:"required,url,max=500"`
-	Description string `json:"description" validate:"max=500"`
-	Banner      string `json:"banner" validate:"max=500"`
-	Status      string `json:"status" validate:"omitempty,oneof=normal essential down"`
+	Category        string `json:"category" validate:"required,oneof=official galgame others"`
+	Name            string `json:"name" validate:"required,max=100"`
+	Link            string `json:"link" validate:"required,url,max=500"`
+	Description     string `json:"description" validate:"max=500"`
+	Banner          string `json:"banner" validate:"max=500"`
+	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
+	Status          string `json:"status" validate:"omitempty,oneof=normal essential down"`
 }
 
 type UpdateRequest struct {
-	ID          int    `json:"id" validate:"required,min=1"`
-	Category    string `json:"category" validate:"required,oneof=official galgame others"`
-	Name        string `json:"name" validate:"required,max=100"`
-	Link        string `json:"link" validate:"required,url,max=500"`
-	Description string `json:"description" validate:"max=500"`
-	Banner      string `json:"banner" validate:"max=500"`
-	Status      string `json:"status" validate:"omitempty,oneof=normal essential down"`
+	ID              int    `json:"id" validate:"required,min=1"`
+	Category        string `json:"category" validate:"required,oneof=official galgame others"`
+	Name            string `json:"name" validate:"required,max=100"`
+	Link            string `json:"link" validate:"required,url,max=500"`
+	Description     string `json:"description" validate:"max=500"`
+	Banner          string `json:"banner" validate:"max=500"`
+	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
+	Status          string `json:"status" validate:"omitempty,oneof=normal essential down"`
 }
 
 type DeleteRequest struct {

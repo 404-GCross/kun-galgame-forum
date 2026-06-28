@@ -80,6 +80,16 @@ func MainURL(cdnBase, hash, ext string) string {
 		strings.TrimRight(cdnBase, "/"), hash[:2], hash[2:4], hash, ext)
 }
 
+// ResolveURL turns a content-addressed image hash into its CDN URL, falling
+// back to a legacy free-form URL when no hash is set. Shared by the cover/banner
+// /icon fields (doc / friend-link / website) during the URL→hash migration.
+func ResolveURL(cdnBase, hash, fallback string) string {
+	if url := MainURL(cdnBase, hash, "webp"); url != "" {
+		return url
+	}
+	return fallback
+}
+
 // VariantURL returns the CDN URL for a specific variant of a hash.
 func VariantURL(cdnBase, hash, variant, ext string) string {
 	if len(hash) < 4 {

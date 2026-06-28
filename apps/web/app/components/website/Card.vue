@@ -45,7 +45,7 @@ const priceInfo = computed(() => {
     <div class="flex items-start space-x-4">
       <div class="flex-shrink-0">
         <KunImage
-          :src="website.icon"
+          :src="website.iconUrl"
           :alt="website.name"
           class="h-12 w-12 rounded-2xl object-cover"
         />

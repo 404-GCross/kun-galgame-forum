@@ -37,5 +37,9 @@ COPY apps/api/migrations /app/migrations
 # backfill-friend-link-banners reads the legacy static banners from disk (the
 # in-cluster HTTP fetch of these is unreliable), then re-uploads via image_service.
 COPY apps/web/public/friends /app/friends
+# backfill-cover-hashes reads doc article banners (root-relative /content/*.avif
+# static assets) from disk for the same reason — run it with `-webroot /app` so
+# `/content/x/banner.avif` resolves to /app/content/x/banner.avif.
+COPY apps/web/public/content /app/content
 USER appuser
 # No ENTRYPOINT: run a job by name, e.g. `docker run ... kungal-tools migrate --only=005,006,007,012,015`.

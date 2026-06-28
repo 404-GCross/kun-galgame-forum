@@ -8,7 +8,11 @@ import {
 import type { CreateWebsitePayload, UpdateWebsitePayload } from './types'
 import type { KunSelectOption } from '@kungal/ui-vue'
 
-type WebsiteData = CreateWebsitePayload & { websiteId?: number }
+// `iconUrl` is preview-only (resolved CDN url) — not part of the submit payload.
+type WebsiteData = CreateWebsitePayload & {
+  websiteId?: number
+  iconUrl?: string
+}
 
 const props = defineProps<{
   modelValue: boolean
@@ -44,7 +48,11 @@ const getInitialFormData = (): WebsiteData => ({
   name: '',
   url: '',
   description: '',
+  // Keep the legacy URL so editing an un-migrated site preserves it; the hash
+  // drives the new uploader.
   icon: '',
+  iconImageHash: '',
+  iconUrl: '',
   language: 'zh-cn',
   ageLimit: 'all',
   categoryId: 1,
@@ -55,6 +63,9 @@ const getInitialFormData = (): WebsiteData => ({
 })
 
 const formData = reactive<WebsiteData>(getInitialFormData())
+
+// Resolved CDN url of the edited site's icon — preview only (empty on create).
+const initialIconUrl = computed(() => props.initialData?.iconUrl ?? '')
 
 const { data, status } = useKunFetch<WebsiteTag[]>('/website-tag')
 
@@ -84,10 +95,7 @@ const handleSubmit = () => {
 
   if (!result.success) {
     const message = JSON.parse(result.error.message)[0]
-    useMessage(
-      formatKunZodIssue(message),
-      'warn'
-    )
+    useMessage(formatKunZodIssue(message), 'warn')
     return
   }
 
@@ -109,12 +117,15 @@ const handleSubmit = () => {
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <KunInput v-model="formData.name" label="网站名称" required />
-        <KunInput v-model="formData.icon" label="图标 URL" required />
-        <KunInput
-          v-model="formData.createTime"
-          label="网站创建时间"
-          required
-        />
+        <KunInput v-model="formData.createTime" label="网站创建时间" required />
+
+        <div class="md:col-span-2">
+          <KunCoverUpload
+            v-model="formData.iconImageHash"
+            :preview-url="initialIconUrl"
+            label="网站图标"
+          />
+        </div>
         <KunInput
           v-model="formData.url"
           label="网站主域名"

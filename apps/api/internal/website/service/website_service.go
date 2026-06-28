@@ -9,6 +9,7 @@ import (
 	"kun-galgame-api/internal/website/model"
 	"kun-galgame-api/internal/website/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/userclient"
 
 	"gorm.io/gorm"
@@ -35,6 +36,8 @@ type WebsiteService struct {
 	tagRepo      *repository.TagRepository
 	commentRepo  *repository.CommentRepository
 	userClient   *userclient.Client
+	// cdnBase resolves a stored icon_image_hash into a full CDN URL on read.
+	cdnBase string
 }
 
 func NewWebsiteService(
@@ -43,6 +46,7 @@ func NewWebsiteService(
 	tagRepo *repository.TagRepository,
 	commentRepo *repository.CommentRepository,
 	userClient *userclient.Client,
+	cdnBase string,
 ) *WebsiteService {
 	return &WebsiteService{
 		websiteRepo:  websiteRepo,
@@ -50,6 +54,7 @@ func NewWebsiteService(
 		tagRepo:      tagRepo,
 		commentRepo:  commentRepo,
 		userClient:   userClient,
+		cdnBase:      cdnBase,
 	}
 }
 
@@ -61,7 +66,7 @@ func (s *WebsiteService) GetList(isSFW bool) []dto.WebsiteCard {
 	rows := s.websiteRepo.FindAll(isSFW)
 	catMap := s.categoryRepo.FindNamesByIDs(collectCategoryIDs(rows))
 	levelMap := s.tagRepo.LevelSumsAll()
-	return websiteCardsFromRows(rows, catMap, levelMap)
+	return websiteCardsFromRows(rows, catMap, levelMap, s.cdnBase)
 }
 
 // ──────────────────────────────────────────
@@ -74,16 +79,17 @@ func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *erro
 
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		website := model.GalgameWebsite{
-			Name:        req.Name,
-			URL:         req.URL,
-			Description: req.Description,
-			Icon:        req.Icon,
-			Language:    req.Language,
-			AgeLimit:    req.AgeLimit,
-			CategoryID:  req.CategoryID,
-			UserID:      userID,
-			CreateTime:  req.CreateTime,
-			Domain:      marshalDomain(req.Domain),
+			Name:          req.Name,
+			URL:           req.URL,
+			Description:   req.Description,
+			Icon:          req.Icon,
+			IconImageHash: req.IconImageHash,
+			Language:      req.Language,
+			AgeLimit:      req.AgeLimit,
+			CategoryID:    req.CategoryID,
+			UserID:        userID,
+			CreateTime:    req.CreateTime,
+			Domain:        marshalDomain(req.Domain),
 		}
 		if err := s.websiteRepo.Create(tx, &website); err != nil {
 			return err
@@ -168,6 +174,8 @@ func (s *WebsiteService) GetDetail(
 		URL:           website.URL,
 		Description:   website.Description,
 		Icon:          website.Icon,
+		IconImageHash: website.IconImageHash,
+		IconURL:       imageclient.ResolveURL(s.cdnBase, website.IconImageHash, website.Icon),
 		View:          website.View,
 		Language:      website.Language,
 		AgeLimit:      website.AgeLimit,
@@ -192,15 +200,16 @@ func (s *WebsiteService) GetDetail(
 func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError {
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		s.websiteRepo.UpdateFields(tx, req.WebsiteID, map[string]any{
-			"name":        req.Name,
-			"url":         req.URL,
-			"description": req.Description,
-			"icon":        req.Icon,
-			"category_id": req.CategoryID,
-			"age_limit":   req.AgeLimit,
-			"language":    req.Language,
-			"create_time": req.CreateTime,
-			"domain":      marshalDomain(req.Domain),
+			"name":            req.Name,
+			"url":             req.URL,
+			"description":     req.Description,
+			"icon":            req.Icon,
+			"icon_image_hash": req.IconImageHash,
+			"category_id":     req.CategoryID,
+			"age_limit":       req.AgeLimit,
+			"language":        req.Language,
+			"create_time":     req.CreateTime,
+			"domain":          marshalDomain(req.Domain),
 		})
 		s.tagRepo.ReplaceWebsiteTagRelations(tx, req.WebsiteID, req.TagIDs)
 		return nil

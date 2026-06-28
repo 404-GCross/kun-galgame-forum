@@ -20,30 +20,32 @@ import (
 // existing entry on edit/create; `fqdn` validates a bare domain instead.
 // `Icon`, by contrast, IS a full URL, so it keeps the `url` tag.
 type CreateWebsiteRequest struct {
-	Name        string   `json:"name" validate:"required,max=233"`
-	URL         string   `json:"url" validate:"required,fqdn,max=500"`
-	Description string   `json:"description" validate:"required,min=10,max=1000"`
-	Icon        string   `json:"icon" validate:"required,url,max=500"`
-	CategoryID  int      `json:"categoryId" validate:"required,min=1"`
-	AgeLimit    string   `json:"ageLimit" validate:"required,oneof=all r18"`
-	Language    string   `json:"language" validate:"max=10"`
-	TagIDs      []int    `json:"tag_ids"`
-	Domain      []string `json:"domain" validate:"max=10,dive,max=100"`
-	CreateTime  string   `json:"createTime" validate:"max=20"`
+	Name          string   `json:"name" validate:"required,max=233"`
+	URL           string   `json:"url" validate:"required,fqdn,max=500"`
+	Description   string   `json:"description" validate:"required,min=10,max=1000"`
+	Icon          string   `json:"icon" validate:"omitempty,url,max=500"`
+	IconImageHash string   `json:"iconImageHash" validate:"max=128"`
+	CategoryID    int      `json:"categoryId" validate:"required,min=1"`
+	AgeLimit      string   `json:"ageLimit" validate:"required,oneof=all r18"`
+	Language      string   `json:"language" validate:"max=10"`
+	TagIDs        []int    `json:"tag_ids"`
+	Domain        []string `json:"domain" validate:"max=10,dive,max=100"`
+	CreateTime    string   `json:"createTime" validate:"max=20"`
 }
 
 type UpdateWebsiteRequest struct {
-	WebsiteID   int      `json:"websiteId" validate:"required,min=1"`
-	Name        string   `json:"name" validate:"required,max=233"`
-	URL         string   `json:"url" validate:"required,fqdn,max=500"`
-	Description string   `json:"description" validate:"required,min=10,max=1000"`
-	Icon        string   `json:"icon" validate:"required,url,max=500"`
-	CategoryID  int      `json:"categoryId" validate:"required,min=1"`
-	AgeLimit    string   `json:"ageLimit" validate:"required,oneof=all r18"`
-	Language    string   `json:"language" validate:"max=10"`
-	TagIDs      []int    `json:"tag_ids"`
-	Domain      []string `json:"domain" validate:"max=10,dive,max=100"`
-	CreateTime  string   `json:"createTime" validate:"max=20"`
+	WebsiteID     int      `json:"websiteId" validate:"required,min=1"`
+	Name          string   `json:"name" validate:"required,max=233"`
+	URL           string   `json:"url" validate:"required,fqdn,max=500"`
+	Description   string   `json:"description" validate:"required,min=10,max=1000"`
+	Icon          string   `json:"icon" validate:"omitempty,url,max=500"`
+	IconImageHash string   `json:"iconImageHash" validate:"max=128"`
+	CategoryID    int      `json:"categoryId" validate:"required,min=1"`
+	AgeLimit      string   `json:"ageLimit" validate:"required,oneof=all r18"`
+	Language      string   `json:"language" validate:"max=10"`
+	TagIDs        []int    `json:"tag_ids"`
+	Domain        []string `json:"domain" validate:"max=10,dive,max=100"`
+	CreateTime    string   `json:"createTime" validate:"max=20"`
 }
 
 type DeleteWebsiteRequest struct {
@@ -61,15 +63,17 @@ type ToggleInteractionRequest struct {
 // WebsiteCard is the list-card shape returned by GetWebsites and nested in
 // category/tag detail responses.
 type WebsiteCard struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Domain      string `json:"domain"`
-	AgeLimit    string `json:"ageLimit"`
-	Level       int    `json:"level"`
-	Icon        string `json:"icon"`
-	Price       int    `json:"price"`
-	Category    string `json:"category"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	Domain        string `json:"domain"`
+	AgeLimit      string `json:"ageLimit"`
+	Level         int    `json:"level"`
+	Icon          string `json:"icon"`
+	IconImageHash string `json:"iconImageHash"`
+	IconURL       string `json:"iconUrl"`
+	Price         int    `json:"price"`
+	Category      string `json:"category"`
 }
 
 // WebsiteCategoryBrief is the category sub-object in the website detail response.
@@ -113,6 +117,8 @@ type WebsiteDetailResponse struct {
 	URL           string                 `json:"url"`
 	Description   string                 `json:"description"`
 	Icon          string                 `json:"icon"`
+	IconImageHash string                 `json:"iconImageHash"`
+	IconURL       string                 `json:"iconUrl"`
 	View          int                    `json:"view"`
 	Language      string                 `json:"language"`
 	AgeLimit      string                 `json:"ageLimit"`
