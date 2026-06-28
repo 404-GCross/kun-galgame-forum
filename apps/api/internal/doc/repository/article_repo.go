@@ -27,8 +27,11 @@ func (r *ArticleRepository) DB() *gorm.DB { return r.db }
 func (r *ArticleRepository) FindPaginated(req *dto.GetArticlesRequest) ([]model.DocArticle, int64) {
 	query := r.db.Model(&model.DocArticle{})
 
-	// Default: only published articles
-	if req.Status != nil {
+	// Default: only published articles. AllStatuses (admin manager only) returns
+	// every status; an explicit Status filters to that one.
+	if req.AllStatuses {
+		// no status filter
+	} else if req.Status != nil {
 		query = query.Where("status = ?", *req.Status)
 	} else {
 		query = query.Where("status = 1")
@@ -57,6 +60,7 @@ func (r *ArticleRepository) FindPaginated(req *dto.GetArticlesRequest) ([]model.
 
 	var articles []model.DocArticle
 	query.Order(req.OrderBy + " " + req.SortOrder).
+		Order("id ASC").
 		Offset((req.Page - 1) * req.Limit).Limit(req.Limit).
 		Find(&articles)
 
@@ -95,6 +99,30 @@ func (r *ArticleRepository) UpdateFields(tx *gorm.DB, id int, updates map[string
 // DeleteByID deletes an article row.
 func (r *ArticleRepository) DeleteByID(id int) error {
 	return r.db.Delete(&model.DocArticle{}, id).Error
+}
+
+// Reorder rewrites sort_order for every id to its index in the provided slice
+// (the drag-reorder result, top → bottom), in one transaction. A stray id
+// (e.g. already deleted) updates zero rows and is silently skipped.
+func (r *ArticleRepository) Reorder(ids []int) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for i, id := range ids {
+			if err := tx.Model(&model.DocArticle{}).
+				Where("id = ?", id).
+				Update("sort_order", i).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// SetPin updates only the is_pin flag of one article (the quick pin toggle in
+// the admin doc manager).
+func (r *ArticleRepository) SetPin(id int, isPin bool) error {
+	return r.db.Model(&model.DocArticle{}).
+		Where("id = ?", id).
+		Update("is_pin", isPin).Error
 }
 
 // ReplaceTagRelations deletes existing tag relations and inserts the new set

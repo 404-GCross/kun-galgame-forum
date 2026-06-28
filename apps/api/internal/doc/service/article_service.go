@@ -46,20 +46,28 @@ var orderByColumn = map[string]string{
 	"created":       "created",
 	"view":          "view",
 	"updated":       "updated",
+	"order":         "sort_order", // manual admin drag order
 }
 
 func (s *ArticleService) GetList(req *dto.GetArticlesRequest) *ArticleListResult {
+	// Default to the manual drag order ("order" → sort_order ASC) so the doc
+	// list reflects whatever admins arranged; callers can still pass an explicit
+	// orderBy (publishedTime / view / …) to re-sort.
 	if req.OrderBy == "" {
-		req.OrderBy = "publishedTime"
+		req.OrderBy = "order"
 	}
-	if col, ok := orderByColumn[req.OrderBy]; ok {
-		req.OrderBy = col
-	} else {
-		req.OrderBy = "published_time"
+	col, ok := orderByColumn[req.OrderBy]
+	if !ok {
+		col = "sort_order"
 	}
 	if req.SortOrder == "" {
-		req.SortOrder = "desc"
+		if col == "sort_order" {
+			req.SortOrder = "asc"
+		} else {
+			req.SortOrder = "desc"
+		}
 	}
+	req.OrderBy = col
 
 	items, total := s.articleRepo.FindPaginated(req)
 
@@ -69,6 +77,24 @@ func (s *ArticleService) GetList(req *dto.GetArticlesRequest) *ArticleListResult
 		summaries = append(summaries, toArticleSummary(a, categoryByID[a.CategoryID]))
 	}
 	return &ArticleListResult{Items: summaries, Total: total}
+}
+
+// Reorder persists a new manual article ordering (the drag-reorder result):
+// sort_order is rewritten to each id's index in the provided list.
+func (s *ArticleService) Reorder(ids []int) *errors.AppError {
+	if err := s.articleRepo.Reorder(ids); err != nil {
+		return errors.ErrInternal("调整文档顺序失败")
+	}
+	return nil
+}
+
+// SetPin toggles a single article's first-page pin (quick action from the admin
+// doc manager, no full update).
+func (s *ArticleService) SetPin(id int, isPin bool) *errors.AppError {
+	if err := s.articleRepo.SetPin(id, isPin); err != nil {
+		return errors.ErrInternal("更新置顶状态失败")
+	}
+	return nil
 }
 
 func (s *ArticleService) loadCategoriesFor(articles []model.DocArticle) map[int]dto.ArticleCategoryBrief {
@@ -107,6 +133,7 @@ func toArticleSummary(a model.DocArticle, cat dto.ArticleCategoryBrief) dto.Arti
 		Status:        a.Status,
 		IsPin:         a.IsPin,
 		View:          a.View,
+		SortOrder:     a.SortOrder,
 		PublishedTime: a.PublishedTime,
 		EditedTime:    a.EditedTime,
 		CategoryID:    a.CategoryID,

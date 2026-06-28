@@ -6,23 +6,34 @@ const props = withDefaults(
   defineProps<{
     mode: DocEditorMode
     initialArticle?: DocArticleDetail | null
+    // When used standalone (the old /edit/doc pages) we navigate to the saved
+    // article. When hosted inside the admin modal we emit `saved` instead so
+    // the manager can close the modal + refresh its list in place.
+    redirectOnSuccess?: boolean
   }>(),
   {
-    initialArticle: null
+    initialArticle: null,
+    redirectOnSuccess: true
   }
 )
 
+const emit = defineEmits<{
+  saved: [article: DocArticleDetail]
+}>()
+
 const isRewriteMode = computed(() => props.mode === 'rewrite')
 
-const [{ data: categoryResponse }, { data: tagResponse, refresh: refreshTagResponse }] =
-  await Promise.all([
-    useKunFetch<DocCategoryListResponse>('/doc/category', {
-      query: { page: 1, limit: 100, keyword: '' }
-    }),
-    useKunFetch<DocTagListResponse>('/doc/tag', {
-      query: { page: 1, limit: 100, keyword: '' }
-    })
-  ])
+const [
+  { data: categoryResponse },
+  { data: tagResponse, refresh: refreshTagResponse }
+] = await Promise.all([
+  useKunFetch<DocCategoryListResponse>('/doc/category', {
+    query: { page: 1, limit: 100, keyword: '' }
+  }),
+  useKunFetch<DocTagListResponse>('/doc/tag', {
+    query: { page: 1, limit: 100, keyword: '' }
+  })
+])
 
 const categories = ref<DocCategoryItem[]>([])
 const tags = ref<DocTagItem[]>([])
@@ -162,7 +173,11 @@ const handleSubmit = async () => {
         'success'
       )
       applyArticleToForm(result)
-      await navigateTo(result.path)
+      if (props.redirectOnSuccess) {
+        await navigateTo(result.path)
+      } else {
+        emit('saved', result)
+      }
     }
   } finally {
     isSubmitting.value = false
@@ -189,30 +204,15 @@ provideDocEditorContext({
 <template>
   <div class="contents">
     <ClientOnly>
-      <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <KunCard
-          :is-hoverable="false"
-          :is-transparent="false"
-          class-name="lg:col-span-1 order-2 sm:order-1"
-          content-class="space-y-6"
-        >
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="order-2 space-y-6 sm:order-1 lg:col-span-1">
           <EditDocMetadataForm />
           <EditDocSubmitActions />
-        </KunCard>
+        </div>
 
-        <div class="order-1 space-y-3 sm:order-2 lg:col-span-2">
-          <KunCard
-            :is-hoverable="false"
-            :is-transparent="false"
-          >
-            <EditDocTitle />
-          </KunCard>
-          <KunCard
-            :is-hoverable="false"
-            :is-transparent="false"
-          >
-            <EditDocContentEditor />
-          </KunCard>
+        <div class="order-1 space-y-4 sm:order-2 lg:col-span-2">
+          <EditDocTitle />
+          <EditDocContentEditor />
         </div>
       </div>
     </ClientOnly>

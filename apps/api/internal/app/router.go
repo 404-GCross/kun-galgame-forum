@@ -468,8 +468,11 @@ func (a *App) setupRoutes() {
 
 	// Doc admin (moderator+)
 	docAdmin := authed.Group("", middleware.RequireModerator())
+	docAdmin.Get("/admin/doc/article", a.DocArticleHandler.GetAdminArticles)
 	docAdmin.Post("/doc/article", a.DocArticleHandler.CreateArticle)
 	docAdmin.Put("/doc/article", a.DocArticleHandler.UpdateArticle)
+	docAdmin.Put("/doc/article/reorder", a.DocArticleHandler.ReorderArticles)
+	docAdmin.Put("/doc/article/pin", a.DocArticleHandler.SetArticlePin)
 	docAdmin.Delete("/doc/article", a.DocArticleHandler.DeleteArticle)
 	docAdmin.Post("/doc/category", a.DocCategoryHandler.CreateCategory)
 	docAdmin.Put("/doc/category", a.DocCategoryHandler.UpdateCategory)

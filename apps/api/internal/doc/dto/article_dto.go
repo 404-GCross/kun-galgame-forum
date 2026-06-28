@@ -19,8 +19,26 @@ type GetArticlesRequest struct {
 	Status     *int   `query:"status"`
 	IsPin      *bool  `query:"isPin"`
 	Keyword    string `query:"keyword"`
-	OrderBy    string `query:"orderBy" validate:"omitempty,oneof=publishedTime created view updated"`
+	OrderBy    string `query:"orderBy" validate:"omitempty,oneof=publishedTime created view updated order"`
 	SortOrder  string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
+	// AllStatuses returns articles of every status (incl. draft/archived) for the
+	// admin manager. NO `query` tag on purpose — it is set ONLY by the
+	// moderator-gated admin handler, so a public caller can never request drafts.
+	AllStatuses bool `json:"-"`
+}
+
+// ReorderArticlesRequest carries the full new ordering as a flat list of article
+// ids (top → bottom); sort_order is rewritten to each id's index. Mirrors the
+// friend-link reorder contract.
+type ReorderArticlesRequest struct {
+	IDs []int `json:"ids" validate:"required,min=1,dive,min=1"`
+}
+
+// SetArticlePinRequest toggles a single article's first-page pin from the admin
+// doc manager, without a full article update.
+type SetArticlePinRequest struct {
+	ArticleID int  `json:"articleId" validate:"required,min=1"`
+	IsPin     bool `json:"isPin"`
 }
 
 // CreateArticleRequest is the payload for POST /doc/article.
@@ -81,6 +99,7 @@ type ArticleSummary struct {
 	Status        int                  `json:"status"`
 	IsPin         bool                 `json:"isPin"`
 	View          int                  `json:"view"`
+	SortOrder     int                  `json:"sortOrder"`
 	PublishedTime time.Time            `json:"publishedTime"`
 	EditedTime    *time.Time           `json:"editedTime"`
 	CategoryID    int                  `json:"categoryId"`

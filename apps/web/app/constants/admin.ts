@@ -55,6 +55,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'user',
   'submissions',
   'friend-link',
+  'doc',
   'setting'
 ]
 
@@ -91,6 +92,12 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     label: '友链管理',
     icon: 'lucide:link',
     router: 'friend-link'
+  },
+  {
+    name: 'doc',
+    label: '文档管理',
+    icon: 'lucide:file-text',
+    router: 'doc'
   },
   {
     name: 'setting',

@@ -29,15 +29,18 @@ type DocTag struct {
 func (DocTag) TableName() string { return "doc_tag" }
 
 type DocArticle struct {
-	ID              int        `gorm:"primaryKey;autoIncrement" json:"id"`
-	Title           string     `gorm:"type:varchar(233);not null" json:"title"`
-	Slug            string     `gorm:"uniqueIndex;type:varchar(233);not null" json:"slug"`
-	Path            string     `gorm:"uniqueIndex;type:varchar(255);not null" json:"path"`
-	Description     string     `gorm:"type:varchar(777);not null" json:"description"`
-	Banner          string     `gorm:"type:varchar(777);default:''" json:"banner"`
-	Status          int        `gorm:"default:1" json:"status"` // 0=draft, 1=published, 2=archived
-	IsPin           bool       `gorm:"column:is_pin;default:false" json:"isPin"`
-	View            int        `gorm:"default:0" json:"view"`
+	ID          int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Title       string `gorm:"type:varchar(233);not null" json:"title"`
+	Slug        string `gorm:"uniqueIndex;type:varchar(233);not null" json:"slug"`
+	Path        string `gorm:"uniqueIndex;type:varchar(255);not null" json:"path"`
+	Description string `gorm:"type:varchar(777);not null" json:"description"`
+	Banner      string `gorm:"type:varchar(777);default:''" json:"banner"`
+	Status      int    `gorm:"default:1" json:"status"` // 0=draft, 1=published, 2=archived
+	IsPin       bool   `gorm:"column:is_pin;default:false" json:"isPin"`
+	View        int    `gorm:"default:0" json:"view"`
+	// SortOrder is the manual display order set by admins via drag-reorder
+	// (lower = earlier). Seeded once by publish time in migration 039.
+	SortOrder       int        `gorm:"column:sort_order;not null;default:0" json:"sortOrder"`
 	PublishedTime   time.Time  `gorm:"column:published_time;autoCreateTime" json:"publishedTime"`
 	EditedTime      *time.Time `gorm:"column:edited_time" json:"editedTime"`
 	ContentMarkdown string     `gorm:"column:content_markdown;type:varchar(100007);not null" json:"contentMarkdown"`
