@@ -16,7 +16,7 @@ const pagedGalgames = computed(() =>
   props.data.galgame.slice((page.value - 1) * limit, page.value * limit)
 )
 
-const { canModerate, canAdminister } = useRole()
+const { canModerate } = useRole()
 const showSeriesModal = ref(false)
 const editingSeries = ref<UpdateGalgameSeriesPayload>(
   {} as UpdateGalgameSeriesPayload
@@ -112,7 +112,7 @@ const handleDeleteSeries = async () => {
               :can-revert="canModerate"
             />
             <KunButton
-              v-if="canAdminister"
+              v-if="canModerate"
               variant="light"
               color="danger"
               @click="handleDeleteSeries"

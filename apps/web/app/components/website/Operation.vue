@@ -12,7 +12,7 @@ const emits = defineEmits<{
 type WebsiteData = (CreateWebsitePayload & { websiteId?: number }) | undefined
 
 const { id } = usePersistUserStore()
-const { canAdminister } = useRole()
+const { canModerate } = useRole()
 
 // Tag the outbound 访问网站 jump with utm_source=<current domain>.
 const utmLink = useUtmLink()
@@ -159,7 +159,7 @@ const handleAction = async (
       </KunButton>
     </KunTooltip>
 
-    <KunTooltip v-if="canAdminister" text="编辑">
+    <KunTooltip v-if="canModerate" text="编辑">
       <KunButton
         :is-icon-only="true"
         size="lg"
@@ -177,7 +177,7 @@ const handleAction = async (
       @submit="handleUpdate"
     />
 
-    <KunTooltip v-if="canAdminister" text="删除">
+    <KunTooltip v-if="canModerate" text="删除">
       <KunButton
         :is-icon-only="true"
         size="lg"

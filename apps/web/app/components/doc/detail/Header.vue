@@ -4,7 +4,7 @@ const props = defineProps<{
 }>()
 
 const metadata = computed(() => props.metadata)
-const { canAdminister } = useRole()
+const { canModerate } = useRole()
 const isDeleting = ref(false)
 
 const handleEdit = async () => {
@@ -87,7 +87,7 @@ const handleDelete = async () => {
           <span>{{ metadata.view }} 次浏览</span>
         </div>
 
-        <div v-if="canAdminister" class="flex flex-wrap items-center gap-2">
+        <div v-if="canModerate" class="flex flex-wrap items-center gap-2">
           <KunButton
             size="sm"
             variant="flat"
