@@ -11,7 +11,7 @@ if (data.value) {
   useKunSeoMeta({
     title: data.value.title,
     description: data.value.description,
-    ogImage: data.value.banner,
+    ogImage: data.value.bannerUrl,
     ogType: 'article',
     articleAuthor: [`${kungal.domain.main}/user/${data.value.authorId}/info`],
     articlePublishedTime: data.value.publishedTime?.toString(),
@@ -23,7 +23,7 @@ if (data.value) {
 </script>
 
 <template>
-  <div v-if="data" class="pb-6 min-h-[calc(100dvh-6rem)]">
+  <div v-if="data" class="min-h-[calc(100dvh-6rem)] pb-6">
     <div class="flex">
       <DocDetailCategoryTree />
 

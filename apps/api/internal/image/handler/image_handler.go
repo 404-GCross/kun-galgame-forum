@@ -78,6 +78,37 @@ func (h *ImageHandler) UploadGalgameImage(c *fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
+// UploadCoverImage handles a cover/banner/icon upload (doc / friend-link /
+// website). Multipart form: file (required). Returns {hash, url, width, height,
+// thumbhash} — the caller stores the hash and previews via url.
+// POST /api/image/cover
+func (h *ImageHandler) UploadCoverImage(c *fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("请选择要上传的图片"))
+	}
+	if file.Size > service.MaxImageSize {
+		return response.Error(c, errors.ErrBadRequest("图片大小不能超过 10MB"))
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("读取图片失败"))
+	}
+	defer f.Close()
+
+	res, sErr := h.imageService.UploadCoverImage(c.Context(), user.ID, f, file.Filename)
+	if sErr != nil {
+		return response.Error(c, sErr)
+	}
+	return response.OK(c, res)
+}
+
 // UploadTopicImage handles topic image upload.
 // POST /api/image/topic
 func (h *ImageHandler) UploadTopicImage(c *fiber.Ctx) error {

@@ -35,9 +35,12 @@ type DocArticle struct {
 	Path        string `gorm:"uniqueIndex;type:varchar(255);not null" json:"path"`
 	Description string `gorm:"type:varchar(777);not null" json:"description"`
 	Banner      string `gorm:"type:varchar(777);default:''" json:"banner"`
-	Status      int    `gorm:"default:1" json:"status"` // 0=draft, 1=published, 2=archived
-	IsPin       bool   `gorm:"column:is_pin;default:false" json:"isPin"`
-	View        int    `gorm:"default:0" json:"view"`
+	// BannerImageHash is the content-addressed image_service hash for the cover,
+	// preferred over the legacy Banner URL (kept as fallback).
+	BannerImageHash string `gorm:"column:banner_image_hash;type:varchar(128);default:''" json:"bannerImageHash"`
+	Status          int    `gorm:"default:1" json:"status"` // 0=draft, 1=published, 2=archived
+	IsPin           bool   `gorm:"column:is_pin;default:false" json:"isPin"`
+	View            int    `gorm:"default:0" json:"view"`
 	// SortOrder is the manual display order set by admins via drag-reorder
 	// (lower = earlier). Seeded once by publish time in migration 039.
 	SortOrder       int        `gorm:"column:sort_order;not null;default:0" json:"sortOrder"`

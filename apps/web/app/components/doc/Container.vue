@@ -54,7 +54,7 @@ const articles = computed(() => articleResponse.value?.items || [])
           <img
             :alt="post.title"
             class="rounded-lg"
-            :src="post.banner || '/kungalgame.webp'"
+            :src="post.bannerUrl || '/kungalgame.webp'"
             width="100%"
             height="100%"
           />

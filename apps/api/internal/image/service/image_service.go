@@ -43,6 +43,56 @@ func NewImageService(
 	return &ImageService{repo: repo, s3: s3, imgCli: imgCli, wikiClient: wikiClient}
 }
 
+// UploadCoverResult is the image_service result returned to cover/banner/icon
+// uploaders (doc / friend-link / website). Unlike topic/message (which return a
+// `/image/<hash>` token for inline markdown), cover fields store the bare hash
+// and resolve it to a CDN URL on read — so the FE needs both the hash (to store)
+// and the url (to preview right away).
+type UploadCoverResult struct {
+	Hash      string `json:"hash"`
+	URL       string `json:"url"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	Thumbhash string `json:"thumbhash,omitempty"`
+}
+
+// UploadCoverImage uploads a cover/banner/icon through image_service under the
+// `topic` preset (reused — a generic main-image pipeline, so no new infra preset
+// is needed) and returns the hash + resolved URL + dims/thumbhash. The caller
+// stores the hash on the target entity (e.g. doc_article.banner_image_hash).
+func (s *ImageService) UploadCoverImage(ctx context.Context, userID int, r io.Reader, filename string) (*UploadCoverResult, *errors.AppError) {
+	if s.imgCli == nil {
+		return nil, errors.ErrBadRequest(
+			"图片上传服务未配置 (KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET)",
+		)
+	}
+
+	count, err := s.repo.GetDailyCount(userID)
+	if err != nil {
+		return nil, errors.ErrInternal("查询用户失败")
+	}
+	if count >= dailyImageLimit {
+		return nil, errors.ErrBadRequest("今日图片上传次数已达上限")
+	}
+
+	res, uErr := s.imgCli.Upload(ctx, r, filename, "topic")
+	if uErr != nil {
+		if ie, ok := uErr.(*imageclient.Error); ok {
+			return nil, errors.New(ie.Code, ie.Message, ie.StatusCode)
+		}
+		return nil, errors.ErrInternal("图片上传失败")
+	}
+
+	s.repo.IncrementDailyCount(userID)
+	return &UploadCoverResult{
+		Hash:      res.Hash,
+		URL:       res.URL,
+		Width:     res.Width,
+		Height:    res.Height,
+		Thumbhash: res.Thumbhash,
+	}, nil
+}
+
 // UploadTopicImage routes a user's inline post image through image_service
 // under the `topic` preset (WebP q77, ≤1920×1080, EXIF stripped — see infra
 // configs/image_presets.yaml) and returns the domain-independent token

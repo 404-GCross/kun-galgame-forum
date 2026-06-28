@@ -8,6 +8,7 @@ import (
 	"kun-galgame-api/internal/doc/repository"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/imageclient"
 
 	"gorm.io/gorm"
 )
@@ -15,13 +16,26 @@ import (
 type ArticleService struct {
 	articleRepo  *repository.ArticleRepository
 	categoryRepo *repository.CategoryRepository
+	// cdnBase is the image_service public CDN prefix used to resolve a stored
+	// banner_image_hash into a full URL (matches the galgame banner resolver).
+	cdnBase string
 }
 
 func NewArticleService(
 	articleRepo *repository.ArticleRepository,
 	categoryRepo *repository.CategoryRepository,
+	cdnBase string,
 ) *ArticleService {
-	return &ArticleService{articleRepo: articleRepo, categoryRepo: categoryRepo}
+	return &ArticleService{articleRepo: articleRepo, categoryRepo: categoryRepo, cdnBase: cdnBase}
+}
+
+// resolveBannerURL prefers the content-addressed hash (image_service) and falls
+// back to the legacy free-form Banner URL while the migration is in flight.
+func (s *ArticleService) resolveBannerURL(hash, legacy string) string {
+	if hash != "" {
+		return imageclient.MainURL(s.cdnBase, hash, "webp")
+	}
+	return legacy
 }
 
 // ──────────────────────────────────────────
@@ -74,7 +88,9 @@ func (s *ArticleService) GetList(req *dto.GetArticlesRequest) *ArticleListResult
 	categoryByID := s.loadCategoriesFor(items)
 	summaries := make([]dto.ArticleSummary, 0, len(items))
 	for _, a := range items {
-		summaries = append(summaries, toArticleSummary(a, categoryByID[a.CategoryID]))
+		sm := toArticleSummary(a, categoryByID[a.CategoryID])
+		sm.BannerURL = s.resolveBannerURL(a.BannerImageHash, a.Banner)
+		summaries = append(summaries, sm)
 	}
 	return &ArticleListResult{Items: summaries, Total: total}
 }
@@ -124,23 +140,24 @@ func toArticleSummary(a model.DocArticle, cat dto.ArticleCategoryBrief) dto.Arti
 		cat = dto.ArticleCategoryBrief{ID: a.CategoryID}
 	}
 	return dto.ArticleSummary{
-		ID:            a.ID,
-		Title:         a.Title,
-		Slug:          a.Slug,
-		Path:          a.Path,
-		Description:   a.Description,
-		Banner:        a.Banner,
-		Status:        a.Status,
-		IsPin:         a.IsPin,
-		View:          a.View,
-		SortOrder:     a.SortOrder,
-		PublishedTime: a.PublishedTime,
-		EditedTime:    a.EditedTime,
-		CategoryID:    a.CategoryID,
-		AuthorID:      a.AuthorID,
-		Category:      cat,
-		Created:       a.CreatedAt,
-		Updated:       a.UpdatedAt,
+		ID:              a.ID,
+		Title:           a.Title,
+		Slug:            a.Slug,
+		Path:            a.Path,
+		Description:     a.Description,
+		Banner:          a.Banner,
+		BannerImageHash: a.BannerImageHash,
+		Status:          a.Status,
+		IsPin:           a.IsPin,
+		View:            a.View,
+		SortOrder:       a.SortOrder,
+		PublishedTime:   a.PublishedTime,
+		EditedTime:      a.EditedTime,
+		CategoryID:      a.CategoryID,
+		AuthorID:        a.AuthorID,
+		Category:        cat,
+		Created:         a.CreatedAt,
+		Updated:         a.UpdatedAt,
 	}
 }
 
@@ -180,6 +197,8 @@ func (s *ArticleService) GetBySlug(slug string) (*dto.ArticleDetailResponse, *er
 		Path:            article.Path,
 		Description:     article.Description,
 		Banner:          article.Banner,
+		BannerImageHash: article.BannerImageHash,
+		BannerURL:       s.resolveBannerURL(article.BannerImageHash, article.Banner),
 		Status:          article.Status,
 		IsPin:           article.IsPin,
 		View:            article.View,
@@ -211,6 +230,7 @@ func (s *ArticleService) Create(userID int, req *dto.CreateArticleRequest) (*mod
 		Path:            "/doc/" + req.Slug,
 		Description:     req.Description,
 		Banner:          req.Banner,
+		BannerImageHash: req.BannerImageHash,
 		Status:          req.Status,
 		IsPin:           req.IsPin,
 		ContentMarkdown: req.ContentMarkdown,
@@ -239,16 +259,17 @@ func (s *ArticleService) Create(userID int, req *dto.CreateArticleRequest) (*mod
 func (s *ArticleService) Update(req *dto.UpdateArticleRequest) *errors.AppError {
 	now := time.Now()
 	updates := map[string]any{
-		"title":            req.Title,
-		"slug":             req.Slug,
-		"path":             "/doc/" + req.Slug,
-		"description":      req.Description,
-		"banner":           req.Banner,
-		"status":           req.Status,
-		"is_pin":           req.IsPin,
-		"content_markdown": req.ContentMarkdown,
-		"category_id":      req.CategoryID,
-		"edited_time":      &now,
+		"title":             req.Title,
+		"slug":              req.Slug,
+		"path":              "/doc/" + req.Slug,
+		"description":       req.Description,
+		"banner":            req.Banner,
+		"banner_image_hash": req.BannerImageHash,
+		"status":            req.Status,
+		"is_pin":            req.IsPin,
+		"content_markdown":  req.ContentMarkdown,
+		"category_id":       req.CategoryID,
+		"edited_time":       &now,
 	}
 
 	txErr := s.articleRepo.DB().Transaction(func(tx *gorm.DB) error {

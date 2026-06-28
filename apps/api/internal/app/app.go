@@ -348,7 +348,7 @@ func New(cfg *config.Config) *App {
 	docArticleRepo := docRepo.NewArticleRepository(db)
 	docCategoryRepo := docRepo.NewCategoryRepository(db)
 	docTagRepo := docRepo.NewTagRepository(db)
-	docArticleSvc := docService.NewArticleService(docArticleRepo, docCategoryRepo)
+	docArticleSvc := docService.NewArticleService(docArticleRepo, docCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
 	docCategorySvc := docService.NewCategoryService(docCategoryRepo)
 	docTagSvc := docService.NewTagService(docTagRepo)
 

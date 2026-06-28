@@ -47,6 +47,7 @@ type CreateArticleRequest struct {
 	Slug            string `json:"slug" validate:"required,max=233"`
 	Description     string `json:"description" validate:"max=1000"`
 	Banner          string `json:"banner" validate:"max=500"`
+	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
 	Status          int    `json:"status" validate:"oneof=0 1 2"`
 	IsPin           bool   `json:"isPin"`
 	ContentMarkdown string `json:"contentMarkdown" validate:"required"`
@@ -61,6 +62,7 @@ type UpdateArticleRequest struct {
 	Slug            string `json:"slug" validate:"required,max=233"`
 	Description     string `json:"description" validate:"max=1000"`
 	Banner          string `json:"banner" validate:"max=500"`
+	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
 	Status          int    `json:"status" validate:"oneof=0 1 2"`
 	IsPin           bool   `json:"isPin"`
 	ContentMarkdown string `json:"contentMarkdown" validate:"required"`
@@ -90,23 +92,25 @@ type ArticleCategoryBrief struct {
 // are camelCase to match the rest of the kungal API surface (post-doc
 // casing cleanup). The pre-refactor mixed-case response is gone.
 type ArticleSummary struct {
-	ID            int                  `json:"id"`
-	Title         string               `json:"title"`
-	Slug          string               `json:"slug"`
-	Path          string               `json:"path"`
-	Description   string               `json:"description"`
-	Banner        string               `json:"banner"`
-	Status        int                  `json:"status"`
-	IsPin         bool                 `json:"isPin"`
-	View          int                  `json:"view"`
-	SortOrder     int                  `json:"sortOrder"`
-	PublishedTime time.Time            `json:"publishedTime"`
-	EditedTime    *time.Time           `json:"editedTime"`
-	CategoryID    int                  `json:"categoryId"`
-	AuthorID      int                  `json:"authorId"`
-	Category      ArticleCategoryBrief `json:"category"`
-	Created       time.Time            `json:"created"`
-	Updated       time.Time            `json:"updated"`
+	ID              int                  `json:"id"`
+	Title           string               `json:"title"`
+	Slug            string               `json:"slug"`
+	Path            string               `json:"path"`
+	Description     string               `json:"description"`
+	Banner          string               `json:"banner"`
+	BannerImageHash string               `json:"bannerImageHash"`
+	BannerURL       string               `json:"bannerUrl"`
+	Status          int                  `json:"status"`
+	IsPin           bool                 `json:"isPin"`
+	View            int                  `json:"view"`
+	SortOrder       int                  `json:"sortOrder"`
+	PublishedTime   time.Time            `json:"publishedTime"`
+	EditedTime      *time.Time           `json:"editedTime"`
+	CategoryID      int                  `json:"categoryId"`
+	AuthorID        int                  `json:"authorId"`
+	Category        ArticleCategoryBrief `json:"category"`
+	Created         time.Time            `json:"created"`
+	Updated         time.Time            `json:"updated"`
 }
 
 // ArticleDetailResponse is the shape of GET /doc/article/:slug.
@@ -117,6 +121,8 @@ type ArticleDetailResponse struct {
 	Path            string               `json:"path"`
 	Description     string               `json:"description"`
 	Banner          string               `json:"banner"`
+	BannerImageHash string               `json:"bannerImageHash"`
+	BannerURL       string               `json:"bannerUrl"`
 	Status          int                  `json:"status"`
 	IsPin           bool                 `json:"isPin"`
 	View            int                  `json:"view"`

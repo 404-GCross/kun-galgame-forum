@@ -55,7 +55,11 @@ const stopAutoplay = () => {
 const startDrag = (e: MouseEvent | TouchEvent) => {
   isDragging.value = true
   dragStart.value =
-    e instanceof MouseEvent ? e.clientX : e.touches[0] ? e.touches[0].clientX : 0
+    e instanceof MouseEvent
+      ? e.clientX
+      : e.touches[0]
+        ? e.touches[0].clientX
+        : 0
   stopAutoplay()
 }
 
@@ -63,7 +67,11 @@ const onDrag = (e: MouseEvent | TouchEvent) => {
   if (!isDragging.value) return
   e.preventDefault()
   const currentX =
-    e instanceof MouseEvent ? e.clientX : e.touches[0] ? e.touches[0].clientX : 0
+    e instanceof MouseEvent
+      ? e.clientX
+      : e.touches[0]
+        ? e.touches[0].clientX
+        : 0
   const diff = currentX - dragStart.value
   const containerWidth = carouselRef.value?.offsetWidth || 0
   dragOffset.value = (diff / containerWidth) * 100
@@ -120,7 +128,7 @@ onBeforeUnmount(() => stopAutoplay())
         >
           <div class="relative h-40 w-full select-none">
             <KunImageNative
-              :src="post.banner || '/kungalgame.webp'"
+              :src="post.bannerUrl || '/kungalgame.webp'"
               :alt="post.title"
               :loading="index === 0 ? 'eager' : 'lazy'"
               :fetchpriority="index === 0 ? 'high' : undefined"
@@ -168,7 +176,9 @@ onBeforeUnmount(() => stopAutoplay())
           v-for="(_, index) in pinnedPosts"
           :key="index"
           class="h-1.5 w-1.5 rounded-full transition-colors"
-          :class="currentSlide === index ? 'bg-foreground/50' : 'bg-foreground/20'"
+          :class="
+            currentSlide === index ? 'bg-foreground/50' : 'bg-foreground/20'
+          "
         />
       </div>
     </template>

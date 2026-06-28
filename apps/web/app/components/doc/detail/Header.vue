@@ -16,7 +16,7 @@ const metadata = computed(() => props.metadata)
            box that fills the aspect-video container. -->
       <KunLightboxGallery>
         <KunLightboxGalleryItem
-          :src="metadata.banner || '/kungalgame.webp'"
+          :src="metadata.bannerUrl || '/kungalgame.webp'"
           :alt="metadata.title"
           :wrap="false"
           v-slot="{ open }"
@@ -24,7 +24,7 @@ const metadata = computed(() => props.metadata)
           <KunImage
             :alt="metadata.title"
             class="size-full cursor-zoom-in rounded-lg object-cover"
-            :src="metadata.banner || '/kungalgame.webp'"
+            :src="metadata.bannerUrl || '/kungalgame.webp'"
             loading="eager"
             fetchpriority="high"
             width="100%"

@@ -4,7 +4,7 @@ import { useDocEditorContext } from './context'
 import { normalizeDocSlug } from '~/utils/doc'
 import type { KunSelectOption } from '@kungal/ui-vue'
 
-const { form, categories, tags, refreshTags, readingMinute } =
+const { form, categories, tags, refreshTags, readingMinute, initialBannerUrl } =
   useDocEditorContext()
 
 const categoryOptions = computed<KunSelectOption[]>(() =>
@@ -124,11 +124,10 @@ const handleCreateTag = async () => {
         @blur="normalizeSlug"
       />
 
-      <KunInput
-        v-model="form.banner"
-        label="封面地址"
-        placeholder="https://example.com/banner.webp"
-        maxlength="777"
+      <KunCoverUpload
+        v-model="form.bannerImageHash"
+        :preview-url="initialBannerUrl"
+        label="封面"
       />
 
       <KunTextarea

@@ -51,7 +51,12 @@ export interface DocArticle {
   slug: string
   path: string
   description: string
+  // Legacy full-URL cover (still written/returned for un-migrated docs).
   banner: string
+  // Content-addressed cover: `bannerImageHash` is the stored hash (write +
+  // read), `bannerUrl` is the BE-resolved CDN url (falls back to `banner`).
+  bannerImageHash: string
+  bannerUrl: string
   status: number
   isPin: boolean
   view: number

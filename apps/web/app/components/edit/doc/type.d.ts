@@ -5,7 +5,11 @@ export interface DocEditorForm {
   title: string
   slug: string
   description: string
+  // Legacy full-URL cover, submitted unchanged so editing a not-yet-migrated
+  // doc without touching the cover never wipes its existing URL.
   banner: string
+  // Content-addressed cover hash (the value managed by KunCoverUpload).
+  bannerImageHash: string
   status: number
   isPin: boolean
   contentMarkdown: string

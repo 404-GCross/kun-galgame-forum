@@ -60,6 +60,7 @@ const createDefaultForm = (): DocEditorForm => ({
   slug: '',
   description: '',
   banner: '',
+  bannerImageHash: '',
   status: 1,
   isPin: false,
   contentMarkdown: '',
@@ -78,7 +79,10 @@ const applyArticleToForm = (article: DocArticleDetail) => {
   form.title = article.title
   form.slug = article.slug
   form.description = article.description
+  // Keep the legacy URL so submitting an un-migrated doc preserves it; the hash
+  // drives the new uploader.
   form.banner = article.banner || ''
+  form.bannerImageHash = article.bannerImageHash ?? ''
   form.status = article.status
   form.isPin = article.isPin
   form.contentMarkdown = article.contentMarkdown
@@ -151,6 +155,7 @@ const handleSubmit = async () => {
       slug: normalizedSlug,
       description: form.description.trim(),
       banner: form.banner.trim(),
+      bannerImageHash: form.bannerImageHash,
       status: form.status,
       isPin: form.isPin,
       contentMarkdown: form.contentMarkdown,
@@ -197,7 +202,8 @@ provideDocEditorContext({
   handleSubmit,
   resetForm,
   refreshTags,
-  readingMinute
+  readingMinute,
+  initialBannerUrl: props.initialArticle?.bannerUrl ?? ''
 })
 </script>
 

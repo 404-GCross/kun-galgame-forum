@@ -288,6 +288,10 @@ func (a *App) setupRoutes() {
 
 	// Image upload (authenticated)
 	authed.Post("/image/topic", a.ImageHandler.UploadTopicImage)
+	// Cover / banner / icon upload (doc, friend-link, website) — uploads under
+	// the `topic` preset and returns {hash, url, ...}; the caller stores the
+	// hash on its entity's *_image_hash column.
+	authed.Post("/image/cover", a.ImageHandler.UploadCoverImage)
 	// Chat / private-message inline image upload (own `message` preset).
 	authed.Post("/image/message", a.ImageHandler.UploadMessageImage)
 	// U2 (K-PR3a): galgame cover / screenshot upload — proxies a
