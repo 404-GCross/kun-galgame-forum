@@ -14,7 +14,9 @@ const officialId = computed(() => {
 const { page, limit, type, language, platform, sortField, sortOrder } =
   useGalgameFilters()
 
-const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
+const { showKUNGalgameContentLimit, showKUNGalgameNoResource } = storeToRefs(
+  usePersistSettingsStore()
+)
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
 // 'nsfw'): in this mode the wiki drops NSFW briefs, so this entity's NSFW
 // galgames are hidden and the count can read higher than the cards shown.
@@ -37,6 +39,7 @@ const { data, status } = await useKunFetch<GalgameOfficialDetail>(
       platform,
       sortField,
       sortOrder,
+      showNoResource: showKUNGalgameNoResource,
       officialId
     }
   }
@@ -133,8 +136,13 @@ if (data.value) {
         <div class="space-y-3">
           <p class="text-default-500">
             本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 /
-            排序筛选）， 数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame,
-            查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
+            排序筛选）。您在 Galgame
+            详情页看到的会社作品数（如「+2」）是该会社在百科收录的全部作品数,
+            因此本页数量会明显少于它,
+            甚至可能为空。若想一并查看没有下载资源的作品,
+            可在设置面板打开「显示没有下载资源的 Galgame」。默认仅显示 SFW 的
+            Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW
+            开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 

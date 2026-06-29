@@ -28,6 +28,9 @@ func buildEntityFilter(q url.Values, restrictIDs []int) model.GalgameListFilter 
 		Page:        atoiOr(q.Get("page"), 1),
 		Limit:       atoiOr(q.Get("limit"), 24),
 		RestrictIDs: restrictIDs,
+		// Honor the "显示没有下载资源的 Galgame" setting on entity detail pages
+		// too (the global list already did). Off → only resourced members shown.
+		ShowNoResource: q.Get("showNoResource") == "true",
 	}
 }
 
