@@ -44,16 +44,23 @@ useContentBlurUp(root)
          which would letterbox a portrait into the left of a full-width box and
          leave the rounded right corners stranded in the empty area (square-right
          bug). Here the box equals the image, so all four corners round cleanly. -->
+    <!-- width/height ATTRS (not just an aspect-ratio style) so the box reserves
+         BEFORE load: an img with only `aspect-ratio` + `max-w-full` and no width
+         has auto (=0) width until the image loads, so nothing was reserved (no
+         placeholder) and the thumbhash background had 0 area to show in. The attrs
+         give the browser the intrinsic size; max-w/max-h + the ratio still cap it. -->
     <img
       v-if="isSingle"
       :src="imageTokenUrl(shown[0]!)"
       :data-thumbhash="metaOf(shown[0]!)?.thumbhash || undefined"
+      :width="metaOf(shown[0]!)?.width || undefined"
+      :height="metaOf(shown[0]!)?.height || undefined"
       :style="
         aspectOf(shown[0]!) ? { aspectRatio: aspectOf(shown[0]!) } : undefined
       "
       alt="话题封面"
       loading="lazy"
-      class="block max-h-96 max-w-full rounded-lg"
+      class="block h-auto max-h-96 w-auto max-w-full rounded-lg"
     />
 
     <!-- Multi: one uniform-height row, each cover at its own aspect ratio (no crop,
