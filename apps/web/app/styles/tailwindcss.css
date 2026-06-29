@@ -28,6 +28,24 @@
 @source '../../node_modules/@kungal/ui-core';
 
 /*
+ * `desktop-nav`: the desktop icon sidebar (KunLayoutSidebar rail) reveals its
+ * links on HOVER (RailGroup flyouts), which touch devices cannot do. So the rail
+ * must show ONLY in a genuine desktop-pointer environment — wide enough AND a fine
+ * pointer that can hover. Everything else — phones, ALL touch tablets (incl. iPad
+ * portrait 768px AND landscape >1024px), and narrow desktop windows — gets the
+ * touch-friendly hamburger drawer instead. Keying the rail on hover/pointer (not
+ * width alone) is the correct fix for hover menus on tablets, and being pure CSS
+ * it's right on every device with no JS and no hydration flash.
+ *   rail:      `hidden desktop-nav:block`
+ *   hamburger: `flex desktop-nav:hidden`
+ */
+@custom-variant desktop-nav {
+  @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/*
  * Global corner-radius knob. A single multiplier — --kun-radius-scale, set by
  * the 圆角 setting (setKUNGalgameRounded) — rounds the WHOLE UI:
  *

@@ -56,7 +56,7 @@ onMounted(async () => {
       size="xl"
       variant="light"
       @click="showKUNGalgameHamburger = true"
-      class-name="flex sm:hidden"
+      class-name="flex desktop-nav:hidden"
     >
       <KunIcon name="lucide:menu" />
     </KunButton>

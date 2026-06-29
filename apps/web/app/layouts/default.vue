@@ -37,7 +37,7 @@ watch(
       />
     </div>
 
-    <div class="hidden md:block">
+    <div class="hidden desktop-nav:block">
       <KunLayoutSidebar />
     </div>
 
@@ -47,16 +47,18 @@ watch(
       <div
         :class="
           cn(
-            'z-10 w-full max-w-7xl min-w-0 transition-all duration-300 md:mr-3',
+            'z-10 w-full max-w-7xl min-w-0 transition-all duration-300 desktop-nav:mr-3',
             // Clears the desktop icon rail (w-20 = 80px) PLUS a ~24px gap so page
-            // content (e.g. the home tab rail) isn't flush against it; mobile ml-0.
-            'md:ml-[104px]'
+            // content (e.g. the home tab rail) isn't flush against it. Only when the
+            // rail is actually shown (desktop-nav) — touch tablets get no rail, so
+            // no offset; the hamburger drawer overlays instead.
+            'desktop-nav:ml-[104px]'
           )
         "
       >
-        <!-- Mobile keeps a small gutter; desktop is flush (md:px-0). pt clears the
-             fixed top bar. -->
-        <div class="h-full px-2 pt-22 pb-6 md:px-0">
+        <!-- Small gutter everywhere except the desktop rail layout (desktop-nav),
+             which is flush. pt clears the fixed top bar. -->
+        <div class="h-full px-2 pt-22 pb-6 desktop-nav:px-0">
           <NuxtPage />
         </div>
 
