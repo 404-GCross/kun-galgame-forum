@@ -7,9 +7,11 @@
 // pages), NOT by filtering search results. moyu's /search already does this.
 useKunDisableSeo('搜索 Galgame')
 
-// keepalive: returning from a result restores the type tab + results + scroll
-// instead of re-mounting (which would clear results until the next search).
-definePageMeta({ keepalive: true })
+// NOT keepalive on purpose: keepalive + the global `out-in` pageTransition left
+// the deactivated /search page in the DOM on navigation — its search box stuck at
+// the bottom of the next page. We preserve the search across navigation via the
+// temp store (keywords) + the URL (?type=) and re-fetch on return instead, so
+// there's no cached page DOM that can leak. (See SearchBox / SearchContainer.)
 </script>
 
 <template>

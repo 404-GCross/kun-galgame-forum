@@ -55,6 +55,8 @@ const handleSetType = async (value: SearchType) => {
   }
 }
 
+// `immediate` so returning to /search (no longer keepalive) re-runs the persisted
+// search on mount and restores the results, instead of showing an empty page.
 watch(
   () => keywords.value,
   async () => {
@@ -69,7 +71,8 @@ watch(
       total.value = 0
       isLoading.value = false
     }
-  }
+  },
+  { immediate: true }
 )
 
 const handleLoadMore = async () => {
@@ -81,7 +84,7 @@ const handleLoadMore = async () => {
 </script>
 
 <template>
-  <div class="space-y-6 min-h-[calc(100dvh-6rem)]">
+  <div class="min-h-[calc(100dvh-6rem)] space-y-6">
     <KunHeader
       name="搜索"
       description="您可以在本页面搜索本论坛的所有话题, Galgame, 用户, 回复, 评论。"

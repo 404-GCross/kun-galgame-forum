@@ -10,10 +10,6 @@ const input = ref<HTMLElement | null>(null)
 // `keywords` (which Container's fetch watcher reads) is DERIVED from it.
 const inputValue = ref('')
 
-onBeforeMount(() => {
-  keywords.value = ''
-})
-
 // Typing → keywords, debounced. We WATCH the v-model ref instead of reading
 // the value inside an @input handler: that handler captured the value from
 // *before* the keystroke applied, so every search ran the previous term and
@@ -30,12 +26,18 @@ watchDebounced(
 
 // Reflect EXTERNAL keyword changes (clicking a search-history entry sets the
 // store directly) back into the box. The trim guard skips our own debounced
-// echo, so it never strips a space the user is still typing.
-watch(keywords, (value) => {
-  if (value !== inputValue.value.trim()) {
-    inputValue.value = value
-  }
-})
+// echo, so it never strips a space the user is still typing. `immediate` so that
+// returning to /search (no longer keepalive) restores the persisted keyword into
+// the box on mount.
+watch(
+  keywords,
+  (value) => {
+    if (value !== inputValue.value.trim()) {
+      inputValue.value = value
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => input.value?.focus())
 
