@@ -84,6 +84,14 @@ const monthLabel = computed(() => {
   return `${y} 年 ${Number(mo)} 月`
 })
 
+// We're already on the current month when the viewed month equals today's
+// month (YYYY-MM) — hide the "回到本月" shortcut then.
+const isCurrentMonth = computed(
+  () =>
+    !!monthData.value &&
+    monthData.value.month === monthData.value.today.slice(0, 7)
+)
+
 const goPrevMonth = () => {
   if (monthData.value?.meta.hasPrev) {
     month.value = monthData.value.meta.prevMonth
@@ -115,25 +123,32 @@ const goNextYear = () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-4">
     <KunHeader
       name="Galgame 发售月历"
       description="按发售月份浏览即将与已发售的 Galgame。数据来自 Galgame Wiki, 月份边界按日本时间 (JST) 计; 标记「未收录」的作品本站暂无本地数据。"
     />
 
-    <KunTab :items="tabs" v-model="view" />
+    <KunTab :items="tabs" v-model="view" variant="bordered" />
 
     <!-- 年内待定 (release_precision=year) -->
     <template v-if="view === 'pending'">
-      <div class="flex items-center justify-center gap-3">
+      <div
+        class="border-default-200 flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
+      >
         <KunButton variant="light" :is-icon-only="true" @click="goPrevYear">
-          <KunIcon name="lucide:chevron-left" />
+          <KunIcon name="lucide:chevron-left" class="size-5" />
         </KunButton>
-        <span class="text-lg font-medium">
-          {{ pendingData?.year }} 年内待定
-        </span>
+        <div class="flex flex-col items-center">
+          <span class="text-xl font-bold sm:text-2xl">
+            {{ pendingData?.year }} 年
+          </span>
+          <span class="text-default-400 text-xs">
+            仅知年份 · 月份待定 · 共 {{ pendingData?.count ?? 0 }} 部
+          </span>
+        </div>
         <KunButton variant="light" :is-icon-only="true" @click="goNextYear">
-          <KunIcon name="lucide:chevron-right" />
+          <KunIcon name="lucide:chevron-right" class="size-5" />
         </KunButton>
       </div>
 
@@ -150,6 +165,16 @@ const goNextYear = () => {
 
     <!-- 发售日期未定 (release_precision=tba) -->
     <template v-else-if="view === 'tba'">
+      <div
+        class="border-default-200 flex items-center justify-center gap-2 rounded-xl border px-3 py-3"
+      >
+        <KunIcon name="lucide:calendar-x" class="text-default-400 size-5" />
+        <span class="font-medium">发售日期未定</span>
+        <span class="text-default-400 text-sm">
+          共 {{ tbaData?.count ?? 0 }} 部
+        </span>
+      </div>
+
       <KunLoading :loading="tbaStatus === 'pending'">
         <template v-if="tbaData">
           <GalgameCard v-if="tbaData.items.length" :galgames="tbaData.items" />
@@ -160,27 +185,36 @@ const goNextYear = () => {
 
     <!-- 月历 (default) -->
     <template v-else>
-      <div class="flex items-center justify-center gap-2">
+      <div
+        class="border-default-200 flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
+      >
         <KunButton
           variant="light"
           :is-icon-only="true"
           :disabled="!monthData?.meta.hasPrev"
           @click="goPrevMonth"
         >
-          <KunIcon name="lucide:chevron-left" />
+          <KunIcon name="lucide:chevron-left" class="size-5" />
         </KunButton>
-        <span class="min-w-32 text-center text-lg font-medium">
-          {{ monthLabel }}
-        </span>
+        <div class="flex flex-col items-center">
+          <span class="text-xl font-bold sm:text-2xl">{{ monthLabel }}</span>
+          <span v-if="monthData" class="text-default-400 text-xs">
+            共 {{ monthData.meta.count }} 部
+          </span>
+        </div>
         <KunButton
           variant="light"
           :is-icon-only="true"
           :disabled="!monthData?.meta.hasNext"
           @click="goNextMonth"
         >
-          <KunIcon name="lucide:chevron-right" />
+          <KunIcon name="lucide:chevron-right" class="size-5" />
         </KunButton>
-        <KunButton variant="flat" size="sm" @click="goToday">
+      </div>
+
+      <div v-if="monthData && !isCurrentMonth" class="-mt-1 flex justify-center">
+        <KunButton variant="light" size="sm" @click="goToday">
+          <KunIcon name="lucide:undo-2" class="size-4" />
           回到本月
         </KunButton>
       </div>
