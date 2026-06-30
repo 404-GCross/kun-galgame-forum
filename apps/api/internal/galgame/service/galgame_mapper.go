@@ -66,6 +66,7 @@ func galgameDetailFromWiki(g dto.WikiGalgameDetailFull, users map[string]dto.Wik
 		},
 		ContentLimit:       g.ContentLimit,
 		ResourceUpdateTime: g.ResourceUpdateTime,
+		Status:             g.Status,
 		OriginalLanguage:   g.OriginalLanguage,
 		AgeLimit:           g.AgeLimit,
 		ReleaseDate:        g.ReleaseDate,

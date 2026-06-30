@@ -214,7 +214,11 @@ type GalgameDetail struct {
 	// ingested (no local row). The detail page then shows a 未收录 notice and
 	// hides the forum-only view count, keeping the upload/rate/comment CTAs (the
 	// recording funnel — those create the local row on first use).
-	IsOnForum        bool   `json:"isOnForum"`
+	IsOnForum bool `json:"isOnForum"`
+	// Status = wiki 草稿状态 (0=已发布, 2=VNDB 草稿, 3/4=提交者自己的待审/被拒)。
+	// 未收录提示用它判断是否可认领：只有 VNDB 草稿 (status=2) 能被认领成为创建者，
+	// 已发布条目 (status=0) 已有创建者、不能再认领。
+	Status           int    `json:"status"`
 	OriginalLanguage string `json:"originalLanguage"`
 	AgeLimit         string `json:"ageLimit"`
 	// U1 (release_date / release_date_tba): nil = unknown; TBA is

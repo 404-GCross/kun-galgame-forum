@@ -72,6 +72,9 @@ export interface GalgameDetail {
   // The detail page shows a 未收录 notice + hides the (0) view count, keeping the
   // upload/rate/comment CTAs. Absent on older payloads → treated as on-forum.
   isOnForum?: boolean
+  // wiki 草稿状态: 0=已发布, 2=VNDB 草稿(可认领), 3/4=提交者自己的待审/被拒。
+  // 未收录提示据此只在可认领的草稿(=2)上展示「认领成为创建者」。
+  status?: number
   originalLanguage: string
   ageLimit: 'all' | 'r18'
   platform: string[]

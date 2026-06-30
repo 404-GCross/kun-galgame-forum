@@ -38,15 +38,21 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
       @on-rating-created="handleRatingCreated"
     />
 
-    <!-- Wiki-catalogue game the forum hasn't ingested yet: explain the empty
-         forum sections + invite the first contribution (which creates the local
-         row). The upload/rate/comment CTAs below stay enabled — the funnel. -->
+    <!-- Wiki-catalogue game the forum hasn't ingested yet (无本地 galgame 行).
+         Explains that any interaction records it, the creator/萌萌点 nuances,
+         and only offers 认领 on a claimable VNDB draft (status=2) — a published
+         entry (status=0) already has a creator and can't be claimed. -->
     <KunInfo
       v-if="galgame.isOnForum === false"
-      color="primary"
+      color="danger"
       title="该游戏尚未在本站收录"
-      description="本站还没有这款 Galgame 的下载资源 / 评分 / 评论, 当前资料来自百科。你可以在下方成为第一个上传资源或发表评分 / 评论的人, 它便会就此在本站收录。"
-    />
+      description="本站还没有这款 Galgame 的任何本地数据, 当前页面的资料均来自百科。点赞 / 收藏 / 评论 / 评分 都会让它被本站收录, 但您不会成为该 Galgame 的创建者, 也不会获得萌萌点奖励; 发布下载资源同样会让它被收录, 并照常获得发布资源的萌萌点奖励。"
+    >
+      <p v-if="galgame.status === 2" class="text-sm">
+        想成为该 Galgame 的创建者? 可前往「发布
+        Galgame」页面认领它（认领后您将成为创建者并获得萌萌点奖励）。
+      </p>
+    </KunInfo>
 
     <!-- Mobile: tags sit right under the header. On desktop they live at the top
          of the sidebar instead (the stacked single-column layout would otherwise
