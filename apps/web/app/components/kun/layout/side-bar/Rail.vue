@@ -4,6 +4,10 @@
 // (kun-ui 2.1 useKunPointerMenu — safe-triangle + shared group). Mobile never
 // renders this — it keeps the expanded drawer.
 import { kunSidebarRail } from '~/constants/layout'
+
+// 发售月历 quick entry, pinned below the last group (其他). Turns primary +
+// reads 有新作发售 when a Galgame releases today (client-only fetch).
+const { hasReleaseToday } = useGalgameReleaseToday()
 </script>
 
 <template>
@@ -13,5 +17,23 @@ import { kunSidebarRail } from '~/constants/layout'
       :key="group.name"
       :group="group"
     />
+
+    <KunButton
+      variant="light"
+      color="default"
+      href="/galgame-calendar"
+      aria-label="Galgame 发售月历"
+      :class-name="
+        cn(
+          'h-auto w-full flex-col gap-1 py-2',
+          hasReleaseToday ? 'text-primary' : 'text-foreground'
+        )
+      "
+    >
+      <KunIcon name="lucide:calendar-days" class="text-xl" />
+      <span class="text-[11px] leading-none">
+        {{ hasReleaseToday ? '有新作发售' : '发售月历' }}
+      </span>
+    </KunButton>
   </nav>
 </template>

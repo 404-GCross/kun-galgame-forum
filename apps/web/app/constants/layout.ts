@@ -4,6 +4,9 @@ export interface KunLayoutItem {
   icon?: string
   router?: string
   hint?: string
+  // Hint text colour (mobile drawer NavItem). Defaults to primary; 'danger'
+  // makes a hint stand out (used for the new 发售月历 entry).
+  hintColor?: 'primary' | 'danger'
   external?: boolean
   isCollapse?: boolean
   children?: KunLayoutItem[]
@@ -37,8 +40,7 @@ export const kunLayoutItem: KunLayoutItem[] = [
         name: 'createToolset',
         icon: 'lucide:wrench',
         router: '/edit/toolset/create',
-        label: '发布 Gal 工具',
-        hint: '新'
+        label: '发布 Gal 工具'
       }
     ]
   },
@@ -66,7 +68,8 @@ export const kunLayoutItem: KunLayoutItem[] = [
         icon: 'lucide:calendar-days',
         router: '/galgame-calendar',
         label: 'Galgame 发售月历',
-        hint: '新'
+        hint: '新',
+        hintColor: 'danger'
       },
       {
         name: 'website',
@@ -86,36 +89,31 @@ export const kunLayoutItem: KunLayoutItem[] = [
         name: 'galgame-resource',
         icon: 'lucide:download',
         router: '/galgame-resource',
-        label: 'Gal 资源列表',
-        hint: '新'
+        label: 'Gal 资源列表'
       },
       {
         name: 'galgame-series',
         icon: 'lucide:boxes',
         router: '/galgame-series',
-        label: 'Galgame 系列',
-        hint: '新'
+        label: 'Galgame 系列'
       },
       {
         name: 'galgame-official',
         icon: 'cuida:building-outline',
         router: '/galgame-official',
-        label: 'Galgame 会社',
-        hint: '新'
+        label: 'Galgame 会社'
       },
       {
         name: 'galgame-tag',
         icon: 'lucide:tag',
         router: '/galgame-tag',
-        label: 'Galgame 标签',
-        hint: '新'
+        label: 'Galgame 标签'
       },
       {
         name: 'galgame-engine',
         icon: 'carbon:ibm-engineering-lifecycle-mgmt',
         router: '/galgame-engine',
-        label: 'Galgame 引擎',
-        hint: '新'
+        label: 'Galgame 引擎'
       }
     ]
   },
@@ -160,8 +158,7 @@ export const kunLayoutItem: KunLayoutItem[] = [
       {
         name: 'timeline',
         router: '/activity',
-        label: '动态时间线',
-        hint: '新'
+        label: '动态时间线'
       },
       {
         name: 'activity',
@@ -185,8 +182,7 @@ export const kunLayoutItem: KunLayoutItem[] = [
       {
         name: 'galgame',
         router: '/ranking/galgame',
-        label: 'Galgame 排行',
-        hint: '新'
+        label: 'Galgame 排行'
       },
       {
         name: 'ranking',

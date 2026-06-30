@@ -73,7 +73,13 @@ const isExpanded = computed(() => props.expandedItems.includes(props.item.name))
         <span class="text-sm sm:text-base">{{ item.label }}</span>
       </span>
 
-      <span v-if="item.hint" class="text-primary ml-auto text-xs">
+      <span
+        v-if="item.hint"
+        :class="[
+          'ml-auto text-xs',
+          item.hintColor === 'danger' ? 'text-danger' : 'text-primary'
+        ]"
+      >
         {{ item.hint }}
       </span>
     </KunButton>
