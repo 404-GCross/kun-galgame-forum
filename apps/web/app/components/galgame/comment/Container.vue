@@ -12,6 +12,11 @@ const { commentToUserId } = storeToRefs(useTempGalgameCommentStore())
 const username = ref(props.targetUser.name)
 const gid = parseInt((route.params as { gid: string }).gid)
 
+// See GalgameResource: for a wiki-catalogue game the forum hasn't ingested, hide
+// the empty-state (the detail page's 未收录 notice covers it) but KEEP the comment
+// input — commenting creates the local row, so it's part of the recording funnel.
+const galgame = inject<GalgameDetail>('galgame')
+
 const pageData = reactive({
   galgameId: gid,
   page: 1,
@@ -31,22 +36,18 @@ const pageData = reactive({
 const { data, status } = await useKunFetch<{
   items: GalgameComment[]
   total: number
-}>(
-  `/galgame/${gid}/comment/all`,
-  {
-    lazy: true,
-    method: 'GET',
-    query: pageData
-  }
-)
+}>(`/galgame/${gid}/comment/all`, {
+  lazy: true,
+  method: 'GET',
+  query: pageData
+})
 
 type CommentNode = SerializeObject<GalgameComment>
 
 const handleSetUserInfo = (name: string) => {
   username.value = name
   commentToUserId.value =
-    props.userData.find((user) => user.name === name)?.id ||
-    props.targetUser.id
+    props.userData.find((user) => user.name === name)?.id || props.targetUser.id
 }
 
 onMounted(() => (commentToUserId.value = props.targetUser.id))
@@ -162,7 +163,10 @@ const openThreadRootId = ref<number | null>(null)
          history it's empty (or just the owner), so the dropdown had nothing to
          pick — looked broken. Commenting still works regardless: the target is
          optional and defaults to the owner (targetUser), set in onMounted. -->
-    <div v-if="targetUser && userData.length > 1" class="flex items-center gap-2">
+    <div
+      v-if="targetUser && userData.length > 1"
+      class="flex items-center gap-2"
+    >
       <div class="whitespace-nowrap">评论给</div>
       <KunSelect
         :model-value="username"
@@ -201,7 +205,9 @@ const openThreadRootId = ref<number | null>(null)
       <KunLoading v-if="status === 'pending'" />
 
       <KunNull
-        v-if="!data.total && status !== 'pending'"
+        v-if="
+          !data.total && status !== 'pending' && galgame?.isOnForum !== false
+        "
         description="没人评论, 是没人要这个 Galgame 的小只可爱软萌女孩子了吗, 呜呜呜呜呜呜！！"
       />
 

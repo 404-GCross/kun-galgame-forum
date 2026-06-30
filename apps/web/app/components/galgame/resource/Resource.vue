@@ -10,6 +10,11 @@ const gid = computed(() => {
   return parseInt((route.params as { gid: string }).gid)
 })
 
+// Provided by the detail page (Galgame.vue). For a wiki-catalogue game the forum
+// hasn't ingested, the parent already shows a 未收录 notice, so we suppress this
+// section's empty-state — but KEEP the 添加资源 CTA (the funnel that records it).
+const galgame = inject<GalgameDetail>('galgame')
+
 // Publish-modal toggle is purely local to this page — no longer needs
 // the (now removed) tempGalgameResource Pinia store because no other
 // component reads / writes it.
@@ -165,7 +170,7 @@ const activeBucket = computed(() =>
     <KunAdAIFYBanner />
 
     <KunNull
-      v-if="!data?.length"
+      v-if="!data?.length && galgame?.isOnForum !== false"
       description="这个 Galgame 还没有资源链接, 快添加一个吧!"
     />
 
