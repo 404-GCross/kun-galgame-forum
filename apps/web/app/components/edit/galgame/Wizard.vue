@@ -100,6 +100,17 @@ const noMatches = computed(
     !searchResults.value.items.length &&
     !searchResults.value.pending?.length
 )
+
+// Arrived from a calendar "未发布" card (/edit/galgame/publish?q=<name>):
+// pre-fill + auto-search so the clicked draft surfaces straight away for 认领.
+const route = useRoute()
+onMounted(() => {
+  const pre = route.query.q
+  if (typeof pre === 'string' && pre.trim()) {
+    q.value = pre.trim()
+    handleSearch()
+  }
+})
 </script>
 
 <template>

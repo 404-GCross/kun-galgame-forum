@@ -134,6 +134,10 @@ export interface GalgameCard {
   // month = "YYYY-MM-01" 日未定, year = "YYYY-01-01" 月未定, tba/unknown = null.
   // See docs/galgame_wiki/01-galgame.md §release_precision.
   releasePrecision?: 'day' | 'month' | 'year' | 'tba' | 'unknown'
+  // wiki 草稿状态 (calendar only): 2 = 未认领的 VNDB 草稿. The calendar renders
+  // status=2 as a "未发布" claim card (→ publish wizard) rather than a detail
+  // link (drafts 404 at /galgame/:gid). Absent/0 ⇒ published.
+  status?: number
   // U2 / K-PR6: cards carry only the derived banner; URL injected by
   // kungal. banner_image_hash retired in wiki PR5.
   effective_banner_hash?: string

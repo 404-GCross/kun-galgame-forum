@@ -44,6 +44,11 @@ type WikiGalgameItem struct {
 	// other list/detail wiki responses omit it → "" here. See the calendar §
 	// release_precision in docs/galgame_wiki/01-galgame.md.
 	ReleasePrecision string `json:"release_precision"`
+	// Status = wiki 草稿状态. The calendar now returns status IN (0,2): 0=已发布,
+	// 2=未认领的 VNDB 草稿 (claimable). Threaded to the card so the FE can render
+	// drafts as "未发布" (claim flow) instead of linking to /galgame/:gid (404 for
+	// drafts). 0 elsewhere (entity/list responses are published-only).
+	Status int `json:"status"`
 }
 
 // U2 cover/screenshot row shapes (snake_case, matches wiki wire). Both

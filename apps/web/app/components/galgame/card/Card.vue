@@ -29,6 +29,14 @@ const gridClass = computed(() =>
     ? 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-3'
     : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
 )
+
+// status=2 = unclaimed VNDB draft (calendar). It 404s at /galgame/:gid, so send
+// it to the publish wizard pre-searched by name → 认领并发布. Published games
+// link to their detail page as usual.
+const cardHref = (galgame: GalgameCard) =>
+  galgame.status === GalgameStatus.VndbDraft
+    ? `/edit/galgame/publish?q=${encodeURIComponent(getPreferredLanguageText(galgame.name))}`
+    : `/galgame/${galgame.id}`
 </script>
 
 <template>
@@ -37,7 +45,7 @@ const gridClass = computed(() =>
       :is-transparent="isTransparent"
       v-for="galgame in galgames"
       :key="galgame.id"
-      :href="`/galgame/${galgame.id}`"
+      :href="cardHref(galgame)"
       :target="isOpenInNewTab ? '_blank' : undefined"
       class-name="p-0"
     >
@@ -57,14 +65,21 @@ const gridClass = computed(() =>
             showPlatform ||
             (showRating && galgame.ratingCount) ||
             showNsfwBadge ||
-            galgame.isOnForum === false
+            galgame.isOnForum === false ||
+            galgame.status === GalgameStatus.VndbDraft
           "
           class="absolute top-2 right-2 left-2 flex items-start gap-1"
         >
-          <!-- Wiki-catalogue game the forum hasn't ingested: mark 未收录 instead
-               of a platform / 准备中 placeholder (it has no forum resources). -->
+          <!-- status=2 = 未认领 VNDB 草稿 → 未发布 (the card links to the claim
+               wizard). Otherwise a never-ingested wiki game → 未收录. -->
           <span
-            v-if="galgame.isOnForum === false"
+            v-if="galgame.status === GalgameStatus.VndbDraft"
+            class="bg-primary rounded-full px-3 py-1 text-xs whitespace-nowrap text-white backdrop-blur-sm sm:text-sm"
+          >
+            未在论坛发布
+          </span>
+          <span
+            v-else-if="galgame.isOnForum === false"
             class="bg-background rounded-full px-3 py-1 text-xs backdrop-blur-sm sm:text-sm"
           >
             未收录

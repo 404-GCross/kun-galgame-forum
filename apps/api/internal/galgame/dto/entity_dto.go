@@ -38,6 +38,10 @@ type GalgameCard struct {
 	// frontend uses this to hide the forum-only fields + show a "未收录" state
 	// instead of misleading zeros.
 	IsOnForum bool `json:"isOnForum"`
+	// Status = wiki 草稿状态 (calendar only): 2 = 未认领的 VNDB 草稿. The FE renders
+	// status=2 as a "未发布" claim card (→ publish wizard) rather than a /galgame
+	// link. omitempty so published (0) cards stay unchanged everywhere else.
+	Status int `json:"status,omitempty"`
 }
 
 // GalgameSample is a minimal galgame sample (name + banner) used in list views.

@@ -124,6 +124,9 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 			// "" for non-calendar sources (wiki only emits it on calendar
 			// endpoints) — the calendar FE reads it; other pages ignore it.
 			ReleasePrecision: g.ReleasePrecision,
+			// 2 = unclaimed VNDB draft (calendar only) → FE renders a 未发布
+			// claim card. 0 (published) everywhere else.
+			Status: g.Status,
 			// U2: card carries only the derived banner; cdn_url/
 			// effective_banner_url is injected by client.rewriteBanners
 			// walker. banner_image_hash retired in wiki PR5 (K-PR6).
