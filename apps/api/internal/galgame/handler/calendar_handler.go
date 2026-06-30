@@ -55,12 +55,3 @@ func (h *CalendarHandler) GetUpcoming(c *fiber.Ctx) error {
 	}
 	return response.OK(c, page)
 }
-
-// GetWindow — GET /api/galgame/calendar/window?month=YYYY-MM
-func (h *CalendarHandler) GetWindow(c *fiber.Ctx) error {
-	page, appErr := h.calendarService.GetWindow(c.Context(), collectQuery(c), utils.IsSFW(c))
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, page)
-}

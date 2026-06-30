@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  data: GalgameCalendarWindow
+  data: GalgameCalendarMonth
 }>()
 
 // Month paging is owned by the parent (it holds the URL-backed `month` ref).
@@ -22,22 +22,17 @@ const isCurrentMonth = computed(
 // Backward stops at the data floor; forward is unbounded (parent computes it).
 const canGoPrev = computed(() => props.data.month > props.data.meta.minMonth)
 
-// Today's day-of-month, or -1 when today isn't in the focus month.
+// Today's day-of-month, or -1 when today isn't in the viewed month.
 const todayDay = computed(() =>
   props.data.today.slice(0, 7) === props.data.month
     ? Number(props.data.today.slice(8, 10))
     : -1
 )
 
-// The grid renders only the focus month; the right list shows all three.
-const focusItems = computed(
-  () => props.data.months.find((m) => m.month === props.data.month)?.items ?? []
-)
-
 const dayGames = computed(() => {
   const map = new Map<number, GalgameCard[]>()
   const bucket: GalgameCard[] = []
-  for (const game of focusItems.value) {
+  for (const game of props.data.items) {
     if (game.releasePrecision === 'month' || !game.releaseDate) {
       bucket.push(game)
       continue
@@ -70,8 +65,8 @@ const cells = computed<(number | null)[]>(() => {
   return out
 })
 
-// `selected` just highlights the active cell; clicking scrolls the right list
-// to that date (rows are keyed by `cal-day-<YYYY-MM-DD>` across all 3 months).
+// `selected` highlights the active cell; clicking scrolls the (normal page-flow)
+// month list to that day's row.
 const selected = ref<number | 'bucket' | null>(null)
 const defaultSelected = computed<number | 'bucket' | null>(() =>
   todayDay.value > 0 && dayGames.value.map.has(todayDay.value)
@@ -82,71 +77,13 @@ watch(() => props.data.month, () => (selected.value = defaultSelected.value), {
   immediate: true
 })
 
-// The right month list scrolls inside a <KunOverlayScroll> (themed overlay
-// scrollbar). Its REAL scroller is the overlayscrollbars viewport, so every
-// imperative scroll goes through getViewport(). Own height on wide → the
-// viewport scrolls (the "wheel"); no height on mobile → it grows and the page
-// scrolls (natural flow), so the viewport isn't scrollable there.
-const rightScroll = useTemplateRef<{ getViewport: () => HTMLElement | null }>(
-  'rightScroll'
-)
-const getViewport = () => rightScroll.value?.getViewport() ?? null
-const isScrollable = (vp: HTMLElement) => vp.scrollHeight > vp.clientHeight + 1
-
-// Center the focus month so prev peeks above + next below. A focus taller than
-// the viewport top-aligns with a small gap (prev still peeks + header visible)
-// instead of landing mid-section. Skipped when the viewport isn't its own
-// scroll area (mobile natural flow).
-const centerFocus = (behavior: ScrollBehavior = 'smooth') => {
-  const vp = getViewport()
-  if (!vp || !isScrollable(vp)) {
-    return
-  }
-  const el = vp.querySelector<HTMLElement>('[data-focus-month]')
-  if (!el) {
-    return
-  }
-  const vRect = vp.getBoundingClientRect()
-  const eRect = el.getBoundingClientRect()
-  const offset = Math.max(72, (vp.clientHeight - eRect.height) / 2)
-  vp.scrollTo({
-    top: Math.max(0, vp.scrollTop + (eRect.top - vRect.top) - offset),
-    behavior
-  })
-}
-
-// Scroll a clicked day's row into view — within the viewport on wide, the
-// window on mobile (natural flow).
 const scrollToRow = (id: string) => {
-  const vp = getViewport()
-  const el = vp?.querySelector<HTMLElement>(`#cal-day-${id}`)
-  if (!el) {
-    return
+  if (import.meta.client) {
+    document
+      .getElementById(`cal-day-${id}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
-  if (!vp || !isScrollable(vp)) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    return
-  }
-  const vRect = vp.getBoundingClientRect()
-  const eRect = el.getBoundingClientRect()
-  vp.scrollTo({
-    top: Math.max(0, vp.scrollTop + (eRect.top - vRect.top) - 8),
-    behavior: 'smooth'
-  })
 }
-
-// Center on mount (instant) + re-center on each month switch (the "wheel").
-// rAF after nextTick gives overlayscrollbars a frame to re-measure the swapped
-// content before we read scrollHeight.
-const scheduleCenter = (behavior: ScrollBehavior) => {
-  if (!import.meta.client) {
-    return
-  }
-  nextTick(() => requestAnimationFrame(() => centerFocus(behavior)))
-}
-onMounted(() => scheduleCenter('auto'))
-watch(() => props.data.month, () => scheduleCenter('smooth'))
-
 const pickDay = (day: number | null) => {
   if (day === null || !countOf(day)) {
     return
@@ -165,8 +102,8 @@ const pickBucket = () => {
 
 <template>
   <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-    <!-- LEFT: focus-month calendar (sticky on wide so it stays while the
-         three-month list scrolls). Full width on mobile. -->
+    <!-- LEFT: focus-month calendar. Sticky on wide so it stays put while the
+         month list scrolls; full width on mobile. -->
     <div
       class="flex flex-col gap-3 lg:sticky lg:top-20 lg:w-1/3 lg:shrink-0 lg:self-start"
     >
@@ -184,7 +121,7 @@ const pickBucket = () => {
         <div class="flex flex-col items-center">
           <span class="font-bold">{{ monthLabel }}</span>
           <span class="text-default-400 text-xs">
-            共 {{ focusItems.length }} 部
+            共 {{ data.meta.count }} 部
           </span>
         </div>
         <KunButton variant="light" :is-icon-only="true" @click="emit('next')">
@@ -199,7 +136,7 @@ const pickBucket = () => {
         </KunButton>
       </div>
 
-      <div class="grid grid-cols-7 gap-1">
+      <div class="grid grid-cols-7 gap-1.5">
         <div
           v-for="w in WEEKDAYS"
           :key="w"
@@ -212,9 +149,8 @@ const pickBucket = () => {
       <div class="grid grid-cols-7 gap-1.5">
         <template v-for="(cell, i) in cells" :key="i">
           <div v-if="cell === null" />
-          <!-- Release count as a corner badge (kun-ui KunBadge). Today is
-               outlined + bold, selected gets a soft fill, empty days are muted
-               and non-interactive. -->
+          <!-- Release count as a corner badge (KunBadge). Today is outlined +
+               bold, selected gets a soft fill, empty days are muted. -->
           <KunBadge
             v-else
             :count="countOf(cell)"
@@ -259,21 +195,9 @@ const pickBucket = () => {
       </button>
     </div>
 
-    <!-- RIGHT: the three-month window as a scroll panel ("wheel") — focus month
-         centered (prev peeks above, next below); switching re-centers with a
-         smooth scroll. Overlay scrollbar via KunOverlayScroll; :defer="false" so
-         its viewport is available synchronously for the on-mount centering. Own
-         height + scroll on wide; natural page flow on mobile. -->
-    <KunOverlayScroll
-      ref="rightScroll"
-      :defer="false"
-      class="min-w-0 lg:h-[calc(100dvh-9rem)] lg:w-2/3"
-    >
-      <GalgameCalendarMonthList
-        :months="data.months"
-        :today="data.today"
-        :focus-month="data.month"
-      />
-    </KunOverlayScroll>
+    <!-- RIGHT: the focus month's games (normal page flow). -->
+    <div class="min-w-0 lg:w-2/3">
+      <GalgameCalendarMonthList :data="data" />
+    </div>
   </div>
 </template>

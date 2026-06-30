@@ -33,14 +33,14 @@ const yearQuery = computed(() => (year.value ? { year: year.value } : {}))
 
 // content_limit is derived server-side from the SFW cookie (forwarded on SSR);
 // NSFW-opt-in users get the sfw+nsfw union. Each bucket fetches lazily the
-// first time its tab opens; the month view is the landing default.
-// The month view fetches a 3-month window (prev / focus / next) so an early-in-
-// the-month focus — usually sparse — still shows content from its neighbours.
+// first time its tab opens; the month view is the landing default. A single
+// month already has plenty of releases (the wiki returns drafts too), so the
+// view shows just the focus month — no multi-month window.
 const {
-  data: windowData,
-  status: windowStatus,
-  refresh: refreshWindow
-} = await useKunFetch<GalgameCalendarWindow>('/galgame/calendar/window', {
+  data: monthData,
+  status: monthStatus,
+  refresh: refreshMonth
+} = await useKunFetch<GalgameCalendarMonth>('/galgame/calendar', {
   method: 'GET',
   query: monthQuery,
   watch: [month],
@@ -82,8 +82,8 @@ const {
 
 // Fetch a bucket the first time its tab is activated (lazy tabs start empty).
 watch(view, () => {
-  if (isMonthView.value && !windowData.value) {
-    refreshWindow()
+  if (isMonthView.value && !monthData.value) {
+    refreshMonth()
   } else if (view.value === 'upcoming' && !upcomingData.value) {
     refreshUpcoming()
   } else if (view.value === 'pending' && !pendingData.value) {
@@ -113,18 +113,17 @@ const addMonth = (ym: string, delta: number) => {
 
 const canGoPrev = computed(
   () =>
-    !!windowData.value &&
-    windowData.value.month > windowData.value.meta.minMonth
+    !!monthData.value && monthData.value.month > monthData.value.meta.minMonth
 )
 
 const goPrevMonth = () => {
-  if (canGoPrev.value && windowData.value) {
-    month.value = addMonth(windowData.value.month, -1)
+  if (canGoPrev.value && monthData.value) {
+    month.value = addMonth(monthData.value.month, -1)
   }
 }
 const goNextMonth = () => {
-  if (windowData.value) {
-    month.value = addMonth(windowData.value.month, 1)
+  if (monthData.value) {
+    month.value = addMonth(monthData.value.month, 1)
   }
 }
 const goToday = () => {
@@ -255,12 +254,10 @@ const goNextYear = () => {
     <!-- 月历 (default) — nav + calendar + day panel live in GalgameCalendarMonth;
          paging is emitted back here (we own the URL-backed month ref). -->
     <template v-else>
-      <!-- Only block on the very first load; paging keeps the old window
-           visible and lets GalgameCalendarMonth cross-fade to the new one. -->
-      <KunLoading :loading="windowStatus === 'pending' && !windowData">
+      <KunLoading :loading="monthStatus === 'pending'">
         <GalgameCalendarMonth
-          v-if="windowData"
-          :data="windowData"
+          v-if="monthData"
+          :data="monthData"
           @prev="goPrevMonth"
           @next="goNextMonth"
           @today="goToday"
