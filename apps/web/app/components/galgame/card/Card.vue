@@ -47,11 +47,23 @@ const {
 
         <div
           v-if="
-            showPlatform || (showRating && galgame.ratingCount) || showNsfwBadge
+            showPlatform ||
+            (showRating && galgame.ratingCount) ||
+            showNsfwBadge ||
+            galgame.isOnForum === false
           "
           class="absolute top-2 right-2 left-2 flex items-start gap-1"
         >
-          <div v-if="showPlatform" class="flex flex-wrap gap-1">
+          <!-- Wiki-catalogue game the forum hasn't ingested: mark 未收录 instead
+               of a platform / 准备中 placeholder (it has no forum resources). -->
+          <span
+            v-if="galgame.isOnForum === false"
+            class="bg-background rounded-full px-3 py-1 text-xs backdrop-blur-sm sm:text-sm"
+          >
+            未收录
+          </span>
+
+          <div v-else-if="showPlatform" class="flex flex-wrap gap-1">
             <template v-if="galgame.platform.length">
               <span
                 v-for="(platform, i) in galgame.platform"
@@ -95,7 +107,7 @@ const {
              black scrim so the caption stays legible over the cover image
              (see CLAUDE.md iron rule #2). -->
         <div
-          v-if="showViewLike || showLanguage"
+          v-if="(showViewLike || showLanguage) && galgame.isOnForum !== false"
           class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300 sm:text-sm"
         >
           <div v-if="showViewLike" class="flex gap-3">
@@ -141,7 +153,7 @@ const {
         </p>
 
         <div
-          v-if="showPublisher"
+          v-if="showPublisher && galgame.isOnForum !== false"
           class="text-default-600 mt-auto flex items-center gap-1 pt-3 text-sm"
         >
           <KunAvatar

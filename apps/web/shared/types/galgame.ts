@@ -111,6 +111,11 @@ export interface GalgameCard {
   // (ratingCount falsy → the card hides the rating badge).
   rating?: number
   ratingCount?: number
+  // Entity detail pages (会社/tag/engine/series) list the FULL wiki catalogue.
+  // false ⇒ a wiki-catalogue game the forum hasn't ingested (no resources /
+  // ratings / views) — the card hides those forum-only fields + shows 未收录.
+  // Absent on the /galgame list + other card sources (treated as "on forum").
+  isOnForum?: boolean
   platform: string[]
   language: string[]
   resourceUpdateTime: Date | string

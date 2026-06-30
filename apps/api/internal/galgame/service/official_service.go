@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"maps"
 	"net/url"
-	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
@@ -15,11 +14,10 @@ import (
 type OfficialService struct {
 	wikiClient *client.GalgameClient
 	enricher   *GalgameEnricher
-	galgameSvc *GalgameService
 }
 
-func NewOfficialService(wikiClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *OfficialService {
-	return &OfficialService{wikiClient: wikiClient, enricher: enricher, galgameSvc: galgameSvc}
+func NewOfficialService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *OfficialService {
+	return &OfficialService{wikiClient: wikiClient, enricher: enricher}
 }
 
 // ──────────────────────────────────────────
@@ -27,13 +25,13 @@ func NewOfficialService(wikiClient *client.GalgameClient, enricher *GalgameEnric
 // ──────────────────────────────────────────
 
 type wikiOfficialListItem struct {
-	ID           int              `json:"id"`
-	Name         string           `json:"name"`
-	Link         string           `json:"link"`
-	Category     string           `json:"category"`
-	Lang         string           `json:"lang"`
-	Alias        []dto.WikiAlias  `json:"alias"`
-	GalgameCount int              `json:"galgame_count"`
+	ID           int             `json:"id"`
+	Name         string          `json:"name"`
+	Link         string          `json:"link"`
+	Category     string          `json:"category"`
+	Lang         string          `json:"lang"`
+	Alias        []dto.WikiAlias `json:"alias"`
+	GalgameCount int             `json:"galgame_count"`
 }
 
 type wikiOfficialListResp struct {
@@ -42,8 +40,8 @@ type wikiOfficialListResp struct {
 }
 
 type wikiOfficialDetail struct {
-	ID          int             `json:"id"`
-	Name        string          `json:"name"`
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 	// Original-language name (added by wiki PR4 sub-change, K-PR6).
 	// Pointer because wiki may omit / null when the field hasn't been
 	// set yet; the FE edit modal needs to round-trip the current
@@ -106,7 +104,9 @@ func (s *OfficialService) GetList(
 // aliasesToNames(nil) → []string{} keeps the frontend contract intact.
 //
 // The frontend (galgame/official/Container.vue) does
-//   `searchResult.value = res`  expecting a bare GalgameOfficialItem[].
+//
+//	`searchResult.value = res`  expecting a bare GalgameOfficialItem[].
+//
 // We unwrap `items` here so the gateway response stays compatible without
 // touching the frontend.
 func (s *OfficialService) Search(
@@ -150,11 +150,14 @@ func (s *OfficialService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.OfficialDetail, *errors.AppError) {
-	// Only the entity metadata is used here; the galgame list is recomputed
-	// locally below, so fetch the cheapest possible page from the wiki.
+	// The galgame list is the wiki's FULL member catalogue — paginated,
+	// content_limit-aware, with a matching total — NOT the forum-local subset.
+	// The wiki /official/:id response already carries the galgame page, so we
+	// forward page/limit/sort + content_limit and use it directly. The enricher
+	// overlays forum-local data (view/like/platform/language + IsOnForum) per
+	// card; games the forum has never ingested come back IsOnForum=false so the
+	// frontend shows a "未收录" state instead of misleading zeros.
 	q := withSFWFilter(rawQuery, isSFW)
-	q.Set("page", "1")
-	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/official/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -171,17 +174,6 @@ func (s *OfficialService) GetDetail(
 		original = *o.Original
 	}
 
-	// Local resource-based filter over the official's member galgames (the wiki
-	// can't filter by platform/language/资源). See TagService.GetDetail.
-	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "official", o.ID)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
-	if appErr != nil {
-		return nil, appErr
-	}
-
 	return &dto.OfficialDetail{
 		ID:           o.ID,
 		Name:         o.Name,
@@ -191,8 +183,8 @@ func (s *OfficialService) GetDetail(
 		Lang:         o.Lang,
 		Description:  o.Description,
 		Alias:        aliasesToNames(o.Alias),
-		Galgame:      listCardsToEntityCards(page.Galgames),
-		GalgameCount: page.Total,
+		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
+		GalgameCount: parsed.Total,
 	}, nil
 }
 
@@ -213,8 +205,8 @@ func aliasesToNames(aliases []dto.WikiAlias) []string {
 // still get SFW from list/search endpoints. We must say `all` aloud to
 // include NSFW.
 //
-//   isSFW=true  → content_limit=sfw  (only SFW; matches list/search default)
-//   isSFW=false → content_limit=all  (user opted in; both SFW + NSFW)
+//	isSFW=true  → content_limit=sfw  (only SFW; matches list/search default)
+//	isSFW=false → content_limit=all  (user opted in; both SFW + NSFW)
 //
 // `nsfw`-only isn't reachable from the FE (the cookie only flips on/off).
 func withSFWFilter(q url.Values, isSFW bool) url.Values {
@@ -226,16 +218,4 @@ func withSFWFilter(q url.Values, isSFW bool) url.Values {
 		out.Set("content_limit", "all")
 	}
 	return out
-}
-
-// atoiOr parses s as an int, returning fallback on any failure (empty / bad).
-func atoiOr(s string, fallback int) int {
-	if s == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return fallback
-	}
-	return n
 }

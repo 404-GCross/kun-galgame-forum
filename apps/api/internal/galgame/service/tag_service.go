@@ -13,11 +13,10 @@ import (
 type TagService struct {
 	wikiClient *client.GalgameClient
 	enricher   *GalgameEnricher
-	galgameSvc *GalgameService
 }
 
-func NewTagService(wikiClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *TagService {
-	return &TagService{wikiClient: wikiClient, enricher: enricher, galgameSvc: galgameSvc}
+func NewTagService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *TagService {
+	return &TagService{wikiClient: wikiClient, enricher: enricher}
 }
 
 type wikiTagListItem struct {
@@ -175,11 +174,11 @@ func (s *TagService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagDetail, *errors.AppError) {
-	// Only the entity metadata is used here; the galgame list is recomputed
-	// locally below, so fetch the cheapest possible page from the wiki.
+	// Full wiki member catalogue (paginated, content_limit-aware, matching total),
+	// NOT the forum-local subset. The wiki /tag/:id response already carries the
+	// galgame page; the enricher overlays forum-local data + IsOnForum per card
+	// (wiki-only games → IsOnForum=false). See OfficialService.GetDetail.
 	q := withSFWFilter(rawQuery, isSFW)
-	q.Set("page", "1")
-	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/tag/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -191,25 +190,13 @@ func (s *TagService) GetDetail(
 
 	t := parsed.Tag
 
-	// The wiki returns the tag's members but can't filter them by platform/
-	// language/资源 (resource data is forum-local). Fetch the member ids and run
-	// the SAME local filter/sort/paginate as /galgame over them.
-	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "tag", t.ID)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
-	if appErr != nil {
-		return nil, appErr
-	}
-
 	return &dto.TagDetail{
 		ID:           t.ID,
 		Name:         t.Name,
 		Category:     t.Category,
 		Description:  t.Description,
 		Alias:        aliasesToNames(t.Alias),
-		Galgame:      listCardsToEntityCards(page.Galgames),
-		GalgameCount: page.Total,
+		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
+		GalgameCount: parsed.Total,
 	}, nil
 }

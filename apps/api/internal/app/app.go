@@ -309,9 +309,9 @@ func New(cfg *config.Config) *App {
 		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc,
 	)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher)
-	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameEnricher, galgameCoreSvc)
-	galgameEngineSvc := galgameService.NewEngineService(gc, galgameEnricher, galgameCoreSvc)
-	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
+	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameEnricher)
+	galgameEngineSvc := galgameService.NewEngineService(gc, galgameEnricher)
+	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher)
 	galgameWikiSvc := galgameService.NewWikiService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.

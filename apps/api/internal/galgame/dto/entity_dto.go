@@ -28,6 +28,12 @@ type GalgameCard struct {
 	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
+	// IsOnForum is false for wiki-catalogue games the forum has never ingested
+	// (no local row → no resources / ratings / views). Entity detail pages
+	// (会社 / tag / engine / series) list the FULL wiki catalogue, so the
+	// frontend uses this to hide the forum-only fields + show a "未收录" state
+	// instead of misleading zeros.
+	IsOnForum bool `json:"isOnForum"`
 }
 
 // GalgameSample is a minimal galgame sample (name + banner) used in list views.

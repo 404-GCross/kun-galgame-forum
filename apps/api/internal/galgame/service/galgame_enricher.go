@@ -100,6 +100,11 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 
 	cards := make([]dto.GalgameCard, len(items))
 	for i, g := range items {
+		// Present in FindLocalBatch ⇒ the forum has a local row for this game
+		// (created/claimed/approved or has activity). Wiki-only games are absent
+		// ⇒ IsOnForum=false and their view/like/platform/language stay zero/empty
+		// (the frontend hides those rather than showing misleading zeros).
+		_, onForum := localMap[g.ID]
 		cards[i] = dto.GalgameCard{
 			ID: g.ID,
 			Name: dto.KunLanguage{
@@ -126,6 +131,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
 			Platform:                 emptyStrSliceIfNil(platformMap[g.ID]),
 			Language:                 emptyStrSliceIfNil(languageMap[g.ID]),
+			IsOnForum:                onForum,
 		}
 	}
 	return cards

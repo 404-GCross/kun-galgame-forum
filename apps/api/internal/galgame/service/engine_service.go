@@ -13,11 +13,10 @@ import (
 type EngineService struct {
 	wikiClient *client.GalgameClient
 	enricher   *GalgameEnricher
-	galgameSvc *GalgameService
 }
 
-func NewEngineService(wikiClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *EngineService {
-	return &EngineService{wikiClient: wikiClient, enricher: enricher, galgameSvc: galgameSvc}
+func NewEngineService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *EngineService {
+	return &EngineService{wikiClient: wikiClient, enricher: enricher}
 }
 
 type wikiEngineListItem struct {
@@ -74,11 +73,11 @@ func (s *EngineService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.EngineDetail, *errors.AppError) {
-	// Only the entity metadata is used here; the galgame list is recomputed
-	// locally below, so fetch the cheapest possible page from the wiki.
+	// Full wiki member catalogue (paginated, content_limit-aware, matching total),
+	// NOT the forum-local subset. The wiki /engine/:id response already carries
+	// the galgame page; the enricher overlays forum-local data + IsOnForum per
+	// card (wiki-only games → IsOnForum=false). See OfficialService.GetDetail.
 	q := withSFWFilter(rawQuery, isSFW)
-	q.Set("page", "1")
-	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/engine/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -90,24 +89,13 @@ func (s *EngineService) GetDetail(
 
 	e := parsed.Engine
 
-	// Local resource-based filter over the engine's member galgames (the wiki
-	// can't filter by platform/language/资源). See TagService.GetDetail.
-	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "engine", e.ID)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
-	if appErr != nil {
-		return nil, appErr
-	}
-
 	return &dto.EngineDetail{
 		ID:           e.ID,
 		Name:         e.Name,
 		Description:  e.Description,
 		Alias:        emptyStrSliceIfNil(e.Alias),
-		Galgame:      listCardsToEntityCards(page.Galgames),
-		GalgameCount: page.Total,
+		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
+		GalgameCount: parsed.Total,
 	}, nil
 }
 

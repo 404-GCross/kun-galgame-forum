@@ -16,8 +16,8 @@ const { page, limit, type, language, platform, sortField, sortOrder } =
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): in this mode the wiki drops NSFW briefs, so this entity's NSFW
-// galgames are hidden and the count can read higher than the cards shown.
+// 'nsfw'): the wiki then hides NSFW games from BOTH the list and the
+// (content-aware) count, so an NSFW-heavy entity can look emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
 const showTagModal = ref(false)
@@ -91,8 +91,9 @@ if (data.value) {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页仅展示本站已收录下载资源的 Galgame（可按平台 / 语言 /
-            排序筛选）， 数量会明显少于百科全量收录。默认仅显示 SFW 的 Galgame,
+            本页展示该标签下的全部 Galgame,
+            数据来自百科。标注「未收录」的作品本站尚未收录, 暂无下载资源 /
+            评分等信息, 欢迎成为第一个上传资源的人。默认仅显示 SFW 的 Galgame,
             查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
@@ -145,7 +146,7 @@ if (data.value) {
       v-if="isSfwMode"
       color="warning"
       title="部分 Galgame 已隐藏"
-      description="当前为 SFW 模式，该分类下含 NSFW 内容的 Galgame 不会显示，统计数量也可能因此偏多。如需查看，请在设置面板开启 NSFW 开关。"
+      description="当前为 SFW 模式，该标签含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
     />
 
     <GalgameTagModal
