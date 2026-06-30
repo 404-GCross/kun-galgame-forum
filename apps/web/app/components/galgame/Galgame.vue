@@ -38,6 +38,16 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
       @on-rating-created="handleRatingCreated"
     />
 
+    <!-- Wiki-catalogue game the forum hasn't ingested yet: explain the empty
+         forum sections + invite the first contribution (which creates the local
+         row). The upload/rate/comment CTAs below stay enabled — the funnel. -->
+    <KunInfo
+      v-if="galgame.isOnForum === false"
+      color="primary"
+      title="该游戏尚未在本站收录"
+      description="本站还没有这款 Galgame 的下载资源 / 评分 / 评论, 当前资料来自百科。你可以在下方成为第一个上传资源或发表评分 / 评论的人, 它便会就此在本站收录。"
+    />
+
     <!-- Mobile: tags sit right under the header. On desktop they live at the top
          of the sidebar instead (the stacked single-column layout would otherwise
          push them below all the main content). Two breakpoint-gated instances —
@@ -129,7 +139,8 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
           >
             <KunUserChip :user="galgame.user" />
             <span class="text-sm">
-              <KunTime :time="galgame.created" type="date" show-year /> 创建本游戏
+              <KunTime :time="galgame.created" type="date" show-year />
+              创建本游戏
             </span>
           </div>
 

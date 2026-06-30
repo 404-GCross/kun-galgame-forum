@@ -454,6 +454,10 @@ func (s *GalgameService) GetDetail(
 	detail.View = local.View
 	detail.LikeCount = local.LikeCount
 	detail.FavoriteCount = local.FavoriteCount
+	// No local row ⇒ a wiki-catalogue game the forum has never ingested. The FE
+	// then shows a 未收录 notice + hides the (always-0) view count, but keeps the
+	// upload/rate/comment CTAs that create the local row on first use.
+	detail.IsOnForum = local.ID != 0
 	detail.IsLiked = isLiked
 	detail.IsFavorited = isFavorited
 	detail.Platform = platforms

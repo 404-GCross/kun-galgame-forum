@@ -210,8 +210,13 @@ type GalgameDetail struct {
 	ContentLimit       string      `json:"contentLimit"`
 	ResourceUpdateTime string      `json:"resourceUpdateTime"`
 	View               int         `json:"view"`
-	OriginalLanguage   string      `json:"originalLanguage"`
-	AgeLimit           string      `json:"ageLimit"`
+	// IsOnForum is false for a wiki-catalogue galgame the forum has never
+	// ingested (no local row). The detail page then shows a 未收录 notice and
+	// hides the forum-only view count, keeping the upload/rate/comment CTAs (the
+	// recording funnel — those create the local row on first use).
+	IsOnForum        bool   `json:"isOnForum"`
+	OriginalLanguage string `json:"originalLanguage"`
+	AgeLimit         string `json:"ageLimit"`
 	// U1 (release_date / release_date_tba): nil = unknown; TBA is
 	// independent of the date (a TBA entry may still carry "预计 Y/M").
 	ReleaseDate    *string `json:"releaseDate"`

@@ -68,6 +68,10 @@ export interface GalgameDetail {
   covers: GalgameCover[]
   screenshots: GalgameScreenshot[]
   view: number
+  // false ⇒ a wiki-catalogue galgame the forum hasn't ingested (no local row).
+  // The detail page shows a 未收录 notice + hides the (0) view count, keeping the
+  // upload/rate/comment CTAs. Absent on older payloads → treated as on-forum.
+  isOnForum?: boolean
   originalLanguage: string
   ageLimit: 'all' | 'r18'
   platform: string[]

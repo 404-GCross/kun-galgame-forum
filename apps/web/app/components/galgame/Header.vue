@@ -155,7 +155,11 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             <!-- View count: the same compact pill as 点赞 / 收藏 (KunReaction),
                  but STATIC — action skin (no toggle), no animation, and
                  pointer-events-none so it has no hover / click effect. -->
+            <!-- Hidden for not-yet-ingested wiki games: their view is always 0
+                 (IncrementView no-ops without a local row), so showing it reads
+                 as a misleading stat. The 未收录 notice explains the empty page. -->
             <KunReaction
+              v-if="galgame.isOnForum !== false"
               :count="galgame.view"
               :toggle="false"
               icon="lucide:eye"
