@@ -244,3 +244,13 @@ export interface GalgameCalendarUpcoming {
   months: GalgameCalendarUpcomingMonth[]
   count: number
 }
+
+// The month view's 3-month window. `month` is the focus (drives the calendar
+// grid + nav), `meta` is the focus month's boundary info, `months` is exactly
+// [prev, focus, next] in chronological order (the right-hand content).
+export interface GalgameCalendarWindow {
+  month: string
+  today: string
+  meta: GalgameCalendarMeta
+  months: GalgameCalendarUpcomingMonth[]
+}

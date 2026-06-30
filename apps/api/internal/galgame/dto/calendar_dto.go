@@ -59,3 +59,15 @@ type CalendarUpcomingPage struct {
 	Months []CalendarUpcomingMonth `json:"months"`
 	Count  int                     `json:"count"`
 }
+
+// CalendarWindowPage is the month view's right-hand content: a three-month
+// window (prev / focus / next) so an early-in-the-month focus month — which is
+// usually sparse — still shows plenty. Month is the focus (drives the calendar
+// grid + nav); Meta is the focus month's boundary info; Months is exactly
+// [prev, focus, next] in chronological order.
+type CalendarWindowPage struct {
+	Month  string                  `json:"month"`
+	Today  string                  `json:"today"`
+	Meta   CalendarMeta            `json:"meta"`
+	Months []CalendarUpcomingMonth `json:"months"`
+}

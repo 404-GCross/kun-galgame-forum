@@ -2,9 +2,12 @@
 import { storeToRefs } from 'pinia'
 import { GALGAME_RESOURCE_PLATFORM_ICON_MAP } from '~/constants/galgameResource'
 
-defineProps<{
+const props = defineProps<{
   galgames: GalgameCard[]
   isTransparent?: boolean
+  // Max columns at the widest breakpoint. Default 4 (the full-width lists); the
+  // calendar's narrower 2/3 panel passes 3 so the cards aren't cramped.
+  columns?: 3 | 4
 }>()
 
 // Card layout is user-configurable (persisted): each banner corner, the
@@ -20,12 +23,16 @@ const {
   showJapaneseName,
   isOpenInNewTab
 } = storeToRefs(usePersistGalgameCardStore())
+
+const gridClass = computed(() =>
+  props.columns === 3
+    ? 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-3'
+    : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
+)
 </script>
 
 <template>
-  <div
-    class="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4"
-  >
+  <div :class="gridClass">
     <KunCard
       :is-transparent="isTransparent"
       v-for="galgame in galgames"

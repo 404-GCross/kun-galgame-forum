@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  data: GalgameCalendarMonth
+  data: GalgameCalendarWindow
 }>()
 
 // Month paging is owned by the parent (it holds the URL-backed `month` ref).
@@ -22,18 +22,22 @@ const isCurrentMonth = computed(
 // Backward stops at the data floor; forward is unbounded (parent computes it).
 const canGoPrev = computed(() => props.data.month > props.data.meta.minMonth)
 
-// Today's day-of-month, or -1 when today isn't in the viewed month.
+// Today's day-of-month, or -1 when today isn't in the focus month.
 const todayDay = computed(() =>
   props.data.today.slice(0, 7) === props.data.month
     ? Number(props.data.today.slice(8, 10))
     : -1
 )
 
-// Day-precision groups (keyed by day-of-month) + a month-precision bucket.
+// The grid renders only the focus month; the right list shows all three.
+const focusItems = computed(
+  () => props.data.months.find((m) => m.month === props.data.month)?.items ?? []
+)
+
 const dayGames = computed(() => {
   const map = new Map<number, GalgameCard[]>()
   const bucket: GalgameCard[] = []
-  for (const game of props.data.items) {
+  for (const game of focusItems.value) {
     if (game.releasePrecision === 'month' || !game.releaseDate) {
       bucket.push(game)
       continue
@@ -50,9 +54,6 @@ const dayGames = computed(() => {
 const countOf = (day: number | null) =>
   day === null ? 0 : (dayGames.value.map.get(day)?.length ?? 0)
 
-// Calendar cells: leading blanks to align the 1st onto its weekday, the days,
-// then trailing blanks to complete the final week. `new Date` is fed fixed
-// components → timezone-invariant (SSR-safe).
 const cells = computed<(number | null)[]>(() => {
   const firstWeekday = new Date(year.value, monthNum.value - 1, 1).getDay()
   const daysInMonth = new Date(year.value, monthNum.value, 0).getDate()
@@ -69,60 +70,103 @@ const cells = computed<(number | null)[]>(() => {
   return out
 })
 
-// `selected` highlights the active cell; clicking scrolls the month list (shown
-// on every breakpoint) to that day.
+// `selected` just highlights the active cell; clicking scrolls the right list
+// to that date (rows are keyed by `cal-day-<YYYY-MM-DD>` across all 3 months).
 const selected = ref<number | 'bucket' | null>(null)
-
-const defaultSelected = computed<number | 'bucket' | null>(() => {
-  const days = [...dayGames.value.map.keys()].sort((a, b) => a - b)
-  if (days.length) {
-    const cmp = props.data.month.localeCompare(props.data.today.slice(0, 7))
-    if (cmp < 0) {
-      return days[days.length - 1]! // past month → latest day
-    }
-    if (cmp > 0) {
-      return days[0]! // future month → earliest day
-    }
-    if (dayGames.value.map.has(todayDay.value)) {
-      return todayDay.value
-    }
-    const prior = days.filter((d) => d <= todayDay.value)
-    return prior.length ? prior[prior.length - 1]! : days[0]!
-  }
-  return dayGames.value.bucket.length ? 'bucket' : null
-})
-
+const defaultSelected = computed<number | 'bucket' | null>(() =>
+  todayDay.value > 0 && dayGames.value.map.has(todayDay.value)
+    ? todayDay.value
+    : null
+)
 watch(() => props.data.month, () => (selected.value = defaultSelected.value), {
   immediate: true
 })
 
-const scrollToRow = (key: string) => {
-  if (import.meta.client) {
-    document
-      .getElementById(`cal-day-${key}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+// The right month list scrolls inside a <KunOverlayScroll> (themed overlay
+// scrollbar). Its REAL scroller is the overlayscrollbars viewport, so every
+// imperative scroll goes through getViewport(). Own height on wide → the
+// viewport scrolls (the "wheel"); no height on mobile → it grows and the page
+// scrolls (natural flow), so the viewport isn't scrollable there.
+const rightScroll = useTemplateRef<{ getViewport: () => HTMLElement | null }>(
+  'rightScroll'
+)
+const getViewport = () => rightScroll.value?.getViewport() ?? null
+const isScrollable = (vp: HTMLElement) => vp.scrollHeight > vp.clientHeight + 1
+
+// Center the focus month so prev peeks above + next below. A focus taller than
+// the viewport top-aligns with a small gap (prev still peeks + header visible)
+// instead of landing mid-section. Skipped when the viewport isn't its own
+// scroll area (mobile natural flow).
+const centerFocus = (behavior: ScrollBehavior = 'smooth') => {
+  const vp = getViewport()
+  if (!vp || !isScrollable(vp)) {
+    return
   }
+  const el = vp.querySelector<HTMLElement>('[data-focus-month]')
+  if (!el) {
+    return
+  }
+  const vRect = vp.getBoundingClientRect()
+  const eRect = el.getBoundingClientRect()
+  const offset = Math.max(72, (vp.clientHeight - eRect.height) / 2)
+  vp.scrollTo({
+    top: Math.max(0, vp.scrollTop + (eRect.top - vRect.top) - offset),
+    behavior
+  })
 }
+
+// Scroll a clicked day's row into view — within the viewport on wide, the
+// window on mobile (natural flow).
+const scrollToRow = (id: string) => {
+  const vp = getViewport()
+  const el = vp?.querySelector<HTMLElement>(`#cal-day-${id}`)
+  if (!el) {
+    return
+  }
+  if (!vp || !isScrollable(vp)) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  const vRect = vp.getBoundingClientRect()
+  const eRect = el.getBoundingClientRect()
+  vp.scrollTo({
+    top: Math.max(0, vp.scrollTop + (eRect.top - vRect.top) - 8),
+    behavior: 'smooth'
+  })
+}
+
+// Center on mount (instant) + re-center on each month switch (the "wheel").
+// rAF after nextTick gives overlayscrollbars a frame to re-measure the swapped
+// content before we read scrollHeight.
+const scheduleCenter = (behavior: ScrollBehavior) => {
+  if (!import.meta.client) {
+    return
+  }
+  nextTick(() => requestAnimationFrame(() => centerFocus(behavior)))
+}
+onMounted(() => scheduleCenter('auto'))
+watch(() => props.data.month, () => scheduleCenter('smooth'))
+
 const pickDay = (day: number | null) => {
   if (day === null || !countOf(day)) {
     return
   }
   selected.value = day
-  scrollToRow(String(day))
+  scrollToRow(`${props.data.month}-${String(day).padStart(2, '0')}`)
 }
 const pickBucket = () => {
   if (!dayGames.value.bucket.length) {
     return
   }
   selected.value = 'bucket'
-  scrollToRow('bucket')
+  scrollToRow(`${props.data.month}-bucket`)
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-    <!-- LEFT: compact calendar (a third on wide, sticky so it stays put while
-         the month list scrolls). Full width on mobile. -->
+    <!-- LEFT: focus-month calendar (sticky on wide so it stays while the
+         three-month list scrolls). Full width on mobile. -->
     <div
       class="flex flex-col gap-3 lg:sticky lg:top-20 lg:w-1/3 lg:shrink-0 lg:self-start"
     >
@@ -139,7 +183,9 @@ const pickBucket = () => {
         </KunButton>
         <div class="flex flex-col items-center">
           <span class="font-bold">{{ monthLabel }}</span>
-          <span class="text-default-400 text-xs">共 {{ data.meta.count }} 部</span>
+          <span class="text-default-400 text-xs">
+            共 {{ focusItems.length }} 部
+          </span>
         </div>
         <KunButton variant="light" :is-icon-only="true" @click="emit('next')">
           <KunIcon name="lucide:chevron-right" class="size-5" />
@@ -163,54 +209,46 @@ const pickBucket = () => {
         </div>
       </div>
 
-      <div class="grid grid-cols-7 gap-1">
+      <div class="grid grid-cols-7 gap-1.5">
         <template v-for="(cell, i) in cells" :key="i">
           <div v-if="cell === null" />
-          <button
+          <!-- Release count as a corner badge (kun-ui KunBadge). Today is
+               outlined + bold, selected gets a soft fill, empty days are muted
+               and non-interactive. -->
+          <KunBadge
             v-else
-            type="button"
-            :disabled="!countOf(cell)"
-            class="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors sm:min-h-14"
-            :class="[
-              selected === cell
-                ? 'border-primary bg-default-100'
-                : countOf(cell)
-                  ? 'border-default-200 hover:border-primary cursor-pointer'
-                  : 'border-transparent'
-            ]"
-            @click="pickDay(cell)"
+            :count="countOf(cell)"
+            :show="countOf(cell) > 0"
+            :max="99"
+            color="primary"
+            size="sm"
+            placement="top-right"
           >
-            <span
-              class="text-sm"
+            <button
+              type="button"
+              :disabled="!countOf(cell)"
+              class="flex h-12 w-full items-center justify-center rounded-lg border text-sm transition-colors sm:h-14 sm:text-base"
               :class="
                 cell === todayDay
-                  ? 'text-primary font-bold'
-                  : countOf(cell)
-                    ? 'text-default-600'
-                    : 'text-default-400'
+                  ? 'border-primary text-primary border-2 font-bold'
+                  : selected === cell
+                    ? 'border-primary bg-default-100 text-default-600'
+                    : countOf(cell)
+                      ? 'border-default-200 hover:border-primary text-default-600 cursor-pointer'
+                      : 'text-default-400 border-transparent'
               "
+              @click="pickDay(cell)"
             >
               {{ cell }}
-            </span>
-            <span
-              v-if="countOf(cell)"
-              class="bg-primary rounded-full px-1.5 text-[10px] font-medium text-white"
-            >
-              {{ countOf(cell) }}
-            </span>
-          </button>
+            </button>
+          </KunBadge>
         </template>
       </div>
 
       <button
         v-if="dayGames.bucket.length"
         type="button"
-        class="flex items-center gap-2 self-start rounded-lg border px-3 py-2 text-sm transition-colors"
-        :class="
-          selected === 'bucket'
-            ? 'border-primary bg-default-100'
-            : 'border-default-200 hover:border-primary'
-        "
+        class="border-default-200 hover:border-primary flex items-center gap-2 self-start rounded-lg border px-3 py-2 text-sm transition-colors"
         @click="pickBucket"
       >
         <KunIcon name="lucide:calendar-clock" class="text-default-500 size-4" />
@@ -221,10 +259,21 @@ const pickBucket = () => {
       </button>
     </div>
 
-    <!-- The whole month, today pinned on top — shown on every breakpoint
-         (beside the calendar on wide, below it on mobile). -->
-    <div class="min-w-0 lg:w-2/3">
-      <GalgameCalendarMonthList :data="data" />
-    </div>
+    <!-- RIGHT: the three-month window as a scroll panel ("wheel") — focus month
+         centered (prev peeks above, next below); switching re-centers with a
+         smooth scroll. Overlay scrollbar via KunOverlayScroll; :defer="false" so
+         its viewport is available synchronously for the on-mount centering. Own
+         height + scroll on wide; natural page flow on mobile. -->
+    <KunOverlayScroll
+      ref="rightScroll"
+      :defer="false"
+      class="min-w-0 lg:h-[calc(100dvh-9rem)] lg:w-2/3"
+    >
+      <GalgameCalendarMonthList
+        :months="data.months"
+        :today="data.today"
+        :focus-month="data.month"
+      />
+    </KunOverlayScroll>
   </div>
 </template>

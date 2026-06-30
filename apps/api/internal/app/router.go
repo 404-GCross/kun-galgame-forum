@@ -158,6 +158,7 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
 	api.Get("/galgame/calendar/tba", a.GalgameCalendarHandler.GetTBA)
 	api.Get("/galgame/calendar/upcoming", a.GalgameCalendarHandler.GetUpcoming)
+	api.Get("/galgame/calendar/window", a.GalgameCalendarHandler.GetWindow)
 	api.Get("/galgame/:gid/revisions", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev/diff", a.GalgameWikiHandler.ProxyGet)
