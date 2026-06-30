@@ -43,3 +43,19 @@ type CalendarTBAPage struct {
 	Items []GalgameCard `json:"items"`
 	Count int           `json:"count"`
 }
+
+// CalendarUpcomingMonth groups one month's not-yet-released entries.
+type CalendarUpcomingMonth struct {
+	Month string        `json:"month"`
+	Items []GalgameCard `json:"items"`
+}
+
+// CalendarUpcomingPage is the consolidated "未发售" view: every dated entry
+// (day/month precision) with release_date >= today, aggregated forward from
+// the current month and grouped by month so the reader sees the whole release
+// schedule without paging. The year-only / TBA buckets keep their own tabs.
+type CalendarUpcomingPage struct {
+	Today  string                  `json:"today"`
+	Months []CalendarUpcomingMonth `json:"months"`
+	Count  int                     `json:"count"`
+}

@@ -46,3 +46,12 @@ func (h *CalendarHandler) GetTBA(c *fiber.Ctx) error {
 	}
 	return response.OK(c, page)
 }
+
+// GetUpcoming — GET /api/galgame/calendar/upcoming
+func (h *CalendarHandler) GetUpcoming(c *fiber.Ctx) error {
+	page, appErr := h.calendarService.GetUpcoming(c.Context(), utils.IsSFW(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, page)
+}

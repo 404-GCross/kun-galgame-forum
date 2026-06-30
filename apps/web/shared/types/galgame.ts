@@ -231,3 +231,16 @@ export interface GalgameCalendarTBA {
   items: GalgameCard[]
   count: number
 }
+
+export interface GalgameCalendarUpcomingMonth {
+  month: string
+  items: GalgameCard[]
+}
+
+// Consolidated "未发售" schedule: every dated entry (day/month precision) with
+// releaseDate >= today, aggregated forward and grouped by month.
+export interface GalgameCalendarUpcoming {
+  today: string
+  months: GalgameCalendarUpcomingMonth[]
+  count: number
+}
