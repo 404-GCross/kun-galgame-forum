@@ -119,6 +119,7 @@ type App struct {
 	GalgameRatingHandler       *galgameHandler.RatingHandler
 	CreatorHandler             *galgameHandler.CreatorHandler
 	GalgameEntityHandler       *galgameHandler.EntityHandler
+	GalgameCalendarHandler     *galgameHandler.CalendarHandler
 	GalgameWikiHandler         *galgameHandler.WikiHandler
 	GalgameSubmissionHandler   *galgameHandler.SubmissionHandler
 	GalgameMessageHandler      *galgameHandler.WikiMessageHandler
@@ -312,6 +313,7 @@ func New(cfg *config.Config) *App {
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameEnricher)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameEnricher)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher)
+	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameWikiSvc := galgameService.NewWikiService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
@@ -404,6 +406,7 @@ func New(cfg *config.Config) *App {
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
 			galgameSeriesSvc, galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
 		),
+		GalgameCalendarHandler:     galgameHandler.NewCalendarHandler(galgameCalendarSvc),
 		GalgameWikiHandler:         galgameHandler.NewWikiHandler(galgameWikiSvc),
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameMessageHandler:      galgameHandler.NewWikiMessageHandler(galgameMessageSvc),

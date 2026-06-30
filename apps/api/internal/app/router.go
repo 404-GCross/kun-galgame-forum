@@ -150,6 +150,13 @@ func (a *App) setupRoutes() {
 		userAuth,
 		a.GalgameSubmissionHandler.SearchWithPending,
 	)
+	// Galgame 发售月历 — proxies wiki /galgame/calendar(+pending/tba), enriched
+	// with forum-local card data. Public + SFW-default. Same registration-order
+	// rule as /galgame/mine above: the literal "calendar" segment must come
+	// before the /galgame/:gid catch-all or it'd bind as gid="calendar".
+	api.Get("/galgame/calendar", a.GalgameCalendarHandler.GetMonth)
+	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
+	api.Get("/galgame/calendar/tba", a.GalgameCalendarHandler.GetTBA)
 	api.Get("/galgame/:gid/revisions", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev/diff", a.GalgameWikiHandler.ProxyGet)

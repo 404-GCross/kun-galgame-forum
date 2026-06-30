@@ -20,6 +20,10 @@ type GalgameCard struct {
 	// U1: nil = unknown release; see WikiGalgameDetailFull comment.
 	ReleaseDate    *string `json:"releaseDate"`
 	ReleaseDateTBA bool    `json:"releaseDateTBA"`
+	// ReleasePrecision (day/month/year/tba/unknown) tells the calendar how to
+	// read ReleaseDate (e.g. "2026-06-01" with precision=month = "本月内, 日未定").
+	// Only populated on the calendar endpoints; omitempty → absent elsewhere.
+	ReleasePrecision string `json:"releasePrecision,omitempty"`
 	// U2: same convention as GalgameListCard — card only carries the
 	// derived banner; URL injected by rewriteBanners. banner_image_hash
 	// retired in wiki PR5 (K-PR6).

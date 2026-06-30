@@ -129,6 +129,11 @@ export interface GalgameCard {
   // U1: optional on card; nil = unknown.
   releaseDate?: string | null
   releaseDateTBA?: boolean
+  // Release-date precision — only the calendar endpoints emit it (absent
+  // elsewhere). Tells the calendar how to read releaseDate: day = 确切发售日,
+  // month = "YYYY-MM-01" 日未定, year = "YYYY-01-01" 月未定, tba/unknown = null.
+  // See docs/galgame_wiki/01-galgame.md §release_precision.
+  releasePrecision?: 'day' | 'month' | 'year' | 'tba' | 'unknown'
   // U2 / K-PR6: cards carry only the derived banner; URL injected by
   // kungal. banner_image_hash retired in wiki PR5.
   effective_banner_hash?: string
@@ -186,3 +191,43 @@ export const GalgameStatus = {
   Pending: 3,
   Declined: 4
 } as const
+
+// ──────────────────────────────────────────
+// Release calendar (发售月历) — GET /galgame/calendar(/pending|/tba).
+// Items are enriched GalgameCard[] (with releasePrecision + the 未收录 marker).
+// See docs/galgame_wiki/01-galgame.md §Galgame 发售月历.
+// ──────────────────────────────────────────
+
+// hasPrev/hasNext are data-boundary clamps (no day/month data before minMonth
+// or after maxMonth) — the page disables paging at the edges.
+export interface GalgameCalendarMeta {
+  prevMonth: string
+  nextMonth: string
+  hasPrev: boolean
+  hasNext: boolean
+  minMonth: string
+  maxMonth: string
+  count: number
+}
+
+// One ISO month, already date-sorted by the wiki (exact-day entries first,
+// "日未定" month-precision tail last). `today` is JST, for the 今日 marker.
+export interface GalgameCalendarMonth {
+  month: string
+  today: string
+  items: GalgameCard[]
+  meta: GalgameCalendarMeta
+}
+
+// "Year known, month undecided" bucket (releasePrecision='year') for a year.
+export interface GalgameCalendarPending {
+  year: string
+  items: GalgameCard[]
+  count: number
+}
+
+// Global "release date to be announced" bucket (releasePrecision='tba').
+export interface GalgameCalendarTBA {
+  items: GalgameCard[]
+  count: number
+}

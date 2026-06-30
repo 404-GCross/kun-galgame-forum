@@ -121,6 +121,9 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 			ResourceUpdateTime: g.ResourceUpdateTime,
 			ReleaseDate:        g.ReleaseDate,
 			ReleaseDateTBA:     g.ReleaseDateTBA,
+			// "" for non-calendar sources (wiki only emits it on calendar
+			// endpoints) — the calendar FE reads it; other pages ignore it.
+			ReleasePrecision: g.ReleasePrecision,
 			// U2: card carries only the derived banner; cdn_url/
 			// effective_banner_url is injected by client.rewriteBanners
 			// walker. banner_image_hash retired in wiki PR5 (K-PR6).

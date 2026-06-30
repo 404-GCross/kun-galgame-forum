@@ -39,6 +39,11 @@ type WikiGalgameItem struct {
 	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 	UserID                   int    `json:"user_id"`
+	// ReleasePrecision marks how to read ReleaseDate (day/month/year/tba/unknown).
+	// Only the calendar endpoints (GET /galgame/calendar[/pending|/tba]) emit it;
+	// other list/detail wiki responses omit it → "" here. See the calendar §
+	// release_precision in docs/galgame_wiki/01-galgame.md.
+	ReleasePrecision string `json:"release_precision"`
 }
 
 // U2 cover/screenshot row shapes (snake_case, matches wiki wire). Both
