@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // ReportHandler handles content report submission.
@@ -24,7 +24,7 @@ func NewReportHandler(repo *repository.ReportRepository) *ReportHandler {
 
 // SubmitReport creates a content report.
 // POST /api/report/submit
-func (h *ReportHandler) SubmitReport(c *fiber.Ctx) error {
+func (h *ReportHandler) SubmitReport(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

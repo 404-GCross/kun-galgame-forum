@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	"kun-galgame-api/internal/image/repository"
 	"kun-galgame-api/internal/image/service"
@@ -42,7 +42,7 @@ func newTestApp(t *testing.T) *fiber.App {
 	// Stub auth middleware: every request is UID=1. Real middleware
 	// stores a *UserInfo (pointer) — see middleware.MustGetUser's type
 	// assertion — so we match that here.
-	app.Use(func(c *fiber.Ctx) error {
+	app.Use(func(c fiber.Ctx) error {
 		c.Locals(string(middleware.UserInfoKey), &middleware.UserInfo{ID: 1})
 		return c.Next()
 	})
@@ -139,7 +139,9 @@ func TestUploadGalgameImage_RejectsOversized(t *testing.T) {
 	body, ct := makeMultipart(t, map[string]string{"preset": "galgame_banner"}, "big.png", big)
 	req := httptest.NewRequest("POST", "/image/galgame", body)
 	req.Header.Set("Content-Type", ct)
-	resp, err := app.Test(req, -1)
+	// Timeout: 0 disables the test client timeout (v2 passed -1); the oversized
+	// body can take longer than the 1s default to stream in.
+	resp, err := app.Test(req, fiber.TestConfig{Timeout: 0})
 	if err != nil {
 		t.Fatalf("app.Test: %v", err)
 	}

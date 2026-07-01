@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/userclient"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // RSSHandler handles RSS feed routes.
@@ -29,7 +29,7 @@ func NewRSSHandler(
 
 // GetTopicRSS returns recent topics for RSS feed.
 // GET /api/rss/topic
-func (h *RSSHandler) GetTopicRSS(c *fiber.Ctx) error {
+func (h *RSSHandler) GetTopicRSS(c fiber.Ctx) error {
 	rows := h.repo.FindRecentSFWTopics()
 	uids := userclient.CollectIDs(rows, func(r dto.TopicRSSItem) int { return r.UserID })
 	userMap := h.userClient.Hydrate(c.Context(), uids)
@@ -46,7 +46,7 @@ func (h *RSSHandler) GetTopicRSS(c *fiber.Ctx) error {
 // Local DB only stores stub IDs + created timestamps — name/banner/user come
 // from the wiki batch endpoint. Description is left empty since wiki batch
 // doesn't include intros.
-func (h *RSSHandler) GetGalgameRSS(c *fiber.Ctx) error {
+func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 	rows := h.repo.FindRecentGalgameIDs(10)
 	if len(rows) == 0 {
 		return response.OK(c, []dto.GalgameRSSItem{})

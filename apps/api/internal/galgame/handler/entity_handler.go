@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // EntityHandler groups the wiki-entity endpoints (series/official/engine/tag).
@@ -39,7 +39,7 @@ func NewEntityHandler(
 // ──────────────────────────────────────────
 
 // GetSeriesList — GET /galgame-series
-func (h *EntityHandler) GetSeriesList(c *fiber.Ctx) error {
+func (h *EntityHandler) GetSeriesList(c fiber.Ctx) error {
 	var req dto.SeriesListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -52,7 +52,7 @@ func (h *EntityHandler) GetSeriesList(c *fiber.Ctx) error {
 }
 
 // GetSeriesDetail — GET /galgame-series/:id
-func (h *EntityHandler) GetSeriesDetail(c *fiber.Ctx) error {
+func (h *EntityHandler) GetSeriesDetail(c fiber.Ctx) error {
 	detail, appErr := h.seriesService.GetDetail(c.Context(), c.Params("id"), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -65,7 +65,7 @@ func (h *EntityHandler) GetSeriesDetail(c *fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // GetOfficialList — GET /galgame-official
-func (h *EntityHandler) GetOfficialList(c *fiber.Ctx) error {
+func (h *EntityHandler) GetOfficialList(c fiber.Ctx) error {
 	page, appErr := h.officialService.GetList(c.Context(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -74,7 +74,7 @@ func (h *EntityHandler) GetOfficialList(c *fiber.Ctx) error {
 }
 
 // SearchOfficials — GET /galgame-official/search
-func (h *EntityHandler) SearchOfficials(c *fiber.Ctx) error {
+func (h *EntityHandler) SearchOfficials(c fiber.Ctx) error {
 	items, appErr := h.officialService.Search(c.Context(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -83,7 +83,7 @@ func (h *EntityHandler) SearchOfficials(c *fiber.Ctx) error {
 }
 
 // GetOfficialDetail — GET /galgame-official/:name
-func (h *EntityHandler) GetOfficialDetail(c *fiber.Ctx) error {
+func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 	detail, appErr := h.officialService.GetDetail(
 		c.Context(),
 		c.Params("name"),
@@ -101,7 +101,7 @@ func (h *EntityHandler) GetOfficialDetail(c *fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // GetEngineList — GET /galgame-engine
-func (h *EntityHandler) GetEngineList(c *fiber.Ctx) error {
+func (h *EntityHandler) GetEngineList(c fiber.Ctx) error {
 	items, appErr := h.engineService.GetList(c.Context())
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -110,7 +110,7 @@ func (h *EntityHandler) GetEngineList(c *fiber.Ctx) error {
 }
 
 // GetEngineDetail — GET /galgame-engine/:name
-func (h *EntityHandler) GetEngineDetail(c *fiber.Ctx) error {
+func (h *EntityHandler) GetEngineDetail(c fiber.Ctx) error {
 	detail, appErr := h.engineService.GetDetail(
 		c.Context(),
 		c.Params("name"),
@@ -128,7 +128,7 @@ func (h *EntityHandler) GetEngineDetail(c *fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // GetTagList — GET /galgame-tag
-func (h *EntityHandler) GetTagList(c *fiber.Ctx) error {
+func (h *EntityHandler) GetTagList(c fiber.Ctx) error {
 	page, appErr := h.tagService.GetList(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -137,7 +137,7 @@ func (h *EntityHandler) GetTagList(c *fiber.Ctx) error {
 }
 
 // SearchTags — GET /galgame-tag/search
-func (h *EntityHandler) SearchTags(c *fiber.Ctx) error {
+func (h *EntityHandler) SearchTags(c fiber.Ctx) error {
 	items, appErr := h.tagService.Search(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -146,7 +146,7 @@ func (h *EntityHandler) SearchTags(c *fiber.Ctx) error {
 }
 
 // GetMultiTagGalgames — GET /galgame-tag/multi
-func (h *EntityHandler) GetMultiTagGalgames(c *fiber.Ctx) error {
+func (h *EntityHandler) GetMultiTagGalgames(c fiber.Ctx) error {
 	page, appErr := h.tagService.GetByMultiTag(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -155,7 +155,7 @@ func (h *EntityHandler) GetMultiTagGalgames(c *fiber.Ctx) error {
 }
 
 // GetTagDetail — GET /galgame-tag/:name
-func (h *EntityHandler) GetTagDetail(c *fiber.Ctx) error {
+func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 	detail, appErr := h.tagService.GetDetail(
 		c.Context(),
 		c.Params("name"),
@@ -173,9 +173,9 @@ func (h *EntityHandler) GetTagDetail(c *fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // collectQuery converts the Fiber request query args into url.Values.
-func collectQuery(c *fiber.Ctx) url.Values {
+func collectQuery(c fiber.Ctx) url.Values {
 	q := make(url.Values)
-	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
+	c.RequestCtx().QueryArgs().VisitAll(func(key, value []byte) {
 		q.Set(string(key), string(value))
 	})
 	return q
@@ -186,9 +186,9 @@ func collectQuery(c *fiber.Ctx) url.Values {
 // camelCase params the FE sends to the snake_case the wiki expects.
 //
 // Any key absent from `renames` passes through unchanged.
-func collectQueryWithRenames(c *fiber.Ctx, renames map[string]string) url.Values {
+func collectQueryWithRenames(c fiber.Ctx, renames map[string]string) url.Values {
 	q := make(url.Values)
-	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
+	c.RequestCtx().QueryArgs().VisitAll(func(key, value []byte) {
 		k := string(key)
 		if to, ok := renames[k]; ok {
 			q.Set(to, string(value))

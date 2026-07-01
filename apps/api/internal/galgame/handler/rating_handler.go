@@ -11,7 +11,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type RatingHandler struct {
@@ -28,7 +28,7 @@ func NewRatingHandler(ratingService *service.RatingService) *RatingHandler {
 //
 // SFW-default: anonymous + cookie-less requests get only ratings whose
 // galgame is content_limit=sfw.
-func (h *RatingHandler) GetAllRatings(c *fiber.Ctx) error {
+func (h *RatingHandler) GetAllRatings(c fiber.Ctx) error {
 	var req dto.RatingListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -43,7 +43,7 @@ func (h *RatingHandler) GetAllRatings(c *fiber.Ctx) error {
 
 // GetRatingDetail returns a single rating with comments, liked users, and galgame.
 // GET /api/galgame-rating/:id
-func (h *RatingHandler) GetRatingDetail(c *fiber.Ctx) error {
+func (h *RatingHandler) GetRatingDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的评分 ID"))
@@ -58,7 +58,7 @@ func (h *RatingHandler) GetRatingDetail(c *fiber.Ctx) error {
 }
 
 // CreateRating — POST /api/galgame-rating
-func (h *RatingHandler) CreateRating(c *fiber.Ctx) error {
+func (h *RatingHandler) CreateRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -75,7 +75,7 @@ func (h *RatingHandler) CreateRating(c *fiber.Ctx) error {
 }
 
 // UpdateRating — PUT /api/galgame-rating/:id
-func (h *RatingHandler) UpdateRating(c *fiber.Ctx) error {
+func (h *RatingHandler) UpdateRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -91,7 +91,7 @@ func (h *RatingHandler) UpdateRating(c *fiber.Ctx) error {
 }
 
 // DeleteRating — DELETE /api/galgame-rating/:id
-func (h *RatingHandler) DeleteRating(c *fiber.Ctx) error {
+func (h *RatingHandler) DeleteRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -107,7 +107,7 @@ func (h *RatingHandler) DeleteRating(c *fiber.Ctx) error {
 }
 
 // ToggleLike — PUT /api/galgame-rating/:id/like
-func (h *RatingHandler) ToggleLike(c *fiber.Ctx) error {
+func (h *RatingHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -123,7 +123,7 @@ func (h *RatingHandler) ToggleLike(c *fiber.Ctx) error {
 }
 
 // CreateComment — POST /api/galgame-rating/:id/comment
-func (h *RatingHandler) CreateComment(c *fiber.Ctx) error {
+func (h *RatingHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -140,7 +140,7 @@ func (h *RatingHandler) CreateComment(c *fiber.Ctx) error {
 }
 
 // UpdateComment — PUT /api/galgame-rating/:id/comment
-func (h *RatingHandler) UpdateComment(c *fiber.Ctx) error {
+func (h *RatingHandler) UpdateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -157,7 +157,7 @@ func (h *RatingHandler) UpdateComment(c *fiber.Ctx) error {
 }
 
 // DeleteComment — DELETE /api/galgame-rating/:id/comment
-func (h *RatingHandler) DeleteComment(c *fiber.Ctx) error {
+func (h *RatingHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -5,13 +5,13 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/role"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // RequireModerator gates a route to holders of the management capability
 // (moderator ⊂ admin ⊂ ren per docs/oauth/11-roles.md). 403 otherwise.
 func RequireModerator() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		user := GetUser(c)
 		if user == nil {
 			return response.Error(c, errors.ErrAuthExpired())
@@ -26,7 +26,7 @@ func RequireModerator() fiber.Handler {
 // RequireAdmin gates a route to holders of the site-administration capability
 // (admin ⊂ ren). 403 otherwise.
 func RequireAdmin() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		user := GetUser(c)
 		if user == nil {
 			return response.Error(c, errors.ErrAuthExpired())

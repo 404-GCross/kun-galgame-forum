@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ResourceHandler struct {
@@ -22,7 +22,7 @@ func NewResourceHandler(resourceService *service.ResourceService) *ResourceHandl
 
 // GetResourceDetail returns a resource and increments download count.
 // GET /api/toolset/:id/resource/detail
-func (h *ResourceHandler) GetResourceDetail(c *fiber.Ctx) error {
+func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 	var req dto.ResourceDetailRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -37,14 +37,14 @@ func (h *ResourceHandler) GetResourceDetail(c *fiber.Ctx) error {
 
 // CreateResource creates a new resource for a toolset.
 // POST /api/toolset/:id/resource
-func (h *ResourceHandler) CreateResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -62,7 +62,7 @@ func (h *ResourceHandler) CreateResource(c *fiber.Ctx) error {
 
 // UpdateResource updates a resource.
 // PUT /api/toolset/:id/resource
-func (h *ResourceHandler) UpdateResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -85,7 +85,7 @@ func (h *ResourceHandler) UpdateResource(c *fiber.Ctx) error {
 
 // DeleteResource deletes a resource.
 // DELETE /api/toolset/:id/resource
-func (h *ResourceHandler) DeleteResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ChatHandler struct {
@@ -21,7 +21,7 @@ func NewChatHandler(chatService *service.ChatService) *ChatHandler {
 
 // GetNavContact returns the chat room list for the message sidebar.
 // GET /api/message/nav/contact
-func (h *ChatHandler) GetNavContact(c *fiber.Ctx) error {
+func (h *ChatHandler) GetNavContact(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -36,7 +36,7 @@ func (h *ChatHandler) GetNavContact(c *fiber.Ctx) error {
 
 // GetChatHistory returns chat message history with a user, chronological ASC.
 // GET /api/message/chat/history
-func (h *ChatHandler) GetChatHistory(c *fiber.Ctx) error {
+func (h *ChatHandler) GetChatHistory(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -56,7 +56,7 @@ func (h *ChatHandler) GetChatHistory(c *fiber.Ctx) error {
 
 // SendChatMessage sends a private chat message (replaces socket.io path).
 // POST /api/message/chat/send
-func (h *ChatHandler) SendChatMessage(c *fiber.Ctx) error {
+func (h *ChatHandler) SendChatMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -75,7 +75,7 @@ func (h *ChatHandler) SendChatMessage(c *fiber.Ctx) error {
 
 // RecallChatMessage marks a sent chat message as recalled (sender-only).
 // POST /api/message/chat/recall
-func (h *ChatHandler) RecallChatMessage(c *fiber.Ctx) error {
+func (h *ChatHandler) RecallChatMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

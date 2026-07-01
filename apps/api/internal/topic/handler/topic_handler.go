@@ -11,7 +11,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type TopicHandler struct {
@@ -32,7 +32,7 @@ func NewTopicHandler(
 // MyInteractions returns the viewer's favorited topic ids + reactions, to
 // hydrate the feed card's 收藏 + reaction state (the shared feed can't carry it).
 // GET /api/topic/interactions/mine
-func (h *TopicHandler) MyInteractions(c *fiber.Ctx) error {
+func (h *TopicHandler) MyInteractions(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -48,7 +48,7 @@ func (h *TopicHandler) MyInteractions(c *fiber.Ctx) error {
 // the NSFW switch in client settings (Pinia-persisted cookie
 // `KUNGalgameSettings.showKUNGalgameContentLimit = "nsfw"`) get the full
 // list. Search engines that don't carry cookies always land on SFW.
-func (h *TopicHandler) GetList(c *fiber.Ctx) error {
+func (h *TopicHandler) GetList(c fiber.Ctx) error {
 	var req dto.ListTopicsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -78,7 +78,7 @@ func (h *TopicHandler) GetList(c *fiber.Ctx) error {
 // GET /api/resource
 //
 // Same SFW-default cookie semantics as GetList.
-func (h *TopicHandler) GetResourceList(c *fiber.Ctx) error {
+func (h *TopicHandler) GetResourceList(c fiber.Ctx) error {
 	var req dto.ListTopicsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -108,7 +108,7 @@ func (h *TopicHandler) GetResourceList(c *fiber.Ctx) error {
 // confirm" interstitial for anonymous + SFW-cookie callers landing on
 // an is_nsfw topic; logged-in or NSFW-mode callers see it directly.
 // SEO meta is also suppressed by FE useKunDisableSeo on NSFW pages.
-func (h *TopicHandler) GetDetail(c *fiber.Ctx) error {
+func (h *TopicHandler) GetDetail(c fiber.Ctx) error {
 	tid, err := strconv.Atoi(c.Params("tid"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的话题 ID"))
@@ -127,7 +127,7 @@ func (h *TopicHandler) GetDetail(c *fiber.Ctx) error {
 // GetTopicReactionHistory lists a topic's reaction events (newest first) for the
 // 查看历史 modal — reactor + reaction key + time.
 // GET /api/topic/:tid/reaction/history
-func (h *TopicHandler) GetTopicReactionHistory(c *fiber.Ctx) error {
+func (h *TopicHandler) GetTopicReactionHistory(c fiber.Ctx) error {
 	tid, err := strconv.Atoi(c.Params("tid"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的话题 ID"))
@@ -143,7 +143,7 @@ func (h *TopicHandler) GetTopicReactionHistory(c *fiber.Ctx) error {
 
 // Create creates a new topic.
 // POST /api/topic
-func (h *TopicHandler) Create(c *fiber.Ctx) error {
+func (h *TopicHandler) Create(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -164,7 +164,7 @@ func (h *TopicHandler) Create(c *fiber.Ctx) error {
 
 // Update edits an existing topic.
 // PUT /api/topic/:tid
-func (h *TopicHandler) Update(c *fiber.Ctx) error {
+func (h *TopicHandler) Update(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -189,7 +189,7 @@ func (h *TopicHandler) Update(c *fiber.Ctx) error {
 
 // ToggleLike toggles like on a topic.
 // PUT /api/topic/:tid/like
-func (h *TopicHandler) ToggleLike(c *fiber.Ctx) error {
+func (h *TopicHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -209,7 +209,7 @@ func (h *TopicHandler) ToggleLike(c *fiber.Ctx) error {
 
 // ToggleReaction adds/removes a reaction (like/dislike/emoji) on a topic.
 // PUT /api/topic/:tid/reaction
-func (h *TopicHandler) ToggleReaction(c *fiber.Ctx) error {
+func (h *TopicHandler) ToggleReaction(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -234,7 +234,7 @@ func (h *TopicHandler) ToggleReaction(c *fiber.Ctx) error {
 
 // ToggleDislike toggles dislike on a topic.
 // PUT /api/topic/:tid/dislike
-func (h *TopicHandler) ToggleDislike(c *fiber.Ctx) error {
+func (h *TopicHandler) ToggleDislike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -254,7 +254,7 @@ func (h *TopicHandler) ToggleDislike(c *fiber.Ctx) error {
 
 // Upvote pushes a topic (costs sender moemoepoints).
 // PUT /api/topic/:tid/upvote
-func (h *TopicHandler) Upvote(c *fiber.Ctx) error {
+func (h *TopicHandler) Upvote(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -270,7 +270,7 @@ func (h *TopicHandler) Upvote(c *fiber.Ctx) error {
 	var body struct {
 		Description string `json:"description"`
 	}
-	_ = c.BodyParser(&body)
+	_ = c.Bind().Body(&body)
 
 	if appErr := h.topicWriteService.Upvote(c.Context(), user.ID, tid, body.Description); appErr != nil {
 		return response.Error(c, appErr)
@@ -281,7 +281,7 @@ func (h *TopicHandler) Upvote(c *fiber.Ctx) error {
 
 // GetUpvotes returns a topic's 推话题 records — who pushed it + their one-liner.
 // GET /api/topic/:tid/upvotes
-func (h *TopicHandler) GetUpvotes(c *fiber.Ctx) error {
+func (h *TopicHandler) GetUpvotes(c fiber.Ctx) error {
 	tid, err := strconv.Atoi(c.Params("tid"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的话题 ID"))
@@ -297,7 +297,7 @@ func (h *TopicHandler) GetUpvotes(c *fiber.Ctx) error {
 
 // ToggleFavorite toggles favorite on a topic.
 // PUT /api/topic/:tid/favorite
-func (h *TopicHandler) ToggleFavorite(c *fiber.Ctx) error {
+func (h *TopicHandler) ToggleFavorite(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -317,7 +317,7 @@ func (h *TopicHandler) ToggleFavorite(c *fiber.Ctx) error {
 
 // ToggleHide hides or unhides a topic.
 // PUT /api/topic/:tid/hide
-func (h *TopicHandler) ToggleHide(c *fiber.Ctx) error {
+func (h *TopicHandler) ToggleHide(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -337,7 +337,7 @@ func (h *TopicHandler) ToggleHide(c *fiber.Ctx) error {
 
 // SetBestAnswer marks a reply as the best answer.
 // PUT /api/topic/:tid/best-answer
-func (h *TopicHandler) SetBestAnswer(c *fiber.Ctx) error {
+func (h *TopicHandler) SetBestAnswer(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

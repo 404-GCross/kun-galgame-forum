@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ArticleHandler struct {
@@ -20,7 +20,7 @@ func NewArticleHandler(articleService *service.ArticleService) *ArticleHandler {
 
 // GetArticles returns paginated article list.
 // GET /api/doc/article
-func (h *ArticleHandler) GetArticles(c *fiber.Ctx) error {
+func (h *ArticleHandler) GetArticles(c fiber.Ctx) error {
 	var req dto.GetArticlesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -34,7 +34,7 @@ func (h *ArticleHandler) GetArticles(c *fiber.Ctx) error {
 // every status (draft / published / archived). Moderator-gated by its route, and
 // AllStatuses is forced server-side so a public caller can never reach drafts.
 // GET /api/admin/doc/article
-func (h *ArticleHandler) GetAdminArticles(c *fiber.Ctx) error {
+func (h *ArticleHandler) GetAdminArticles(c fiber.Ctx) error {
 	var req dto.GetArticlesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -47,7 +47,7 @@ func (h *ArticleHandler) GetAdminArticles(c *fiber.Ctx) error {
 
 // GetArticleBySlug returns a single article by slug.
 // GET /api/doc/article/:slug
-func (h *ArticleHandler) GetArticleBySlug(c *fiber.Ctx) error {
+func (h *ArticleHandler) GetArticleBySlug(c fiber.Ctx) error {
 	slug := c.Params("slug")
 	detail, appErr := h.articleService.GetBySlug(slug)
 	if appErr != nil {
@@ -58,7 +58,7 @@ func (h *ArticleHandler) GetArticleBySlug(c *fiber.Ctx) error {
 
 // CreateArticle creates a new doc article.
 // POST /api/doc/article
-func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
+func (h *ArticleHandler) CreateArticle(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -78,7 +78,7 @@ func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
 
 // UpdateArticle updates an existing article.
 // PUT /api/doc/article
-func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
+func (h *ArticleHandler) UpdateArticle(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -95,7 +95,7 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 
 // DeleteArticle deletes a doc article.
 // DELETE /api/doc/article
-func (h *ArticleHandler) DeleteArticle(c *fiber.Ctx) error {
+func (h *ArticleHandler) DeleteArticle(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -112,7 +112,7 @@ func (h *ArticleHandler) DeleteArticle(c *fiber.Ctx) error {
 
 // ReorderArticles persists a new manual article ordering (drag-reorder result).
 // PUT /api/doc/article/reorder
-func (h *ArticleHandler) ReorderArticles(c *fiber.Ctx) error {
+func (h *ArticleHandler) ReorderArticles(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -129,7 +129,7 @@ func (h *ArticleHandler) ReorderArticles(c *fiber.Ctx) error {
 
 // SetArticlePin toggles one article's first-page pin (quick action).
 // PUT /api/doc/article/pin
-func (h *ArticleHandler) SetArticlePin(c *fiber.Ctx) error {
+func (h *ArticleHandler) SetArticlePin(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

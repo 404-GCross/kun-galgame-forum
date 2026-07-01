@@ -30,7 +30,7 @@ import (
 	"kun-galgame-api/pkg/userclient"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ProfileHandler struct {
@@ -44,7 +44,7 @@ func NewProfileHandler(oauthClient *oauth.Client, userClient *userclient.Client)
 
 // UpdateBio updates the authenticated user's bio.
 // PUT /api/user/bio body {bio}
-func (h *ProfileHandler) UpdateBio(c *fiber.Ctx) error {
+func (h *ProfileHandler) UpdateBio(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -66,7 +66,7 @@ func (h *ProfileHandler) UpdateBio(c *fiber.Ctx) error {
 // calls it `name`; kungal historically called it `username`. The
 // handler translates so the frontend can keep its existing wire shape.
 // PUT /api/user/username body {username}
-func (h *ProfileHandler) UpdateUsername(c *fiber.Ctx) error {
+func (h *ProfileHandler) UpdateUsername(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -88,7 +88,7 @@ func (h *ProfileHandler) UpdateUsername(c *fiber.Ctx) error {
 // endpoint. OAuth writes the resulting hash into the user row itself,
 // so no second PATCH is needed.
 // POST /api/user/avatar multipart {file}
-func (h *ProfileHandler) UploadAvatar(c *fiber.Ctx) error {
+func (h *ProfileHandler) UploadAvatar(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -116,7 +116,7 @@ func (h *ProfileHandler) UploadAvatar(c *fiber.Ctx) error {
 // callPatchAuthMe is the shared post-validation path for UpdateBio /
 // UpdateUsername. Pulls the access token, calls the OAuth client, and
 // hands errors back to the caller already typed as *errors.AppError.
-func (h *ProfileHandler) callPatchAuthMe(c *fiber.Ctx, body map[string]any) (json.RawMessage, *errors.AppError) {
+func (h *ProfileHandler) callPatchAuthMe(c fiber.Ctx, body map[string]any) (json.RawMessage, *errors.AppError) {
 	token := middleware.GetAccessToken(c)
 	if token == "" {
 		return nil, errors.ErrAuthExpired()

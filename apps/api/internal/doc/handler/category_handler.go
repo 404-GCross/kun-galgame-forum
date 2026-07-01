@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CategoryHandler struct {
@@ -20,7 +20,7 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 
 // GetCategories returns doc category list.
 // GET /api/doc/category
-func (h *CategoryHandler) GetCategories(c *fiber.Ctx) error {
+func (h *CategoryHandler) GetCategories(c fiber.Ctx) error {
 	var req dto.GetCategoriesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -32,7 +32,7 @@ func (h *CategoryHandler) GetCategories(c *fiber.Ctx) error {
 
 // CreateCategory creates a doc category.
 // POST /api/doc/category
-func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
+func (h *CategoryHandler) CreateCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -50,7 +50,7 @@ func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
 
 // UpdateCategory updates a doc category.
 // PUT /api/doc/category
-func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
+func (h *CategoryHandler) UpdateCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -67,7 +67,7 @@ func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
 
 // DeleteCategory deletes a doc category.
 // DELETE /api/doc/category
-func (h *CategoryHandler) DeleteCategory(c *fiber.Ctx) error {
+func (h *CategoryHandler) DeleteCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

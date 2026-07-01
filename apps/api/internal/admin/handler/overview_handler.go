@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type OverviewHandler struct {
@@ -20,7 +20,7 @@ func NewOverviewHandler(overviewService *service.OverviewService) *OverviewHandl
 
 // GetOverview returns counts for all major models.
 // GET /api/admin/overview/all
-func (h *OverviewHandler) GetOverview(c *fiber.Ctx) error {
+func (h *OverviewHandler) GetOverview(c fiber.Ctx) error {
 	// Forward the admin's OAuth Bearer so the wiki /admin/stats merge is
 	// authorized; an empty token just degrades the wiki rows to zero (the
 	// forum-local counts still render). See OverviewService.GetOverview.
@@ -34,7 +34,7 @@ func (h *OverviewHandler) GetOverview(c *fiber.Ctx) error {
 
 // GetStats returns daily counts for the last N days.
 // GET /api/admin/overview/stats
-func (h *OverviewHandler) GetStats(c *fiber.Ctx) error {
+func (h *OverviewHandler) GetStats(c fiber.Ctx) error {
 	var req dto.GetStatsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)

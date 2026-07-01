@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CommentHandler struct {
@@ -25,9 +25,9 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 //
 // Response shape: { commentData: ToolsetCommentItem[], total: number } —
 // matches the legacy nitro contract that the frontend Container.vue reads.
-func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id")
-	if err != nil {
+func (h *CommentHandler) GetComments(c fiber.Ctx) error {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -48,14 +48,14 @@ func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
 
 // CreateComment creates a comment on a toolset.
 // POST /api/toolset/:id/comment
-func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -73,7 +73,7 @@ func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
 
 // UpdateComment edits a comment (owner only).
 // PUT /api/toolset/:id/comment
-func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -92,14 +92,14 @@ func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
 
 // DeleteComment deletes a comment.
 // DELETE /api/toolset/:id/comment
-func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
+func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 

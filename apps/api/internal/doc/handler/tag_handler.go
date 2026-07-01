@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type TagHandler struct {
@@ -20,7 +20,7 @@ func NewTagHandler(tagService *service.TagService) *TagHandler {
 
 // GetTags returns doc tag list.
 // GET /api/doc/tag
-func (h *TagHandler) GetTags(c *fiber.Ctx) error {
+func (h *TagHandler) GetTags(c fiber.Ctx) error {
 	var req dto.GetTagsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -32,7 +32,7 @@ func (h *TagHandler) GetTags(c *fiber.Ctx) error {
 
 // CreateTag creates a doc tag.
 // POST /api/doc/tag
-func (h *TagHandler) CreateTag(c *fiber.Ctx) error {
+func (h *TagHandler) CreateTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -50,7 +50,7 @@ func (h *TagHandler) CreateTag(c *fiber.Ctx) error {
 
 // UpdateTag updates an existing doc tag.
 // PUT /api/doc/tag
-func (h *TagHandler) UpdateTag(c *fiber.Ctx) error {
+func (h *TagHandler) UpdateTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -68,7 +68,7 @@ func (h *TagHandler) UpdateTag(c *fiber.Ctx) error {
 
 // DeleteTag deletes a doc tag.
 // DELETE /api/doc/tag
-func (h *TagHandler) DeleteTag(c *fiber.Ctx) error {
+func (h *TagHandler) DeleteTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

@@ -11,7 +11,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // UpdateHandler handles update log + todo list routes.
@@ -29,7 +29,7 @@ func NewUpdateHandler(repo *repository.UpdateRepository) *UpdateHandler {
 
 // GetHistory returns paginated update logs.
 // GET /api/update/history
-func (h *UpdateHandler) GetHistory(c *fiber.Ctx) error {
+func (h *UpdateHandler) GetHistory(c fiber.Ctx) error {
 	var req dto.ListQuery
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -46,7 +46,7 @@ func (h *UpdateHandler) GetHistory(c *fiber.Ctx) error {
 
 // CreateHistory creates an update log.
 // POST /api/update/history
-func (h *UpdateHandler) CreateHistory(c *fiber.Ctx) error {
+func (h *UpdateHandler) CreateHistory(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -71,7 +71,7 @@ func (h *UpdateHandler) CreateHistory(c *fiber.Ctx) error {
 
 // UpdateHistory patches an update log entry.
 // PUT /api/update/history
-func (h *UpdateHandler) UpdateHistory(c *fiber.Ctx) error {
+func (h *UpdateHandler) UpdateHistory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -97,7 +97,7 @@ func (h *UpdateHandler) UpdateHistory(c *fiber.Ctx) error {
 
 // DeleteHistory deletes an update log.
 // DELETE /api/update/history
-func (h *UpdateHandler) DeleteHistory(c *fiber.Ctx) error {
+func (h *UpdateHandler) DeleteHistory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -114,7 +114,7 @@ func (h *UpdateHandler) DeleteHistory(c *fiber.Ctx) error {
 
 // GetTodos returns paginated todo list.
 // GET /api/update/todo
-func (h *UpdateHandler) GetTodos(c *fiber.Ctx) error {
+func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
 	var req dto.ListQuery
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -131,7 +131,7 @@ func (h *UpdateHandler) GetTodos(c *fiber.Ctx) error {
 
 // CreateTodo creates a todo item.
 // POST /api/update/todo
-func (h *UpdateHandler) CreateTodo(c *fiber.Ctx) error {
+func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -156,7 +156,7 @@ func (h *UpdateHandler) CreateTodo(c *fiber.Ctx) error {
 
 // UpdateTodo patches a todo item, also setting completed_time when status=2.
 // PUT /api/update/todo
-func (h *UpdateHandler) UpdateTodo(c *fiber.Ctx) error {
+func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -187,7 +187,7 @@ func (h *UpdateHandler) UpdateTodo(c *fiber.Ctx) error {
 
 // DeleteTodo deletes a todo item.
 // DELETE /api/update/todo
-func (h *UpdateHandler) DeleteTodo(c *fiber.Ctx) error {
+func (h *UpdateHandler) DeleteTodo(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

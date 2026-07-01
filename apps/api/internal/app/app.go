@@ -70,8 +70,8 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/userclient"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -447,7 +447,7 @@ func New(cfg *config.Config) *App {
 	return app
 }
 
-func globalErrorHandler(c *fiber.Ctx, err error) error {
+func globalErrorHandler(c fiber.Ctx, err error) error {
 	if appErr, ok := err.(*errors.AppError); ok {
 		return response.Error(c, appErr)
 	}

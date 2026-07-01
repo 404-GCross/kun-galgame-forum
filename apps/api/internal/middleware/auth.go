@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -96,7 +96,7 @@ type SessionData struct {
 // Identity (name / avatar / etc.) is OAuth-owned post-migration; mappers
 // fetch via pkg/userclient.
 func Auth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		token := c.Cookies(SessionCookieName)
 		if token == "" {
 			return response.Error(c, errors.ErrAuthExpired())
@@ -170,7 +170,7 @@ func Auth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
 // OptionalAuth is like Auth but does not fail if no session is present.
 // If a valid session exists, UserInfo is attached; otherwise the request proceeds.
 func OptionalAuth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		token := c.Cookies(SessionCookieName)
 		if token == "" {
 			return c.Next()
@@ -229,7 +229,7 @@ func OptionalAuth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
 }
 
 // GetUser extracts UserInfo from the Fiber context. Returns nil if not authenticated.
-func GetUser(c *fiber.Ctx) *UserInfo {
+func GetUser(c fiber.Ctx) *UserInfo {
 	info, ok := c.Locals(string(UserInfoKey)).(*UserInfo)
 	if !ok {
 		return nil
@@ -238,7 +238,7 @@ func GetUser(c *fiber.Ctx) *UserInfo {
 }
 
 // MustGetUser extracts UserInfo or returns an auth error.
-func MustGetUser(c *fiber.Ctx) (*UserInfo, *errors.AppError) {
+func MustGetUser(c fiber.Ctx) (*UserInfo, *errors.AppError) {
 	info := GetUser(c)
 	if info == nil {
 		return nil, errors.ErrAuthExpired()
@@ -252,7 +252,7 @@ func MustGetUser(c *fiber.Ctx) (*UserInfo, *errors.AppError) {
 // the wiki service MUST source the token from here — never from a
 // client-supplied header — so the token subject is guaranteed to match the
 // kun_session cookie holder.
-func GetAccessToken(c *fiber.Ctx) string {
+func GetAccessToken(c fiber.Ctx) string {
 	tok, _ := c.Locals(string(OAuthAccessTokenKey)).(string)
 	return tok
 }
@@ -347,7 +347,7 @@ func refreshSession(
 // Best-effort: a Redis hiccup just skips this round; the cookie keeps its
 // current expiry and the next qualifying request retries. Call only with a
 // validated session present.
-func renewSlidingSession(c *fiber.Ctx, rdb *redis.Client, token string) {
+func renewSlidingSession(c fiber.Ctx, rdb *redis.Client, token string) {
 	ctx := c.Context()
 	if ok, _ := rdb.SetNX(ctx, sessionRenewPrefix+token, "1", SessionTTL/2).Result(); !ok {
 		return

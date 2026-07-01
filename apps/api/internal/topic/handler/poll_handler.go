@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type PollHandler struct {
@@ -21,7 +21,7 @@ func NewPollHandler(pollService *service.PollService) *PollHandler {
 
 // CreatePoll creates a new poll for a topic.
 // POST /api/topic/:tid/poll
-func (h *PollHandler) CreatePoll(c *fiber.Ctx) error {
+func (h *PollHandler) CreatePoll(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -41,7 +41,7 @@ func (h *PollHandler) CreatePoll(c *fiber.Ctx) error {
 
 // UpdatePoll patches poll scalars and applies an option diff.
 // PUT /api/topic/:tid/poll
-func (h *PollHandler) UpdatePoll(c *fiber.Ctx) error {
+func (h *PollHandler) UpdatePoll(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -61,7 +61,7 @@ func (h *PollHandler) UpdatePoll(c *fiber.Ctx) error {
 
 // GetPollsByTopic returns all polls for a topic.
 // GET /api/topic/:tid/poll/topic
-func (h *PollHandler) GetPollsByTopic(c *fiber.Ctx) error {
+func (h *PollHandler) GetPollsByTopic(c fiber.Ctx) error {
 	var req dto.GetPollByTopicRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -79,7 +79,7 @@ func (h *PollHandler) GetPollsByTopic(c *fiber.Ctx) error {
 
 // Vote submits a vote on a poll.
 // POST /api/topic/:tid/poll/vote
-func (h *PollHandler) Vote(c *fiber.Ctx) error {
+func (h *PollHandler) Vote(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -100,7 +100,7 @@ func (h *PollHandler) Vote(c *fiber.Ctx) error {
 
 // DeletePoll deletes a poll and all its votes.
 // DELETE /api/topic/:tid/poll
-func (h *PollHandler) DeletePoll(c *fiber.Ctx) error {
+func (h *PollHandler) DeletePoll(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -122,7 +122,7 @@ func (h *PollHandler) DeletePoll(c *fiber.Ctx) error {
 
 // GetVoteLog returns paginated vote log for a poll.
 // GET /api/topic/:tid/poll/log
-func (h *PollHandler) GetVoteLog(c *fiber.Ctx) error {
+func (h *PollHandler) GetVoteLog(c fiber.Ctx) error {
 	var req dto.GetPollLogRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)

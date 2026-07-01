@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CommentHandler struct {
@@ -23,7 +23,7 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 
 // GetComments returns paginated comments for a galgame.
 // GET /api/galgame/:gid/comment/all
-func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
+func (h *CommentHandler) GetComments(c fiber.Ctx) error {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 
 	var req struct {
@@ -51,7 +51,7 @@ func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
 // parent_comment_id is optional: when present, the new comment becomes
 // a reply nested under that comment (and inherits its thread root). The
 // service validates the parent belongs to the same galgame.
-func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -80,7 +80,7 @@ func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
 // GET /api/galgame/:gid/comment/thread/:rootId
 //
 // The drawer view uses this when the inline view caps recursion depth.
-func (h *CommentHandler) GetCommentThread(c *fiber.Ctx) error {
+func (h *CommentHandler) GetCommentThread(c fiber.Ctx) error {
 	rootID, _ := strconv.Atoi(c.Params("rootId"))
 	if rootID <= 0 {
 		return response.Error(c, errors.ErrBadRequest("非法的评论 ID"))
@@ -98,7 +98,7 @@ func (h *CommentHandler) GetCommentThread(c *fiber.Ctx) error {
 //
 // Author or moderator only. Stamps `edited` so the UI can flag the
 // comment as having been changed.
-func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -121,7 +121,7 @@ func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
 
 // DeleteComment deletes a galgame comment.
 // DELETE /api/galgame/:gid/comment
-func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
+func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -143,7 +143,7 @@ func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
 
 // ToggleCommentLike toggles like on a galgame comment.
 // PUT /api/galgame/:gid/comment/like
-func (h *CommentHandler) ToggleCommentLike(c *fiber.Ctx) error {
+func (h *CommentHandler) ToggleCommentLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

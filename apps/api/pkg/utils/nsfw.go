@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // IsSFW reads the Pinia persisted settings cookie and returns
 // whether the user has NSFW content disabled (default: true/SFW).
-func IsSFW(c *fiber.Ctx) bool {
+func IsSFW(c fiber.Ctx) bool {
 	raw := c.Cookies("KUNGalgameSettings", "")
 	if raw == "" {
 		return true

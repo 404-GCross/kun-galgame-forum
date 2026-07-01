@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CommentHandler struct {
@@ -21,7 +21,7 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 
 // GetComments returns nested comments for a website.
 // GET /api/website/:domain/comment
-func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
+func (h *CommentHandler) GetComments(c fiber.Ctx) error {
 	var req dto.CommentListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -31,7 +31,7 @@ func (h *CommentHandler) GetComments(c *fiber.Ctx) error {
 
 // CreateComment creates a website comment.
 // POST /api/website/:domain/comment
-func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -51,7 +51,7 @@ func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
 
 // DeleteComment deletes a website comment.
 // DELETE /api/website/:domain/comment
-func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
+func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

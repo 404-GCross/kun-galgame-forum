@@ -6,7 +6,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type SearchHandler struct {
@@ -19,7 +19,7 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 
 // Search performs keyword search across different content types.
 // GET /api/search
-func (h *SearchHandler) Search(c *fiber.Ctx) error {
+func (h *SearchHandler) Search(c fiber.Ctx) error {
 	var req dto.SearchRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)

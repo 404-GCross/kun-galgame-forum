@@ -5,8 +5,8 @@ import (
 
 	"kun-galgame-api/internal/middleware"
 
-	"github.com/gofiber/fiber/v2"
-	fiberCors "github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v3"
+	fiberCors "github.com/gofiber/fiber/v3/middleware/cors"
 )
 
 func (a *App) setupRoutes() {
@@ -20,7 +20,7 @@ func (a *App) setupRoutes() {
 	// Liveness probe for the container HEALTHCHECK (`server healthcheck`) and
 	// compose depends_on gates. Plain 200 — deliberately does NOT touch DB/Redis
 	// so a transient backing-store blip can't flap the container as unhealthy.
-	a.Fiber.Get("/healthz", func(c *fiber.Ctx) error {
+	a.Fiber.Get("/healthz", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 

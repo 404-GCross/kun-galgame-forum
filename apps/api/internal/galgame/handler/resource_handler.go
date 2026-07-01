@@ -11,7 +11,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // resourceIDFromQueryOrBody pulls galgameResourceId from either body or query
@@ -32,7 +32,7 @@ func NewResourceHandler(resourceService *service.ResourceService) *ResourceHandl
 // SFW-default. Crawlers and cookie-less visitors see only resources
 // attached to content_limit=sfw galgames; logged-in users with the NSFW
 // switch enabled see everything.
-func (h *ResourceHandler) GetResourceList(c *fiber.Ctx) error {
+func (h *ResourceHandler) GetResourceList(c fiber.Ctx) error {
 	var req dto.ResourceListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -47,7 +47,7 @@ func (h *ResourceHandler) GetResourceList(c *fiber.Ctx) error {
 
 // GetResourceDetail returns a single resource with galgame info and recommendations.
 // GET /api/galgame-resource/:id
-func (h *ResourceHandler) GetResourceDetail(c *fiber.Ctx) error {
+func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的资源 ID"))
@@ -67,7 +67,7 @@ func (h *ResourceHandler) GetResourceDetail(c *fiber.Ctx) error {
 
 // GetResourceDownloadDetail returns resource detail with download links.
 // GET /api/galgame-resource/:id/detail
-func (h *ResourceHandler) GetResourceDownloadDetail(c *fiber.Ctx) error {
+func (h *ResourceHandler) GetResourceDownloadDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的资源 ID"))
@@ -83,7 +83,7 @@ func (h *ResourceHandler) GetResourceDownloadDetail(c *fiber.Ctx) error {
 
 // GetGalgameResources returns resources for a specific galgame.
 // GET /api/galgame/:gid/resource/all
-func (h *ResourceHandler) GetGalgameResources(c *fiber.Ctx) error {
+func (h *ResourceHandler) GetGalgameResources(c fiber.Ctx) error {
 	var req dto.GalgameResourcesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -98,7 +98,7 @@ func (h *ResourceHandler) GetGalgameResources(c *fiber.Ctx) error {
 
 // optionalUID returns the logged-in user's ID from OptionalAuth middleware,
 // or 0 if not authenticated.
-func optionalUID(c *fiber.Ctx) int {
+func optionalUID(c fiber.Ctx) int {
 	if user := middleware.GetUser(c); user != nil {
 		return user.ID
 	}
@@ -106,7 +106,7 @@ func optionalUID(c *fiber.Ctx) int {
 }
 
 // CreateResource — POST /api/galgame/:gid/resource
-func (h *ResourceHandler) CreateResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -122,7 +122,7 @@ func (h *ResourceHandler) CreateResource(c *fiber.Ctx) error {
 }
 
 // UpdateResource — PUT /api/galgame/:gid/resource
-func (h *ResourceHandler) UpdateResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -138,7 +138,7 @@ func (h *ResourceHandler) UpdateResource(c *fiber.Ctx) error {
 }
 
 // DeleteResource — DELETE /api/galgame/:gid/resource
-func (h *ResourceHandler) DeleteResource(c *fiber.Ctx) error {
+func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -154,7 +154,7 @@ func (h *ResourceHandler) DeleteResource(c *fiber.Ctx) error {
 }
 
 // ToggleLike — PUT /api/galgame/:gid/resource/like
-func (h *ResourceHandler) ToggleLike(c *fiber.Ctx) error {
+func (h *ResourceHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -170,7 +170,7 @@ func (h *ResourceHandler) ToggleLike(c *fiber.Ctx) error {
 }
 
 // MarkValid — PUT /api/galgame/:gid/resource/valid
-func (h *ResourceHandler) MarkValid(c *fiber.Ctx) error {
+func (h *ResourceHandler) MarkValid(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -186,7 +186,7 @@ func (h *ResourceHandler) MarkValid(c *fiber.Ctx) error {
 }
 
 // MarkExpired — PUT /api/galgame/:gid/resource/expired
-func (h *ResourceHandler) MarkExpired(c *fiber.Ctx) error {
+func (h *ResourceHandler) MarkExpired(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

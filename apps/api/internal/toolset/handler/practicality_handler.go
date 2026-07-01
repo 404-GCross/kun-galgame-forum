@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type PracticalityHandler struct {
@@ -21,9 +21,9 @@ func NewPracticalityHandler(practicalityService *service.PracticalityService) *P
 
 // GetPracticality returns rating distribution for a toolset.
 // GET /api/toolset/:id/practicality
-func (h *PracticalityHandler) GetPracticality(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id")
-	if err != nil {
+func (h *PracticalityHandler) GetPracticality(c fiber.Ctx) error {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -33,14 +33,14 @@ func (h *PracticalityHandler) GetPracticality(c *fiber.Ctx) error {
 
 // UpsertPracticality upserts a user's practicality rating.
 // PUT /api/toolset/:id/practicality
-func (h *PracticalityHandler) UpsertPracticality(c *fiber.Ctx) error {
+func (h *PracticalityHandler) UpsertPracticality(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -58,7 +58,7 @@ func (h *PracticalityHandler) UpsertPracticality(c *fiber.Ctx) error {
 
 // optionalUID returns the logged-in user's ID from OptionalAuth middleware,
 // or 0 if not authenticated.
-func optionalUID(c *fiber.Ctx) int {
+func optionalUID(c fiber.Ctx) int {
 	if user := middleware.GetUser(c); user != nil {
 		return user.ID
 	}

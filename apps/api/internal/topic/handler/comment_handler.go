@@ -11,7 +11,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CommentHandler struct {
@@ -24,7 +24,7 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 
 // CreateComment creates a comment on a reply.
 // POST /api/topic/:tid/comment
-func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -51,7 +51,7 @@ func (h *CommentHandler) CreateComment(c *fiber.Ctx) error {
 
 // UpdateComment lets the author edit their comment's content.
 // PUT /api/topic/:tid/comment
-func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
+func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -73,7 +73,7 @@ func (h *CommentHandler) UpdateComment(c *fiber.Ctx) error {
 
 // ToggleCommentLike toggles like on a comment.
 // PUT /api/topic/:tid/comment/like
-func (h *CommentHandler) ToggleCommentLike(c *fiber.Ctx) error {
+func (h *CommentHandler) ToggleCommentLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -93,7 +93,7 @@ func (h *CommentHandler) ToggleCommentLike(c *fiber.Ctx) error {
 
 // DeleteComment deletes a comment.
 // DELETE /api/topic/:tid/comment
-func (h *CommentHandler) DeleteComment(c *fiber.Ctx) error {
+func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

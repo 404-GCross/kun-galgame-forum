@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // CreatorHandler exposes the forum-side creator-role application endpoints:
@@ -24,7 +24,7 @@ func NewCreatorHandler(svc *service.CreatorService) *CreatorHandler {
 }
 
 // Status — GET /api/user/creator/status: eligibility snapshot + current application.
-func (h *CreatorHandler) Status(c *fiber.Ctx) error {
+func (h *CreatorHandler) Status(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -45,7 +45,7 @@ func (h *CreatorHandler) Status(c *fiber.Ctx) error {
 }
 
 // Apply — POST /api/user/creator/apply {message?}.
-func (h *CreatorHandler) Apply(c *fiber.Ctx) error {
+func (h *CreatorHandler) Apply(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // GalgameHandler groups the "core" galgame endpoints: create, merge PR,
@@ -28,7 +28,7 @@ func NewGalgameHandler(galgameService *service.GalgameService) *GalgameHandler {
 // ──────────────────────────────────────────
 
 // Create — POST /api/galgame
-func (h *GalgameHandler) Create(c *fiber.Ctx) error {
+func (h *GalgameHandler) Create(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -48,7 +48,7 @@ func (h *GalgameHandler) Create(c *fiber.Ctx) error {
 }
 
 // MergePR — PUT /api/galgame/:gid/prs/:id/merge
-func (h *GalgameHandler) MergePR(c *fiber.Ctx) error {
+func (h *GalgameHandler) MergePR(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -76,7 +76,7 @@ func (h *GalgameHandler) MergePR(c *fiber.Ctx) error {
 //
 // Thin wrapper over the generic write-proxy that additionally notifies the
 // galgame owner ("requested"). See GalgameService.SubmitPR.
-func (h *GalgameHandler) SubmitPR(c *fiber.Ctx) error {
+func (h *GalgameHandler) SubmitPR(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -100,7 +100,7 @@ func (h *GalgameHandler) SubmitPR(c *fiber.Ctx) error {
 //
 // Thin wrapper over the generic write-proxy that additionally notifies the PR
 // submitter ("declined"). See GalgameService.DeclinePR.
-func (h *GalgameHandler) DeclinePR(c *fiber.Ctx) error {
+func (h *GalgameHandler) DeclinePR(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -136,7 +136,7 @@ func (h *GalgameHandler) DeclinePR(c *fiber.Ctx) error {
 // This is what makes /edit/galgame/draft/:gid (owner viewing own
 // pending) and the publish wizard's VNDB-id lookup (claimable VNDB
 // draft, status=2) work without dedicated owner-only endpoints.
-func (h *GalgameHandler) GetDetail(c *fiber.Ctx) error {
+func (h *GalgameHandler) GetDetail(c fiber.Ctx) error {
 	gid, err := strconv.Atoi(c.Params("gid"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的 Galgame ID"))
@@ -157,7 +157,7 @@ func (h *GalgameHandler) GetDetail(c *fiber.Ctx) error {
 // only; logged-in users with the NSFW switch on see everything. The
 // filter happens in the service layer because kungal's galgame table
 // has no content_limit field (see service.GetList for the trade-off).
-func (h *GalgameHandler) GetList(c *fiber.Ctx) error {
+func (h *GalgameHandler) GetList(c fiber.Ctx) error {
 	var req dto.GalgameListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -175,7 +175,7 @@ func (h *GalgameHandler) GetList(c *fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // ToggleLike — PUT /api/galgame/:gid/like
-func (h *GalgameHandler) ToggleLike(c *fiber.Ctx) error {
+func (h *GalgameHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -193,7 +193,7 @@ func (h *GalgameHandler) ToggleLike(c *fiber.Ctx) error {
 }
 
 // ToggleFavorite — PUT /api/galgame/:gid/favorite
-func (h *GalgameHandler) ToggleFavorite(c *fiber.Ctx) error {
+func (h *GalgameHandler) ToggleFavorite(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -213,7 +213,7 @@ func (h *GalgameHandler) ToggleFavorite(c *fiber.Ctx) error {
 // MyInteractions — GET /api/galgame/interactions/mine
 // The current user's liked + favorited galgame ids, used to hydrate feed-card
 // like/favorite state (the shared feed cache can't carry per-user state).
-func (h *GalgameHandler) MyInteractions(c *fiber.Ctx) error {
+func (h *GalgameHandler) MyInteractions(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

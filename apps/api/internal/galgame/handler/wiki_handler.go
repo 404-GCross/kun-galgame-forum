@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // WikiHandler groups wiki pass-through endpoints and the galgame sub-routes
@@ -26,7 +26,7 @@ func NewWikiHandler(wikiService *service.WikiService) *WikiHandler {
 // ──────────────────────────────────────────
 
 // ProxyGet forwards a GET request to wiki service.
-func (h *WikiHandler) ProxyGet(c *fiber.Ctx) error {
+func (h *WikiHandler) ProxyGet(c fiber.Ctx) error {
 	data, appErr := h.wikiService.ProxyGet(c.Context(), c.Path(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -38,7 +38,7 @@ func (h *WikiHandler) ProxyGet(c *fiber.Ctx) error {
 // token (attached by OptionalAuth — empty for anonymous callers). Needed for
 // endpoints the wiki gates behind auth even on read (taxonomy revision
 // history), where the plain token-less ProxyGet 401s.
-func (h *WikiHandler) ProxyGetWithToken(c *fiber.Ctx) error {
+func (h *WikiHandler) ProxyGetWithToken(c fiber.Ctx) error {
 	token := middleware.GetAccessToken(c)
 	data, appErr := h.wikiService.ProxyGetWithToken(c.Context(), c.Path(), token, collectQuery(c))
 	if appErr != nil {
@@ -52,7 +52,7 @@ func (h *WikiHandler) ProxyGetWithToken(c *fiber.Ctx) error {
 // resource name (tag/official/engine), bound per-route. Token forwarded via
 // OptionalAuth (the wiki gates these GETs behind auth).
 func (h *WikiHandler) GetTaxonomyRevisions(entity string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		token := middleware.GetAccessToken(c)
 		page, appErr := h.wikiService.GetTaxonomyRevisions(
 			c.Context(), entity, c.Params("id"), token, collectQuery(c),
@@ -70,7 +70,7 @@ func (h *WikiHandler) GetTaxonomyRevisions(entity string) fiber.Handler {
 // client-supplied header — so wiki always sees the authenticated kungal
 // user's identity rather than whatever bearer the client felt like sending.
 func (h *WikiHandler) ProxyWriteWithToken(method string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		if _, appErr := middleware.MustGetUser(c); appErr != nil {
 			return response.Error(c, appErr)
 		}
@@ -96,7 +96,7 @@ func (h *WikiHandler) ProxyWriteWithToken(method string) fiber.Handler {
 // ──────────────────────────────────────────
 
 // GetGalgameLinks — GET /galgame/:gid/link/all
-func (h *WikiHandler) GetGalgameLinks(c *fiber.Ctx) error {
+func (h *WikiHandler) GetGalgameLinks(c fiber.Ctx) error {
 	links, appErr := h.wikiService.GetGalgameLinks(c.Context(), c.Params("gid"))
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -105,7 +105,7 @@ func (h *WikiHandler) GetGalgameLinks(c *fiber.Ctx) error {
 }
 
 // GetGalgameHistory — GET /galgame/:gid/history/all
-func (h *WikiHandler) GetGalgameHistory(c *fiber.Ctx) error {
+func (h *WikiHandler) GetGalgameHistory(c fiber.Ctx) error {
 	page, appErr := h.wikiService.GetGalgameHistory(
 		c.Context(), c.Params("gid"), collectQuery(c),
 	)
@@ -116,7 +116,7 @@ func (h *WikiHandler) GetGalgameHistory(c *fiber.Ctx) error {
 }
 
 // GetGalgamePRs — GET /galgame/:gid/pr/all
-func (h *WikiHandler) GetGalgamePRs(c *fiber.Ctx) error {
+func (h *WikiHandler) GetGalgamePRs(c fiber.Ctx) error {
 	page, appErr := h.wikiService.GetGalgamePRs(
 		c.Context(), c.Params("gid"), collectQuery(c),
 	)

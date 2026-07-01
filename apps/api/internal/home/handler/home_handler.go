@@ -6,7 +6,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type HomeHandler struct {
@@ -19,7 +19,7 @@ func NewHomeHandler(homeService *service.HomeService) *HomeHandler {
 
 // GetHome returns homepage data: galgames + topics.
 // GET /api/home
-func (h *HomeHandler) GetHome(c *fiber.Ctx) error {
+func (h *HomeHandler) GetHome(c fiber.Ctx) error {
 	isSFW := utils.IsSFW(c)
 
 	resp, err := h.homeService.GetHome(c.Context(), isSFW)

@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type UploadHandler struct {
@@ -24,14 +24,14 @@ func NewUploadHandler(uploadService *service.UploadService) *UploadHandler {
 // is server-driven — a single PUT URL for small files, or multipart part URLs
 // (with part_size) for large ones; the frontend obeys whichever it gets.
 // POST /api/toolset/:id/upload/init
-func (h *UploadHandler) UploadInit(c *fiber.Ctx) error {
+func (h *UploadHandler) UploadInit(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -49,7 +49,7 @@ func (h *UploadHandler) UploadInit(c *fiber.Ctx) error {
 
 // UploadComplete finalizes an upload; the artifact service verifies the real
 // size via HeadObject. POST /api/toolset/:id/upload/complete
-func (h *UploadHandler) UploadComplete(c *fiber.Ctx) error {
+func (h *UploadHandler) UploadComplete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -71,7 +71,7 @@ func (h *UploadHandler) UploadComplete(c *fiber.Ctx) error {
 // parts already stored and re-presigns only the missing ones, so the frontend
 // can finish without re-sending bytes already in B2 (pause / drop / refresh).
 // POST /api/toolset/:id/upload/resume
-func (h *UploadHandler) UploadResume(c *fiber.Ctx) error {
+func (h *UploadHandler) UploadResume(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -90,7 +90,7 @@ func (h *UploadHandler) UploadResume(c *fiber.Ctx) error {
 
 // UploadAbort soft-deletes an unfinished upload (GC reclaims the bytes).
 // POST /api/toolset/:id/upload/abort
-func (h *UploadHandler) UploadAbort(c *fiber.Ctx) error {
+func (h *UploadHandler) UploadAbort(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

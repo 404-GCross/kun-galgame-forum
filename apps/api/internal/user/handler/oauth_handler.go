@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type OAuthHandler struct {
@@ -26,7 +26,7 @@ func NewOAuthHandler(authService *service.AuthService, isProd bool) *OAuthHandle
 // code and the PKCE code_verifier, both of which are short-lived credentials.
 // Logging them (even at Debug level) leaks them to any log sink and creates a
 // replay window if an attacker reads the log before the token exchange.
-func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
+func (h *OAuthHandler) Callback(c fiber.Ctx) error {
 	var req dto.OAuthCallbackRequest
 	if err := utils.ParseAndValidate(c, &req); err != nil {
 		return response.Error(c, err)
@@ -52,7 +52,7 @@ func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
 
 // Logout clears the session.
 // POST /api/auth/logout
-func (h *OAuthHandler) Logout(c *fiber.Ctx) error {
+func (h *OAuthHandler) Logout(c fiber.Ctx) error {
 	token := c.Cookies(middleware.SessionCookieName)
 	if token != "" {
 		_ = h.authService.Logout(c.Context(), token)
@@ -73,7 +73,7 @@ func (h *OAuthHandler) Logout(c *fiber.Ctx) error {
 
 // Me returns the current authenticated user's profile.
 // GET /api/auth/me
-func (h *OAuthHandler) Me(c *fiber.Ctx) error {
+func (h *OAuthHandler) Me(c fiber.Ctx) error {
 	user, err := middleware.MustGetUser(c)
 	if err != nil {
 		return response.Error(c, err)

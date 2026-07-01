@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ActivityHandler struct {
@@ -22,7 +22,7 @@ func NewActivityHandler(activityService *service.ActivityService) *ActivityHandl
 
 // GetActivity returns activity feed filtered by type.
 // GET /api/activity
-func (h *ActivityHandler) GetActivity(c *fiber.Ctx) error {
+func (h *ActivityHandler) GetActivity(c fiber.Ctx) error {
 	var req dto.ActivityRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -37,7 +37,7 @@ func (h *ActivityHandler) GetActivity(c *fiber.Ctx) error {
 
 // GetTab returns one of the home-page feed's five tab buckets.
 // GET /api/activity/tab
-func (h *ActivityHandler) GetTab(c *fiber.Ctx) error {
+func (h *ActivityHandler) GetTab(c fiber.Ctx) error {
 	var req dto.TabRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -64,7 +64,7 @@ func (h *ActivityHandler) GetTab(c *fiber.Ctx) error {
 
 // GetTimeline returns mixed activity timeline.
 // GET /api/activity/timeline
-func (h *ActivityHandler) GetTimeline(c *fiber.Ctx) error {
+func (h *ActivityHandler) GetTimeline(c fiber.Ctx) error {
 	var req dto.TimelineRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)

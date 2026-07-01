@@ -6,7 +6,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ImageHandler struct {
@@ -43,7 +43,7 @@ var allowedGalgamePresets = map[string]struct{}{
 // (presence-replace arrays — see GalgameEditStoreTemp note).
 //
 // POST /api/image/galgame
-func (h *ImageHandler) UploadGalgameImage(c *fiber.Ctx) error {
+func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -82,7 +82,7 @@ func (h *ImageHandler) UploadGalgameImage(c *fiber.Ctx) error {
 // website). Multipart form: file (required). Returns {hash, url, width, height,
 // thumbhash} — the caller stores the hash and previews via url.
 // POST /api/image/cover
-func (h *ImageHandler) UploadCoverImage(c *fiber.Ctx) error {
+func (h *ImageHandler) UploadCoverImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -111,7 +111,7 @@ func (h *ImageHandler) UploadCoverImage(c *fiber.Ctx) error {
 
 // UploadTopicImage handles topic image upload.
 // POST /api/image/topic
-func (h *ImageHandler) UploadTopicImage(c *fiber.Ctx) error {
+func (h *ImageHandler) UploadTopicImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -142,7 +142,7 @@ func (h *ImageHandler) UploadTopicImage(c *fiber.Ctx) error {
 // Uploads a chat / private-message inline image and returns its CDN URL, which
 // the client inserts into the message as `![name](url)`. Mirror of
 // UploadTopicImage but under the `message` preset.
-func (h *ImageHandler) UploadMessageImage(c *fiber.Ctx) error {
+func (h *ImageHandler) UploadMessageImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // SubmissionHandler exposes the user submission endpoints (submit / claim /
@@ -27,7 +27,7 @@ func NewSubmissionHandler(svc *service.SubmissionService) *SubmissionHandler {
 }
 
 // Submit — POST /api/galgame/submit
-func (h *SubmissionHandler) Submit(c *fiber.Ctx) error {
+func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -44,7 +44,7 @@ func (h *SubmissionHandler) Submit(c *fiber.Ctx) error {
 }
 
 // Claim — POST /api/galgame/:gid/claim
-func (h *SubmissionHandler) Claim(c *fiber.Ctx) error {
+func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -67,7 +67,7 @@ func (h *SubmissionHandler) Claim(c *fiber.Ctx) error {
 
 // PatchDraft — PATCH /api/galgame/:gid (only valid for status IN (3,4) /
 // own row; wiki enforces both)
-func (h *SubmissionHandler) PatchDraft(c *fiber.Ctx) error {
+func (h *SubmissionHandler) PatchDraft(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -89,7 +89,7 @@ func (h *SubmissionHandler) PatchDraft(c *fiber.Ctx) error {
 
 // DeleteDraft — DELETE /api/galgame/:gid (only valid for status IN (3,4) /
 // own row; wiki enforces both)
-func (h *SubmissionHandler) DeleteDraft(c *fiber.Ctx) error {
+func (h *SubmissionHandler) DeleteDraft(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -109,7 +109,7 @@ func (h *SubmissionHandler) DeleteDraft(c *fiber.Ctx) error {
 }
 
 // ListMine — GET /api/galgame/mine
-func (h *SubmissionHandler) ListMine(c *fiber.Ctx) error {
+func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -133,7 +133,7 @@ func (h *SubmissionHandler) ListMine(c *fiber.Ctx) error {
 //
 // Default search (/api/galgame/search) stays anonymous-only — first-time
 // visitors and SSR don't want "突然在首页看到自己的 pending" UX.
-func (h *SubmissionHandler) SearchWithPending(c *fiber.Ctx) error {
+func (h *SubmissionHandler) SearchWithPending(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

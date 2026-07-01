@@ -7,14 +7,14 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 )
 
 // RateLimit creates a per-user rate limiting middleware using Redis.
 // maxRequests is the maximum number of requests allowed within the window.
 func RateLimit(rdb *redis.Client, prefix string, maxRequests int, window time.Duration) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		user := GetUser(c)
 		if user == nil {
 			return response.Error(c, errors.ErrAuthExpired())

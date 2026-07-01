@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type MessageHandler struct {
@@ -23,7 +23,7 @@ func NewMessageHandler(messageService *service.MessageService) *MessageHandler {
 
 // GetMessages returns paginated notification messages.
 // GET /api/message
-func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
+func (h *MessageHandler) GetMessages(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -43,7 +43,7 @@ func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
 
 // DeleteMessage deletes a single notification message.
 // DELETE /api/message/:id
-func (h *MessageHandler) DeleteMessage(c *fiber.Ctx) error {
+func (h *MessageHandler) DeleteMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -66,7 +66,7 @@ func (h *MessageHandler) DeleteMessage(c *fiber.Ctx) error {
 //
 // Requires auth: unread/read is meaningful only with a known user.
 // GET /api/message/admin
-func (h *MessageHandler) GetSystemMessages(c *fiber.Ctx) error {
+func (h *MessageHandler) GetSystemMessages(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -83,7 +83,7 @@ func (h *MessageHandler) GetSystemMessages(c *fiber.Ctx) error {
 // so every existing broadcast becomes read for this user only — no fan-out
 // to other users, fixed in migration 012.
 // PUT /api/message/admin/read
-func (h *MessageHandler) MarkAdminRead(c *fiber.Ctx) error {
+func (h *MessageHandler) MarkAdminRead(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -97,7 +97,7 @@ func (h *MessageHandler) MarkAdminRead(c *fiber.Ctx) error {
 
 // GetNavSummary returns nav-bar summary [notice, system].
 // GET /api/message/nav/system
-func (h *MessageHandler) GetNavSummary(c *fiber.Ctx) error {
+func (h *MessageHandler) GetNavSummary(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -112,7 +112,7 @@ func (h *MessageHandler) GetNavSummary(c *fiber.Ctx) error {
 
 // MarkAllRead marks all user notification messages as read.
 // PUT /api/message/system/read
-func (h *MessageHandler) MarkAllRead(c *fiber.Ctx) error {
+func (h *MessageHandler) MarkAllRead(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)

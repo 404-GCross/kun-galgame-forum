@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // FriendLinkHandler — admin-managed 友情链接 CRUD + drag-reorder. Pure DB ops,
@@ -28,7 +28,7 @@ func NewFriendLinkHandler(repo *repository.FriendLinkRepository, cdnBase string)
 // List returns all friend links grouped by the 3 fixed categories, each ordered
 // by sort_order. Public — rendered on /friend-links and the admin page.
 // GET /api/friend-link
-func (h *FriendLinkHandler) List(c *fiber.Ctx) error {
+func (h *FriendLinkHandler) List(c fiber.Ctx) error {
 	// Initialise all 3 keys to non-nil empty slices so the JSON always carries
 	// every group (an empty category serialises as [] not null).
 	grouped := map[string][]model.FriendLink{
@@ -47,7 +47,7 @@ func (h *FriendLinkHandler) List(c *fiber.Ctx) error {
 
 // Create adds a friend link, appended to the end of its category.
 // POST /api/admin/friend-link
-func (h *FriendLinkHandler) Create(c *fiber.Ctx) error {
+func (h *FriendLinkHandler) Create(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -72,7 +72,7 @@ func (h *FriendLinkHandler) Create(c *fiber.Ctx) error {
 
 // Update patches a friend link.
 // PUT /api/admin/friend-link
-func (h *FriendLinkHandler) Update(c *fiber.Ctx) error {
+func (h *FriendLinkHandler) Update(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -97,7 +97,7 @@ func (h *FriendLinkHandler) Update(c *fiber.Ctx) error {
 
 // Delete removes a friend link.
 // DELETE /api/admin/friend-link?id=
-func (h *FriendLinkHandler) Delete(c *fiber.Ctx) error {
+func (h *FriendLinkHandler) Delete(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -111,7 +111,7 @@ func (h *FriendLinkHandler) Delete(c *fiber.Ctx) error {
 
 // Reorder persists a new within-category ordering (drag-and-drop result).
 // PUT /api/admin/friend-link/reorder
-func (h *FriendLinkHandler) Reorder(c *fiber.Ctx) error {
+func (h *FriendLinkHandler) Reorder(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}

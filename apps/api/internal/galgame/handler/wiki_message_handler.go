@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // WikiMessageHandler exposes the wiki notification stream to kungal users
@@ -23,7 +23,7 @@ func NewWikiMessageHandler(svc *service.WikiMessageService) *WikiMessageHandler 
 }
 
 // MessagesMine — GET /api/galgame/messages/mine (any authenticated user)
-func (h *WikiMessageHandler) MessagesMine(c *fiber.Ctx) error {
+func (h *WikiMessageHandler) MessagesMine(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -41,7 +41,7 @@ func (h *WikiMessageHandler) MessagesMine(c *fiber.Ctx) error {
 
 // AdminMessages — GET /api/admin/galgame/messages (moderator+)
 // Caller must already be in a RequireModerator()-gated route group.
-func (h *WikiMessageHandler) AdminMessages(c *fiber.Ctx) error {
+func (h *WikiMessageHandler) AdminMessages(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -66,7 +66,7 @@ type ReadStateRequest struct {
 //
 // Returns the cursor as { last_read_message_id: <int64> }. Frontend uses
 // this together with the /messages/mine list to compute unread counts.
-func (h *WikiMessageHandler) GetReadState(c *fiber.Ctx) error {
+func (h *WikiMessageHandler) GetReadState(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -81,14 +81,14 @@ func (h *WikiMessageHandler) GetReadState(c *fiber.Ctx) error {
 }
 
 // SetReadState — PUT /api/galgame/messages/read-state
-func (h *WikiMessageHandler) SetReadState(c *fiber.Ctx) error {
+func (h *WikiMessageHandler) SetReadState(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
 	var req ReadStateRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, errors.ErrBadRequest("请求体格式错误"))
 	}
 	if req.LastReadMessageID < 0 {

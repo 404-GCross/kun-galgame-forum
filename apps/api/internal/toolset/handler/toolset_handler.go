@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // ToolsetHandler handles the core toolset CRUD routes.
@@ -25,7 +25,7 @@ func NewToolsetHandler(toolsetService *service.ToolsetService) *ToolsetHandler {
 
 // GetList returns a paginated list of toolsets with filters.
 // GET /api/toolset
-func (h *ToolsetHandler) GetList(c *fiber.Ctx) error {
+func (h *ToolsetHandler) GetList(c fiber.Ctx) error {
 	var req dto.ToolsetListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -43,7 +43,7 @@ func (h *ToolsetHandler) GetList(c *fiber.Ctx) error {
 
 // Create creates a new toolset.
 // POST /api/toolset
-func (h *ToolsetHandler) Create(c *fiber.Ctx) error {
+func (h *ToolsetHandler) Create(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -63,9 +63,9 @@ func (h *ToolsetHandler) Create(c *fiber.Ctx) error {
 
 // GetDetail returns toolset detail.
 // GET /api/toolset/:id
-func (h *ToolsetHandler) GetDetail(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id")
-	if err != nil {
+func (h *ToolsetHandler) GetDetail(c fiber.Ctx) error {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -78,14 +78,14 @@ func (h *ToolsetHandler) GetDetail(c *fiber.Ctx) error {
 
 // Update updates a toolset.
 // PUT /api/toolset/:id
-func (h *ToolsetHandler) Update(c *fiber.Ctx) error {
+func (h *ToolsetHandler) Update(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
@@ -102,14 +102,14 @@ func (h *ToolsetHandler) Update(c *fiber.Ctx) error {
 
 // Delete deletes a toolset.
 // DELETE /api/toolset/:id
-func (h *ToolsetHandler) Delete(c *fiber.Ctx) error {
+func (h *ToolsetHandler) Delete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
+	id := fiber.Params[int](c, "id")
+	if id <= 0 {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 

@@ -10,7 +10,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // UserHandler exposes the kungal-side user-facing endpoints. After the
@@ -37,7 +37,7 @@ func NewUserHandler(
 // GetProfile returns a user's public profile (identity from OAuth, stats
 // from kungal local).
 // GET /api/user/:userID
-func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
+func (h *UserHandler) GetProfile(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -51,7 +51,7 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 
 // CheckIn handles daily check-in.
 // POST /api/user/check-in
-func (h *UserHandler) CheckIn(c *fiber.Ctx) error {
+func (h *UserHandler) CheckIn(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -65,7 +65,7 @@ func (h *UserHandler) CheckIn(c *fiber.Ctx) error {
 
 // GetStatus returns the user's status (moemoepoints, check-in, unread messages).
 // GET /api/user/status
-func (h *UserHandler) GetStatus(c *fiber.Ctx) error {
+func (h *UserHandler) GetStatus(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -81,16 +81,16 @@ func (h *UserHandler) GetStatus(c *fiber.Ctx) error {
 // (cursor-paginated, newest first). Scoped to the caller — there is no :id
 // param, so a user can only read their OWN ledger.
 // GET /api/user/moemoepoint/log?limit=&before_id=&reason=
-func (h *UserHandler) GetMoemoepointLog(c *fiber.Ctx) error {
+func (h *UserHandler) GetMoemoepointLog(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	limit := c.QueryInt("limit", 20)
+	limit := fiber.Query[int](c, "limit", 20)
 	if limit < 1 || limit > 50 {
 		limit = 20
 	}
-	beforeID := max(c.QueryInt("before_id", 0), 0)
+	beforeID := max(fiber.Query[int](c, "before_id", 0), 0)
 	page, appErr := h.userService.GetMoemoepointLog(
 		c.Context(), user.ID, limit, beforeID, c.Query("reason"))
 	if appErr != nil {
@@ -103,9 +103,9 @@ func (h *UserHandler) GetMoemoepointLog(c *fiber.Ctx) error {
 // @mention autocomplete dropdown. Behind userAuth (only logged-in users
 // compose), so no user lookup is needed here — just proxy the query.
 // GET /api/user/search?q=&limit=
-func (h *UserHandler) SearchMention(c *fiber.Ctx) error {
+func (h *UserHandler) SearchMention(c fiber.Ctx) error {
 	users, appErr := h.userService.SearchMentionUsers(
-		c.Context(), c.Query("q"), c.QueryInt("limit", 8))
+		c.Context(), c.Query("q"), fiber.Query[int](c, "limit", 8))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -114,7 +114,7 @@ func (h *UserHandler) SearchMention(c *fiber.Ctx) error {
 
 // GetFloatingCard returns lightweight user info for hover card.
 // GET /api/user/:userID/floating — target user is read from ?userId=N (legacy).
-func (h *UserHandler) GetFloatingCard(c *fiber.Ctx) error {
+func (h *UserHandler) GetFloatingCard(c fiber.Ctx) error {
 	var req dto.FloatingCardRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -128,7 +128,7 @@ func (h *UserHandler) GetFloatingCard(c *fiber.Ctx) error {
 
 // GetUserGalgames returns a user's galgame list.
 // GET /api/user/:userID/galgames
-func (h *UserHandler) GetUserGalgames(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserGalgames(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -146,7 +146,7 @@ func (h *UserHandler) GetUserGalgames(c *fiber.Ctx) error {
 
 // GetUserTopics returns a user's topic list.
 // GET /api/user/:userID/topics
-func (h *UserHandler) GetUserTopics(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserTopics(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -164,7 +164,7 @@ func (h *UserHandler) GetUserTopics(c *fiber.Ctx) error {
 
 // GetUserReplies returns a user's reply list.
 // GET /api/user/:userID/replies
-func (h *UserHandler) GetUserReplies(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserReplies(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -182,7 +182,7 @@ func (h *UserHandler) GetUserReplies(c *fiber.Ctx) error {
 
 // GetUserComments returns a user's comment list.
 // GET /api/user/:userID/comments
-func (h *UserHandler) GetUserComments(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserComments(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -200,7 +200,7 @@ func (h *UserHandler) GetUserComments(c *fiber.Ctx) error {
 
 // GetUserResources returns a user's galgame resource list.
 // GET /api/user/:userID/resources
-func (h *UserHandler) GetUserResources(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserResources(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -222,7 +222,7 @@ func (h *UserHandler) GetUserResources(c *fiber.Ctx) error {
 // galgame-cards — what the user actually wanted was the comment-card
 // view used by /user/:id/comment/.
 // GET /api/user/:userID/galgame-comments
-func (h *UserHandler) GetUserGalgameComments(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserGalgameComments(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
@@ -240,7 +240,7 @@ func (h *UserHandler) GetUserGalgameComments(c *fiber.Ctx) error {
 
 // GetUserRatings returns a user's galgame rating list.
 // GET /api/user/:userID/ratings
-func (h *UserHandler) GetUserRatings(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserRatings(c fiber.Ctx) error {
 	userID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))

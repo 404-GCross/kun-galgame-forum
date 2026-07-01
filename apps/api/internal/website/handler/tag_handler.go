@@ -7,7 +7,7 @@ import (
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type TagHandler struct {
@@ -20,13 +20,13 @@ func NewTagHandler(tagService *service.TagService) *TagHandler {
 
 // GetWebsiteTags returns all website tags.
 // GET /api/website-tag
-func (h *TagHandler) GetWebsiteTags(c *fiber.Ctx) error {
+func (h *TagHandler) GetWebsiteTags(c fiber.Ctx) error {
 	return response.OK(c, h.tagService.GetAll())
 }
 
 // GetWebsiteTagDetail returns a tag with its websites.
 // GET /api/website-tag/:name
-func (h *TagHandler) GetWebsiteTagDetail(c *fiber.Ctx) error {
+func (h *TagHandler) GetWebsiteTagDetail(c fiber.Ctx) error {
 	name := c.Params("name")
 	detail, appErr := h.tagService.GetDetail(name, utils.IsSFW(c))
 	if appErr != nil {
@@ -37,7 +37,7 @@ func (h *TagHandler) GetWebsiteTagDetail(c *fiber.Ctx) error {
 
 // CreateWebsiteTag creates a website tag.
 // POST /api/website-tag
-func (h *TagHandler) CreateWebsiteTag(c *fiber.Ctx) error {
+func (h *TagHandler) CreateWebsiteTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -54,7 +54,7 @@ func (h *TagHandler) CreateWebsiteTag(c *fiber.Ctx) error {
 
 // UpdateWebsiteTag updates a website tag.
 // PUT /api/website-tag
-func (h *TagHandler) UpdateWebsiteTag(c *fiber.Ctx) error {
+func (h *TagHandler) UpdateWebsiteTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -71,7 +71,7 @@ func (h *TagHandler) UpdateWebsiteTag(c *fiber.Ctx) error {
 
 // DeleteWebsiteTag deletes a website tag.
 // DELETE /api/website-tag
-func (h *TagHandler) DeleteWebsiteTag(c *fiber.Ctx) error {
+func (h *TagHandler) DeleteWebsiteTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
