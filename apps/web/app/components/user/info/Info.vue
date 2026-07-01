@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { managementRoleLabel, KUN_USER_STATUS_MAP } from '~/constants/user'
-
 const props = defineProps<{
   user: UserInfo
 }>()
 const user = computed(() => props.user)
-
-const currentUserId = usePersistUserStore().id
 
 const statsBlocks = [
   { key: 'topic', label: '话题' },
@@ -52,50 +48,6 @@ const infoList = [
 
 <template>
   <div v-if="user" class="w-full space-y-6">
-    <KunCard
-      :is-hoverable="false"
-      class-name="bg-primary/5"
-      content-class="flex-row items-center"
-    >
-      <div class="flex-1">
-        <h1 class="flex items-center gap-2 text-2xl font-bold">
-          <span>{{ user.name }}</span>
-          <KunButton
-            v-if="currentUserId !== user.id"
-            variant="flat"
-            size="xs"
-            color="primary"
-            class-name="gap-1"
-            :href="`/message/user/${user.id}`"
-          >
-            <KunIcon name="lucide:message-circle" />
-            私聊
-          </KunButton>
-        </h1>
-        <div class="mt-2 flex items-center space-x-3">
-          <KunChip size="md" color="primary">
-            {{ managementRoleLabel(user.roles) }}
-          </KunChip>
-          <KunChip
-            v-if="user.roles.includes('creator')"
-            size="md"
-            color="warning"
-          >
-            创作者
-          </KunChip>
-          <KunChip size="md" color="success">
-            {{ KUN_USER_STATUS_MAP[user.status] }}
-          </KunChip>
-        </div>
-      </div>
-      <div class="text-right">
-        <div class="text-secondary text-3xl font-bold">
-          {{ user.moemoepoint }}
-        </div>
-        <div class="text-default-500 text-sm">萌萌点</div>
-      </div>
-    </KunCard>
-
     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
       <KunCard
         :is-transparent="false"

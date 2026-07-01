@@ -13,7 +13,7 @@ if (data.value) {
     description: data.value.description,
     ogImage: data.value.bannerUrl,
     ogType: 'article',
-    articleAuthor: [`${kungal.domain.main}/user/${data.value.authorId}/info`],
+    articleAuthor: [`${kungal.domain.main}/user/${data.value.authorId}`],
     articlePublishedTime: data.value.publishedTime?.toString(),
     articleModifiedTime: data.value.editedTime?.toString()
   })

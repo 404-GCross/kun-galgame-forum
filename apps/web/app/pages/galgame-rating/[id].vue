@@ -45,7 +45,7 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
   const authorSchema: Person = {
     '@type': 'Person',
     name: rating.user.name,
-    url: `${kungal.domain.main}/user/${rating.user.id}/info`
+    url: `${kungal.domain.main}/user/${rating.user.id}`
   }
 
   const itemReviewedSchema: VideoGame = {
@@ -151,7 +151,7 @@ if (data.value) {
       title,
       description,
       ogImage: getEffectiveBanner(data.value.galgame),
-      articleAuthor: [`${kungal.domain.main}/user/${data.value.user.id}/info`],
+      articleAuthor: [`${kungal.domain.main}/user/${data.value.user.id}`],
       articlePublishedTime: data.value.created.toString(),
       articleModifiedTime: data.value.updated.toString()
     })

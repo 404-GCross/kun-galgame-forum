@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
         <KunLink
           underline="hover"
           :aria-label="user.name"
-          :to="`/user/${user.id}/info`"
+          :to="`/user/${user.id}`"
         >
           {{ user.name }}
         </KunLink>
@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
       >
         <KunLink
           v-if="isPastPoll"
-          :to="`/user/${user.id}/info`"
+          :to="`/user/${user.id}`"
           :aria-label="user.name"
           underline="none"
           color="default"

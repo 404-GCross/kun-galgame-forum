@@ -53,7 +53,7 @@ const onReplyPublished = (comment: WebsiteComment) => {
           <KunLink
             underline="hover"
             size="sm"
-            :to="`/user/${comment.targetUser.id}/info`"
+            :to="`/user/${comment.targetUser.id}`"
           >
             {{ comment.targetUser.name }}
           </KunLink>

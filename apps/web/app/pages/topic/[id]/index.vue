@@ -95,7 +95,7 @@ if (data.value) {
     const authorSchema: Person = {
       '@type': 'Person',
       name: topic.user.name,
-      url: `${kungal.domain.main}/user/${topic.user.id}/info`,
+      url: `${kungal.domain.main}/user/${topic.user.id}`,
       image: topic.user.avatar
     }
 
@@ -137,7 +137,7 @@ if (data.value) {
           author: {
             '@type': 'Person',
             name: ba.user.name,
-            url: `${kungal.domain.main}/user/${ba.user.id}/info`,
+            url: `${kungal.domain.main}/user/${ba.user.id}`,
             image: ba.user.avatar
           }
         }
@@ -187,7 +187,7 @@ if (data.value) {
       description: description.value,
       ogImage: banner,
       ogType: 'article',
-      articleAuthor: [`${kungal.domain.main}/user/${data.value.user.id}/info`],
+      articleAuthor: [`${kungal.domain.main}/user/${data.value.user.id}`],
       articlePublishedTime: created,
       articleModifiedTime: updated
     })

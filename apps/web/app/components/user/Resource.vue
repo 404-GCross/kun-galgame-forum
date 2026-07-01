@@ -89,8 +89,6 @@ const submitFix = async (index: number) => {
 
 <template>
   <div class="space-y-3">
-    <KunHeader name="Galgame 资源" description="管理你发布的 Galgame 资源" />
-
     <KunTab
       :items="kunUserGalgameResourceNavItem(userId)"
       :model-value="activeTab"

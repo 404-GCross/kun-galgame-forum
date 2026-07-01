@@ -13,7 +13,7 @@ const { data } = await useKunFetch<RankingUserItem[]>('/ranking/user', {
       <KunLink
         color="default"
         underline="none"
-        :to="`/user/${user.id}/info`"
+        :to="`/user/${user.id}`"
         :class-name="
           cn(
             'relative flex items-center gap-3 rounded-xl border p-3 transition-colors',

@@ -25,11 +25,6 @@ const { data, status } = await useKunFetch<{
 
 <template>
   <div class="space-y-6">
-    <KunHeader
-      name="回复列表"
-      description="这是您在论坛中发布的所有回复的列表, 高级功能还在开发中, 杂鱼杂鱼臭杂鱼"
-    />
-
     <KunTab
       :items="kunUserReplyNavItem(userId)"
       :model-value="activeTab"

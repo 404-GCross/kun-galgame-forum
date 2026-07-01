@@ -188,7 +188,7 @@ const handleSaveEdit = async (comment: TopicComment) => {
                 <KunLink
                   size="sm"
                   underline="hover"
-                  :to="`/user/${comment.targetUser.id}/info`"
+                  :to="`/user/${comment.targetUser.id}`"
                 >
                   {{ comment.targetUser.name }}
                 </KunLink>

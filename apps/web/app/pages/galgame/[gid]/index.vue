@@ -136,7 +136,7 @@ if (galgame) {
       title,
       description,
       ogImage: getEffectiveBanner(galgame),
-      articleAuthor: [`${kungal.domain.main}/user/${galgame.user.id}/info`],
+      articleAuthor: [`${kungal.domain.main}/user/${galgame.user.id}`],
       articlePublishedTime: galgame.created.toString(),
       articleModifiedTime: galgame.updated.toString()
     })

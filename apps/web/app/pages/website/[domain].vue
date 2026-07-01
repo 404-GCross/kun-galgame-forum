@@ -60,7 +60,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
       author: {
         '@type': 'Person',
         name: comment.user.name,
-        url: `${kungal.domain.main}/user/${comment.user.id}/info`
+        url: `${kungal.domain.main}/user/${comment.user.id}`
       } as Person,
       datePublished: new Date(comment.created).toISOString(),
       reviewBody: comment.content,

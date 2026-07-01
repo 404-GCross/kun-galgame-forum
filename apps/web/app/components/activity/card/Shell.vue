@@ -17,7 +17,7 @@ defineProps<{
       <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <KunLink
           v-if="actor"
-          :to="`/user/${actor.id}/info`"
+          :to="`/user/${actor.id}`"
           underline="none"
           color="default"
           class-name="text-default-800 hover:text-primary font-medium"

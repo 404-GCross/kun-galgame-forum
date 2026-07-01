@@ -25,6 +25,6 @@ export default defineNuxtPlugin(() => {
       return
     }
     e.preventDefault()
-    router.push(`/user/${uid}/info`)
+    router.push(`/user/${uid}`)
   })
 })

@@ -5,7 +5,7 @@ defineProps<{
 </script>
 
 <template>
-  <KunCard :href="`/user/${user.id}/info`">
+  <KunCard :href="`/user/${user.id}`">
     <div class="flex items-center">
       <KunAvatar :disable-floating="true" :user="user" :is-navigation="false" />
       <span class="ml-2">{{ user.name }}</span>

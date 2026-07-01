@@ -20,7 +20,7 @@ withDefaults(
     <div class="w-full">
       <div class="flex items-center justify-between">
         <div class="flex gap-2">
-          <KunLink underline="hover" :to="`/user/${user.id}/info`">
+          <KunLink underline="hover" :to="`/user/${user.id}`">
             {{ user.name }}
           </KunLink>
           <p class="text-secondary flex items-center gap-1">

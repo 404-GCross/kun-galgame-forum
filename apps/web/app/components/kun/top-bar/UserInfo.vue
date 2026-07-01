@@ -129,7 +129,7 @@ const openLogout = () => {
     </button>
 
     <NuxtLink
-      :to="`/user/${id}/info`"
+      :to="`/user/${id}`"
       class="hover:bg-default-100 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors"
       @click="emit('close')"
     >

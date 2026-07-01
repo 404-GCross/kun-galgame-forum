@@ -246,7 +246,7 @@ const handleConfirmReason = async () => {
           <div class="text-default-500 flex flex-wrap items-center gap-2 text-sm">
             <span>
               提交者:
-              <KunLink v-if="msg.actor" :to="`/user/${msg.actor.id}/info`">
+              <KunLink v-if="msg.actor" :to="`/user/${msg.actor.id}`">
                 {{ msg.actor.name }}
               </KunLink>
               <template v-else>#{{ msg.actor_user_id }}</template>

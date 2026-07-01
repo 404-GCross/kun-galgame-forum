@@ -44,11 +44,6 @@ const handleUpdateTopicHideStatus = async (topicId: number) => {
 
 <template>
   <div class="space-y-3">
-    <KunHeader
-      name="话题列表"
-      description="这是您的话题列表, 高级功能还在咕咕咕, 呜呜呜呜呜"
-    />
-
     <KunTab
       :items="kunUserTopicNavItem(userId)"
       :model-value="activeTab"

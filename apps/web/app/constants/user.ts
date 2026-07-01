@@ -147,20 +147,29 @@ export const KUN_USER_PAGE_GALGAME_RESOURCE_TYPE = [
   'galgame_resource_like'
 ] as const
 
-export const KUN_USER_PAGE_NAV_MAP: Record<string, string> = {
-  profile: '个人信息',
-  setting: '信息设置',
-  topic: '话题',
-  galgame: 'Galgame',
-  rating: 'Gal 评分',
-  resource: 'Gal 资源',
-  publish: '已发布',
-  like: '已点赞',
-  favorite: '已收藏',
-  upvote: '已推',
-  contribute: '已贡献',
-  reply: '回复',
-  comment: '评论'
+// The profile's TOP-LEVEL tab strip (the horizontal bar under the header).
+// 动态 (activity) is the landing tab; 关于 (info) holds the full stats panel;
+// 设置 is owner-only. `value` is the 3rd URL segment so the active tab can be
+// derived from the route; tabs with sub-filters point at their default child.
+export const kunUserMainNav = (
+  userId: number,
+  isOwner: boolean
+): KunTabItem[] => {
+  const base = `/user/${userId}`
+  const items: KunTabItem[] = [
+    { value: 'activity', textValue: '动态', href: `${base}/activity`, icon: 'lucide:activity' },
+    { value: 'topic', textValue: '话题', href: `${base}/topic/topic`, icon: 'lucide:square-gantt-chart' },
+    { value: 'galgame', textValue: 'Galgame', href: `${base}/galgame/galgame-publish`, icon: 'lucide:gamepad-2' },
+    { value: 'rating', textValue: 'Gal 评分', href: `${base}/rating`, icon: 'lucide:star' },
+    { value: 'resource', textValue: 'Gal 资源', href: `${base}/resource/valid`, icon: 'lucide:package' },
+    { value: 'reply', textValue: '回复', href: `${base}/reply/reply-created`, icon: 'carbon:reply' },
+    { value: 'comment', textValue: '评论', href: `${base}/comment/comment-created`, icon: 'uil:comment-dots' },
+    { value: 'info', textValue: '关于', href: `${base}/info`, icon: 'lucide:user-round' }
+  ]
+  if (isOwner) {
+    items.push({ value: 'setting', textValue: '设置', href: `${base}/setting`, icon: 'lucide:settings' })
+  }
+  return items
 }
 
 // OAuth named roles → display label (docs/oauth/11-roles.md). `user` is implicit

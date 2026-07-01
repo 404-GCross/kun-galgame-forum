@@ -87,11 +87,6 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
 
 <template>
   <div class="space-y-3">
-    <KunHeader
-      name="Galgame 列表"
-      description="您与 Galgame 相关的互动：点赞 / 收藏的游戏, 以及在 Galgame 下的评论。"
-    />
-
     <KunTab
       :items="kunUserGalgameNavItem(userId)"
       :model-value="activeTab"

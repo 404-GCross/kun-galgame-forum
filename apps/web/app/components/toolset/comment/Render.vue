@@ -89,7 +89,7 @@ const canManage = (comment: ToolsetComment) =>
           <span class="text-default-700">{{ com.user.name }}</span>
           <div v-if="com.targetUser">
             <span class="mx-2">=></span>
-            <KunLink underline="hover" :to="`/user/${com.targetUser.id}/info`">
+            <KunLink underline="hover" :to="`/user/${com.targetUser.id}`">
               {{ `${com.targetUser.name}` }}
             </KunLink>
           </div>

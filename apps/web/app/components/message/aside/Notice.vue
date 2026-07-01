@@ -55,7 +55,7 @@ const handleDeleteMessage = async (messageId: number) => {
       </div>
 
       <div>
-        <KunLink :to="`/user/${message.sender.id}/info`">
+        <KunLink :to="`/user/${message.sender.id}`">
           {{ message.sender.name }}
         </KunLink>
         <span>{{ getMessageI18n(message) }}</span>

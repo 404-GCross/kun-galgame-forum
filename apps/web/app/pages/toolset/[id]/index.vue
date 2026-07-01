@@ -130,7 +130,7 @@ if (toolset) {
   useKunSeoMeta({
     title,
     description,
-    articleAuthor: [`${kungal.domain.main}/user/${toolset.user?.id}/info`],
+    articleAuthor: [`${kungal.domain.main}/user/${toolset.user?.id}`],
     articlePublishedTime: toolset.created.toString(),
     articleModifiedTime: toolset.updated.toString()
   })

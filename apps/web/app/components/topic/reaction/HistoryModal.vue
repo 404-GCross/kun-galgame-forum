@@ -46,7 +46,7 @@ watch(open, async (isOpen) => {
         <KunLink
           v-for="(item, index) in records"
           :key="index"
-          :to="`/user/${item.user.id}/info`"
+          :to="`/user/${item.user.id}`"
           underline="none"
           color="default"
           class-name="hover:bg-default-100 flex items-center gap-3 rounded-lg p-2 transition-colors"

@@ -25,11 +25,6 @@ const { data, status } = await useKunFetch<{
 
 <template>
   <div class="space-y-6">
-    <KunHeader
-      name="评论列表"
-      description="这是您在论坛中发布的所有评论的列表, 这里仅显示了话题下的评论, Galgame 下的评论还在咕咕咕, 杂鱼杂鱼臭杂鱼"
-    />
-
     <KunTab
       :items="kunUserCommentNavItem(userId)"
       :model-value="activeTab"
