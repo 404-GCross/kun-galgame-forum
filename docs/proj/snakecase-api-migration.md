@@ -1,0 +1,111 @@
+# 论坛 API 全量 snake_case 迁移（2026-07-01 起）
+
+> 本仓自有工程笔记。**决策(2026-07-01,owner)**:论坛前后端契约统一为 snake_case,
+> 与 infra / wiki / moyu 及未来「鲲 Galgame」App / 开发者平台对齐,消除跨仓命名分歧。
+> 前端直接使用后端 snake_case 字段名。
+>
+> **状态:规划中。** 本文件是这场跨会话迁移的主干:程序、顺序、安全网、进度。
+>
+> 备注:此前评估倾向「不做全量,改用 BFF 适配层 + oapi-codegen 契约校验」(见
+> `openapi-types-forum.md`)。owner 选择全量对齐;本计划据此**以安全为先**落地。
+
+## 现状:混合命名(这正是要消除的分歧)
+
+论坛既有约定是「model/DB 层 snake_case、DTO/API 层 camelCase」,但并不统一——
+部分域(如 `update` 的响应体 `content_en_us` / `completed_time` / `user_id`)**已是
+snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_case。
+
+嵌入的共享 user 对象在 Go(各域各自的 `UserBrief`)与 FE(`KunUser`,`shared/user.d.ts`)
+均为 `id` / `name` / `avatar` ——**无 camelCase,不会跨域连锁**。这是全量可分域推进的前提。
+
+### 待迁移清单(camelCase json tag,按域;`request`=带 `validate` 的入参 DTO)
+
+| 域 | 合计 | 响应(FE 读) | 请求(FE 发) |
+|----|-----|------------|------------|
+| galgame | 119 | 105 | 14 |
+| topic | 61 | 44 | 17 |
+| doc | 43 | 31 | 12 |
+| user | 37 | 37 | 0 |
+| toolset | 34 | 28 | 6 |
+| website | 32 | 19 | 13 |
+| activity | 31 | 31 | 0 |
+| message | 14 | 12 | 2 |
+| search | 12 | 12 | 0 |
+| home | 11 | 11 | 0 |
+| section | 7 | 7 | 0 |
+| admin | 7 | 7 | 0 |
+| friendlink | 5 | 3 | 2 |
+| ranking | 3 | 3 | 0 |
+| update | 2 | 0 | 2 |
+| rss | 2 | 2 | 0 |
+| image | 1 | 1 | 0 |
+| 合计 | ~421 | ~335 | ~86 |
+
+（`galgame` 含 wiki 代理层;见「特殊处理」。）
+
+## 安全网与其缺口(决定了整套程序)
+
+- **响应字段:`vue-tsc` 是安全网。** 改 FE 类型字段名 → typecheck 对每处过时的
+  `.camelCase` 访问报红 → 逐一改。`vue-tsc -b` **会检查模板表达式**,故 `.vue` 模板里的
+  访问也会报红。把「无界 find-replace」变成「编译器给的清单」。
+- **缺口 ①:动态访问。** `obj[key]`、`any` 类型、`JSON.parse`、对松散类型 `v-for` 的字段
+  访问,typecheck **抓不到** → 每域**人工审计**(grep 中括号访问 / `any` / `parse`)。
+- **缺口 ②:Go json tag 改名不触发 `go build` 失败**(tag 是字符串)——Go 侧**没有编译器
+  安全网**。请求 DTO(`validate`)同理:FE 不改发送字段名也不会编译错。故 Go 改名**必须与
+  FE 成对**,靠 typecheck / 运行时验证,不能只靠 `go build`。大域建议补 golden-JSON 线缆测试。
+- **部署原子性:论坛 FE+BE 同步部署。** 每个域的 Go+FE 改动**必须同一提交、同批部署**;
+  **绝不**上线半迁移的域(否则运行时字段对不上 → 静默空值 / 提交失败)。
+
+## 每域程序
+
+1. Go DTO 该域 camelCase json tag → snake_case(响应 + 请求都改)。
+2. FE `shared/types` 对应字段名同步改 snake_case。
+3. `pnpm -F web typecheck` → 修掉每一处报红(脚本 + 模板;含复用组件,如 topic 卡片被
+   home/search/user 复用——typecheck 会跨目录指出,不必预先精确分区)。
+4. 审计该域组件 / store / composable 的动态访问(缺口 ①):`rg "\[\s*['\"]"`、`: any`、`JSON.parse`。
+5. 改请求发送处(`kunFetch` body / 校验 schema)为 snake_case 字段名(缺口 ②)。
+6. 验证:`go build ./...` + `pnpm -F web typecheck` 绿 + **目标运行时抽验**(打开该页、跑一次表单提交)。
+7. **原子提交**(Go+FE 同一 commit)。
+
+## 顺序(风险递增,先证程序、再碰耦合)
+
+1. **热身叶子**:`image`(1)、`rss`(2)、`ranking`(3)、`section`(7)、`admin`(7)——响应为主、组件少。
+2. **纯响应中等**(0 请求,typecheck 全程守护):`home`(11)、`search`(12)、`activity`(31)、`user`(37)。
+3. **含请求中等**:`friendlink`、`update`、`message`、`toolset`、`website`、`doc`——多一步改请求发送处。
+4. **大且耦合,最后做**:`topic`(61)、`galgame`(119)。galgame 同时收口 wiki 代理层。
+
+## 特殊处理
+
+- **wiki 代理层(galgame 阶段一并做)**:论坛转 snake_case 后,wiki 代理 DTO 可**大幅减少重映射**
+  (输出接近逐字透传的 snake_case),但**保留服务端 user 水合**(嵌入 snake_case 的 `id/name/avatar`
+  user 对象,`userclient.Hydrate`)。同阶段:① 修 `note`→`title`/`message` 的真 bug
+  (见 `openapi-types-forum.md`);② 把逐字透传的 `WikiPRDetailResponse` 别名到生成的
+  `PRDetailData`,使此类漂移编译期报错。
+- **已是 snake 的字段**(`content_en_us` 等 i18n、`update` 响应体)**不动**。
+- **生成物防漂移(Phase A 已就位)**:`galgame-{read,calendar}-api.ts` + `openapi-types.yml` 闸不受影响。
+
+## 验证与回归
+
+- 每域:`go build ./...` + `pnpm -F web typecheck` 必绿。
+- 运行时抽验清单(随域补充):列表页渲染、详情页、表单提交(请求字段)、分页、搜索。
+- 大域(topic/galgame):补 Go golden-JSON 线缆测试,弥补「json tag 改名不触发 go build 失败」的缺口。
+
+## 进度
+
+- [ ] image
+- [ ] rss
+- [ ] ranking
+- [ ] section
+- [ ] admin
+- [ ] home
+- [ ] search
+- [ ] activity
+- [ ] user
+- [ ] friendlink
+- [ ] update
+- [ ] message
+- [ ] toolset
+- [ ] website
+- [ ] doc
+- [ ] topic
+- [ ] galgame（含 wiki 代理收口 + note→message 修复 + WikiPRDetailResponse 别名）
