@@ -8,17 +8,17 @@ export interface AdminOverStats {
 export interface AdminUserContentStats {
   topics: number
   replies: number
-  topicComments: number
-  galgameComments: number
+  topic_comments: number
+  galgame_comments: number
   ratings: number
-  ratingComments: number
+  rating_comments: number
   resources: number
   websites: number
-  websiteComments: number
+  website_comments: number
   toolsets: number
-  toolsetResources: number
-  toolsetComments: number
-  chatMessages: number
+  toolset_resources: number
+  toolset_comments: number
+  chat_messages: number
   messages: number
   interactions: number
   total: number

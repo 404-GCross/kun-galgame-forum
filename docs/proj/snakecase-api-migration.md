@@ -96,7 +96,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [x] rss — `TopicRSSItem` `user_id` / `user_name`（Nitro `topic.xml.ts`；galgame item 已用嵌入 user）
 - [x] ranking — 响应 echo `sort_field`（`RankingUser/Topic/GalgameItem` + 3 组件）；`query:"sortField"` 请求参与 sort-option 配置的 `i.sortField` **保持不变**（本轮只动返回数据）
 - [x] section — `SectionTopicItem`(like_count/reply_count/has_best_answer/is_nsfw_topic)+ `SectionStat`(topic_count/view_count/latest_topic);FE `section.ts`+`category.ts`+两个 Container.vue（含 /category 端点，自包含内联卡片）
-- [ ] admin
+- [x] admin — `UserContentStats` 7 字段（topic_comments…chat_messages）；FE `admin.ts` + `UserCard.vue`（含 `keyof` 配置数组，typecheck 守住动态 `stats[item.key]`）
 - [ ] home
 - [ ] search
 - [ ] activity
