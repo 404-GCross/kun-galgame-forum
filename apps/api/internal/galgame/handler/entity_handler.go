@@ -175,9 +175,9 @@ func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 // collectQuery converts the Fiber request query args into url.Values.
 func collectQuery(c fiber.Ctx) url.Values {
 	q := make(url.Values)
-	c.RequestCtx().QueryArgs().VisitAll(func(key, value []byte) {
-		q.Set(string(key), string(value))
-	})
+	for k, v := range c.Queries() {
+		q.Set(k, v)
+	}
 	return q
 }
 
@@ -188,14 +188,13 @@ func collectQuery(c fiber.Ctx) url.Values {
 // Any key absent from `renames` passes through unchanged.
 func collectQueryWithRenames(c fiber.Ctx, renames map[string]string) url.Values {
 	q := make(url.Values)
-	c.RequestCtx().QueryArgs().VisitAll(func(key, value []byte) {
-		k := string(key)
+	for k, v := range c.Queries() {
 		if to, ok := renames[k]; ok {
-			q.Set(to, string(value))
+			q.Set(to, v)
 		} else {
-			q.Set(k, string(value))
+			q.Set(k, v)
 		}
-	})
+	}
 	return q
 }
 
