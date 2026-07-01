@@ -24,7 +24,7 @@ type KunUser struct {
 type MessageResponse struct {
 	ID         int     `json:"id"`
 	Sender     KunUser `json:"sender"`
-	ReceiverID int     `json:"receiverId"`
+	ReceiverID int     `json:"receiver_id"`
 	Link       string  `json:"link"`
 	Content    string  `json:"content"`
 	Status     string  `json:"status"`
@@ -47,7 +47,7 @@ type MessageListResponse struct {
 
 type SystemMessageResponse struct {
 	ID      int               `json:"id"`
-	IsRead  bool              `json:"isRead"`
+	IsRead  bool              `json:"is_read"`
 	Content map[string]string `json:"content"`
 	Admin   KunUser           `json:"admin"`
 	// ISO timestamp as returned by the DB — kept as string to match the

@@ -21,14 +21,14 @@ export interface MessageRequestData {
   page: string
   limit: string
   type?: MessageType | ''
-  sortField?: MessageSortField
-  sortOrder: KunOrder
+  sort_field?: MessageSortField
+  sort_order: KunOrder
 }
 
 export interface Message {
   id: number
   sender: KunUser
-  receiverId: number
+  receiver_id: number
   link: string
   content: string
   status: MessageStatus
@@ -49,7 +49,7 @@ export interface MessageList {
 // `isRead = id <= cursor` for the caller — see migration 012.
 export interface MessageSystemMessage {
   id: number
-  isRead: boolean
+  is_read: boolean
   content: KunNullable<KunLanguage>
   admin: KunUser
   created: Date | string

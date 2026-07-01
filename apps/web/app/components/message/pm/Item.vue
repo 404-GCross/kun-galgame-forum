@@ -20,7 +20,7 @@ const { isLightboxOpen, images, currentImageIndex } =
   useContentLightbox(contentRef)
 
 const isMobile = useMediaQuery('(max-width: 640px)')
-const canRecall = computed(() => props.isSent && !props.message.isRecall)
+const canRecall = computed(() => props.isSent && !props.message.is_recall)
 const recallText = computed(
   () => `${props.message.sender.name}撤回了一条消息`
 )
@@ -53,11 +53,11 @@ const handleClick = (event: MouseEvent) => {
   <div
     class="flex w-full"
     :class="[
-      message.isRecall ? 'items-center justify-center py-2' : 'items-end gap-2',
-      message.isRecall ? '' : isSent ? 'flex-row-reverse' : 'flex-row'
+      message.is_recall ? 'items-center justify-center py-2' : 'items-end gap-2',
+      message.is_recall ? '' : isSent ? 'flex-row-reverse' : 'flex-row'
     ]"
   >
-    <template v-if="message.isRecall">
+    <template v-if="message.is_recall">
       <span
         class="bg-default-100 text-default-500 text-xs sm:text-sm rounded-full px-3 py-1"
       >
@@ -102,7 +102,7 @@ const handleClick = (event: MouseEvent) => {
           <div
             ref="contentRef"
             class="kun-message-content break-words [&_a]:text-primary [&_a]:underline [&_code]:bg-default-200/70 [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_img]:my-1 [&_img]:max-h-60 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_p]:m-0 [&_strong]:font-semibold"
-            v-html="message.contentHtml"
+            v-html="message.content_html"
           />
           <div class="text-default-500 mt-0.5 text-right text-xs">
             <KunTime :time="message.created" />

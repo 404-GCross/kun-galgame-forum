@@ -14,18 +14,18 @@ const messageHtml = computed(() => props.message.content['zh-cn'] ?? '')
 <template>
   <div
     class="space-y-3 rounded-lg p-2"
-    :class="message.isRead ? 'message-read' : ''"
+    :class="message.is_read ? 'message-read' : ''"
   >
     <div class="flex items-center break-all">
       <div class="ml-2 text-lg">
         <KunIcon
           class="text-secondary"
-          v-if="!message.isRead"
+          v-if="!message.is_read"
           name="lucide:info"
         />
         <KunIcon
           class="text-default"
-          v-if="message.isRead"
+          v-if="message.is_read"
           name="lucide:check-check"
         />
       </div>

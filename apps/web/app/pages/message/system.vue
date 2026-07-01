@@ -21,7 +21,7 @@ const { data } = await useKunFetch<MessageSystemMessage[]>('/message/admin', {
 })
 
 onMounted(async () => {
-  const hasUnreadMessage = data.value?.some((message) => !message.isRead)
+  const hasUnreadMessage = data.value?.some((message) => !message.is_read)
   if (hasUnreadMessage) {
     await kunFetch('/message/admin/read', { method: 'PUT' })
   }

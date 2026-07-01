@@ -24,8 +24,8 @@ defineProps<{
     <div class="justify-space flex w-full flex-col">
       <div class="flex items-center justify-between">
         <span class="font-bold">{{ room.title }}</span>
-        <span class="text-default-500 text-sm" v-if="room.lastMessageTime">
-          <KunTime :time="room.lastMessageTime" />
+        <span class="text-default-500 text-sm" v-if="room.last_message_time">
+          <KunTime :time="room.last_message_time" />
         </span>
       </div>
 
@@ -37,14 +37,14 @@ defineProps<{
         <KunChip
           class-name="whitespace-nowrap"
           color="primary"
-          v-if="room.unreadCount"
+          v-if="room.unread_count"
         >
-          {{ room.unreadCount }}
+          {{ room.unread_count }}
         </KunChip>
         <KunChip
           class-name="whitespace-nowrap"
           color="default"
-          v-if="!room.unreadCount"
+          v-if="!room.unread_count"
         >
           {{ room.count }}
         </KunChip>

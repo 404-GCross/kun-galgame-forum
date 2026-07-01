@@ -42,26 +42,26 @@ type ChatSender struct {
 // (see internal/infrastructure/markdown).
 type ChatMessageItem struct {
 	ID           int         `json:"id"`
-	ChatroomName string      `json:"chatroomName"`
+	ChatroomName string      `json:"chatroom_name"`
 	Sender       ChatSender  `json:"sender"`
-	ReceiverID  int         `json:"receiverId"`
+	ReceiverID  int         `json:"receiver_id"`
 	Content      string      `json:"content"`
-	ContentHtml  string      `json:"contentHtml"`
-	IsRecall     bool        `json:"isRecall"`
+	ContentHtml  string      `json:"content_html"`
+	IsRecall     bool        `json:"is_recall"`
 	Created      string      `json:"created"`
-	RecallTime   *string     `json:"recallTime"`
-	EditTime     *string     `json:"editTime"`
-	ReadBy       []ChatSender `json:"readBy"`
+	RecallTime   *string     `json:"recall_time"`
+	EditTime     *string     `json:"edit_time"`
+	ReadBy       []ChatSender `json:"read_by"`
 }
 
 // NavContactItem is a chat room entry for the message sidebar.
 // Field names/shape must match the frontend exactly.
 type NavContactItem struct {
-	ChatroomName    string  `json:"chatroomName"`
+	ChatroomName    string  `json:"chatroom_name"`
 	Content         string  `json:"content"`
-	LastMessageTime *string `json:"lastMessageTime"`
+	LastMessageTime *string `json:"last_message_time"`
 	Count           int     `json:"count"`
-	UnreadCount     int     `json:"unreadCount"`
+	UnreadCount     int     `json:"unread_count"`
 	Route           string  `json:"route"`
 	Title           string  `json:"title"`
 	Avatar          string  `json:"avatar"`

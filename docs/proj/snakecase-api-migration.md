@@ -119,7 +119,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [~] user — UserGalgameCard(主页 galgame 卡)已完成（galgame-card 单元）；auth_dto(当前用户/HomeUserStatus)、主页话题/评分/资源等其余待做
 - [ ] friendlink
 - [ ] update
-- [ ] message
+- [x] message — chat_dto/message_dto 响应结构 + chat-message.ts/message.ts；转换器**跳过 validate: 请求行**(receiverId/messageId 请求参保持 camelCase，send 站点一致)；typecheck 驱动 message 组件 + 2 构造/页面 straggler
 - [ ] toolset
 - [ ] website
 - [ ] doc

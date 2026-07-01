@@ -216,7 +216,7 @@ const handleRecallContextMenu = async (payload: {
   message: ChatMessage
 }) => {
   const target = payload.message
-  if (target.sender.id !== currentUserId || target.isRecall) {
+  if (target.sender.id !== currentUserId || target.is_recall) {
     return
   }
 
@@ -238,7 +238,7 @@ const handleRecallContextMenu = async (payload: {
 
   const idx = messages.value.findIndex((m) => m.id === target.id)
   if (idx !== -1) {
-    messages.value[idx] = { ...messages.value[idx]!, isRecall: true }
+    messages.value[idx] = { ...messages.value[idx]!, is_recall: true }
   }
   useMessage('撤回成功', 'success')
 }

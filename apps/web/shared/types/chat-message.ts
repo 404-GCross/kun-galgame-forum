@@ -1,14 +1,14 @@
 export interface ChatMessageHistoryRequest {
-  receiverId: string
+  receiver_id: string
   page: string
   limit: string
 }
 
 export interface ChatMessageAsideItem {
-  chatroomName: string
+  chatroom_name: string
   content: string
   count: number
-  unreadCount: number
+  unread_count: number
   route: string
   title: string
   avatar: string
@@ -17,22 +17,22 @@ export interface ChatMessageAsideItem {
   // emits ""). The Item/SystemItem templates already guard with v-if,
   // so allowing null/"" here removes the formatTimeDifference("") →
   // "NaN years ago" rendering on fresh chat rooms.
-  lastMessageTime: Date | string | null
+  last_message_time: Date | string | null
 }
 
 export interface ChatMessage {
   id: number
-  chatroomName: string
+  chatroom_name: string
   sender: KunUser
-  readBy: KunUser[]
-  receiverId: number
+  read_by: KunUser[]
+  receiver_id: number
   // Raw markdown source (used for editing/quoting). Render contentHtml, not
   // this, in the bubble.
   content: string
   // Server-rendered, sanitized inline+image HTML — safe to v-html.
-  contentHtml: string
-  isRecall: boolean
+  content_html: string
+  is_recall: boolean
   created: Date | string
-  recallTime: Date | string | null
-  editTime: Date | string | null
+  recall_time: Date | string | null
+  edit_time: Date | string | null
 }
