@@ -23,46 +23,46 @@ export type ActivityEventType =
 // A topic's most-liked reply (excerpt + like count), shown on the topic card.
 export interface ActivityTopReply {
   // The reply's id, so the card can tell if 高赞回复 is also the best answer.
-  replyId: number
+  reply_id: number
   // The reply's floor → deep-link to it (/topic/:id?reply=<floor>).
   floor: number
   user: KunUser
   content: string
-  likeCount: number
+  like_count: number
 }
 
 // Rich-card payload for TOPIC_CREATION (BE dto.TopicActivityData). The title
 // lives in `content`; this carries the extras the topic feed card shows.
 export interface TopicActivityData {
-  topicId: number
+  topic_id: number
   // The 推话题 (TOPIC_UPVOTE) card reads the title here (its `content` carries the
   // push description); TOPIC_CREATION uses `content` for the title.
   title?: string
   // The topic author's id (reaction target on the 推话题 card, whose actor is the
   // pusher, not the author).
-  authorId?: number
+  author_id?: number
   excerpt: string
   sections: string[]
-  coverImages: string[]
+  cover_images: string[]
   // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
   // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
-  coverImageMeta?: Record<string, KunImageMeta>
+  cover_image_meta?: Record<string, KunImageMeta>
   view: number
-  likeCount: number
-  favoriteCount: number
-  replyCount: number
-  commentCount: number
-  upvoteTime: Date | string | null
+  like_count: number
+  favorite_count: number
+  reply_count: number
+  comment_count: number
+  upvote_time: Date | string | null
   // The topic's last edit time (null = never edited); the card shows an edit icon
   // + relative time after the timestamp.
   edited?: Date | string | null
-  hasBestAnswer: boolean
-  isPoll: boolean
-  isNSFW: boolean
-  topReply?: ActivityTopReply
+  has_best_answer: boolean
+  is_poll: boolean
+  is_nsfw: boolean
+  top_reply?: ActivityTopReply
   // The accepted best answer (omitted when none). Same reply as topReply (same
   // replyId) → the card shows only the best-answer style.
-  bestAnswer?: ActivityTopReply
+  best_answer?: ActivityTopReply
   // 推话题 records (all of them — few per topic); same shape the topic-detail
   // 推话题 list consumes, so the card reuses TopicUpvoteRecords.
   upvotes?: {
@@ -73,12 +73,12 @@ export interface TopicActivityData {
   }[]
   // The topic's newest reply or comment (omitted when none). kind 'reply' carries
   // its replyId so the card can merge it when it's the best answer / 高赞回复.
-  latestActivity?: {
+  latest_activity?: {
     kind: 'reply' | 'comment'
-    replyId: number
+    reply_id: number
     // floor (reply) / commentId (comment) → deep-link to the target.
     floor: number
-    commentId: number
+    comment_id: number
     user: KunUser
     content: string
     created: Date | string
@@ -94,20 +94,20 @@ export interface TopicActivityData {
 // liked/favorited state is NOT carried — it would break the shared feed cache).
 export interface GalgameActivityData {
   name: string
-  coverHash: string
+  cover_hash: string
   language: string
-  ageLimit: string
-  releaseDate: string | null
-  galgameId?: number
-  resourceCount?: number
-  likeCount?: number
-  favoriteCount?: number
+  age_limit: string
+  release_date: string | null
+  galgame_id?: number
+  resource_count?: number
+  like_count?: number
+  favorite_count?: number
   // GALGAME_EDIT only. revisionNumber = the per-galgame revision number the diff
   // endpoint's :rev keys on (used directly); revisionId = the wiki revision ROW
   // id, the legacy fallback resolved id→number for rows synced before the feed
   // carried the number.
-  revisionId?: number
-  revisionNumber?: number
+  revision_id?: number
+  revision_number?: number
   // GALGAME_CREATION + GALGAME_EDIT (shared info area), from the wiki detail
   // brief: developer = 制作会社 (officials joined with 、); intro =
   // preferred-language introduction.
@@ -116,7 +116,7 @@ export interface GalgameActivityData {
   // GALGAME_RATING_CREATION only — the rating card's fields.
   rating?: ActivityRatingInfo
   // GALGAME_COMMENT_CREATION — the parent comment being replied to (被评论的评论).
-  parentComment?: { content: string }
+  parent_comment?: { content: string }
   // GALGAME_RESOURCE_CREATION — the published resource's spec (download link /
   // 提取码 / 解压码 deliberately omitted).
   resource?: {
@@ -125,21 +125,21 @@ export interface GalgameActivityData {
     platform: string
     size: string
     note: string
-    likeCount: number
+    like_count: number
   }
 }
 
 // Rating card payload (BE dto.RatingInfo). shortSummary is blank when spoilerLevel
 // !== 'none' (the card shows a spoiler notice instead).
 export interface ActivityRatingInfo {
-  ratingId: number
+  rating_id: number
   overall: number
-  playStatus: string
+  play_status: string
   recommend: string
-  shortSummary: string
-  spoilerLevel: string
-  likeCount: number
-  authorId: number
+  short_summary: string
+  spoiler_level: string
+  like_count: number
+  author_id: number
 }
 
 // The reply this reply quoted (#floor → its body), shown as a nested block.
@@ -151,20 +151,20 @@ export interface ActivityQuotedReply {
 // Rich-card payload for TOPIC_REPLY_CREATION (BE dto.ReplyActivityData). The
 // reply body is in `content` (tokens already resolved to @name / #floor).
 export interface ReplyActivityData {
-  topicTitle: string
+  topic_title: string
   // This reply's floor → deep-link to it (/topic/:id?reply=<floor>).
   floor: number
-  quotedReply?: ActivityQuotedReply
+  quoted_reply?: ActivityQuotedReply
 }
 
 // Rich-card payload for TOPIC_COMMENT_CREATION (BE dto.TopicCommentActivityData).
 // The comment is on a reply — quotedReply is that reply (被评论的评论), topicTitle
 // anchors the bottom; the comment body is in ActivityItem.content.
 export interface TopicCommentActivityData {
-  topicTitle: string
+  topic_title: string
   // This comment's id → deep-link to it (/topic/:id?comment=<id>).
-  commentId: number
-  quotedReply?: ActivityQuotedReply
+  comment_id: number
+  quoted_reply?: ActivityQuotedReply
 }
 
 // Rich-card payload for the 其他-tab Note card. UPDATE_LOG_CREATION carries the
@@ -177,14 +177,14 @@ export interface NoteActivityData {
 // Parent-entity name for the toolset/website resource + comment cards (the
 // creation cards carry the name in `content` and need no payload).
 export interface EntityRefActivityData {
-  parentName: string
+  parent_name: string
 }
 
 // Rich-card payload for MESSAGE_SOLUTION (BE dto.SolutionActivityData): the title
 // of the topic whose best answer was accepted; the accepted reply's preview is in
 // ActivityItem.content.
 export interface SolutionActivityData {
-  topicTitle: string
+  topic_title: string
   // The accepted reply's floor → deep-link to it (/topic/:id?reply=<floor>).
   floor: number
 }
@@ -202,7 +202,7 @@ export type ActivityData =
   | SolutionActivityData
 
 export interface ActivityItem {
-  uniqueId: string
+  unique_id: string
   type: ActivityEventType
   timestamp: Date | string
   actor: KunUser

@@ -16,15 +16,15 @@ const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
 const rating = computed(() => data.value?.rating)
-const gid = computed(() => data.value?.galgameId ?? 0)
+const gid = computed(() => data.value?.galgame_id ?? 0)
 const galgameLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
 
 const playStatusLabel = computed(() =>
   rating.value
-    ? KUN_GALGAME_RATING_PLAY_STATUS_MAP[rating.value.playStatus] ||
-      rating.value.playStatus
+    ? KUN_GALGAME_RATING_PLAY_STATUS_MAP[rating.value.play_status] ||
+      rating.value.play_status
     : ''
 )
 const recommendLabel = computed(() =>
@@ -52,7 +52,7 @@ const recommendColor = computed(() => {
 })
 const overall = computed(() => rating.value?.overall.toFixed(1) ?? '')
 const hasSpoiler = computed(
-  () => !!rating.value && rating.value.spoilerLevel !== 'none'
+  () => !!rating.value && rating.value.spoiler_level !== 'none'
 )
 </script>
 
@@ -76,8 +76,8 @@ const hasSpoiler = computed(
             class="bg-default-100 aspect-video w-32 overflow-hidden rounded-lg sm:w-44"
           >
             <img
-              v-if="data?.coverHash"
-              :src="imageHashUrl(imageCdnBase(), data.coverHash, 'mini')"
+              v-if="data?.cover_hash"
+              :src="imageHashUrl(imageCdnBase(), data.cover_hash, 'mini')"
               :alt="data?.name"
               loading="lazy"
               class="h-full w-full object-cover"
@@ -113,19 +113,19 @@ const hasSpoiler = computed(
             {{ KUN_GALGAME_RATING_SPOILER_WARNING }}
           </p>
           <p
-            v-else-if="rating?.shortSummary"
+            v-else-if="rating?.short_summary"
             class="text-default-700 line-clamp-3 text-base break-all"
           >
-            {{ rating.shortSummary }}
+            {{ rating.short_summary }}
           </p>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
         <GalgameRatingDetailLike
-          :rating-id="rating?.ratingId"
-          :target-user-id="rating?.authorId ?? activity.actor?.id ?? 0"
-          :like-count="rating?.likeCount ?? 0"
+          :rating-id="rating?.rating_id"
+          :target-user-id="rating?.author_id ?? activity.actor?.id ?? 0"
+          :like-count="rating?.like_count ?? 0"
           :is-liked="false"
         />
         <KunLink

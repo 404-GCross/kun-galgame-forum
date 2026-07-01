@@ -7,7 +7,7 @@ const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
-const gid = computed(() => data.value?.galgameId ?? 0)
+const gid = computed(() => data.value?.galgame_id ?? 0)
 const detailLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
@@ -18,8 +18,8 @@ const detailLink = computed(() =>
     <div class="space-y-1.5">
       <!-- The comment being commented on (被评论的评论). -->
       <ActivityCardQuote
-        v-if="data?.parentComment"
-        :content="data.parentComment.content"
+        v-if="data?.parent_comment"
+        :content="data.parent_comment.content"
       />
 
       <!-- Full comment body, rendered as Markdown (server-rendered HTML) — same

@@ -115,7 +115,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - **galgame-card 单元(完成)**：共享卡片 `GalgameCard`(8 字段：content_limit/like_count/rating_count/is_on_forum/resource_update_time/release_date/release_date_tba/release_precision)。4 个 Go 生产者一起翻：`home.HomeGalgame`、`galgame.GalgameListCard`(search galgame 复用它)、`entity_dto` 卡片、`user.UserGalgameCard`。消费者：`galgame/card/Card.vue`(10 读)、`calendar/Month(List).vue`、`useGalgameReleaseToday.ts`。**排除**：`GalgameActivityData`(activity 自有形状 coverHash/ageLimit)、galgame detail/rating/resource embed(各自单元)、`wiki_dto` release_precision(本已 snake)。
 - [x] home — HomeTopic + HomeGalgame 均完成；仅 HomeUserStatus(isCheckIn/hasNewMessage) 源在 user 域(auth_dto)→随 user
 - [x] search — TopicItem/ReplyItem/CommentItem + galgame(复用 GalgameListCard)全部完成；UserItem 无 camelCase
-- [ ] activity
+- [x] activity — 全 activity_dto 响应结构(ActivityItem/TopicActivityData/GalgameActivityData/RatingInfo/…) + activity.ts；脚本化 json-tag/字段改名(acronym-aware)+ typecheck 驱动 ~15 卡片组件 + home/Container；68 读全绿
 - [~] user — UserGalgameCard(主页 galgame 卡)已完成（galgame-card 单元）；auth_dto(当前用户/HomeUserStatus)、主页话题/评分/资源等其余待做
 - [ ] friendlink
 - [ ] update

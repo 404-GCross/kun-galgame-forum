@@ -14,14 +14,14 @@ const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as TopicActivityData | undefined
 )
-const topicId = computed(() => data.value?.topicId ?? 0)
-const covers = computed(() => (data.value?.coverImages ?? []).slice(0, 3))
+const topicId = computed(() => data.value?.topic_id ?? 0)
+const covers = computed(() => (data.value?.cover_images ?? []).slice(0, 3))
 
 // The blurb: the user's one-liner, else a stable random default seeded by the
 // upvote id (uniqueId = "TOPIC_UPVOTE:<id>") — varies across the feed, never
 // flickers per item.
 const seed = computed(() => {
-  const n = Number(props.activity.uniqueId.split(':').pop())
+  const n = Number(props.activity.unique_id.split(':').pop())
   return Number.isFinite(n) ? n : topicId.value
 })
 const blurb = computed(
@@ -44,7 +44,7 @@ provide(
   reactionsKey,
   useReactions({
     topicId: topicId.value,
-    targetUserId: data.value?.authorId ?? 0,
+    targetUserId: data.value?.author_id ?? 0,
     reactions: reactionList.value,
     sync: () => reactionList.value,
     showReactors: true
@@ -79,7 +79,7 @@ provide(
         <TopicCoverGrid
           v-if="covers.length"
           :images="covers"
-          :meta="data?.coverImageMeta"
+          :meta="data?.cover_image_meta"
         />
       </KunLink>
 
@@ -88,7 +88,7 @@ provide(
         <div class="flex min-w-0 flex-wrap items-center gap-1">
           <TopicFooterFavorite
             :topic-id="topicId"
-            :favorite-count="data?.favoriteCount ?? 0"
+            :favorite-count="data?.favorite_count ?? 0"
             :is-favorite="isFavorited(topicId)"
           />
           <TopicReactionBar />

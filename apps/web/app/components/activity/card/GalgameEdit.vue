@@ -26,7 +26,7 @@ const diff = ref<SnapshotDiff | null>(null)
 const isLoading = ref(false)
 
 const loadDiff = async () => {
-  const gid = data.value?.galgameId
+  const gid = data.value?.galgame_id
   if (!gid || diff.value || isLoading.value) return
   isLoading.value = true
   try {
@@ -34,9 +34,9 @@ const loadDiff = async () => {
     // carries it directly (revisionNumber). Legacy rows synced before the wiki
     // feed exposed it have only the revision ROW id, so fall back to resolving
     // id → number via the history list (newest-first — a recent edit is page 1).
-    let number = data.value?.revisionNumber
+    let number = data.value?.revision_number
     if (!number) {
-      const rowId = data.value?.revisionId
+      const rowId = data.value?.revision_id
       if (!rowId) return
       const history = await kunFetch<{
         items?: { id: number; revision: number }[]

@@ -15,7 +15,7 @@ const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
 const resource = computed(() => data.value?.resource)
-const gid = computed(() => data.value?.galgameId ?? 0)
+const gid = computed(() => data.value?.galgame_id ?? 0)
 const galgameLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
@@ -29,8 +29,8 @@ const galgameLink = computed(() =>
           class="bg-default-100 aspect-video w-32 overflow-hidden rounded-lg sm:w-44"
         >
           <img
-            v-if="data?.coverHash"
-            :src="imageHashUrl(imageCdnBase(), data.coverHash, 'mini')"
+            v-if="data?.cover_hash"
+            :src="imageHashUrl(imageCdnBase(), data.cover_hash, 'mini')"
             :alt="data?.name"
             loading="lazy"
             class="h-full w-full object-cover"
@@ -87,11 +87,11 @@ const galgameLink = computed(() =>
         </p>
 
         <span
-          v-if="resource?.likeCount"
+          v-if="resource?.like_count"
           class="text-default-500 flex items-center gap-1 text-sm"
         >
           <KunIcon name="lucide:thumbs-up" class="size-3.5" />
-          {{ resource.likeCount }}
+          {{ resource.like_count }}
         </span>
       </div>
     </div>

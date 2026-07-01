@@ -9,7 +9,7 @@ const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
-const gid = computed(() => data.value?.galgameId ?? 0)
+const gid = computed(() => data.value?.galgame_id ?? 0)
 const detailLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
@@ -18,7 +18,7 @@ const detailLink = computed(() =>
 const madeBy = computed(() => {
   const parts: string[] = []
   if (data.value?.developer) parts.push(`由 ${data.value.developer} 制作`)
-  if (data.value?.releaseDate) parts.push(`发售于 ${data.value.releaseDate}`)
+  if (data.value?.release_date) parts.push(`发售于 ${data.value.release_date}`)
   return parts.join('，')
 })
 </script>
@@ -30,8 +30,8 @@ const madeBy = computed(() => {
         class="bg-default-100 aspect-video w-32 overflow-hidden rounded-lg sm:w-44"
       >
         <img
-          v-if="data?.coverHash"
-          :src="imageHashUrl(imageCdnBase(), data.coverHash, 'mini')"
+          v-if="data?.cover_hash"
+          :src="imageHashUrl(imageCdnBase(), data.cover_hash, 'mini')"
           :alt="data?.name"
           loading="lazy"
           class="h-full w-full object-cover"

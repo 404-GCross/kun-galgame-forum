@@ -10,18 +10,18 @@ const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as TopicActivityData | undefined
 )
-const covers = computed(() => (data.value?.coverImages ?? []).slice(0, 3))
-const topicId = computed(() => data.value?.topicId ?? 0)
+const covers = computed(() => (data.value?.cover_images ?? []).slice(0, 3))
+const topicId = computed(() => data.value?.topic_id ?? 0)
 const hasBadge = computed(() => {
   const d = data.value
-  return !!d && (d.hasBestAnswer || d.isPoll || d.isNSFW || !!d.upvoteTime)
+  return !!d && (d.has_best_answer || d.is_poll || d.is_nsfw || !!d.upvote_time)
 })
 
 // 高赞回复 + 最佳答案 + 推话题记录 (all optional). When the best answer IS the
 // top-liked reply (same replyId), show only the best-answer style; otherwise the
 // best answer stacks below 高赞回复.
-const topReply = computed(() => data.value?.topReply)
-const bestAnswer = computed(() => data.value?.bestAnswer)
+const topReply = computed(() => data.value?.top_reply)
+const bestAnswer = computed(() => data.value?.best_answer)
 // The feed card shows only the MOST RECENT push (the topic detail lists them
 // all); sort by time so this doesn't depend on the API's ordering.
 const upvotes = computed(() => {
@@ -37,20 +37,20 @@ const sameReply = computed(
   () =>
     !!bestAnswer.value &&
     !!topReply.value &&
-    bestAnswer.value.replyId === topReply.value.replyId
+    bestAnswer.value.reply_id === topReply.value.reply_id
 )
 const showTopReply = computed(() => !!topReply.value && !sameReply.value)
 
 // The newest reply/comment — shown below 推话题记录, UNLESS it's a reply already
 // surfaced as the best answer or 高赞回复 (then it's merged into those blocks).
-const latest = computed(() => data.value?.latestActivity)
+const latest = computed(() => data.value?.latest_activity)
 const showLatest = computed(() => {
   const l = latest.value
   if (!l) return false
   if (
     l.kind === 'reply' &&
-    (l.replyId === bestAnswer.value?.replyId ||
-      l.replyId === topReply.value?.replyId)
+    (l.reply_id === bestAnswer.value?.reply_id ||
+      l.reply_id === topReply.value?.reply_id)
   ) {
     return false
   }
@@ -116,7 +116,7 @@ provide(
         <TopicCoverGrid
           v-if="covers.length"
           :images="covers"
-          :meta="data?.coverImageMeta"
+          :meta="data?.cover_image_meta"
         />
       </KunLink>
 
@@ -129,10 +129,10 @@ provide(
           v-if="hasBadge"
           :section="[]"
           :tags="[]"
-          :upvote-time="data?.upvoteTime"
-          :has-best-answer="data?.hasBestAnswer"
-          :is-poll-topic="data?.isPoll"
-          :is-n-s-f-w-topic="data?.isNSFW"
+          :upvote-time="data?.upvote_time"
+          :has-best-answer="data?.has_best_answer"
+          :is-poll-topic="data?.is_poll"
+          :is-n-s-f-w-topic="data?.is_nsfw"
         />
         <KunChip
           v-for="(sec, index) in data?.sections ?? []"
@@ -156,7 +156,7 @@ provide(
         :to="
           latest?.kind === 'reply'
             ? replyPermalink(activity.link, latest.floor)
-            : commentPermalink(activity.link, latest?.commentId)
+            : commentPermalink(activity.link, latest?.comment_id)
         "
         class-name="bg-default-100 flex gap-2 rounded-md p-1.5"
       >
@@ -205,7 +205,7 @@ provide(
             </span>
             <span class="text-default-500 flex shrink-0 items-center gap-1">
               <KunIcon name="lucide:thumbs-up" class="size-3.5" />
-              {{ topReply.likeCount }}
+              {{ topReply.like_count }}
             </span>
           </div>
           <p class="text-default-600 line-clamp-2 break-all">
@@ -241,7 +241,7 @@ provide(
               class="text-success-600 dark:text-success-400 flex shrink-0 items-center gap-1"
             >
               <KunIcon name="lucide:thumbs-up" class="size-3.5" />
-              {{ bestAnswer.likeCount }}
+              {{ bestAnswer.like_count }}
             </span>
           </div>
           <p class="text-default-600 line-clamp-2 break-all">
@@ -263,7 +263,7 @@ provide(
           <div class="flex min-w-0 items-center gap-1">
             <TopicFooterFavorite
               :topic-id="topicId"
-              :favorite-count="data?.favoriteCount ?? 0"
+              :favorite-count="data?.favorite_count ?? 0"
               :is-favorite="isFavorited(topicId)"
             />
             <TopicReactionTrigger />
@@ -276,7 +276,7 @@ provide(
               <KunIcon name="lucide:message-square" class="size-4" />
               {{
                 formatNumber(
-                  (data?.replyCount ?? 0) + (data?.commentCount ?? 0)
+                  (data?.reply_count ?? 0) + (data?.comment_count ?? 0)
                 )
               }}
             </span>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // MESSAGE_SOLUTION feed card: a topic owner accepted a reply as the best answer.
-// actor = the accepter, content = the accepted reply's preview, data.topicTitle =
+// actor = the accepter, content = the accepted reply's preview, data.topic_title =
 // the owning topic, link → that topic. Styled in success green to echo the
 // in-topic 最佳答案 banner.
 const props = defineProps<{ activity: ActivityItem }>()
@@ -32,14 +32,14 @@ const data = computed(
       class="text-default-500 mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm"
     >
       <KunLink
-        v-if="data?.topicTitle"
+        v-if="data?.topic_title"
         underline="hover"
         color="default"
         :to="replyPermalink(activity.link, data?.floor)"
         class-name="text-default-500 hover:text-primary inline-flex min-w-0 items-center gap-1.5"
       >
         <KunIcon name="icon-park-outline:topic" class-name="shrink-0" />
-        <span class="truncate">{{ data.topicTitle }}</span>
+        <span class="truncate">{{ data.topic_title }}</span>
       </KunLink>
       <span v-else />
 

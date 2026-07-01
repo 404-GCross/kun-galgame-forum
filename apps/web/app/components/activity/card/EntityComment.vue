@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // TOOLSET_COMMENT_CREATION + GALGAME_WEBSITE_COMMENT_CREATION — a comment on a
-// toolset or a website. The comment body is in content; data.parentName is the
+// toolset or a website. The comment body is in content; data.parent_name is the
 // commented entity. The type picks the icon + label; same shape as the galgame
 // comment card (body on top, a small reference line below).
 const props = defineProps<{ activity: ActivityItem }>()
@@ -29,7 +29,7 @@ const meta = computed(() =>
         class-name="text-default-500 hover:text-primary inline-flex items-center gap-1 text-sm"
       >
         <KunIcon :name="meta.icon" class="size-3.5 shrink-0" />
-        {{ meta.label }}《{{ data?.parentName }}》
+        {{ meta.label }}《{{ data?.parent_name }}》
       </KunLink>
     </div>
   </ActivityCardShell>

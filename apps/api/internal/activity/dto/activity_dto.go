@@ -61,7 +61,7 @@ type ActivityItem struct {
 	// internal (json:"-") — the service uses (Timestamp, Type, ID) to build the
 	// keyset nextCursor; clients consume nextCursor, never this.
 	ID        int       `json:"-"`
-	UniqueID  string    `json:"uniqueId"`
+	UniqueID  string    `json:"unique_id"`
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
 	Actor     Actor     `json:"actor"`
@@ -80,40 +80,40 @@ type ActivityItem struct {
 // the stat row; the badge flags feed the shared TopicTagGroup; TopReply is the
 // most-liked reply (omitted when none).
 type TopicActivityData struct {
-	TopicID int `json:"topicId"`
+	TopicID int `json:"topic_id"`
 	// Title is the topic title. For TOPIC_CREATION the title is also in Content
 	// (the card uses that); the 推话题 (TOPIC_UPVOTE) card reads it here, since
 	// its Content carries the push description instead.
 	Title       string   `json:"title,omitempty"`
-	AuthorID    int      `json:"authorId,omitempty"`
+	AuthorID    int      `json:"author_id,omitempty"`
 	Excerpt     string   `json:"excerpt"`
 	Sections    []string `json:"sections"`
-	CoverImages []string `json:"coverImages"`
+	CoverImages []string `json:"cover_images"`
 	// Per-cover-token image metadata (dims + ThumbHash), keyed by the
 	// /image/<hash> token in CoverImages — lets the feed card reserve each
 	// cover's aspect ratio (no CLS) and blur it up. Output-only; empty when
 	// image_service is unconfigured or its thumbhash backfill hasn't run.
-	CoverImageMeta map[string]imageclient.ImageMeta `json:"coverImageMeta,omitempty"`
+	CoverImageMeta map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
 	View           int                              `json:"view"`
-	LikeCount      int                              `json:"likeCount"`
-	FavoriteCount  int                              `json:"favoriteCount"`
-	ReplyCount     int                              `json:"replyCount"`
-	CommentCount   int                              `json:"commentCount"`
-	UpvoteTime     *time.Time                       `json:"upvoteTime"`
+	LikeCount      int                              `json:"like_count"`
+	FavoriteCount  int                              `json:"favorite_count"`
+	ReplyCount     int                              `json:"reply_count"`
+	CommentCount   int                              `json:"comment_count"`
+	UpvoteTime     *time.Time                       `json:"upvote_time"`
 	// Edited is the topic's last edit time (null = never edited); the card shows an
 	// edit icon + relative time after the timestamp.
 	Edited        *time.Time `json:"edited"`
-	HasBestAnswer bool       `json:"hasBestAnswer"`
-	IsPoll        bool       `json:"isPoll"`
-	IsNSFW        bool       `json:"isNSFW"`
-	TopReply      *TopReply  `json:"topReply,omitempty"`
+	HasBestAnswer bool       `json:"has_best_answer"`
+	IsPoll        bool       `json:"is_poll"`
+	IsNSFW        bool       `json:"is_nsfw"`
+	TopReply      *TopReply  `json:"top_reply,omitempty"`
 	// BestAnswer is the accepted best-answer reply (omitted when none). Same reply
 	// as TopReply (same ReplyID) → the card shows only the best-answer style.
-	BestAnswer *TopReply `json:"bestAnswer,omitempty"`
+	BestAnswer *TopReply `json:"best_answer,omitempty"`
 	// Upvotes are the topic's 推话题 records — all of them (few per topic).
 	Upvotes []TopicUpvote `json:"upvotes,omitempty"`
 	// LatestActivity is the topic's newest reply/comment (omitted when none).
-	LatestActivity *LatestActivity      `json:"latestActivity,omitempty"`
+	LatestActivity *LatestActivity      `json:"latest_activity,omitempty"`
 	Reactions      []TopicReactionCount `json:"reactions"`
 }
 
@@ -131,12 +131,12 @@ type TopicReactionCount struct {
 // shown on the feed's topic card. Only populated when a reply has >0 likes.
 type TopReply struct {
 	// ReplyID lets the feed card tell whether this reply is also the best answer.
-	ReplyID int `json:"replyId"`
+	ReplyID int `json:"reply_id"`
 	// Floor lets the card deep-link to the reply (/topic/:id?reply=<floor>).
 	Floor     int    `json:"floor"`
 	User      Actor  `json:"user"`
 	Content   string `json:"content"`
-	LikeCount int    `json:"likeCount"`
+	LikeCount int    `json:"like_count"`
 }
 
 // TopicUpvote is one 推话题 record on the feed's topic card — same shape as the
@@ -153,10 +153,10 @@ type TopicUpvote struct {
 // (0 for a comment), so the card can merge it when it's the best answer / 高赞回复.
 type LatestActivity struct {
 	Kind    string `json:"kind"`
-	ReplyID int    `json:"replyId"`
+	ReplyID int    `json:"reply_id"`
 	// Floor (reply) / CommentId (comment) let the card deep-link to the target.
 	Floor     int       `json:"floor"`
-	CommentId int       `json:"commentId"`
+	CommentId int       `json:"comment_id"`
 	User      Actor     `json:"user"`
 	Content   string    `json:"content"`
 	Created   time.Time `json:"created"`
@@ -177,14 +177,14 @@ type NoteActivityData struct {
 // cards (TOOLSET_CREATION / GALGAME_WEBSITE_CREATION) carry the name in Content
 // directly and need no payload.
 type EntityRefActivityData struct {
-	ParentName string `json:"parentName"`
+	ParentName string `json:"parent_name"`
 }
 
 // SolutionActivityData is the rich-card payload for MESSAGE_SOLUTION (a best
 // answer was accepted): the title of the owning topic, so the card can name it
 // and link to it. The accepted reply's preview is ActivityItem.Content.
 type SolutionActivityData struct {
-	TopicTitle string `json:"topicTitle"`
+	TopicTitle string `json:"topic_title"`
 	// Floor of the accepted reply → deep-link to it (/topic/:id?reply=<floor>).
 	Floor int `json:"floor"`
 }
@@ -194,10 +194,10 @@ type SolutionActivityData struct {
 // reply quoted another reply, that quoted reply. The reply body itself is
 // ActivityItem.Content (with @/# tokens already resolved to readable text).
 type ReplyActivityData struct {
-	TopicTitle string `json:"topicTitle"`
+	TopicTitle string `json:"topic_title"`
 	// Floor of this reply → deep-link to it (/topic/:id?reply=<floor>).
 	Floor       int          `json:"floor"`
-	QuotedReply *QuotedReply `json:"quotedReply,omitempty"`
+	QuotedReply *QuotedReply `json:"quoted_reply,omitempty"`
 }
 
 // QuotedReply is the reply this reply quoted (#floor → its body), shown as a
@@ -213,10 +213,10 @@ type QuotedReply struct {
 // ActivityItem.Content; QuotedReply is the reply being commented on (被评论的评论);
 // TopicTitle anchors it at the bottom.
 type TopicCommentActivityData struct {
-	TopicTitle string `json:"topicTitle"`
+	TopicTitle string `json:"topic_title"`
 	// CommentId → deep-link to the comment (/topic/:id?comment=<id>).
-	CommentId   int          `json:"commentId"`
-	QuotedReply *QuotedReply `json:"quotedReply,omitempty"`
+	CommentId   int          `json:"comment_id"`
+	QuotedReply *QuotedReply `json:"quoted_reply,omitempty"`
 }
 
 // GalgameActivityData is the rich-card payload for galgame-scoped activity
@@ -226,18 +226,18 @@ type TopicCommentActivityData struct {
 // (imageTokenUrl). Release date is nullable (TBA / unknown).
 type GalgameActivityData struct {
 	Name        string  `json:"name"`
-	CoverHash   string  `json:"coverHash"`
+	CoverHash   string  `json:"cover_hash"`
 	Language    string  `json:"language"`
-	AgeLimit    string  `json:"ageLimit"`
-	ReleaseDate *string `json:"releaseDate"`
+	AgeLimit    string  `json:"age_limit"`
+	ReleaseDate *string `json:"release_date"`
 	// GalgameID lets the FE link / like / favorite without parsing the link.
-	GalgameID int `json:"galgameId,omitempty"`
+	GalgameID int `json:"galgame_id,omitempty"`
 	// RevisionID is the wiki revision ROW id for GALGAME_EDIT — the legacy input
 	// for the id→number diff resolution. RevisionNumber is the per-galgame
 	// revision number the diff endpoint's :rev keys on; the card uses it directly
 	// when present (>0) and falls back to RevisionID otherwise.
-	RevisionID     int `json:"revisionId,omitempty"`
-	RevisionNumber int `json:"revisionNumber,omitempty"`
+	RevisionID     int `json:"revision_id,omitempty"`
+	RevisionNumber int `json:"revision_number,omitempty"`
 	// Developer (制作会社) + Intro are set for the GALGAME_CREATION and GALGAME_EDIT
 	// cards (which share the info area), from the wiki detail brief. Developer =
 	// officials joined with 、; Intro is the preferred-language introduction,
@@ -247,14 +247,14 @@ type GalgameActivityData struct {
 	// Local rollups, only set for the GALGAME_CREATION rich card (omitempty → the
 	// FE defaults each to 0). These are global counts (cache-safe); the viewer's
 	// own liked/favorited state is NOT here (would break the shared feed cache).
-	ResourceCount int `json:"resourceCount,omitempty"`
-	LikeCount     int `json:"likeCount,omitempty"`
-	FavoriteCount int `json:"favoriteCount,omitempty"`
+	ResourceCount int `json:"resource_count,omitempty"`
+	LikeCount     int `json:"like_count,omitempty"`
+	FavoriteCount int `json:"favorite_count,omitempty"`
 	// Rating is only set for GALGAME_RATING_CREATION (the rating card).
 	Rating *RatingInfo `json:"rating,omitempty"`
 	// ParentComment is the comment being replied to — only for
 	// GALGAME_COMMENT_CREATION rows that have a parent (被评论的评论).
-	ParentComment *CommentContext `json:"parentComment,omitempty"`
+	ParentComment *CommentContext `json:"parent_comment,omitempty"`
 	// Resource is the published resource's spec — only for
 	// GALGAME_RESOURCE_CREATION (download link / codes deliberately omitted).
 	Resource *GalgameResourceDetails `json:"resource,omitempty"`
@@ -273,19 +273,19 @@ type GalgameResourceDetails struct {
 	Platform  string `json:"platform"`
 	Size      string `json:"size"`
 	Note      string `json:"note"`
-	LikeCount int    `json:"likeCount"`
+	LikeCount int    `json:"like_count"`
 }
 
 // RatingInfo is the GALGAME_RATING_CREATION rich-card payload — the galgame name
 // + cover come from the surrounding GalgameActivityData. ShortSummary is blanked
 // when SpoilerLevel != "none" so spoilers never cross the boundary.
 type RatingInfo struct {
-	RatingID     int    `json:"ratingId"`
+	RatingID     int    `json:"rating_id"`
 	Overall      int    `json:"overall"`
-	PlayStatus   string `json:"playStatus"`
+	PlayStatus   string `json:"play_status"`
 	Recommend    string `json:"recommend"`
-	ShortSummary string `json:"shortSummary"`
-	SpoilerLevel string `json:"spoilerLevel"`
-	LikeCount    int    `json:"likeCount"`
-	AuthorID     int    `json:"authorId"`
+	ShortSummary string `json:"short_summary"`
+	SpoilerLevel string `json:"spoiler_level"`
+	LikeCount    int    `json:"like_count"`
+	AuthorID     int    `json:"author_id"`
 }

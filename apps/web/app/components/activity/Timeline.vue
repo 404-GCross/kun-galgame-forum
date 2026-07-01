@@ -88,7 +88,7 @@ useIntersectionObserver(
 
       <div
         v-for="activity in items"
-        :key="activity.uniqueId"
+        :key="activity.unique_id"
         class="flex items-center gap-3"
       >
         <KunAvatar v-if="activity.actor" :user="activity.actor" />

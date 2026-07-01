@@ -186,7 +186,7 @@ useIntersectionObserver(
       <div v-else class="divide-default-200/60 divide-y">
         <div
           v-for="activity in items"
-          :key="activity.uniqueId"
+          :key="activity.unique_id"
           class="py-5 first:pt-0 last:pb-0"
         >
           <ActivityCard :activity="activity" />

@@ -10,7 +10,7 @@ const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
-const gid = computed(() => data.value?.galgameId ?? 0)
+const gid = computed(() => data.value?.galgame_id ?? 0)
 const detailLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
@@ -25,7 +25,7 @@ onMounted(ensureLoaded)
   <ActivityCardShell :actor="activity.actor" :timestamp="activity.timestamp">
     <div class="space-y-3">
       <p class="text-default-600 text-sm">
-        创建了一个新的 Galgame,已经有 {{ data?.resourceCount ?? 0 }} 个下载资源
+        创建了一个新的 Galgame,已经有 {{ data?.resource_count ?? 0 }} 个下载资源
       </p>
 
       <ActivityCardGalgameInfo :activity="activity" />
@@ -34,13 +34,13 @@ onMounted(ensureLoaded)
         <GalgameLike
           :galgame-id="gid"
           :target-user-id="activity.actor?.id ?? 0"
-          :like-count="data?.likeCount ?? 0"
+          :like-count="data?.like_count ?? 0"
           :is-liked="isLiked(gid)"
         />
         <GalgameFavorite
           :galgame-id="gid"
           :target-user-id="activity.actor?.id ?? 0"
-          :favorite-count="data?.favoriteCount ?? 0"
+          :favorite-count="data?.favorite_count ?? 0"
           :is-favorited="isFavorited(gid)"
         />
         <KunLink
