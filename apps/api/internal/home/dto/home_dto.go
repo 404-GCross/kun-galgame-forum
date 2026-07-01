@@ -42,18 +42,18 @@ type HomeTopic struct {
 	ID               int        `json:"id"`
 	Title            string     `json:"title"`
 	View             int        `json:"view"`
-	LikeCount        int        `json:"likeCount"`
-	ReplyCount       int        `json:"replyCount"`
-	CommentCount     int        `json:"commentCount"`
-	HasBestAnswer    bool       `json:"hasBestAnswer"`
-	IsPollTopic      bool       `json:"isPollTopic"`
-	IsNSFWTopic      bool       `json:"isNSFWTopic"`
+	LikeCount        int        `json:"like_count"`
+	ReplyCount       int        `json:"reply_count"`
+	CommentCount     int        `json:"comment_count"`
+	HasBestAnswer    bool       `json:"has_best_answer"`
+	IsPollTopic      bool       `json:"is_poll_topic"`
+	IsNSFWTopic      bool       `json:"is_nsfw_topic"`
 	Section          []string   `json:"section"`
 	Tag              []string   `json:"tag"`
 	User             UserBrief  `json:"user"`
 	Status           int        `json:"status"`
-	UpvoteTime       *time.Time `json:"upvoteTime"`
-	StatusUpdateTime time.Time  `json:"statusUpdateTime"`
+	UpvoteTime       *time.Time `json:"upvote_time"`
+	StatusUpdateTime time.Time  `json:"status_update_time"`
 }
 
 type HomeResponse struct {

@@ -8,12 +8,12 @@ defineProps<{
   <KunLink
     color="default"
     underline="none"
-    :to="commentPermalink(`/topic/${comment.topicId}`, comment.id)"
+    :to="commentPermalink(`/topic/${comment.topic_id}`, comment.id)"
     class="flex-col items-start"
   >
     <div class="flex items-center gap-2">
       <KunIcon class="text-primary h-5 w-5" name="uil:comment-dots" />
-      <span class="text-lg">{{ comment.topicTitle }}</span>
+      <span class="text-lg">{{ comment.topic_title }}</span>
       <span class="text-default-500 ml-auto text-sm">
         <KunTime :time="comment.created" />
       </span>

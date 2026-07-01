@@ -58,23 +58,23 @@ type TopicCard struct {
 	View        int      `json:"view"`
 	Tags        []string `json:"tag"`
 	Sections    []string `json:"section"`
-	CoverImages []string `json:"coverImages"`
+	CoverImages []string `json:"cover_images"`
 	// Per-cover-token image metadata (dims + ThumbHash), keyed by the
 	// /image/<hash> token in CoverImages — lets the FE reserve each cover's
 	// aspect ratio (no CLS) and blur it up. Output-only; a token is absent when
 	// image_service is unconfigured or its thumbhash backfill hasn't run.
-	CoverImageMeta   map[string]imageclient.ImageMeta `json:"coverImageMeta,omitempty"`
+	CoverImageMeta   map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
 	User             KunUser                          `json:"user"`
 	Status           int                              `json:"status"`
-	HasBestAnswer    bool                             `json:"hasBestAnswer"`
-	IsPollTopic      bool                             `json:"isPollTopic"`
-	IsNSFW           bool                             `json:"isNSFWTopic"`
-	LikeCount        int                              `json:"likeCount"`
-	ReplyCount       int                              `json:"replyCount"`
-	CommentCount     int                              `json:"commentCount"`
-	StatusUpdateTime time.Time                        `json:"statusUpdateTime"`
+	HasBestAnswer    bool                             `json:"has_best_answer"`
+	IsPollTopic      bool                             `json:"is_poll_topic"`
+	IsNSFW           bool                             `json:"is_nsfw_topic"`
+	LikeCount        int                              `json:"like_count"`
+	ReplyCount       int                              `json:"reply_count"`
+	CommentCount     int                              `json:"comment_count"`
+	StatusUpdateTime time.Time                        `json:"status_update_time"`
 	Created          time.Time                        `json:"created"`
-	UpvoteTime       *time.Time                       `json:"upvoteTime"`
+	UpvoteTime       *time.Time                       `json:"upvote_time"`
 }
 
 // TopicListResponse is the {topics, total} envelope for GET /topic — total drives

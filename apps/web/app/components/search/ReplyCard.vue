@@ -8,12 +8,12 @@ defineProps<{
   <KunLink
     color="default"
     underline="none"
-    :to="replyPermalink(`/topic/${reply.topicId}`, reply.floor)"
+    :to="replyPermalink(`/topic/${reply.topic_id}`, reply.floor)"
     class="flex-col items-start"
   >
     <div class="flex items-center gap-2">
       <KunIcon class="text-primary h-5 w-5" name="carbon:reply" />
-      <span class="text-lg">{{ reply.topicTitle }}</span>
+      <span class="text-lg">{{ reply.topic_title }}</span>
       <span class="text-default-500 ml-auto text-sm">
         <KunTime :time="reply.created" />
       </span>

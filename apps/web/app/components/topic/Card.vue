@@ -4,7 +4,7 @@ const props = defineProps<{
 }>()
 
 const actionsCount = computed(
-  () => props.topic.replyCount + props.topic.commentCount
+  () => props.topic.reply_count + props.topic.comment_count
 )
 </script>
 
@@ -22,9 +22,9 @@ const actionsCount = computed(
     <TopicTagGroup
       :section="props.topic.section"
       :tags="props.topic.tag"
-      :has-best-answer="topic.hasBestAnswer"
-      :is-poll-topic="topic.isPollTopic"
-      :is-n-s-f-w-topic="topic.isNSFWTopic"
+      :has-best-answer="topic.has_best_answer"
+      :is-poll-topic="topic.is_poll_topic"
+      :is-n-s-f-w-topic="topic.is_nsfw_topic"
     />
 
     <div class="text-default-700 flex items-center gap-4 text-sm">
@@ -33,9 +33,9 @@ const actionsCount = computed(
         {{ formatNumber(props.topic.view) }}
       </span>
 
-      <span v-if="props.topic.likeCount" class="flex items-center gap-1">
+      <span v-if="props.topic.like_count" class="flex items-center gap-1">
         <KunIcon class="size-4" name="lucide:thumbs-up" />
-        {{ props.topic.likeCount }}
+        {{ props.topic.like_count }}
       </span>
 
       <span v-if="actionsCount" class="flex items-center gap-1">

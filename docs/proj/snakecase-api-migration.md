@@ -111,8 +111,9 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [x] ranking — 响应 echo `sort_field`（`RankingUser/Topic/GalgameItem` + 3 组件）；`query:"sortField"` 请求参与 sort-option 配置的 `i.sortField` **保持不变**（本轮只动返回数据）
 - [x] section — `SectionTopicItem`(like_count/reply_count/has_best_answer/is_nsfw_topic)+ `SectionStat`(topic_count/view_count/latest_topic);FE `section.ts`+`category.ts`+两个 Container.vue（含 /category 端点，自包含内联卡片）
 - [x] admin — `UserContentStats` 7 字段（topic_comments…chat_messages）；FE `admin.ts` + `UserCard.vue`（含 `keyof` 配置数组，typecheck 守住动态 `stats[item.key]`）
-- [ ] home
-- [ ] search
+- **topic-card 单元(完成)**：共享卡片形状 `HomeTopic`(home)+ `TopicItem`(search)+ `TopicCard`(topic) 一起翻 snake_case，含 `home/topic/Card.vue`(HomeTopicCard)、`topic/Card.vue`、`search/Reply|CommentCard.vue`。search `ReplyItem`/`CommentItem` 的 topic_id/topic_title 一并完成。`topic/Layout.vue` 复用 HomeTopicCard 的耦合随之消解。
+- [~] home — HomeTopic 已完成（topic-card 单元）；HomeGalgame→galgame-card 单元；HomeUserStatus(isCheckIn/hasNewMessage) 源在 user 域(auth_dto)→随 user
+- [~] search — TopicItem/ReplyItem/CommentItem 完成；galgame 结果(SearchResultGalgame=HomeGalgame)→galgame-card 单元；UserItem 无 camelCase
 - [ ] activity
 - [ ] user
 - [ ] friendlink
@@ -121,5 +122,5 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [ ] toolset
 - [ ] website
 - [ ] doc
-- [ ] topic
+- [~] topic — `TopicCard`（列表卡片）已完成（topic-card 单元）；topic 详情/回复/评论/投票等其余字段待做
 - [ ] galgame（含 wiki 代理收口 + note→message 修复 + WikiPRDetailResponse 别名）

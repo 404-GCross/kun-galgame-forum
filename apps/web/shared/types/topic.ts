@@ -4,21 +4,21 @@ export interface TopicCard {
   view: number
   tag: string[]
   section: string[]
-  coverImages: string[]
+  cover_images: string[]
   // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
-  // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
-  coverImageMeta?: Record<string, KunImageMeta>
+  // token in cover_images — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
+  cover_image_meta?: Record<string, KunImageMeta>
   user: KunUser
   status: number
-  hasBestAnswer: boolean
-  isPollTopic: boolean
-  isNSFWTopic: boolean
-  likeCount: number
-  replyCount: number
-  commentCount: number
-  statusUpdateTime: Date | string
+  has_best_answer: boolean
+  is_poll_topic: boolean
+  is_nsfw_topic: boolean
+  like_count: number
+  reply_count: number
+  comment_count: number
+  status_update_time: Date | string
   created: Date | string
-  upvoteTime: Date | string | null
+  upvote_time: Date | string | null
 }
 
 export interface TopicAside {

@@ -19,14 +19,14 @@ defineProps<{
       </h3>
 
       <span class="text-default-500 shrink-0 text-sm">
-        <KunTime :time="topic.statusUpdateTime" />
+        <KunTime :time="topic.status_update_time" />
       </span>
     </div>
 
     <TopicCoverGrid
-      v-if="topic.coverImages?.length"
-      :images="topic.coverImages"
-      :meta="topic.coverImageMeta"
+      v-if="topic.cover_images?.length"
+      :images="topic.cover_images"
+      :meta="topic.cover_image_meta"
       class="my-1"
     />
 
@@ -34,10 +34,10 @@ defineProps<{
       <TopicTagGroup
         :section="topic.section"
         :tags="topic.tag"
-        :upvote-time="topic.upvoteTime"
-        :has-best-answer="topic.hasBestAnswer"
-        :is-poll-topic="topic.isPollTopic"
-        :is-n-s-f-w-topic="topic.isNSFWTopic"
+        :upvote-time="topic.upvote_time"
+        :has-best-answer="topic.has_best_answer"
+        :is-poll-topic="topic.is_poll_topic"
+        :is-n-s-f-w-topic="topic.is_nsfw_topic"
       />
 
       <div class="text-default-700 flex items-center gap-4 text-sm">
@@ -47,11 +47,11 @@ defineProps<{
         </span>
         <span class="flex items-center gap-1">
           <KunIcon name="lucide:thumbs-up" class="h-4 w-4" />
-          {{ topic.likeCount }}
+          {{ topic.like_count }}
         </span>
         <span class="flex items-center gap-1">
           <KunIcon name="carbon:reply" class="h-4 w-4" />
-          {{ topic.replyCount + topic.commentCount }}
+          {{ topic.reply_count + topic.comment_count }}
         </span>
       </div>
     </div>

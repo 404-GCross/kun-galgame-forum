@@ -33,16 +33,16 @@ type TopicItem struct {
 	Title            string     `json:"title"`
 	View             int        `json:"view"`
 	Status           int        `json:"status"`
-	LikeCount        int        `json:"likeCount"`
-	ReplyCount       int        `json:"replyCount"`
-	CommentCount     int        `json:"commentCount"`
-	HasBestAnswer    bool       `json:"hasBestAnswer"`
-	IsPollTopic      bool       `json:"isPollTopic"`
-	IsNSFWTopic      bool       `json:"isNSFWTopic"`
+	LikeCount        int        `json:"like_count"`
+	ReplyCount       int        `json:"reply_count"`
+	CommentCount     int        `json:"comment_count"`
+	HasBestAnswer    bool       `json:"has_best_answer"`
+	IsPollTopic      bool       `json:"is_poll_topic"`
+	IsNSFWTopic      bool       `json:"is_nsfw_topic"`
 	Section          []string   `json:"section"`
 	Tag              []string   `json:"tag"`
-	UpvoteTime       *time.Time `json:"upvoteTime"`
-	StatusUpdateTime time.Time  `json:"statusUpdateTime"`
+	UpvoteTime       *time.Time `json:"upvote_time"`
+	StatusUpdateTime time.Time  `json:"status_update_time"`
 	User             UserBrief  `json:"user"`
 }
 
@@ -57,8 +57,8 @@ type UserItem struct {
 
 type ReplyItem struct {
 	ID         int       `json:"id"`
-	TopicID    int       `json:"topicId"`
-	TopicTitle string    `json:"topicTitle"`
+	TopicID    int       `json:"topic_id"`
+	TopicTitle string    `json:"topic_title"`
 	Content    string    `json:"content"`
 	Floor      int       `json:"floor"`
 	User       UserBrief `json:"user"`
@@ -67,8 +67,8 @@ type ReplyItem struct {
 
 type CommentItem struct {
 	ID         int       `json:"id"`
-	TopicID    int       `json:"topicId"`
-	TopicTitle string    `json:"topicTitle"`
+	TopicID    int       `json:"topic_id"`
+	TopicTitle string    `json:"topic_title"`
 	Content    string    `json:"content"`
 	User       UserBrief `json:"user"`
 	Created    time.Time `json:"created"`

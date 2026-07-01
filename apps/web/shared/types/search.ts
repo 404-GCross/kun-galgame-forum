@@ -14,8 +14,8 @@ export interface SearchResultUser extends KunUser {
 }
 
 export interface SearchResultReply {
-  topicId: number
-  topicTitle: string
+  topic_id: number
+  topic_title: string
   floor: number
   content: string
   user: KunUser
@@ -27,8 +27,8 @@ export interface SearchResultReply {
 export type SearchResultComment = {
   // Comment id → deep-link to it (/topic/:id?comment=<id>).
   id: number
-  topicId: number
-  topicTitle: string
+  topic_id: number
+  topic_title: string
   content: string
   user: KunUser
   targetUser?: KunUser
