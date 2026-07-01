@@ -41,6 +41,30 @@ func (h *ToolsetHandler) GetList(c fiber.Ctx) error {
 	return response.Paginated(c, items, total)
 }
 
+// GetUserToolsets returns one user's authored toolsets (their profile 工具
+// section). Reuses the list assembly, scoped by user_id.
+// GET /api/user/:id/toolsets
+func (h *ToolsetHandler) GetUserToolsets(c fiber.Ctx) error {
+	userID := fiber.Params[int](c, "id")
+	if userID <= 0 {
+		return response.Error(c, errors.ErrBadRequest("无效的用户 ID"))
+	}
+	var req dto.ToolsetListRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.Limit == 0 {
+		req.Limit = 24
+	}
+	req.UserID = userID
+
+	items, total := h.toolsetService.GetList(c.Context(), &req)
+	return response.Paginated(c, items, total)
+}
+
 // Create creates a new toolset.
 // POST /api/toolset
 func (h *ToolsetHandler) Create(c fiber.Ctx) error {

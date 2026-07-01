@@ -80,6 +80,7 @@ func (a *App) setupRoutes() {
 	api.Get("/user/:id/comments", a.UserHandler.GetUserComments)
 	api.Get("/user/:id/resources", a.UserHandler.GetUserResources)
 	api.Get("/user/:id/ratings", a.UserHandler.GetUserRatings)
+	api.Get("/user/:id/toolsets", a.ToolsetHandler.GetUserToolsets)
 
 	// Ranking (public)
 	api.Get("/ranking/galgame", a.RankingHandler.GetGalgameRanking)

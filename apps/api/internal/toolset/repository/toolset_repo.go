@@ -28,6 +28,9 @@ type ListFilters struct {
 	Language string
 	Platform string
 	Version  string
+	// UserID > 0 scopes the list to one author's toolsets (their profile 工具
+	// section). 0 = no author filter (the public list).
+	UserID int
 }
 
 // ListOptions holds sort + pagination parameters.
@@ -52,6 +55,9 @@ func (r *ToolsetRepository) buildListQuery(f ListFilters) *gorm.DB {
 	}
 	if f.Version != "" && f.Version != "all" {
 		q = q.Where("version = ?", f.Version)
+	}
+	if f.UserID > 0 {
+		q = q.Where("user_id = ?", f.UserID)
 	}
 	return q
 }

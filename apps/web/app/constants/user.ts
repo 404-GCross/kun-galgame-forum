@@ -181,7 +181,8 @@ export const userTopicGroupOptions = [
 export const userGalgameGroupOptions = [
   { value: 'galgame', label: 'Galgame', icon: 'lucide:gamepad-2' },
   { value: 'rating', label: '评分', icon: 'lucide:star' },
-  { value: 'resource', label: '资源', icon: 'lucide:package' }
+  { value: 'resource', label: '资源', icon: 'lucide:package' },
+  { value: 'toolset', label: '工具', icon: 'lucide:wrench' }
 ]
 
 // Map any profile URL segment → its top-level group tab (for the main-nav
@@ -203,7 +204,8 @@ export const userSegmentHref = (userId: number, segment: string): string => {
     comment: `${base}/comment/comment-created`,
     galgame: `${base}/galgame/galgame-publish`,
     rating: `${base}/rating`,
-    resource: `${base}/resource/valid`
+    resource: `${base}/resource/valid`,
+    toolset: `${base}/toolset`
   }
   return map[segment] ?? `${base}/${segment}`
 }

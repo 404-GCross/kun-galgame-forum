@@ -21,6 +21,10 @@ type ToolsetListRequest struct {
 	Version   string `query:"version"`
 	SortField string `query:"sortField"`
 	SortOrder string `query:"sortOrder"`
+	// UserID is set by the per-user handler (GET /user/:id/toolsets) from the
+	// path, NOT bound from the query — so the public /toolset list can't be
+	// author-filtered by an arbitrary caller.
+	UserID int `query:"-"`
 }
 
 type CreateToolsetRequest struct {
