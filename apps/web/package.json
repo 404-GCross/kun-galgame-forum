@@ -8,6 +8,8 @@
     "build": "nuxt build",
     "build:limit": "NODE_OPTIONS='--max-old-space-size=8192' nuxt build",
     "icons": "node scripts/generate-icon-list.mjs",
+    "gen:types:galgame-read": "pnpm dlx openapi-typescript@7.13.0 https://docs-kungal.nextmoe.dev/specs/galgame-wiki.openapi.yaml -o shared/types/generated/galgame-read-api.ts",
+    "gen:types:galgame-calendar": "pnpm dlx openapi-typescript@7.13.0 https://docs-kungal.nextmoe.dev/specs/galgame-wiki-calendar.openapi.yaml -o shared/types/generated/galgame-calendar-api.ts",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
