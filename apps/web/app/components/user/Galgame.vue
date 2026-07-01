@@ -90,7 +90,9 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
     <KunTab
       :items="kunUserGalgameNavItem(userId)"
       :model-value="activeTab"
+      variant="light"
       size="sm"
+      scrollable
     />
 
     <!-- Galgame-card mode (galgame_like / galgame_favorite) -->

@@ -28,7 +28,9 @@ const { data, status } = await useKunFetch<{
     <KunTab
       :items="kunUserReplyNavItem(userId)"
       :model-value="activeTab"
+      variant="light"
       size="sm"
+      scrollable
     />
 
     <div v-if="data" class="flex flex-col space-y-3">

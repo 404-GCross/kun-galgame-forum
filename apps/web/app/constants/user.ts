@@ -148,9 +148,11 @@ export const KUN_USER_PAGE_GALGAME_RESOURCE_TYPE = [
 ] as const
 
 // The profile's TOP-LEVEL tab strip (the horizontal bar under the header).
-// 动态 (activity) is the landing tab; 关于 (info) holds the full stats panel;
-// 设置 is owner-only. `value` is the 3rd URL segment so the active tab can be
-// derived from the route; tabs with sub-filters point at their default child.
+// 动态 (activity) is the landing tab; 话题 groups topic/reply/comment and
+// Galgame groups galgame/rating/resource (each surfaced by a pill sub-nav
+// below); 关于 (info) holds the full stats panel; 设置 is owner-only. `value` is
+// the group key so the active tab can be derived from the route via
+// userSegmentGroup(); grouped tabs point at their default child.
 export const kunUserMainNav = (
   userId: number,
   isOwner: boolean
@@ -160,16 +162,50 @@ export const kunUserMainNav = (
     { value: 'activity', textValue: '动态', href: `${base}/activity`, icon: 'lucide:activity' },
     { value: 'topic', textValue: '话题', href: `${base}/topic/topic`, icon: 'lucide:square-gantt-chart' },
     { value: 'galgame', textValue: 'Galgame', href: `${base}/galgame/galgame-publish`, icon: 'lucide:gamepad-2' },
-    { value: 'rating', textValue: 'Gal 评分', href: `${base}/rating`, icon: 'lucide:star' },
-    { value: 'resource', textValue: 'Gal 资源', href: `${base}/resource/valid`, icon: 'lucide:package' },
-    { value: 'reply', textValue: '回复', href: `${base}/reply/reply-created`, icon: 'carbon:reply' },
-    { value: 'comment', textValue: '评论', href: `${base}/comment/comment-created`, icon: 'uil:comment-dots' },
     { value: 'info', textValue: '关于', href: `${base}/info`, icon: 'lucide:user-round' }
   ]
   if (isOwner) {
     items.push({ value: 'setting', textValue: '设置', href: `${base}/setting`, icon: 'lucide:settings' })
   }
   return items
+}
+
+// Group sub-nav (rendered as a KunRadioGroup `pill` — single-select choice
+// chips) shown under the main tab for the 话题 / Galgame groups. `value` is the
+// URL segment; navigation is handled by the caller via userSegmentHref().
+export const userTopicGroupOptions = [
+  { value: 'topic', label: '话题', icon: 'lucide:square-gantt-chart' },
+  { value: 'reply', label: '回复', icon: 'carbon:reply' },
+  { value: 'comment', label: '评论', icon: 'uil:comment-dots' }
+]
+export const userGalgameGroupOptions = [
+  { value: 'galgame', label: 'Galgame', icon: 'lucide:gamepad-2' },
+  { value: 'rating', label: '评分', icon: 'lucide:star' },
+  { value: 'resource', label: '资源', icon: 'lucide:package' }
+]
+
+// Map any profile URL segment → its top-level group tab (for the main-nav
+// highlight). 话题 groups topic/reply/comment; Galgame groups galgame/rating/
+// resource(/toolset). Everything else maps to itself.
+export const userSegmentGroup = (segment: string): string => {
+  if (['topic', 'reply', 'comment'].includes(segment)) return 'topic'
+  if (['galgame', 'rating', 'resource', 'toolset'].includes(segment)) return 'galgame'
+  return segment
+}
+
+// A segment → its default landing route (segments with type sub-tabs resolve to
+// their default child). Powers the pill sub-nav's navigation on select.
+export const userSegmentHref = (userId: number, segment: string): string => {
+  const base = `/user/${userId}`
+  const map: Record<string, string> = {
+    topic: `${base}/topic/topic`,
+    reply: `${base}/reply/reply-created`,
+    comment: `${base}/comment/comment-created`,
+    galgame: `${base}/galgame/galgame-publish`,
+    rating: `${base}/rating`,
+    resource: `${base}/resource/valid`
+  }
+  return map[segment] ?? `${base}/${segment}`
 }
 
 // OAuth named roles → display label (docs/oauth/11-roles.md). `user` is implicit

@@ -47,7 +47,9 @@ const handleUpdateTopicHideStatus = async (topicId: number) => {
     <KunTab
       :items="kunUserTopicNavItem(userId)"
       :model-value="activeTab"
+      variant="light"
       size="sm"
+      scrollable
     />
 
     <div class="flex flex-col space-y-3" v-if="data && data.topics.length">

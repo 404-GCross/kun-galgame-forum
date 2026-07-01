@@ -92,7 +92,9 @@ const submitFix = async (index: number) => {
     <KunTab
       :items="kunUserGalgameResourceNavItem(userId)"
       :model-value="activeTab"
+      variant="light"
       size="sm"
+      scrollable
     />
 
     <div class="flex flex-col space-y-3" v-if="data && data.resources.length">

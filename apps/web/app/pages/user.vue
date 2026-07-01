@@ -5,7 +5,13 @@
 // below keeps showing the previous user until a hard refresh. Keyed on id (not
 // path) so switching subpages of the same user (info → topic → …) doesn't
 // remount needlessly.
-import { kunUserMainNav } from '~/constants/user'
+import {
+  kunUserMainNav,
+  userSegmentGroup,
+  userSegmentHref,
+  userTopicGroupOptions,
+  userGalgameGroupOptions
+} from '~/constants/user'
 
 definePageMeta({ key: (route) => (route.params as { id: string }).id })
 
@@ -22,12 +28,16 @@ const { data } = await useKunFetch<UserInfo>(`/user/${userId.value}`)
 const { id: storeUid } = storeToRefs(usePersistUserStore())
 const isOwner = computed(() => !!storeUid.value && userId.value === storeUid.value)
 
-// The active top-level tab = the 3rd URL segment (/user/:id/<seg>/…). Drives the
-// KunTab highlight; defaults to 动态 (the landing tab) for the bare /user/:id.
-const activeMainTab = computed(() => {
+// The raw active URL segment (/user/:id/<seg>/…), defaulting to 动态 for the bare
+// id. The MAIN nav highlights by GROUP (topic/reply/comment → 话题, galgame/
+// rating/resource → Galgame); the pill sub-nav highlights by the exact segment.
+const activeSegment = computed(() => {
   const m = route.path.match(/^\/user\/\d+\/([^/]+)/)
   return m ? m[1]! : 'activity'
 })
+const activeGroup = computed(() => userSegmentGroup(activeSegment.value))
+const goToSegment = (seg: string) =>
+  navigateTo(userSegmentHref(userId.value, seg))
 
 // Banned profiles get a stripped {id, name, status: 1} payload from
 // the BE — there's no `'banned'` sentinel string, so the previous
@@ -76,8 +86,8 @@ if (isBanned.value) {
                   :key="tab.value"
                   :href="tab.href"
                   size="sm"
-                  :variant="activeMainTab === tab.value ? 'flat' : 'light'"
-                  :color="activeMainTab === tab.value ? 'primary' : 'default'"
+                  :variant="activeGroup === tab.value ? 'flat' : 'light'"
+                  :color="activeGroup === tab.value ? 'primary' : 'default'"
                   class-name="shrink-0 gap-1.5"
                 >
                   <KunIcon v-if="tab.icon" :name="tab.icon" />
@@ -93,7 +103,7 @@ if (isBanned.value) {
           <div class="hidden self-start sm:sticky sm:top-36 sm:block">
             <KunTab
               :items="kunUserMainNav(data.id, isOwner)"
-              :model-value="activeMainTab"
+              :model-value="activeGroup"
               orientation="vertical"
               variant="underlined"
               color="primary"
@@ -106,6 +116,27 @@ if (isBanned.value) {
                even when a sub-tab's content is short — otherwise the grid would
                be only as tall as the rail and it would scroll away. -->
           <div class="min-w-0 sm:min-h-[calc(100dvh-9rem)]">
+            <!-- Group sub-nav (KunRadioGroup `pill` choice-chips): only the 话题
+                 / Galgame groups bundle several sections. Selecting a chip
+                 navigates to that section's default route. -->
+            <div
+              v-if="activeGroup === 'topic' || activeGroup === 'galgame'"
+              class="mb-4"
+            >
+              <KunRadioGroup
+                :model-value="activeSegment"
+                :options="
+                  activeGroup === 'topic'
+                    ? userTopicGroupOptions
+                    : userGalgameGroupOptions
+                "
+                variant="pill"
+                color="primary"
+                size="sm"
+                @change="goToSegment"
+              />
+            </div>
+
             <NuxtPage :user="data" />
           </div>
         </div>
