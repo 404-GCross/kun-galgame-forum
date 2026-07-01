@@ -18,7 +18,7 @@ const hasBadge = computed(() => {
 })
 
 // 高赞回复 + 最佳答案 + 推话题记录 (all optional). When the best answer IS the
-// top-liked reply (same replyId), show only the best-answer style; otherwise the
+// top-liked reply (same reply_id), show only the best-answer style; otherwise the
 // best answer stacks below 高赞回复.
 const topReply = computed(() => data.value?.top_reply)
 const bestAnswer = computed(() => data.value?.best_answer)

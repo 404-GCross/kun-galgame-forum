@@ -17,12 +17,13 @@ type MessageStatus = 'read' | 'unread'
 
 type MessageSortField = 'time'
 
+// Request query params stay camelCase (backend binds query:"sortField"/"sortOrder").
 export interface MessageRequestData {
   page: string
   limit: string
   type?: MessageType | ''
-  sort_field?: MessageSortField
-  sort_order: KunOrder
+  sortField?: MessageSortField
+  sortOrder: KunOrder
 }
 
 export interface Message {

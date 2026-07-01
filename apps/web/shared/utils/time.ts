@@ -3,7 +3,7 @@ import { differenceInSeconds, differenceInHours, format } from 'date-fns'
 // isMeaningfulDate rejects the inputs that otherwise render as garbage:
 //   - missing / empty / unparseable     → new Date(...) is Invalid → NaN
 //   - Go time.Time zero value           → "0001-01-01T00:00:00Z" (year ≤ 1)
-// Both show up post-migration (empty resourceUpdateTime from wiki search, a
+// Both show up post-migration (empty resource_update_time from wiki search, a
 // zero `created`, etc.) and must not surface as "NaN 年前" / "2025 年前" / "0001-01-01".
 const isMeaningfulDate = (d: Date): boolean =>
   !isNaN(d.getTime()) && d.getFullYear() > 1

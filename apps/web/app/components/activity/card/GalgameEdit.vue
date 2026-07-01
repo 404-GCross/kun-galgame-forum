@@ -31,7 +31,7 @@ const loadDiff = async () => {
   isLoading.value = true
   try {
     // The diff endpoint keys on the per-galgame revision NUMBER. The activity now
-    // carries it directly (revisionNumber). Legacy rows synced before the wiki
+    // carries it directly (revision_number). Legacy rows synced before the wiki
     // feed exposed it have only the revision ROW id, so fall back to resolving
     // id → number via the history list (newest-first — a recent edit is page 1).
     let number = data.value?.revision_number

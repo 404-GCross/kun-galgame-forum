@@ -45,7 +45,7 @@ export interface TopicActivityData {
   sections: string[]
   cover_images: string[]
   // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
-  // token in coverImages — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
+  // token in cover_images — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
   cover_image_meta?: Record<string, KunImageMeta>
   view: number
   like_count: number
@@ -60,8 +60,8 @@ export interface TopicActivityData {
   is_poll: boolean
   is_nsfw: boolean
   top_reply?: ActivityTopReply
-  // The accepted best answer (omitted when none). Same reply as topReply (same
-  // replyId) → the card shows only the best-answer style.
+  // The accepted best answer (omitted when none). Same reply as top_reply (same
+  // reply_id) → the card shows only the best-answer style.
   best_answer?: ActivityTopReply
   // 推话题 records (all of them — few per topic); same shape the topic-detail
   // 推话题 list consumes, so the card reuses TopicUpvoteRecords.
@@ -72,11 +72,11 @@ export interface TopicActivityData {
     created: Date | string
   }[]
   // The topic's newest reply or comment (omitted when none). kind 'reply' carries
-  // its replyId so the card can merge it when it's the best answer / 高赞回复.
+  // its reply_id so the card can merge it when it's the best answer / 高赞回复.
   latest_activity?: {
     kind: 'reply' | 'comment'
     reply_id: number
-    // floor (reply) / commentId (comment) → deep-link to the target.
+    // floor (reply) / comment_id (comment) → deep-link to the target.
     floor: number
     comment_id: number
     user: KunUser
@@ -89,7 +89,7 @@ export interface TopicActivityData {
 }
 
 // Rich-card payload for galgame-scoped activity (BE dto.GalgameActivityData).
-// coverHash resolves to a CDN URL via imageTokenUrl. The count fields are only
+// cover_hash resolves to a CDN URL via imageTokenUrl. The count fields are only
 // populated for the GALGAME_CREATION card (global counts; the viewer's own
 // liked/favorited state is NOT carried — it would break the shared feed cache).
 export interface GalgameActivityData {
@@ -102,8 +102,8 @@ export interface GalgameActivityData {
   resource_count?: number
   like_count?: number
   favorite_count?: number
-  // GALGAME_EDIT only. revisionNumber = the per-galgame revision number the diff
-  // endpoint's :rev keys on (used directly); revisionId = the wiki revision ROW
+  // GALGAME_EDIT only. revision_number = the per-galgame revision number the diff
+  // endpoint's :rev keys on (used directly); revision_id = the wiki revision ROW
   // id, the legacy fallback resolved id→number for rows synced before the feed
   // carried the number.
   revision_id?: number
@@ -129,7 +129,7 @@ export interface GalgameActivityData {
   }
 }
 
-// Rating card payload (BE dto.RatingInfo). shortSummary is blank when spoilerLevel
+// Rating card payload (BE dto.RatingInfo). short_summary is blank when spoiler_level
 // !== 'none' (the card shows a spoiler notice instead).
 export interface ActivityRatingInfo {
   rating_id: number
@@ -158,7 +158,7 @@ export interface ReplyActivityData {
 }
 
 // Rich-card payload for TOPIC_COMMENT_CREATION (BE dto.TopicCommentActivityData).
-// The comment is on a reply — quotedReply is that reply (被评论的评论), topicTitle
+// The comment is on a reply — quoted_reply is that reply (被评论的评论), topic_title
 // anchors the bottom; the comment body is in ActivityItem.content.
 export interface TopicCommentActivityData {
   topic_title: string

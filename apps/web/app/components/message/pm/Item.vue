@@ -10,7 +10,7 @@ const emit = defineEmits<{
   (event: 'context-menu', payload: { event: MouseEvent; message: ChatMessage }): void
 }>()
 
-// Chat bubbles render contentHtml via v-html (not through KunContent), so they
+// Chat bubbles render content_html via v-html (not through KunContent), so they
 // don't get KunContent's built-in image lightbox. Wire the SAME composable here
 // so clicking an inline image opens the fullscreen viewer. The composable's
 // onClick stops propagation, so tapping an image never triggers the bubble's
@@ -94,7 +94,7 @@ const handleClick = (event: MouseEvent) => {
 
         <div class="mt-1 text-sm leading-relaxed">
           <!--
-            contentHtml is server-rendered + sanitized (inline markdown + images
+            content_html is server-rendered + sanitized (inline markdown + images
             only — see internal/infrastructure/markdown RenderInline). The arbitrary
             variants below tame what that renderer can emit inside a chat bubble:
             flat paragraphs, inline code chips, primary links, and bounded images.

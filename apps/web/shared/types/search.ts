@@ -22,7 +22,7 @@ export interface SearchResultReply {
   created: Date | string
 }
 
-// `targetUser` is the "comment-chain parent" — BE `CommentItem`
+// `target_user` is the "comment-chain parent" — BE `CommentItem`
 // doesn't carry it today; FE guards rendering with v-if.
 export type SearchResultComment = {
   // Comment id → deep-link to it (/topic/:id?comment=<id>).
@@ -31,7 +31,7 @@ export type SearchResultComment = {
   topic_title: string
   content: string
   user: KunUser
-  targetUser?: KunUser
+  target_user?: KunUser
   created: Date | string
 }
 

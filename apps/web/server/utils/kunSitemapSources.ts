@@ -168,7 +168,10 @@ export const buildSitemapUrls = async (
       path: '/topic',
       pick: (d) => (Array.isArray(d) ? (d as Record<string, unknown>[]) : []),
       loc: (r) => `/topic/${num(r, 'id')}`,
-      lastmod: (r) => toIso(r.statusUpdateTime),
+      // Typed cast (not a bare `r.foo`) so a future rename of this field is a
+      // compile error here — these Record<string,unknown> rows are otherwise
+      // outside vue-tsc's reach (the sitemap silently lost lastmod once already).
+      lastmod: (r) => toIso((r as Pick<TopicCard, 'status_update_time'>).status_update_time),
       priority: 0.8
     },
     {
@@ -176,7 +179,7 @@ export const buildSitemapUrls = async (
       pick: (d) => ((d as { galgames?: [] })?.galgames ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame/${num(r, 'id')}`,
-      lastmod: (r) => toIso(r.resourceUpdateTime),
+      lastmod: (r) => toIso((r as Pick<GalgameCard, 'resource_update_time'>).resource_update_time),
       priority: 0.8
     },
     {

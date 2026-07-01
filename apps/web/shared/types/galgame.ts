@@ -198,7 +198,7 @@ export const GalgameStatus = {
 
 // ──────────────────────────────────────────
 // Release calendar (发售月历) — GET /galgame/calendar(/pending|/tba).
-// Items are enriched GalgameCard[] (with releasePrecision + the 未收录 marker).
+// Items are enriched GalgameCard[] (with release_precision + the 未收录 marker).
 // See docs/galgame_wiki/01-galgame.md §Galgame 发售月历.
 // ──────────────────────────────────────────
 
@@ -223,14 +223,14 @@ export interface GalgameCalendarMonth {
   meta: GalgameCalendarMeta
 }
 
-// "Year known, month undecided" bucket (releasePrecision='year') for a year.
+// "Year known, month undecided" bucket (release_precision='year') for a year.
 export interface GalgameCalendarPending {
   year: string
   items: GalgameCard[]
   count: number
 }
 
-// Global "release date to be announced" bucket (releasePrecision='tba').
+// Global "release date to be announced" bucket (release_precision='tba').
 export interface GalgameCalendarTBA {
   items: GalgameCard[]
   count: number
@@ -242,7 +242,7 @@ export interface GalgameCalendarUpcomingMonth {
 }
 
 // Consolidated "未发售" schedule: every dated entry (day/month precision) with
-// releaseDate >= today, aggregated forward and grouped by month.
+// release_date >= today, aggregated forward and grouped by month.
 export interface GalgameCalendarUpcoming {
   today: string
   months: GalgameCalendarUpcomingMonth[]

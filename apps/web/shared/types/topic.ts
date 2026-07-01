@@ -53,7 +53,7 @@ export interface TopicDetail {
   // Optional 1..9 cover images as /image/<hash> tokens; used to prefill the
   // cover picker when editing, and (empty = none) for the feed card.
   coverImages: string[]
-  // See TopicCard.coverImageMeta — keyed by the /image/<hash> cover token.
+  // See TopicCard.cover_image_meta — keyed by the /image/<hash> cover token.
   coverImageMeta?: Record<string, KunImageMeta>
   user: KunUser & { moemoepoint: number }
 

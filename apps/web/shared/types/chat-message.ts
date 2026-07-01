@@ -1,5 +1,7 @@
 export interface ChatMessageHistoryRequest {
-  receiver_id: string
+  // Request query params stay camelCase (backend binds query:"receiverId");
+  // response fields are the ones that were snake_cased.
+  receiverId: string
   page: string
   limit: string
 }
@@ -26,7 +28,7 @@ export interface ChatMessage {
   sender: KunUser
   read_by: KunUser[]
   receiver_id: number
-  // Raw markdown source (used for editing/quoting). Render contentHtml, not
+  // Raw markdown source (used for editing/quoting). Render content_html, not
   // this, in the bubble.
   content: string
   // Server-rendered, sanitized inline+image HTML — safe to v-html.
