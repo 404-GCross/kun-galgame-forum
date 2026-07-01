@@ -94,6 +94,36 @@
 }
 
 /*
+ * Reserve the scrollbar gutter globally so the document's content width is
+ * IDENTICAL whether a page overflows (classic scrollbar shown) or is height-
+ * locked and doesn't (e.g. /edit/topic, /user/*, galgame/toolset detail). The
+ * document (html) is the scroller. Without this, navigating from a scrolling
+ * page to a non-scrolling one removes the ~15px scrollbar, so the centered
+ * layout (max-w-7xl + justify-center) widens and everything shifts sideways —
+ * seen as a "jump/teleport" right at the tail of the out-in page transition.
+ * (This is a browser layout fact, not a Nuxt/transition bug; the transition
+ * only makes the width change visible at the swap.)
+ *
+ * `scrollbar-gutter: stable` (Baseline 2024) is the exact modern tool. It is a
+ * no-op under overlay scrollbars (macOS/iOS) — where nothing shifts anyway — so
+ * it acts ONLY where the problem exists (classic scrollbars on Windows/Linux).
+ * Single-edge `stable`, NOT `both-edges` (buggy in Chrome + wastes the opposite
+ * gutter): a constant content box per page is all that's needed to kill the
+ * jump. `overflow-y: scroll` is the pre-Baseline fallback (older Safari) — an
+ * always-present track that reserves the width unconditionally. Unlayered → wins
+ * over the tokens' `@layer base` html/body rules.
+ */
+html {
+  overflow-y: scroll;
+}
+@supports (scrollbar-gutter: stable) {
+  html {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+/*
  * Keep FLOATING overlays opaque. The 透明度 setting drives --kun-surface-opacity
  * for the frosted-glass look of IN-PAGE surfaces (cards, form fields) over the
  * background image. But KunUI routes overlays through the SAME `content1`

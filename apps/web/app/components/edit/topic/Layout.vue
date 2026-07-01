@@ -18,7 +18,14 @@ onBeforeRouteLeave(async () => {
 </script>
 
 <template>
-  <div class="contents">
+  <div>
+    <!-- Single REAL root box — NOT `display: contents`. edit/topic/index.vue
+         renders <EditTopicLayout/> directly, so this div is the page-transition
+         root: `display: contents` produces no box, so Nuxt sees no single root
+         node ("does not have a single root node" warning) and the enter
+         animation can't attach — the page snaps in the instant the leave
+         finishes. Keep the comment INSIDE the root, never before it — a leading
+         comment is itself a second root node and re-triggers the same warning. -->
     <ClientOnly>
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <KunCard

@@ -29,7 +29,10 @@ if (data.value) {
 </script>
 
 <template>
-  <div class="contents">
+  <div>
+    <!-- Single real root box, NOT `display: contents` (see user.vue): a box-less
+         root trips Nuxt's "does not have a single root node" and skips the
+         page-transition enter, so the page teleports in. -->
     <GalgameSeriesDetail :data="data" v-if="data" />
     <KunNull v-else description="未找到这个 Galgame 系列" />
   </div>

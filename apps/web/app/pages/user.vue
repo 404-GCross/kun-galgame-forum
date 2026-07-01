@@ -34,7 +34,14 @@ if (isBanned.value) {
 </script>
 
 <template>
-  <div class="contents">
+  <div>
+    <!-- Single REAL root box — NOT `display: contents`. This div is the
+         page-transition root: `display: contents` produces no box, so Nuxt sees
+         no single root node ("does not have a single root node" warning) and the
+         enter animation can't attach — the page snaps in the instant the leave
+         finishes (the "teleport" at the tail of the transition). Keep the
+         comment INSIDE the root, never before it — a leading comment is itself a
+         second root node and re-triggers the same warning. -->
     <div v-if="!isBanned" class="h-[calc(100dvh-120px)]">
       <div v-if="data" class="flex h-full w-full">
         <UserNavBar
