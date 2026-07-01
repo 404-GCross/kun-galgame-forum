@@ -12,7 +12,7 @@ export const useGalgameReleaseToday = () => {
     () =>
       !!data.value?.items.some(
         (g) =>
-          g.releasePrecision === 'day' && g.releaseDate === data.value!.today
+          g.release_precision === 'day' && g.release_date === data.value!.today
       )
   )
 

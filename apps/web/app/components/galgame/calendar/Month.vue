@@ -33,11 +33,11 @@ const dayGames = computed(() => {
   const map = new Map<number, GalgameCard[]>()
   const bucket: GalgameCard[] = []
   for (const game of props.data.items) {
-    if (game.releasePrecision === 'month' || !game.releaseDate) {
+    if (game.release_precision === 'month' || !game.release_date) {
       bucket.push(game)
       continue
     }
-    const day = Number(game.releaseDate.slice(8, 10))
+    const day = Number(game.release_date.slice(8, 10))
     if (!map.has(day)) {
       map.set(day, [])
     }

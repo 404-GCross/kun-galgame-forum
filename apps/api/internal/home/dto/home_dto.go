@@ -24,10 +24,10 @@ type HomeGalgame struct {
 	Name               LocaleName `json:"name"`
 	Banner             string     `json:"banner"`
 	User               UserBrief  `json:"user"`
-	ContentLimit       string     `json:"contentLimit"`
+	ContentLimit       string     `json:"content_limit"`
 	View               int        `json:"view"`
-	LikeCount          int        `json:"likeCount"`
-	ResourceUpdateTime string     `json:"resourceUpdateTime"`
+	LikeCount          int        `json:"like_count"`
+	ResourceUpdateTime string     `json:"resource_update_time"`
 	Platform           []string   `json:"platform"`
 	Language           []string   `json:"language"`
 	// U2: derived banner. effective_banner_url is injected by

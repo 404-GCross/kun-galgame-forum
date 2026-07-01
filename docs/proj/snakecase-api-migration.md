@@ -112,10 +112,11 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [x] section — `SectionTopicItem`(like_count/reply_count/has_best_answer/is_nsfw_topic)+ `SectionStat`(topic_count/view_count/latest_topic);FE `section.ts`+`category.ts`+两个 Container.vue（含 /category 端点，自包含内联卡片）
 - [x] admin — `UserContentStats` 7 字段（topic_comments…chat_messages）；FE `admin.ts` + `UserCard.vue`（含 `keyof` 配置数组，typecheck 守住动态 `stats[item.key]`）
 - **topic-card 单元(完成)**：共享卡片形状 `HomeTopic`(home)+ `TopicItem`(search)+ `TopicCard`(topic) 一起翻 snake_case，含 `home/topic/Card.vue`(HomeTopicCard)、`topic/Card.vue`、`search/Reply|CommentCard.vue`。search `ReplyItem`/`CommentItem` 的 topic_id/topic_title 一并完成。`topic/Layout.vue` 复用 HomeTopicCard 的耦合随之消解。
-- [~] home — HomeTopic 已完成（topic-card 单元）；HomeGalgame→galgame-card 单元；HomeUserStatus(isCheckIn/hasNewMessage) 源在 user 域(auth_dto)→随 user
-- [~] search — TopicItem/ReplyItem/CommentItem 完成；galgame 结果(SearchResultGalgame=HomeGalgame)→galgame-card 单元；UserItem 无 camelCase
+- **galgame-card 单元(完成)**：共享卡片 `GalgameCard`(8 字段：content_limit/like_count/rating_count/is_on_forum/resource_update_time/release_date/release_date_tba/release_precision)。4 个 Go 生产者一起翻：`home.HomeGalgame`、`galgame.GalgameListCard`(search galgame 复用它)、`entity_dto` 卡片、`user.UserGalgameCard`。消费者：`galgame/card/Card.vue`(10 读)、`calendar/Month(List).vue`、`useGalgameReleaseToday.ts`。**排除**：`GalgameActivityData`(activity 自有形状 coverHash/ageLimit)、galgame detail/rating/resource embed(各自单元)、`wiki_dto` release_precision(本已 snake)。
+- [x] home — HomeTopic + HomeGalgame 均完成；仅 HomeUserStatus(isCheckIn/hasNewMessage) 源在 user 域(auth_dto)→随 user
+- [x] search — TopicItem/ReplyItem/CommentItem + galgame(复用 GalgameListCard)全部完成；UserItem 无 camelCase
 - [ ] activity
-- [ ] user
+- [~] user — UserGalgameCard(主页 galgame 卡)已完成（galgame-card 单元）；auth_dto(当前用户/HomeUserStatus)、主页话题/评分/资源等其余待做
 - [ ] friendlink
 - [ ] update
 - [ ] message
@@ -123,4 +124,4 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [ ] website
 - [ ] doc
 - [~] topic — `TopicCard`（列表卡片）已完成（topic-card 单元）；topic 详情/回复/评论/投票等其余字段待做
-- [ ] galgame（含 wiki 代理收口 + note→message 修复 + WikiPRDetailResponse 别名）
+- [~] galgame — `GalgameListCard`/`entity_dto` 卡片已完成（galgame-card 单元）；galgame 详情(GalgameDetail)/评分/资源/评论 + wiki 代理收口 + note→message 修复 + WikiPRDetailResponse 别名 待做

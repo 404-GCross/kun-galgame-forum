@@ -110,30 +110,30 @@ export interface GalgameCard {
   name: KunLanguage
   banner: string
   user: KunUser
-  contentLimit: string
+  content_limit: string
   view: number
-  likeCount: number
+  like_count: number
   // Bayesian-smoothed display rating + vote count. Optional: only the
   // /galgame list endpoint computes them; other card sources omit them
-  // (ratingCount falsy → the card hides the rating badge).
+  // (rating_count falsy → the card hides the rating badge).
   rating?: number
-  ratingCount?: number
+  rating_count?: number
   // Entity detail pages (会社/tag/engine/series) list the FULL wiki catalogue.
   // false ⇒ a wiki-catalogue game the forum hasn't ingested (no resources /
   // ratings / views) — the card hides those forum-only fields + shows 未收录.
   // Absent on the /galgame list + other card sources (treated as "on forum").
-  isOnForum?: boolean
+  is_on_forum?: boolean
   platform: string[]
   language: string[]
-  resourceUpdateTime: Date | string
+  resource_update_time: Date | string
   // U1: optional on card; nil = unknown.
-  releaseDate?: string | null
-  releaseDateTBA?: boolean
+  release_date?: string | null
+  release_date_tba?: boolean
   // Release-date precision — only the calendar endpoints emit it (absent
-  // elsewhere). Tells the calendar how to read releaseDate: day = 确切发售日,
+  // elsewhere). Tells the calendar how to read release_date: day = 确切发售日,
   // month = "YYYY-MM-01" 日未定, year = "YYYY-01-01" 月未定, tba/unknown = null.
   // See docs/galgame_wiki/01-galgame.md §release_precision.
-  releasePrecision?: 'day' | 'month' | 'year' | 'tba' | 'unknown'
+  release_precision?: 'day' | 'month' | 'year' | 'tba' | 'unknown'
   // wiki 草稿状态 (calendar only): 2 = 未认领的 VNDB 草稿. The calendar renders
   // status=2 as a "未发布" claim card (→ publish wizard) rather than a detail
   // link (drafts 404 at /galgame/:gid). Absent/0 ⇒ published.

@@ -91,19 +91,19 @@ type GalgameListCard struct {
 	Name         KunLanguage `json:"name"`
 	Banner       string      `json:"banner"`
 	User         UserBrief   `json:"user"`
-	ContentLimit string      `json:"contentLimit"`
+	ContentLimit string      `json:"content_limit"`
 	View         int         `json:"view"`
-	LikeCount    int         `json:"likeCount"`
-	// Bayesian-smoothed display rating + raw vote count. ratingCount 0 =
+	LikeCount    int         `json:"like_count"`
+	// Bayesian-smoothed display rating + raw vote count. rating_count 0 =
 	// unrated → FE omits the rating badge (rating would otherwise be 0).
 	Rating             float64  `json:"rating"`
-	RatingCount        int      `json:"ratingCount"`
-	ResourceUpdateTime string   `json:"resourceUpdateTime"`
+	RatingCount        int      `json:"rating_count"`
+	ResourceUpdateTime string   `json:"resource_update_time"`
 	Platform           []string `json:"platform"`
 	Language           []string `json:"language"`
 	// U1: nil = unknown; cards may sort/filter by release date when set.
-	ReleaseDate    *string `json:"releaseDate"`
-	ReleaseDateTBA bool    `json:"releaseDateTBA"`
+	ReleaseDate    *string `json:"release_date"`
+	ReleaseDateTBA bool    `json:"release_date_tba"`
 	// U2: list cards only need the derived banner. Full covers[] /
 	// screenshots[] are detail-only. URL injected by rewriteBanners.
 	// banner_image_hash retired in wiki PR5 (K-PR6).

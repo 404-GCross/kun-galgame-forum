@@ -63,9 +63,9 @@ const cardHref = (galgame: GalgameCard) =>
         <div
           v-if="
             showPlatform ||
-            (showRating && galgame.ratingCount) ||
+            (showRating && galgame.rating_count) ||
             showNsfwBadge ||
-            galgame.isOnForum === false ||
+            galgame.is_on_forum === false ||
             galgame.status === GalgameStatus.VndbDraft
           "
           class="absolute top-2 right-2 left-2 flex items-start gap-1"
@@ -79,7 +79,7 @@ const cardHref = (galgame: GalgameCard) =>
             未在论坛发布
           </span>
           <span
-            v-else-if="galgame.isOnForum === false"
+            v-else-if="galgame.is_on_forum === false"
             class="bg-background rounded-full px-3 py-1 text-xs backdrop-blur-sm sm:text-sm"
           >
             未收录
@@ -108,7 +108,7 @@ const cardHref = (galgame: GalgameCard) =>
 
           <div class="ml-auto flex flex-col items-end gap-1">
             <span
-              v-if="showRating && galgame.ratingCount"
+              v-if="showRating && galgame.rating_count"
               class="bg-background flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium backdrop-blur-sm sm:text-sm"
             >
               <KunIcon name="lucide:star" class="text-warning" />
@@ -118,9 +118,9 @@ const cardHref = (galgame: GalgameCard) =>
             <KunChip
               v-if="showNsfwBadge"
               variant="solid"
-              :color="galgame.contentLimit === 'sfw' ? 'success' : 'danger'"
+              :color="galgame.content_limit === 'sfw' ? 'success' : 'danger'"
             >
-              {{ galgame.contentLimit.toLocaleUpperCase() }}
+              {{ galgame.content_limit.toLocaleUpperCase() }}
             </KunChip>
           </div>
         </div>
@@ -129,7 +129,7 @@ const cardHref = (galgame: GalgameCard) =>
              black scrim so the caption stays legible over the cover image
              (see CLAUDE.md iron rule #2). -->
         <div
-          v-if="(showViewLike || showLanguage) && galgame.isOnForum !== false"
+          v-if="(showViewLike || showLanguage) && galgame.is_on_forum !== false"
           class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300 sm:text-sm"
         >
           <div v-if="showViewLike" class="flex gap-3">
@@ -140,7 +140,7 @@ const cardHref = (galgame: GalgameCard) =>
 
             <span class="flex items-center gap-1">
               <KunIcon class="text-white" name="lucide:thumbs-up" />
-              <span class="text-white">{{ galgame.likeCount }}</span>
+              <span class="text-white">{{ galgame.like_count }}</span>
             </span>
           </div>
 
@@ -175,7 +175,7 @@ const cardHref = (galgame: GalgameCard) =>
         </p>
 
         <div
-          v-if="showPublisher && galgame.isOnForum !== false"
+          v-if="showPublisher && galgame.is_on_forum !== false"
           class="text-default-600 mt-auto flex items-center gap-1 pt-3 text-sm"
         >
           <KunAvatar
@@ -185,7 +185,7 @@ const cardHref = (galgame: GalgameCard) =>
             :is-navigation="false"
           />
           {{ galgame.user.name }} ·
-          <KunTime :time="galgame.resourceUpdateTime" />
+          <KunTime :time="galgame.resource_update_time" />
         </div>
       </div>
     </KunCard>

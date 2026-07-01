@@ -26,18 +26,18 @@ type UserGalgameCard struct {
 	Name               KunLanguage `json:"name"`
 	Banner             string      `json:"banner"`
 	User               UserBrief   `json:"user"`
-	ContentLimit       string      `json:"contentLimit"`
+	ContentLimit       string      `json:"content_limit"`
 	View               int         `json:"view"`
-	LikeCount          int         `json:"likeCount"`
-	ResourceUpdateTime string      `json:"resourceUpdateTime"`
+	LikeCount          int         `json:"like_count"`
+	ResourceUpdateTime string      `json:"resource_update_time"`
 	Platform           []string    `json:"platform"`
 	Language           []string    `json:"language"`
 	// Wiki U1: `released` (free-form string) was replaced by release_date
-	// + release_date_tba. FE GalgameCard.releaseDate is optional, so we
+	// + release_date_tba. FE GalgameCard.release_date is optional, so we
 	// pass through the *string (nil → JSON null) and let the FE collapse
 	// missing dates to "未知".
-	ReleaseDate    *string `json:"releaseDate"`
-	ReleaseDateTBA bool    `json:"releaseDateTBA"`
+	ReleaseDate    *string `json:"release_date"`
+	ReleaseDateTBA bool    `json:"release_date_tba"`
 	// U2: see HomeGalgame — without these the FE card can't render
 	// `_mini` for newly-uploaded (covers-only) galgames.
 	EffectiveBannerHash string `json:"effective_banner_hash,omitempty"`

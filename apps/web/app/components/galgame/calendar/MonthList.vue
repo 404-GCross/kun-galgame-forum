@@ -28,11 +28,11 @@ const rows = computed<DayRow[]>(() => {
   const dayMap = new Map<number, GalgameCard[]>()
   const bucket: GalgameCard[] = []
   for (const game of props.data.items) {
-    if (game.releasePrecision === 'month' || !game.releaseDate) {
+    if (game.release_precision === 'month' || !game.release_date) {
       bucket.push(game)
       continue
     }
-    const d = Number(game.releaseDate.slice(8, 10))
+    const d = Number(game.release_date.slice(8, 10))
     if (!dayMap.has(d)) {
       dayMap.set(d, [])
     }
