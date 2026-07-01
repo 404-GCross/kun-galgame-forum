@@ -6,8 +6,8 @@ type TopicRSSItem struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	UserID      int       `json:"userId"`
-	UserName    string    `json:"userName"`
+	UserID      int       `json:"user_id"`
+	UserName    string    `json:"user_name"`
 	Created     time.Time `json:"created"`
 }
 

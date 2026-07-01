@@ -4,8 +4,8 @@ interface TopicRSSItem {
   id: number
   title: string
   description: string
-  userId: number
-  userName: string
+  user_id: number
+  user_name: string
   created: string
 }
 
@@ -36,8 +36,8 @@ export default defineCachedEventHandler(
         description: t.description,
         author: [
           {
-            name: t.userName,
-            link: `${baseUrl}/user/${t.userId}/info`
+            name: t.user_name,
+            link: `${baseUrl}/user/${t.user_id}/info`
           }
         ]
       })
