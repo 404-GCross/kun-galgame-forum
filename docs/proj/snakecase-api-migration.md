@@ -113,6 +113,17 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - 运行时抽验清单(随域补充):列表页渲染、详情页、表单提交(请求字段)、分页、搜索。
 - 大域(topic/galgame):补 Go golden-JSON 线缆测试,弥补「json tag 改名不触发 go build 失败」的缺口。
 
+## 代码审查（CR，2026-07-01，commit 68754082）
+
+对已完成部分做了彻底 CR（3 个专项 reviewer + 手工 Go-wire↔FE-type 对齐审计）。结论:**已迁移各域端到端对齐正确**(所有 Go 生产者均已同步 snake;calendar/search-galgame 路径已覆盖;omitempty/validate/gorm 列均未动;鉴权/可见性字段无 desync——NSFW 服务端靠 SFW cookie 强制,非展示字段)。修复项:
+
+- **真·线上回归(已修)**:sitemap 对每个 /topic、/galgame URL 丢了 `<lastmod>`。`kunSitemapSources.ts` 用 `Record<string,unknown>` 建模行(vue-tsc 盲区,即「缺口①」),改名后 `r.statusUpdateTime`/`r.resourceUpdateTime` 静默变 undefined。已修字段名 + 用 `Pick<TopicCard|GalgameCard,…>` cast 重新挂上类型安全网(下次改名 → 编译期报错)。**审计域时务必扫 `apps/web/server`,不止 `apps/web/app`。**
+- **潜在陷阱(已修)**:死 FE 请求类型(ChatMessageHistoryRequest.receiverId、MessageRequestData.sortField/sortOrder)被 FE 转换器误 snake(FE 侧无 validate: 信号)——已还原 camelCase(须与 query 绑定一致)。
+- **一致性**:search targetUser→target_user(死字段,对齐已迁移的 search 域)。
+- **注释里的过期 camelCase** 已扫为 snake;**并还原了 2 处 comment-fixer 越界**(误改到未迁移类型的字段 GalgameDetail.releaseDate、TopicDetail.coverImageMeta——其 Go 生产者仍 camel,保持 camel)。
+
+**教训**:① 批量注释改名脚本会误伤同文件内未迁移类型的**字段声明**(不止注释),必须 diff 校验非注释行;② vue-tsc 盲区 = server/ + lib/ + `Record<string,unknown>`/`any` 动态访问,每域都要单独扫。
+
 ## 进度
 
 - [x] image — `size_bytes` / `variant_urls`（`UploadGalgameResult` + `uploadGalgameImage.ts` + spec）
