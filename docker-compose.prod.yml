@@ -17,8 +17,14 @@
 # (JWT_SECRET here is kungal's OWN session secret — need NOT match infra.)
 #
 #   docker compose -f docker-compose.prod.yml pull
-#   docker compose -f docker-compose.prod.yml --profile jobs run --rm migrate   # ⚠ ORDER: docs/migration
-#   docker compose -f docker-compose.prod.yml up -d api web
+#   docker compose -f docker-compose.prod.yml up -d      # migrate auto-runs (gated) before kungal-api
+# The migrate service is no longer in the `jobs` profile: a plain `up` runs it
+# first (kungal-api depends_on it: service_completed_successfully) so pending
+# migrations auto-apply and the API never serves an un-migrated schema. Deferred
+# / cross-repo-ordered migrations are still held back by the migrate binary's
+# default `-exclude` list (005/006/007/012/015 today); to add a FUTURE cross-repo
+# migration, append its prefix to that default in cmd/migrate/main.go, then run
+# it manually with `--only=NNN` at the right moment (docs/migration + 16-data-cutover.md).
 name: kungal
 
 x-svc-health: &svc-health
@@ -107,7 +113,12 @@ services:
     pull_policy: always
     environment: { <<: *kungal-api-env }
     expose: ["2334"]
-    # No depends_on: postgres/redis live in the infra app. restart reconnects.
+    # Wait for `migrate` to finish so the API never serves an un-migrated schema
+    # (a failed migration blocks startup by design). postgres/redis live in the
+    # infra app (no depends_on for them) — restart reconnects.
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       <<: *svc-health
@@ -154,10 +165,11 @@ services:
         limits:
           memory: 2g
 
-  # ─────────────────────── one-off jobs (profile: jobs) ──────────────────────
-  # kungal migration ORDER is non-trivial (005/006/007/012/015 deferred, AFTER
-  # infra migrate-users). See docs/migration + 16-data-cutover.md.
-  #   docker compose -f docker-compose.prod.yml --profile jobs run --rm migrate [--only=005]
+  # ───────────────────────── schema migrations (auto on `up`) ────────────────
+  # Runs on a plain `up` (kungal-api depends_on it) → pending migrations apply
+  # before the API starts. The binary's default `-exclude` still holds back the
+  # deferred/cross-repo migrations (005/006/007/012/015); run those manually with
+  # `--only=NNN` at the right moment. See docs/migration + 16-data-cutover.md.
   migrate:
     image: ghcr.io/kunmoe/kungal-migrate:latest
     pull_policy: always
@@ -169,9 +181,9 @@ services:
     # the command.) Proper long-term fix is the Dockerfile WORKDIR / COPY path.
     working_dir: /
     environment: { <<: *kungal-api-env }
-    profiles: ["jobs"]
     restart: "no"
 
+  # ─────────────────────── one-off jobs (profile: jobs) ──────────────────────
   # All cmd/* binaries (check-dup-email / backfill-provider-names / migrate --only=…):
   #   docker compose -f docker-compose.prod.yml --profile jobs run --rm tools backfill-provider-names
   tools:
