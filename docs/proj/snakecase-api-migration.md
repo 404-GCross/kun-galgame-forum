@@ -74,6 +74,20 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 3. **含请求中等**:`friendlink`、`update`、`message`、`toolset`、`website`、`doc`——多一步改请求发送处。
 4. **大且耦合,最后做**:`topic`(61)、`galgame`(119)。galgame 同时收口 wiki 代理层。
 
+## 重要修正:共享「卡片」类型跨域耦合(2026-07-01 迁移中发现)
+
+分域推进在 `home`/`search` 边界失效:FE 有**跨域共享的卡片类型**,一个类型被**多个后端端点**生产,必须整组一起翻:
+
+- **topic 卡片形状** = `HomeTopic`(home.ts)。`SearchResultTopic = HomeTopic`(home+search 共用同一张卡 `home/topic/Card.vue`)。`activity` / `user` 主页的话题列表大概率也复用同型。
+- **`GalgameCard`**(galgame.ts)= `HomeGalgame`,且被 galgame 列表域(119 字段,排最后)生产。故 `home` 的 galgame 卡**不能独立迁移**——它属于 galgame 卡片单元。
+
+**结论:剩余工作按「共享类型」而非「后端域」编组**:
+1. **topic-card 单元**:`HomeTopic`(home)+ `search.TopicItem` + activity/user 主页话题 +(最终 topic 域),所有生产者一起翻。
+2. **galgame-card 单元**:`GalgameCard` 的全部生产者(home `HomeGalgame` + galgame 列表 + search galgame + user 主页 galgame + …),随 galgame 域一起翻。
+3. **各域独有的非卡片字段**(search reply/comment 的 topic_id/topic_title、home user-status、activity 专有、user 主页标量)按域单独翻。
+
+`ranking` 的 galgame 项是独立的 `RankingGalgameItem`(已完成),**不**属于 `GalgameCard`,故不受影响。
+
 ## 特殊处理
 
 - **wiki 代理层(galgame 阶段一并做)**:论坛转 snake_case 后,wiki 代理 DTO 可**大幅减少重映射**
