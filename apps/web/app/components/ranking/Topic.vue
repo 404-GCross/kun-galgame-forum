@@ -32,7 +32,7 @@ const { data } = await useKunFetch<RankingTopicItem[]>('/ranking/topic', {
             <div class="flex shrink-0 items-center gap-2 sm:hidden">
               <KunIcon
                 :name="
-                  topicSortItem.find((i) => i.sortField === topic.sortField)
+                  topicSortItem.find((i) => i.sortField === topic.sort_field)
                     ?.icon || ''
                 "
                 class="text-primary h-5 w-5"
@@ -47,7 +47,7 @@ const { data } = await useKunFetch<RankingTopicItem[]>('/ranking/topic', {
         <div class="hidden shrink-0 items-center gap-2 sm:flex">
           <KunIcon
             :name="
-              topicSortItem.find((i) => i.sortField === topic.sortField)
+              topicSortItem.find((i) => i.sortField === topic.sort_field)
                 ?.icon || ''
             "
             class="text-primary h-5 w-5"

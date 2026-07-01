@@ -30,7 +30,7 @@ const { data } = await useKunFetch<RankingUserItem[]>('/ranking/user', {
             <div class="flex shrink-0 items-center gap-2 sm:hidden">
               <KunIcon
                 :name="
-                  userSortItem.find((i) => i.sortField === user.sortField)
+                  userSortItem.find((i) => i.sortField === user.sort_field)
                     ?.icon || ''
                 "
                 class="text-primary h-5 w-5"
@@ -48,7 +48,7 @@ const { data } = await useKunFetch<RankingUserItem[]>('/ranking/user', {
         <div class="hidden shrink-0 items-center gap-2 sm:flex">
           <KunIcon
             :name="
-              userSortItem.find((i) => i.sortField === user.sortField)?.icon ||
+              userSortItem.find((i) => i.sortField === user.sort_field)?.icon ||
               ''
             "
             class="text-primary h-5 w-5"

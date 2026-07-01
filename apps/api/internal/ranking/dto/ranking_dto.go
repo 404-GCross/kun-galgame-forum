@@ -65,7 +65,7 @@ type GalgameRankingItem struct {
 	// count sorts (view/like…) are whole numbers and marshal without a
 	// trailing `.0`.
 	Value     float64 `json:"value"`
-	SortField string  `json:"sortField"`
+	SortField string  `json:"sort_field"`
 	// U2: derived banner so FE `getEffectiveBanner` can pick `_mini` for
 	// covers-only galgames; without these the ranking card falls back to
 	// the legacy `banner` URL which is empty for post-PR5 entries.
@@ -79,7 +79,7 @@ type TopicRankingItem struct {
 	Title     string    `json:"title"`
 	User      UserBrief `json:"user"`
 	Value     int       `json:"value"`
-	SortField string    `json:"sortField"`
+	SortField string    `json:"sort_field"`
 }
 
 type UserRankingItem struct {
@@ -91,5 +91,5 @@ type UserRankingItem struct {
 	// SortField must travel back so the FE can render the right
 	// sort-icon next to the value. Galgame/Topic already set this; user
 	// was missing it (silent FE icon dropout).
-	SortField string `json:"sortField"`
+	SortField string `json:"sort_field"`
 }

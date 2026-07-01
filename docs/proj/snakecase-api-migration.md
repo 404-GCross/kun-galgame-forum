@@ -94,7 +94,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 
 - [x] image — `size_bytes` / `variant_urls`（`UploadGalgameResult` + `uploadGalgameImage.ts` + spec）
 - [x] rss — `TopicRSSItem` `user_id` / `user_name`（Nitro `topic.xml.ts`；galgame item 已用嵌入 user）
-- [ ] ranking
+- [x] ranking — 响应 echo `sort_field`（`RankingUser/Topic/GalgameItem` + 3 组件）；`query:"sortField"` 请求参与 sort-option 配置的 `i.sortField` **保持不变**（本轮只动返回数据）
 - [ ] section
 - [ ] admin
 - [ ] home

@@ -51,7 +51,7 @@ const { data } = await useKunFetch<RankingGalgameItem[]>('/ranking/galgame', {
                 <KunIcon
                   :name="
                     galgameSortItem.find(
-                      (i) => i.sortField === galgame.sortField
+                      (i) => i.sortField === galgame.sort_field
                     )?.icon || ''
                   "
                   class="text-primary"
@@ -67,7 +67,7 @@ const { data } = await useKunFetch<RankingGalgameItem[]>('/ranking/galgame', {
         <div class="hidden shrink-0 items-center gap-2 sm:flex">
           <KunIcon
             :name="
-              galgameSortItem.find((i) => i.sortField === galgame.sortField)
+              galgameSortItem.find((i) => i.sortField === galgame.sort_field)
                 ?.icon || ''
             "
             class="text-primary h-5 w-5"
