@@ -47,63 +47,75 @@ const infoList = [
 </script>
 
 <template>
-  <div v-if="user" class="w-full space-y-6">
-    <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <KunCard
-        :is-transparent="false"
-        :is-hoverable="false"
-        color="primary"
-        v-for="block in statsBlocks"
-        :key="block.key"
-      >
-        <div class="text-xl font-semibold">
-          {{ user[block.key as 'topic'] }}
+  <div v-if="user" class="w-full space-y-4">
+    <!-- 内容统计 — plain neutral card (the old per-stat color="primary" cards
+         read as abrupt); a compact number grid with primary-accented figures. -->
+    <KunCard :is-hoverable="false">
+      <h3 class="text-default-500 mb-4 text-sm font-medium">内容统计</h3>
+      <div class="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-6">
+        <div v-for="block in statsBlocks" :key="block.key">
+          <div class="text-primary text-xl font-bold">
+            {{ user[block.key as 'topic'] }}
+          </div>
+          <div class="text-default-500 text-xs">{{ block.label }}</div>
         </div>
-        <div class="text-default-500 text-sm">{{ block.label }}</div>
+      </div>
+    </KunCard>
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <KunCard :is-hoverable="false">
+        <h3 class="text-default-500 mb-4 text-sm font-medium">互动</h3>
+        <div class="grid grid-cols-3 gap-3">
+          <div
+            v-for="block in interactionBlocks"
+            :key="block.key"
+            class="flex items-center gap-2"
+          >
+            <KunIcon
+              :name="block.icon"
+              class="shrink-0 text-2xl"
+              :class="block.color"
+            />
+            <div class="min-w-0">
+              <div class="text-lg font-semibold">
+                {{ user[block.key as 'topic'] }}
+              </div>
+              <div class="text-default-500 text-xs">{{ block.label }}</div>
+            </div>
+          </div>
+        </div>
+      </KunCard>
+
+      <KunCard :is-hoverable="false">
+        <h3 class="text-default-500 mb-2 text-sm font-medium">资料</h3>
+        <div class="divide-default-200/60 divide-y">
+          <div
+            v-for="item in infoList"
+            :key="item.label"
+            class="flex items-center justify-between py-2 text-sm"
+          >
+            <span class="text-default-600">{{ item.label }}</span>
+            <span class="font-medium">{{ item.value(user) }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm">
+            <span class="text-default-600">注册时间</span>
+            <span class="font-medium">
+              <KunTime :time="user.created" type="datetime" show-year />
+            </span>
+          </div>
+        </div>
       </KunCard>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <div
-        v-for="block in interactionBlocks"
-        :key="block.key"
-        class="flex w-full items-center space-x-2"
-      >
-        <KunIcon :name="block.icon" class="text-2xl" :class="block.color" />
-        <div>
-          <div class="text-lg font-medium">
-            {{ user[block.key as 'topic'] }}
-          </div>
-          <div class="text-default-500 text-sm">{{ block.label }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="space-y-4">
-      <div
-        v-for="item in infoList"
-        :key="item.label"
-        class="text-default-700 flex items-center justify-between text-sm"
-      >
-        <span>{{ item.label }}</span>
-        <span class="font-medium">{{ item.value(user) }}</span>
-      </div>
-      <div class="text-default-700 flex items-center justify-between text-sm">
-        <span>注册时间</span>
-        <span class="font-medium">
-          <KunTime :time="user.created" type="datetime" show-year />
-        </span>
-      </div>
-    </div>
-
-    <div>
-      <h3 class="mb-3 text-lg font-medium">签名</h3>
-      <pre
+    <KunCard :is-hoverable="false">
+      <h3 class="text-default-500 mb-2 text-sm font-medium">签名</h3>
+      <p
         v-if="user.bio"
-        class="border-default/20 text-default-700 rounded-lg border p-3 text-sm whitespace-pre-wrap"
-        >{{ user.bio }}</pre
+        class="text-default-700 text-sm break-words whitespace-pre-wrap"
       >
+        {{ user.bio }}
+      </p>
       <KunNull v-else :is-show-sticker="false" />
-    </div>
+    </KunCard>
   </div>
 </template>

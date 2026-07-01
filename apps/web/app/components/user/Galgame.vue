@@ -101,7 +101,7 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
         v-if="galgameData && galgameData.items.length"
         class="flex flex-col space-y-3"
       >
-        <GalgameCard :is-transparent="true" :galgames="galgameData.items" />
+        <GalgameCard :is-transparent="false" :galgames="galgameData.items" />
 
         <KunPagination
           v-if="galgameData.total > pageData.limit"

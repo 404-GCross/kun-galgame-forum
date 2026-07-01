@@ -6,9 +6,15 @@ import {
   KUN_GALGAME_RATING_PLAY_STATUS_MAP
 } from '~/constants/galgame-rating'
 
-defineProps<{
-  ratings: GalgameRatingCard[]
-}>()
+withDefaults(
+  defineProps<{
+    ratings: GalgameRatingCard[]
+    // Transparent by default (the main rating list floats over the page
+    // background); pass false on solid surfaces such as the user profile.
+    isTransparent?: boolean
+  }>(),
+  { isTransparent: true }
+)
 
 const systemRating = (rating: GalgameRatingCard) => {
   const res = calcGalgameRating(
@@ -28,7 +34,7 @@ const systemRating = (rating: GalgameRatingCard) => {
     <KunCard
       v-for="rating in ratings"
       :key="rating.id"
-      :is-transparent="true"
+      :is-transparent="isTransparent"
       :is-hoverable="true"
       :href="`/galgame-rating/${rating.id}`"
     >

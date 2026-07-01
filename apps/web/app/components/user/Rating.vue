@@ -18,7 +18,7 @@ const { data, status } = await useKunFetch<{
 <template>
   <div class="space-y-3">
     <div v-if="data && data.ratingData.length" class="space-y-3">
-      <GalgameRatingCard :ratings="data.ratingData" />
+      <GalgameRatingCard :ratings="data.ratingData" :is-transparent="false" />
 
       <KunPagination
         v-if="data.total > pageData.limit"

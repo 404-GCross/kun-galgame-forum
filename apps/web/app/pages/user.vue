@@ -58,12 +58,11 @@ if (isBanned.value) {
 </script>
 
 <template>
-  <!-- Single REAL root box (NOT `display: contents`): it is the page-transition
-       root — a box-less root drops the enter animation and warns "does not have
-       a single root node". Keep any comment INSIDE the root. The profile is now
-       a full-width identity header + a horizontal tab strip + the active sub-tab
-       (动态 is the landing tab); the document scrolls (no inner scroll pane). -->
   <div class="space-y-4">
+    <!-- Single REAL root box (NOT `display: contents`), and this comment lives
+         INSIDE it — a comment BEFORE the root is itself a second root node and
+         trips Nuxt's "does not have a single root node" warning. The profile is a
+         full-width header + tab rail + active sub-tab; the document scrolls. -->
     <template v-if="!isBanned">
       <template v-if="data">
         <UserProfileHeader :user="data" />
@@ -72,29 +71,19 @@ if (isBanned.value) {
              vertical rail beside the content; mobile: a horizontal scrollable
              strip stacked on top (the sm:hidden rail takes no grid track). -->
         <div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
-          <!-- Mobile: a single-row nav strip inside KunScrollShadow, which
-               scrolls horizontally and fades its edges (box-shadow) to signal
-               there's more — a plain hidden scroll is easy to miss on touch.
-               KunScrollShadow must own the scroll, so the row is a w-fit /
-               whitespace-nowrap flex that overflows it (the forum's established
-               pattern, see galgame/Tag). -->
+          <!-- Mobile: a solid (flat-filled) KunTab strip — more prominent than
+               the light inner sub-tabs. Only 5 top-level tabs, so it fits;
+               `scrollable` is a fallback on very narrow screens. Highlights by
+               group (topic/reply/comment → 话题, etc.). -->
           <div class="sm:hidden">
-            <KunScrollShadow axis="horizontal" shadow-size="2rem">
-              <div class="flex w-fit items-center gap-2 whitespace-nowrap py-1">
-                <KunButton
-                  v-for="tab in kunUserMainNav(data.id, isOwner)"
-                  :key="tab.value"
-                  :href="tab.href"
-                  size="sm"
-                  :variant="activeGroup === tab.value ? 'flat' : 'light'"
-                  :color="activeGroup === tab.value ? 'primary' : 'default'"
-                  class-name="shrink-0 gap-1.5"
-                >
-                  <KunIcon v-if="tab.icon" :name="tab.icon" />
-                  {{ tab.textValue }}
-                </KunButton>
-              </div>
-            </KunScrollShadow>
+            <KunTab
+              :items="kunUserMainNav(data.id, isOwner)"
+              :model-value="activeGroup"
+              variant="solid"
+              color="primary"
+              size="sm"
+              scrollable
+            />
           </div>
 
           <!-- top-36 (144px), not flush at top-[7.5rem]: the collapsed mini
@@ -131,6 +120,7 @@ if (isBanned.value) {
                     : userGalgameGroupOptions
                 "
                 variant="pill"
+                orientation="horizontal"
                 color="primary"
                 size="sm"
                 @change="goToSegment"

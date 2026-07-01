@@ -102,7 +102,7 @@ const isEmpty = computed(
       icon="lucide:gamepad-2"
       :view-all-href="`/user/${uid}/galgame/galgame-publish`"
     >
-      <GalgameCard :is-transparent="true" :galgames="galgameItems" />
+      <GalgameCard :is-transparent="false" :galgames="galgameItems" />
     </UserOverviewSection>
 
     <UserOverviewSection
@@ -111,7 +111,7 @@ const isEmpty = computed(
       icon="lucide:star"
       :view-all-href="`/user/${uid}/rating`"
     >
-      <GalgameRatingCard :ratings="ratingItems" />
+      <GalgameRatingCard :ratings="ratingItems" :is-transparent="false" />
     </UserOverviewSection>
 
     <UserOverviewSection
