@@ -12,8 +12,8 @@
 //             variants). The kungal handler enforces this allowlist
 //             (internal/image/handler/image_handler.go).
 //
-// The success payload mirrors image_service's /image/upload response,
-// adapted to camelCase by kungal (see UploadGalgameResult in
+// The success payload mirrors image_service's /image/upload response
+// (snake_case, see UploadGalgameResult in
 // apps/api/internal/image/service/galgame_upload.go). `url` is the main
 // CDN URL — the editor can render it immediately and stash `hash` in
 // the cover/screenshot row.
@@ -30,8 +30,8 @@ export interface UploadGalgameImageResult {
   url: string
   width: number
   height: number
-  sizeBytes: number
-  variantUrls?: Record<string, string>
+  size_bytes: number
+  variant_urls?: Record<string, string>
   deduplicated: boolean
 }
 

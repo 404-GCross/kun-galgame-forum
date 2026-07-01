@@ -92,7 +92,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 
 ## 进度
 
-- [ ] image
+- [x] image — `size_bytes` / `variant_urls`（`UploadGalgameResult` + `uploadGalgameImage.ts` + spec）
 - [ ] rss
 - [ ] ranking
 - [ ] section

@@ -33,8 +33,8 @@ type UploadGalgameResult struct {
 	URL          string            `json:"url"`
 	Width        int               `json:"width"`
 	Height       int               `json:"height"`
-	SizeBytes    int64             `json:"sizeBytes"`
-	VariantURLs  map[string]string `json:"variantUrls,omitempty"`
+	SizeBytes    int64             `json:"size_bytes"`
+	VariantURLs  map[string]string `json:"variant_urls,omitempty"`
 	Deduplicated bool              `json:"deduplicated"`
 }
 

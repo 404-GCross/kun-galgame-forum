@@ -28,7 +28,7 @@ describe('uploadGalgameImage', () => {
       url: 'https://cdn/ab/cd/abcd1234567890ab.webp',
       width: 1920,
       height: 1080,
-      sizeBytes: 12345,
+      size_bytes: 12345,
       deduplicated: false
     })
 
@@ -75,7 +75,7 @@ describe('uploadGalgameImage', () => {
       url: 'x',
       width: 0,
       height: 0,
-      sizeBytes: 0,
+      size_bytes: 0,
       deduplicated: false
     })
     const blob = new Blob([''], { type: 'image/png' })
