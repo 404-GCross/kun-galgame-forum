@@ -88,6 +88,15 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 
 `ranking` 的 galgame 项是独立的 `RankingGalgameItem`(已完成),**不**属于 `GalgameCard`,故不受影响。
 
+## 重要修正 2:编辑表单 = 请求/响应纠缠(website 迁移中发现，2026-07-01)
+
+「仅响应」范围在**带编辑表单的域**上会卡住:表单/请求负载类型(常是 Zod `z.infer`，如 `WebsiteData`)与响应类型(`WebsiteDetail`)字段同名，编辑流程靠 `{...rest}` 把响应对象摊进表单对象——两者都是 camelCase 时可行。一旦响应转 snake、表单仍 camel(请求侧,本轮不动),该 `...rest` 摊平就类型不符,需要写 snake→camel 适配器。
+
+**决策:带编辑表单纠缠的域,其编辑/请求路径 defer 到「请求侧统一 pass」**(那时表单 Zod schema + Go 请求 DTO + 发送站点一起转 snake,适配器消失)。纯响应读取路径(列表/详情展示)照常本轮做。
+
+- **website 整体 defer**(edit modal `WebsiteData` Zod 表单 + Operation 的 `...rest` 适配)——已 revert，等请求侧 pass。
+- 其它带编辑表单的域(doc/toolset 的 admin CRUD、topic/galgame 编辑器)同理:只做纯展示读取路径,编辑/发送路径随请求侧 pass。
+
 ## 特殊处理
 
 - **wiki 代理层(galgame 阶段一并做)**:论坛转 snake_case 后,wiki 代理 DTO 可**大幅减少重映射**
@@ -120,8 +129,8 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [ ] friendlink
 - [ ] update
 - [x] message — chat_dto/message_dto 响应结构 + chat-message.ts/message.ts；转换器**跳过 validate: 请求行**(receiverId/messageId 请求参保持 camelCase，send 站点一致)；typecheck 驱动 message 组件 + 2 构造/页面 straggler
-- [ ] toolset
-- [ ] website
-- [ ] doc
+- [ ] toolset — 纯展示读取路径本轮可做；create/edit 表单随请求侧 pass
+- [defer] website — edit 表单(WebsiteData Zod)请求/响应纠缠，整体 defer 到请求侧统一 pass（见「重要修正 2」）
+- [ ] doc — 展示读取路径本轮可做；admin CRUD 表单随请求侧 pass
 - [~] topic — `TopicCard`（列表卡片）已完成（topic-card 单元）；topic 详情/回复/评论/投票等其余字段待做
 - [~] galgame — `GalgameListCard`/`entity_dto` 卡片已完成（galgame-card 单元）；galgame 详情(GalgameDetail)/评分/资源/评论 + wiki 代理收口 + note→message 修复 + WikiPRDetailResponse 别名 待做
