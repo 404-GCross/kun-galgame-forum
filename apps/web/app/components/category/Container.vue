@@ -22,21 +22,21 @@ defineProps<{
         <div class="text-default-500 flex items-center gap-4 text-sm">
           <div class="flex items-center gap-2 text-inherit">
             <KunIcon name="lucide:newspaper" />
-            {{ formatNumber(section.topicCount) }}
+            {{ formatNumber(section.topic_count) }}
           </div>
           <div class="flex items-center gap-2 text-inherit">
             <KunIcon name="lucide:eye" />
-            {{ formatNumber(section.viewCount) }}
+            {{ formatNumber(section.view_count) }}
           </div>
         </div>
       </div>
 
       <div class="space-y-2">
         <h3 class="line-clamp-1">
-          {{ section.latestTopic?.title }}
+          {{ section.latest_topic?.title }}
         </h3>
         <p class="text-default-500 text-sm">
-          <KunTime :time="section.latestTopic?.created || ''" />
+          <KunTime :time="section.latest_topic?.created || ''" />
         </p>
       </div>
     </KunCard>

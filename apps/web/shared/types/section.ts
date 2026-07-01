@@ -3,10 +3,10 @@ export interface SectionTopic {
   title: string
   content: string
   view: number
-  likeCount: number
-  replyCount: number
-  hasBestAnswer: boolean
-  isNSFWTopic: boolean
+  like_count: number
+  reply_count: number
+  has_best_answer: boolean
+  is_nsfw_topic: boolean
   user: KunUser
   created: Date | string
 }

@@ -32,10 +32,10 @@ type SectionTopicItem struct {
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
 	View          int       `json:"view"`
-	LikeCount     int       `json:"likeCount"`
-	ReplyCount    int       `json:"replyCount"`
-	HasBestAnswer bool      `json:"hasBestAnswer"`
-	IsNSFW        bool      `json:"isNSFWTopic"`
+	LikeCount     int       `json:"like_count"`
+	ReplyCount    int       `json:"reply_count"`
+	HasBestAnswer bool      `json:"has_best_answer"`
+	IsNSFW        bool      `json:"is_nsfw_topic"`
 	User          UserBrief `json:"user"`
 	Created       time.Time `json:"created"`
 }
@@ -54,7 +54,7 @@ type LatestTopic struct {
 type SectionStat struct {
 	ID          int          `json:"id"`
 	Name        string       `json:"name"`
-	TopicCount  int64        `json:"topicCount"`
-	ViewCount   int64        `json:"viewCount"`
-	LatestTopic *LatestTopic `json:"latestTopic"`
+	TopicCount  int64        `json:"topic_count"`
+	ViewCount   int64        `json:"view_count"`
+	LatestTopic *LatestTopic `json:"latest_topic"`
 }

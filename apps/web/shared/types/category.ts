@@ -7,7 +7,7 @@ export interface CategoryLatestTopicInfo {
 export interface CategorySectionStats {
   id: number
   name: string
-  topicCount: number
-  viewCount: number
-  latestTopic: CategoryLatestTopicInfo | null
+  topic_count: number
+  view_count: number
+  latest_topic: CategoryLatestTopicInfo | null
 }

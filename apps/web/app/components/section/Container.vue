@@ -82,9 +82,9 @@ watch(
         <TopicTagGroup
           :section="[]"
           :tags="[]"
-          :has-best-answer="topic.hasBestAnswer"
+          :has-best-answer="topic.has_best_answer"
           :is-poll-topic="false"
-          :is-n-s-f-w-topic="topic.isNSFWTopic"
+          :is-n-s-f-w-topic="topic.is_nsfw_topic"
         />
 
         <div class="text-default-500 line-clamp-2 text-sm break-all">
@@ -98,11 +98,11 @@ watch(
           </div>
           <div class="flex items-center gap-2 text-inherit">
             <KunIcon name="lucide:thumbs-up" />
-            {{ topic.likeCount }}
+            {{ topic.like_count }}
           </div>
           <div class="flex items-center gap-2 text-inherit">
             <KunIcon name="carbon:reply" />
-            {{ topic.replyCount }}
+            {{ topic.reply_count }}
           </div>
         </div>
       </div>
