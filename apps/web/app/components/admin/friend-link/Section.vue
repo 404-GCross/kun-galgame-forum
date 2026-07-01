@@ -71,8 +71,8 @@ useSortable(listEl, items, {
             class="friend-drag-handle text-default-400 shrink-0 cursor-grab active:cursor-grabbing"
           />
           <KunImage
-            v-if="friend.bannerUrl"
-            :src="friend.bannerUrl"
+            v-if="friend.banner_url"
+            :src="friend.banner_url"
             class="border-default-200 h-10 w-16 shrink-0 rounded border object-cover"
           />
           <div class="min-w-0 flex-1">

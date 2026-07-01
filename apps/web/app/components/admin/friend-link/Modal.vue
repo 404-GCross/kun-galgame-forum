@@ -32,7 +32,7 @@ const getInitial = (): FriendLinkInput => {
     // Keep the legacy URL so submitting an un-migrated friend preserves it; the
     // hash drives the new uploader.
     banner: d?.banner ?? '',
-    bannerImageHash: d?.bannerImageHash ?? '',
+    bannerImageHash: d?.banner_image_hash ?? '',
     status: d?.status ?? 'normal'
   }
   return d?.id ? { ...base, id: d.id } : base
@@ -47,7 +47,7 @@ watch(
 )
 
 // Resolved CDN url of the edited friend's banner — preview only (empty on create).
-const initialBannerUrl = computed(() => props.initialData?.bannerUrl ?? '')
+const initialBannerUrl = computed(() => props.initialData?.banner_url ?? '')
 
 const handleSubmit = () => {
   if (!form.name.trim()) {

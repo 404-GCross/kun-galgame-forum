@@ -65,8 +65,8 @@ const groups = computed(() =>
             }}
           </div>
           <KunImage
-            v-if="friend.bannerUrl"
-            :src="friend.bannerUrl"
+            v-if="friend.banner_url"
+            :src="friend.banner_url"
             class="h-auto w-full rounded-md"
           />
         </KunCard>

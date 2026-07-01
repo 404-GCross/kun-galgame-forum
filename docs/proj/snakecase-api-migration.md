@@ -126,7 +126,7 @@ snake_case**。全量迁移 = 把仍是 camelCase 的 DTO 字段拉齐到 snake_
 - [x] search — TopicItem/ReplyItem/CommentItem + galgame(复用 GalgameListCard)全部完成；UserItem 无 camelCase
 - [x] activity — 全 activity_dto 响应结构(ActivityItem/TopicActivityData/GalgameActivityData/RatingInfo/…) + activity.ts；脚本化 json-tag/字段改名(acronym-aware)+ typecheck 驱动 ~15 卡片组件 + home/Container；68 读全绿
 - [~] user — UserGalgameCard(主页 galgame 卡)已完成（galgame-card 单元）；auth_dto(当前用户/HomeUserStatus)、主页话题/评分/资源等其余待做
-- [ ] friendlink
+- [x] friendlink — model.FriendLink 响应 json tag(banner_image_hash/banner_url/sort_order）+ FE FriendLink 响应类型 + 展示读取(Container/Section)+ Modal 的 1 处 response→form 映射；FriendLinkInput 请求表单保持 camelCase(正确)
 - [ ] update
 - [x] message — chat_dto/message_dto 响应结构 + chat-message.ts/message.ts；转换器**跳过 validate: 请求行**(receiverId/messageId 请求参保持 camelCase，send 站点一致)；typecheck 驱动 message 组件 + 2 构造/页面 straggler
 - [ ] toolset — 纯展示读取路径本轮可做；create/edit 表单随请求侧 pass

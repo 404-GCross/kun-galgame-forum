@@ -11,11 +11,11 @@ export interface FriendLink {
   /** Legacy full image URL (image_service webp, or the legacy /friends/<name>.webp). */
   banner: string
   /** Content-addressed image hash driving the new uploader. */
-  bannerImageHash: string
+  banner_image_hash: string
   /** Resolved CDN url for display (falls back to the legacy `banner`). */
-  bannerUrl: string
+  banner_url: string
   status: FriendLinkStatus
-  sortOrder: number
+  sort_order: number
   created: string
   updated: string
 }

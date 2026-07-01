@@ -17,10 +17,10 @@ type FriendLink struct {
 	// BannerImageHash is the content-addressed image_service hash, preferred over
 	// the legacy Banner URL. BannerURL is the resolved CDN url (not persisted),
 	// set on read so the FE never sees a raw hash.
-	BannerImageHash string    `gorm:"column:banner_image_hash;default:''" json:"bannerImageHash"`
-	BannerURL       string    `gorm:"-" json:"bannerUrl"`
+	BannerImageHash string    `gorm:"column:banner_image_hash;default:''" json:"banner_image_hash"`
+	BannerURL       string    `gorm:"-" json:"banner_url"`
 	Status          string    `gorm:"default:'normal'" json:"status"`
-	SortOrder       int       `gorm:"column:sort_order;not null;default:0" json:"sortOrder"`
+	SortOrder       int       `gorm:"column:sort_order;not null;default:0" json:"sort_order"`
 	CreatedAt       time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt       time.Time `gorm:"column:updated" json:"updated"`
 }
