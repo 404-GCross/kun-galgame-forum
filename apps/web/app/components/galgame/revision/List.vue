@@ -102,7 +102,7 @@ const handleRevert = async (rev: number) => {
                 {{ ACTION_LABEL[rev.action] || rev.action }}
               </KunChip>
               <span class="text-default-400 text-xs">#{{ rev.revision }}</span>
-              <span v-if="rev.isMinor" class="text-default-400 text-xs">
+              <span v-if="rev.is_minor" class="text-default-400 text-xs">
                 (小修改)
               </span>
               <span class="text-default-500">

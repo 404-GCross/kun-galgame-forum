@@ -42,7 +42,7 @@ export interface GalgameRevisionListItem {
   action: string
   note: string
   user: KunUser
-  isMinor: boolean
+  is_minor: boolean
   created: Date | string
 }
 
@@ -117,7 +117,7 @@ export const useRevisionHistory = (
 
   // Normalise: taxonomy rows arrive snake_case + no embedded user
   // object; the UI only needs revision / action / note / created /
-  // isMinor / user.name|avatar. We fabricate a stub user from
+  // is_minor / user.name|avatar. We fabricate a stub user from
   // user_id when no embedded user is present (UI shows just the id);
   // a later wiki upgrade can embed users and this code will pick it
   // up automatically via the GalgameRevisionListItem cast.
@@ -141,7 +141,7 @@ export const useRevisionHistory = (
         revision: r.revision,
         action: r.action,
         note: r.note ?? '',
-        isMinor: r.isMinor ?? false,
+        is_minor: r.is_minor ?? false,
         created: r.created,
         user: {
           id: r.user_id ?? 0,

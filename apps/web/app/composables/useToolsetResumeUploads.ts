@@ -7,7 +7,11 @@
 // All access is guarded (SSR / private mode / quota): failures degrade to an
 // empty list rather than throwing, so the worst case is "resume isn't offered".
 export const useToolsetResumeUploads = (toolsetId: number) => {
-  const key = `kungal:toolset-upload-resume:${toolsetId}`
+  // v2 namespace: the snake_case migration renamed ToolsetPendingUpload's keys
+  // (artifactUuid→artifact_uuid, …). A pre-migration record would become a zombie
+  // — its `undefined` artifact_uuid never matches, so it can't be resumed or
+  // purged. Bumping the key orphans stale records (their B2 parts expire anyway).
+  const key = `kungal:toolset-upload-resume:v2:${toolsetId}`
 
   const read = (): ToolsetPendingUpload[] => {
     if (!import.meta.client) {
