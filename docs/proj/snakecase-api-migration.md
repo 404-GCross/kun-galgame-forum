@@ -4,9 +4,19 @@
 > 与 infra / wiki / moyu 及未来「鲲 Galgame」App / 开发者平台对齐,消除跨仓命名分歧。
 > 前端直接使用后端 snake_case 字段名。
 >
-> **状态:100% 完成(2026-07-02)。** 全 17 域 request+response 均已 snake_case;
-> `apps/api` 全量扫描 0 个 camelCase json/query tag;go build + vet + test + nuxt
-> typecheck 全绿。本文件是这场迁移的主干:程序、顺序、安全网、进度 + 收尾记录。
+> **状态:完成(2026-07-02,含一次关键 CR 返工)。** 全 17 域 request+response 均已
+> snake_case;`apps/api` 全量扫描 0 个 camelCase json/query tag;go build + vet + test
+> + nuxt typecheck 全绿。
+>
+> **⚠️ CR 返工记录(commit 1cbd84e4):** 首次宣布「100%」是**错的**——response 侧 OK,
+> 但 **request 侧发送点大面积仍是 camelCase**(我用了个在 `rg -A` 输出上锚点错误的 grep 做
+> 校验 → 假「干净」)。3-agent CR 查出 ~40+ 处:camel key 发到 snake Go 绑定 / snake Zod
+> schema → 静默 400(validate:required)/ Zod 客户端拦截 / no-op。**vue-tsc 看不见**(发送对象
+> 无类型)。教训:**任何 wire 改名迁移,发送点校验绝不能靠 grep,必须逐个把 `kunFetch`
+> body/query 的 key 对到 Go 绑定**;发送对象藏在 5+ 种形态里(inline 显式 / 简写 `{ fooBar }`
+> / `query: computed(()=>({}))` / 具名 `const body={…}`(常被 Zod 校验→静默拦截)/ reactive
+> `query: pageData` 展开)。另:Go 有两种绑定,FE 要求相反——struct-tag(snake)vs 原始
+> `c.Query("commentId")`(FE 必须发 camel);少数发送点因此**正确保留 camel**。
 >
 > **仍分离的独立项(非 snake 范围)**:PR `note`→`title`/`message` 真 bug(见
 > `openapi-types-forum.md`,note/message 都是单词,与 snake 无关)+ WikiPRDetailResponse
