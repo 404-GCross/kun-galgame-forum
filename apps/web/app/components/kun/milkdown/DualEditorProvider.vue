@@ -9,6 +9,7 @@
 // lives here because <KunEditor> is headless. The in-repo editor under this
 // folder is now unused and will be deleted once runtime parity is verified.
 import type { KunEditorExpose } from '@kungal/editor-vue'
+import { KUN_EDITOR_TOOLBAR_ITEMS } from '~/constants/editor'
 import type { ReplyReference } from '~/store/types/topic/reply'
 
 const props = defineProps<{
@@ -77,12 +78,13 @@ const textCount = computed(() => markdownToText(props.valueMarkdown).length)
       :adapters="adapters"
       :features="features"
       :locale="language ?? 'zh-cn'"
+      :views="['wysiwyg', 'source']"
     >
       <template #view-switch="api">
         <KunEditorViewSwitch v-bind="api" />
       </template>
       <template #toolbar="api">
-        <KunEditorToolbar v-bind="api" />
+        <KunEditorToolbar v-bind="api" :items="KUN_EDITOR_TOOLBAR_ITEMS" />
       </template>
     </KunEditor>
 

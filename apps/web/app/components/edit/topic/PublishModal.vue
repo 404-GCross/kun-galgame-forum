@@ -5,6 +5,7 @@
 // title + editor (a Tencent-Docs-style writing surface).
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 import { useTopicSubmitter } from '~/composables/topic/useTopicSubmitter'
+import type { KunTabItem } from '@kungal/ui-vue'
 import {
   TOPIC_CATEGORIES,
   TOPIC_SECTIONS,
@@ -27,6 +28,14 @@ const handleSelectCategory = (key: TopicCategoryKey) => {
     section.value = []
   }
 }
+
+const categoryItems = computed<KunTabItem[]>(() =>
+  Object.values(TOPIC_CATEGORIES).map((cat) => ({
+    value: cat.key,
+    textValue: cat.label,
+    icon: cat.icon
+  }))
+)
 
 const availableSections = computed(() =>
   category.value ? TOPIC_SECTIONS[category.value] : {}
@@ -68,30 +77,14 @@ const confirmText = computed(() => {
             <KunIcon name="lucide:layout-grid" class="h-5 w-5" />
             选择分类 <span class="text-danger-500">*</span>
           </h3>
-          <div class="grid grid-cols-3 gap-3">
-            <button
-              v-for="cat in TOPIC_CATEGORIES"
-              :key="cat.key"
-              @click="handleSelectCategory(cat.key)"
-              :class="
-                cn(
-                  'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-4 transition-all duration-200',
-                  category === cat.key
-                    ? 'border-primary-500 bg-primary-500/10'
-                    : 'border-default-500/20 hover:border-primary-500'
-                )
-              "
-            >
-              <KunIcon
-                :name="cat.icon"
-                class="mb-2 h-7 w-7"
-                :class="
-                  category === cat.key ? 'text-primary-600' : 'text-default-500'
-                "
-              />
-              <span class="text-default-800 text-sm">{{ cat.label }}</span>
-            </button>
-          </div>
+          <KunTab
+            :model-value="category"
+            :items="categoryItems"
+            variant="bordered"
+            color="primary"
+            :full-width="true"
+            @update:model-value="(v) => handleSelectCategory(v as TopicCategoryKey)"
+          />
         </section>
 
         <!-- Section (contextual to category) -->

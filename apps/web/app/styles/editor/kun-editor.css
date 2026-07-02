@@ -1,12 +1,10 @@
 /*
  * KunEditor reference stylesheet — COPIED from @kungal/editor's apps/docs
- * (app/assets/css/kun-editor.css). `@kungal/editor-vue` ships ZERO CSS; it only
- * renders stable class hooks (`.kun-editor__*`, `.kun-mention-dropdown*`) and
- * `data-*` state. This themes those hooks with KunUI design tokens (`--color-*`
- * from `@kungal/ui-tokens`, which the forum already loads).
- *
- * Keep in sync when bumping @kungal/editor-*. The forum overrides the WYSIWYG
- * surface with a 500px scroll cap at the end (its old KunOverlayScroll cap).
+ * (app/assets/css/kun-editor.css), kept in sync with the installed version
+ * (currently 0.21.0). `@kungal/editor-vue` ships ZERO CSS; it only renders stable
+ * class hooks (`.kun-editor__*`, `.kun-mention-dropdown*`) and `data-*` state.
+ * This themes those hooks with KunUI design tokens (`--color-*`), which the forum
+ * already loads. The forum-specific overrides live at the very bottom.
  */
 
 /* ── Shell + dual-view tabs ─────────────────────────────────────────────── */
@@ -36,6 +34,44 @@
   color: var(--color-primary-foreground, #fff);
 }
 
+/* Swap-sides button (split mode) — pushed to the end of the tab row. */
+.kun-editor__swap {
+  margin-left: auto;
+}
+
+/* ── Split view — editable source + read-only WYSIWYG preview ────────────── */
+/* Stacked on narrow screens; side-by-side (swappable) from md up. The panes
+   div is a plain block in non-split modes, so this only affects split. */
+.kun-editor[data-mode='split'] .kun-editor__panes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.kun-editor[data-mode='split'] .kun-editor__pane {
+  flex: 1 1 0;
+  min-width: 0;
+  /* Each pane scrolls internally (a bounded height) so scroll sync has something
+     to sync. Override --kun-editor-split-height to taste. */
+  height: var(--kun-editor-split-height, 60vh);
+}
+/* Make each editor fill + scroll within its pane. */
+.kun-editor[data-mode='split'] .kun-editor__source .cm-editor {
+  height: 100%;
+}
+.kun-editor[data-mode='split'] .kun-editor__wysiwyg {
+  overflow: auto;
+}
+@media (min-width: 48rem) {
+  .kun-editor[data-mode='split'] .kun-editor__panes {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .kun-editor[data-mode='split'] .kun-editor__panes[data-swap='true'] {
+    flex-direction: row-reverse;
+  }
+}
+
 /* ── WYSIWYG surface (ProseMirror) ──────────────────────────────────────── */
 .kun-editor__wysiwyg .milkdown {
   outline: none;
@@ -61,6 +97,46 @@
   color: var(--color-default-400);
   pointer-events: none;
   height: 0;
+}
+
+/* In-flight "uploading…" placeholder — a decoration widget the editor drops at
+ * the caret while `uploadImage` runs (paste / drop / toolbar), replaced by the
+ * image when it resolves. */
+.kun-editor__uploading {
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+/* ── Selection bubble toolbar (floats over a text selection) ────────────── */
+/* Positioned by floating-ui (absolute left/top); visibility via data-show. */
+.kun-editor__bubble {
+  position: absolute;
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-default-200);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  z-index: 40;
+}
+.kun-editor__bubble[data-show='false'] {
+  display: none;
+}
+.kun-editor__bubble-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+.kun-editor__bubble-btn:hover {
+  background: var(--color-default-100);
 }
 
 /* ── Formatting toolbar ─────────────────────────────────────────────────── */
@@ -285,19 +361,35 @@
   text-align: center;
 }
 
-/* ── Forum override ─────────────────────────────────────────────────────── */
+/* ══ Forum overrides ═════════════════════════════════════════════════════ */
 /* Cap the WYSIWYG height and scroll inside, replacing the in-repo editor's
-   KunOverlayScroll max-h-[500px] wrapper. */
+   KunOverlayScroll max-h-[500px] wrapper. The empty-state min-height is a var
+   (default 8rem = the reference) so a host can grow a specific editor by setting
+   `--kun-editor-min-height` on an ancestor (the reply box doubles it to 16rem). */
 .kun-editor__wysiwyg .ProseMirror {
+  min-height: var(--kun-editor-min-height, 8rem);
   max-height: 500px;
   overflow-y: auto;
 }
 
 /* The topic writing surface (edit/topic) is a full-document editor: let it grow
    with content so the PAGE scrolls (and the sticky toolbar pins), instead of the
-   editor being an inner 500px scroller. Higher specificity beats the cap above. */
+   editor being an inner 500px scroller. It also sits INSIDE the shared document
+   card, so it drops its own border/padding/radius to blend in. `position:
+   relative` anchors the empty-state placeholder (::before) to the editor's
+   top-left. Higher specificity beats the base rule above. */
 .kun-doc-editor .kun-editor__wysiwyg .ProseMirror {
   max-height: none;
   min-height: 60vh;
   overflow: visible;
+  position: relative;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* The Markdown-source view inside the card is borderless too. */
+.kun-doc-editor .kun-editor__source .cm-editor {
+  border: none;
+  border-radius: 0;
 }

@@ -10,10 +10,14 @@ const saveMarkdown = (editorMarkdown: string) => {
 </script>
 
 <template>
-  <KunMilkdownDualEditorProvider
-    :value-markdown="model"
-    :pending-quote="pendingQuote"
-    @set-markdown="saveMarkdown"
-    @quote-inserted="tempReplyStore.clearPendingQuote()"
-  />
+  <!-- Double the editor's default (empty) height for the reply box — the var is
+       inherited down to the WYSIWYG surface (see styles/editor/kun-editor.css). -->
+  <div style="--kun-editor-min-height: 16rem">
+    <KunMilkdownDualEditorProvider
+      :value-markdown="model"
+      :pending-quote="pendingQuote"
+      @set-markdown="saveMarkdown"
+      @quote-inserted="tempReplyStore.clearPendingQuote()"
+    />
+  </div>
 </template>
