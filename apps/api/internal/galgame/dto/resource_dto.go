@@ -10,12 +10,12 @@ type ResourceListRequest struct {
 }
 
 type GalgameResourcesRequest struct {
-	GalgameID int `query:"galgameId" validate:"required,min=1"`
+	GalgameID int `query:"galgame_id" validate:"required,min=1"`
 }
 
 // CreateGalgameResourceRequest is the body of POST /galgame/:gid/resource.
 type CreateGalgameResourceRequest struct {
-	GalgameID int      `json:"galgameId" validate:"required,min=1"`
+	GalgameID int      `json:"galgame_id" validate:"required,min=1"`
 	Type      string   `json:"type" validate:"required"`
 	Language  string   `json:"language" validate:"required"`
 	Platform  string   `json:"platform" validate:"required"`
@@ -28,8 +28,8 @@ type CreateGalgameResourceRequest struct {
 
 // UpdateGalgameResourceRequest is the body of PUT /galgame/:gid/resource.
 type UpdateGalgameResourceRequest struct {
-	GalgameResourceID int      `json:"galgameResourceId" validate:"required,min=1"`
-	GalgameID         int      `json:"galgameId"`
+	GalgameResourceID int      `json:"galgame_resource_id" validate:"required,min=1"`
+	GalgameID         int      `json:"galgame_id"`
 	Type              string   `json:"type" validate:"required"`
 	Language          string   `json:"language" validate:"required"`
 	Platform          string   `json:"platform" validate:"required"`
@@ -42,17 +42,17 @@ type UpdateGalgameResourceRequest struct {
 
 // DeleteGalgameResourceRequest is the query for DELETE /galgame/:gid/resource.
 type DeleteGalgameResourceRequest struct {
-	GalgameResourceID int `query:"galgameResourceId" validate:"required,min=1"`
+	GalgameResourceID int `query:"galgame_resource_id" validate:"required,min=1"`
 }
 
 // ToggleResourceLikeRequest is the body of PUT /galgame/:gid/resource/like.
 type ToggleResourceLikeRequest struct {
-	GalgameResourceID int `json:"galgameResourceId" validate:"required,min=1"`
+	GalgameResourceID int `json:"galgame_resource_id" validate:"required,min=1"`
 }
 
 // ResourceStatusRequest is the body of PUT valid/expired endpoints.
 type ResourceStatusRequest struct {
-	GalgameResourceID int `json:"galgameResourceId" validate:"required,min=1"`
+	GalgameResourceID int `json:"galgame_resource_id" validate:"required,min=1"`
 }
 
 // ReportExpireResult is the 200 body of PUT /resource/expired. `verdict` is the
@@ -89,7 +89,7 @@ type KunLanguage struct {
 type ResourceCard struct {
 	ID            int         `json:"id"`
 	View          int         `json:"view"`
-	GalgameID     int         `json:"galgameId"`
+	GalgameID     int         `json:"galgame_id"`
 	User          UserBrief   `json:"user"`
 	Type          string      `json:"type"`
 	Language      string      `json:"language"`
@@ -97,15 +97,15 @@ type ResourceCard struct {
 	Size          string      `json:"size"`
 	Status        int         `json:"status"`
 	Download      int         `json:"download"`
-	LikeCount     int         `json:"likeCount"`
-	IsLiked       bool        `json:"isLiked"`
-	LinkDomain    string      `json:"linkDomain"`
-	ProviderNames []string    `json:"providerNames"`
+	LikeCount     int         `json:"like_count"`
+	IsLiked       bool        `json:"is_liked"`
+	LinkDomain    string      `json:"link_domain"`
+	ProviderNames []string    `json:"provider_names"`
 	Note          string      `json:"note"`
-	NoteHtml      string      `json:"noteHtml"`
+	NoteHtml      string      `json:"note_html"`
 	Created       string      `json:"created"`
 	Edited        *string     `json:"edited"`
-	GalgameName   KunLanguage `json:"galgameName,omitempty"`
+	GalgameName   KunLanguage `json:"galgame_name,omitempty"`
 }
 
 // ResourceMeta is the safe (no credentials) view of a single resource —
@@ -123,7 +123,7 @@ type ResourceCard struct {
 type ResourceMeta struct {
 	ID            int       `json:"id"`
 	View          int       `json:"view"`
-	GalgameID     int       `json:"galgameId"`
+	GalgameID     int       `json:"galgame_id"`
 	User          UserBrief `json:"user"`
 	Type          string    `json:"type"`
 	Language      string    `json:"language"`
@@ -131,12 +131,12 @@ type ResourceMeta struct {
 	Size          string    `json:"size"`
 	Status        int       `json:"status"`
 	Download      int       `json:"download"`
-	LikeCount     int       `json:"likeCount"`
-	IsLiked       bool      `json:"isLiked"`
-	LinkDomain    string    `json:"linkDomain"`
-	ProviderNames []string  `json:"providerNames"`
+	LikeCount     int       `json:"like_count"`
+	IsLiked       bool      `json:"is_liked"`
+	LinkDomain    string    `json:"link_domain"`
+	ProviderNames []string  `json:"provider_names"`
 	Note          string    `json:"note"`
-	NoteHtml      string    `json:"noteHtml"`
+	NoteHtml      string    `json:"note_html"`
 	Created       string    `json:"created"`
 	Edited        *string   `json:"edited"`
 }
@@ -166,11 +166,11 @@ type ResourceGalgameSummary struct {
 	EffectiveBannerWidth     int      `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int      `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string   `json:"effective_banner_thumbhash,omitempty"`
-	ContentLimit             string   `json:"contentLimit"`
+	ContentLimit             string   `json:"content_limit"`
 	View                     int      `json:"view"`
-	ResourceUpdateTime       string   `json:"resourceUpdateTime"`
-	OriginalLanguage         string   `json:"originalLanguage"`
-	AgeLimit                 string   `json:"ageLimit"`
+	ResourceUpdateTime       string   `json:"resource_update_time"`
+	OriginalLanguage         string   `json:"original_language"`
+	AgeLimit                 string   `json:"age_limit"`
 	Platform                 []string `json:"platform"`
 	Language                 []string `json:"language"`
 	Type                     []string `json:"type"`

@@ -3,7 +3,7 @@ import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
 const { canModerate } = useRole()
 const route = useRoute()
-const engineId = computed(() => {
+const engine_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
@@ -27,7 +27,7 @@ const editingEngine = ref<UpdateGalgameEnginePayload>(
 )
 
 const { data, status } = await useKunFetch<GalgameEngineDetail>(
-  `/galgame-engine/${engineId.value}`,
+  `/galgame-engine/${engine_id.value}`,
   {
     method: 'GET',
     query: {
@@ -38,7 +38,7 @@ const { data, status } = await useKunFetch<GalgameEngineDetail>(
       platform,
       sortField,
       sortOrder,
-      engineId
+      engine_id
     }
   }
 )
@@ -49,7 +49,7 @@ const openEditEngineModal = () => {
   }
   const res = data.value
   editingEngine.value = {
-    engineId: res.id,
+    engine_id: res.id,
     name: res.name,
     description: res.description,
     alias: res.alias
@@ -80,7 +80,7 @@ const handleDeleteEngine = async () => {
   )
   if (!ok) return
   isDeleting.value = true
-  const res = await kunFetch(`/galgame-engine/${engineId.value}`, {
+  const res = await kunFetch(`/galgame-engine/${engine_id.value}`, {
     method: 'DELETE'
   })
   if (res !== null) {
@@ -96,7 +96,7 @@ const handleDeleteEngine = async () => {
   )
   if (!force) return
   isDeleting.value = true
-  const forced = await kunFetch(`/galgame-engine/${engineId.value}`, {
+  const forced = await kunFetch(`/galgame-engine/${engine_id.value}`, {
     method: 'DELETE',
     query: { force: true }
   })
@@ -149,7 +149,7 @@ if (data.value) {
           <div class="flex flex-wrap justify-end gap-2">
             <GalgameRevisionModal
               entity="engine"
-              :id="engineId"
+              :id="engine_id"
               :entity-label="`引擎「${data.name}」`"
               :can-revert="canModerate"
             />
@@ -191,14 +191,14 @@ if (data.value) {
     />
 
     <KunPagination
-      v-if="data.galgameCount > limit"
+      v-if="data.galgame_count > limit"
       v-model:current-page="page"
-      :total-page="Math.ceil(data.galgameCount / limit)"
+      :total-page="Math.ceil(data.galgame_count / limit)"
       :is-loading="status === 'pending'"
     />
 
     <KunNull
-      v-if="!data.galgameCount"
+      v-if="!data.galgame_count"
       :description="`${data.name} 引擎下暂无 Galgame`"
     />
   </div>

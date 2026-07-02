@@ -85,13 +85,13 @@ const handleCreateSuccess = (newComment: GalgameRatingComment) => {
     <div class="flex w-full flex-col space-y-2">
       <div class="flex flex-wrap items-center">
         <span class="text-default-700">{{ comment.user.name }}</span>
-        <div class="ml-1" v-if="comment.targetUser">
+        <div class="ml-1" v-if="comment.target_user">
           =>
           <KunLink
             underline="hover"
-            :to="`/user/${comment.targetUser.id}`"
+            :to="`/user/${comment.target_user.id}`"
           >
-            {{ `${comment.targetUser.name}` }}
+            {{ `${comment.target_user.name}` }}
           </KunLink>
         </div>
       </div>

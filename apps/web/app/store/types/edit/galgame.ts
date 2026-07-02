@@ -1,18 +1,18 @@
 export interface GalgameStorePersist {
-  vndbId: string
+  vndb_id: string
   name: KunLanguage
   introduction: KunLanguage
-  contentLimit: 'sfw' | 'nsfw'
-  ageLimit: 'all' | 'r18'
+  content_limit: 'sfw' | 'nsfw'
+  age_limit: 'all' | 'r18'
   // Wiki-owned code (30+ values, e.g. ja-jp / ko-kr / ru), NOT one of the 4
   // content locales — must be a plain string so any wiki language round-trips.
-  originalLanguage: string
+  original_language: string
   aliases: string[]
   // U1: "" = unknown; sent as wire `release_date` (snake_case at boundary
   // by Footer). releaseDateTBA can coexist with a concrete date (semantic
   // "predicted Y/M").
-  releaseDate: string
-  releaseDateTBA: boolean
+  release_date: string
+  release_date_tba: boolean
 }
 
 // PR-edit working copy (also reused by Draft.vue). Backs the temp,
@@ -31,14 +31,14 @@ export interface GalgameStorePersist {
 // see components/galgame/Rewrite.vue — or a submit silently wipes them.
 export interface GalgameEditStoreTemp {
   id: number
-  vndbId: string
+  vndb_id: string
   name: KunLanguage
   introduction: KunLanguage
-  contentLimit: 'sfw' | 'nsfw'
-  ageLimit: 'all' | 'r18'
+  content_limit: 'sfw' | 'nsfw'
+  age_limit: 'all' | 'r18'
   // Wiki-owned code (30+ values, e.g. ja-jp / ko-kr / ru), NOT one of the 4
   // content locales — must be a plain string so any wiki language round-trips.
-  originalLanguage: string
+  original_language: string
   alias: string[]
   tags: GalgameTagItem[]
   officials: GalgameOfficialItem[]
@@ -47,8 +47,8 @@ export interface GalgameEditStoreTemp {
   note: string
   // U1: "" = unknown (cleared); concrete "YYYY-MM-DD" or any (TBA may set
   // a predicted partial date — wiki accepts the same string format).
-  releaseDate: string
-  releaseDateTBA: boolean
+  release_date: string
+  release_date_tba: boolean
   // U2: cover candidate set + screenshot gallery, presence-replace
   // (wiki PUT/PR treats the whole array as authoritative). Pre-hydrated
   // COMPLETELY from galgame.covers/screenshots in Rewrite.vue — drop a
@@ -65,19 +65,19 @@ export interface GalgameEditStoreTemp {
   // stale (cached detail, or the cover changed elsewhere after the form
   // opened) the live cover silently rolled back. Optional: only the
   // rewrite/PR flow sets them (Draft's PATCH never touches images).
-  coversBaseline?: string
-  screenshotsBaseline?: string
+  covers_baseline?: string
+  screenshots_baseline?: string
   // Same presence-replace guard for the (replace-all) links: Footer omits
   // `links` from the payload when it equals this baseline, so the wiki keeps
   // the current set. Critically, if the `/link/all` hydration FAILED, both
   // `links` and this baseline are empty → "unchanged" → omitted → existing
   // links are preserved instead of being wiped to nothing on merge.
-  linksBaseline?: string
+  links_baseline?: string
   // True when the current user is the galgame's creator or an
   // admin/moderator (canModerate): wiki lets them edit directly via
   // PUT /galgame/:gid (instant, new revision) instead of opening a PR.
   // Computed once at hydration (Rewrite.vue has galgame.user + the user
   // store); Footer.vue branches the submit endpoint on it. Draft.vue
   // sets it false (drafts always PATCH, never this path).
-  canDirectEdit: boolean
+  can_direct_edit: boolean
 }

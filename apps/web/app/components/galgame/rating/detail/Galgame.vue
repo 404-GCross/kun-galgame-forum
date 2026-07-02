@@ -39,8 +39,8 @@ const getLanguageName = getGalgameOriginalLanguageName
           <KunIcon class-name="text-warning text-2xl" name="lucide:lollipop" />
           <span class="text-warning text-xl font-bold">
             {{
-              galgame.ratingCount
-                ? (galgame.rating / galgame.ratingCount).toFixed(1)
+              galgame.rating_count
+                ? (galgame.rating / galgame.rating_count).toFixed(1)
                 : '0.0'
             }}
           </span>
@@ -48,7 +48,7 @@ const getLanguageName = getGalgameOriginalLanguageName
         <span class="bg-default-300 h-3 w-px" />
         <div class="flex items-center gap-2">
           <KunIcon name="lucide:users" />
-          <span>{{ galgame.ratingCount }} 人评分</span>
+          <span>{{ galgame.rating_count }} 人评分</span>
         </div>
       </div>
 
@@ -60,13 +60,13 @@ const getLanguageName = getGalgameOriginalLanguageName
         </span>
         <KunTooltip
           position="left"
-          :text="KUN_GALGAME_AGE_LIMIT_MAP[galgame.ageLimit]"
+          :text="KUN_GALGAME_AGE_LIMIT_MAP[galgame.age_limit]"
         >
           <KunChip
             variant="flat"
-            :color="galgame.ageLimit === 'all' ? 'success' : 'danger'"
+            :color="galgame.age_limit === 'all' ? 'success' : 'danger'"
           >
-            {{ galgame.ageLimit === 'all' ? '全年龄' : 'R18' }}
+            {{ galgame.age_limit === 'all' ? '全年龄' : 'R18' }}
           </KunChip>
         </KunTooltip>
 
@@ -78,7 +78,7 @@ const getLanguageName = getGalgameOriginalLanguageName
           原始语言
         </span>
         <KunChip color="warning" variant="flat">
-          {{ getLanguageName(galgame.originalLanguage) }}
+          {{ getLanguageName(galgame.original_language) }}
         </KunChip>
       </div>
 

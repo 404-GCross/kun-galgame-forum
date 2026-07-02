@@ -44,14 +44,14 @@ export const getGalgameSchema = z.object({
   type: z.enum([...KUN_RESOURCE_TYPE_CONST, 'all']),
   language: z.enum([...KUN_RESOURCE_LANGUAGE_CONST, 'all']),
   platform: z.enum([...KUN_RESOURCE_PLATFORM_CONST, 'all']),
-  sortField: z.enum(['time', 'created', 'view']),
-  sortOrder: z.enum(SORT_ORDER_CONST),
-  includeProviders: providerQueryArray,
-  excludeOnlyProviders: providerQueryArray
+  sort_field: z.enum(['time', 'created', 'view']),
+  sort_order: z.enum(SORT_ORDER_CONST),
+  include_providers: providerQueryArray,
+  exclude_only_providers: providerQueryArray
 })
 
 export const getGalgameDetailSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getGalgameDuplicateSchema = z.object({
@@ -448,11 +448,11 @@ export const updateGalgameSchema = z
   })
 
 export const updateGalgameLikeSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateGalgameFavoriteSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -460,15 +460,15 @@ export const updateGalgameFavoriteSchema = z.object({
  */
 
 export const getGalgameResourceSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getGalgameResourceDetailSchema = z.object({
-  galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createGalgameResourceSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   type: z.enum(KUN_RESOURCE_TYPE_CONST),
   link: z
     .array(
@@ -503,24 +503,24 @@ export const createGalgameResourceSchema = z.object({
 
 export const updateGalgameResourceSchema = createGalgameResourceSchema.merge(
   z.object({
-    galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+    galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const updateGalgameResourceLikeSchema = z.object({
-  galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateGalgameResourceExpireSchema = z.object({
-  galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateGalgameResourceValidSchema = z.object({
-  galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const deleteGalgameResourceSchema = z.object({
-  galgameResourceId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -528,25 +528,25 @@ export const deleteGalgameResourceSchema = z.object({
  */
 
 export const getGalgameCommentSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30),
-  sortOrder: z.enum(SORT_ORDER_CONST)
+  sort_order: z.enum(SORT_ORDER_CONST)
 })
 
 export const createGalgameCommentSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   // Root comments target the galgame itself rather than another user, so
   // the BE accepts a missing/null targetUserId (`*int` on the DTO).
   // Marking it required here previously made KunMilkdown root-comment
   // submits fail FE-side before ever hitting the API.
-  targetUserId: z.coerce
+  target_user_id: z.coerce
     .number<number>()
     .min(1)
     .max(9999999)
     .optional()
     .nullable(),
-  parentCommentId: z.coerce
+  parent_comment_id: z.coerce
     .number<number>()
     .min(1)
     .max(9999999)
@@ -559,7 +559,7 @@ export const createGalgameCommentSchema = z.object({
 })
 
 export const deleteGalgameCommentSchema = z.object({
-  galgameCommentId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_comment_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 // Field is `commentId` not `galgameCommentId` — that matches the BE
@@ -568,7 +568,7 @@ export const deleteGalgameCommentSchema = z.object({
 // previously declared the wrong key so any reuse via safeParse would
 // silently strip the actual field.
 export const updateGalgameCommentLikeSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999)
+  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -576,17 +576,17 @@ export const updateGalgameCommentLikeSchema = z.object({
  */
 
 export const getGalgamePrSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30)
 })
 
 export const getGalgamePrDetailSchema = z.object({
-  galgamePrId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_pr_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateGalgamePrDeclineSchema = z.object({
-  galgamePrId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_pr_id: z.coerce.number<number>().min(1).max(9999999),
   note: z
     .string()
     .min(1)
@@ -594,7 +594,7 @@ export const updateGalgamePrDeclineSchema = z.object({
 })
 
 export const updateGalgamePrMergeSchema = z.object({
-  galgamePrId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_pr_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -602,25 +602,25 @@ export const updateGalgamePrMergeSchema = z.object({
  */
 
 export const getGalgameHistorySchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30)
 })
 
 export const getGalgameLinkSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createGalgameLinkSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   name: z.string().min(1).max(107, { message: '相关链接名最大 107 个字符' }),
   link: z.string().min(1).max(500, { message: '相关链接的链接最多 500 个字符' })
 })
 
 export const deleteGalgameLinkSchema = z.object({
-  galgameLinkId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_link_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getGalgameSeriesSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_id: z.coerce.number<number>().min(1).max(9999999)
 })

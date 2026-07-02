@@ -36,7 +36,7 @@ const handleDeclineRequest = async () => {
 
   isFetching.value = true
   const result = await kunFetch(
-    `/galgame/${props.details.galgameId}/prs/${props.details.id}/decline`,
+    `/galgame/${props.details.galgame_id}/prs/${props.details.id}/decline`,
     {
       method: 'PUT',
       body: { note: declineInput.value.trim() }
@@ -61,7 +61,7 @@ const handleMergeRequest = async () => {
 
   isFetching.value = true
   const result = await kunFetch(
-    `/galgame/${props.details.galgameId}/prs/${props.details.id}/merge`,
+    `/galgame/${props.details.galgame_id}/prs/${props.details.id}/merge`,
     { method: 'PUT' }
   )
   isFetching.value = false
@@ -76,9 +76,9 @@ const handleMergeRequest = async () => {
 <template>
   <div class="border-default-200 space-y-3 rounded-lg border p-3">
     <GalgameSnapshotDiff
-      :changed-keys="details.changedKeys"
-      :old-snap="details.oldSnap"
-      :new-snap="details.newSnap"
+      :changed-keys="details.changed_keys"
+      :old-snap="details.old_snap"
+      :new-snap="details.new_snap"
       :names="details.names"
     />
 

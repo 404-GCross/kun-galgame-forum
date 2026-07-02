@@ -47,12 +47,12 @@ const handleGetDetails = async (galgamePrId: number) => {
 
   details.value = {
     id: detail.pr.id,
-    galgameId: detail.pr.galgame_id,
+    galgame_id: detail.pr.galgame_id,
     status: detail.pr.status,
     note: detail.pr.note,
-    changedKeys: detail.changed_keys ?? {},
-    oldSnap: baseRev?.snapshot ?? {},
-    newSnap: detail.pr.snapshot ?? {},
+    changed_keys: detail.changed_keys ?? {},
+    old_snap: baseRev?.snapshot ?? {},
+    new_snap: detail.pr.snapshot ?? {},
     names: detail.names
   }
 }
@@ -83,8 +83,8 @@ watch(
           class="flex items-center gap-1"
           :class="statusColorMap[pr.status]"
         >
-          <span v-if="pr.completedTime">
-            <KunTime :time="pr.completedTime" type="datetime" show-year />
+          <span v-if="pr.completed_time">
+            <KunTime :time="pr.completed_time" type="datetime" show-year />
           </span>
           <KunIcon :name="iconMap[pr.status]" />
           <span>

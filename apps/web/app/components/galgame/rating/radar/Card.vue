@@ -102,7 +102,7 @@ defineProps<{
           </span>
           <span class="flex items-center gap-1">
             <KunIcon name="lucide:thumbs-up" />
-            {{ rating.likeCount }}
+            {{ rating.like_count }}
           </span>
           <KunLink
             :to="`/galgame-rating/${rating.id}`"

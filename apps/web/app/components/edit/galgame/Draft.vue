@@ -106,7 +106,7 @@ watch(
     galgamePR.value = [
       {
         id: g.id,
-        vndbId: g.vndb_id,
+        vndb_id: g.vndb_id,
         name: {
           'en-us': g.name_en_us,
           'ja-jp': g.name_ja_jp,
@@ -119,9 +119,9 @@ watch(
           'zh-cn': g.intro_zh_cn,
           'zh-tw': g.intro_zh_tw
         },
-        contentLimit: g.content_limit,
-        ageLimit: g.age_limit,
-        originalLanguage: isOriginalLanguage(g.original_language)
+        content_limit: g.content_limit,
+        age_limit: g.age_limit,
+        original_language: isOriginalLanguage(g.original_language)
           ? g.original_language
           : 'ja-jp',
         alias: [],
@@ -136,15 +136,15 @@ watch(
         note: '',
         // U1: empty string when wiki has no date (draft.release_date is
         // nullable on the wire); user can fill in the form below.
-        releaseDate: g.release_date ?? '',
-        releaseDateTBA: g.release_date_tba ?? false,
+        release_date: g.release_date ?? '',
+        release_date_tba: g.release_date_tba ?? false,
         // U2: Draft (PATCH) intentionally does NOT edit covers/screenshots
         // — that surface only opens on the published-galgame PR/direct
         // edit form. The store fields exist for type-shape consistency
         // with GalgameEditStoreTemp; Draft never reads or sends them.
         covers: [],
         screenshots: [],
-        canDirectEdit: false
+        can_direct_edit: false
       }
     ]
     originalLanguageLocal.value = isOriginalLanguage(g.original_language)
@@ -182,7 +182,7 @@ const handleSave = async () => {
   // submitter's existing aliases. Until the alias UI lands, leave the
   // key off the payload so wiki keeps whatever's there.
   const payload = {
-    vndb_id: cur.vndbId,
+    vndb_id: cur.vndb_id,
     name_en_us: cur.name['en-us'],
     name_ja_jp: cur.name['ja-jp'],
     name_zh_cn: cur.name['zh-cn'],
@@ -191,12 +191,12 @@ const handleSave = async () => {
     intro_ja_jp: cur.introduction['ja-jp'],
     intro_zh_cn: cur.introduction['zh-cn'],
     intro_zh_tw: cur.introduction['zh-tw'],
-    content_limit: cur.contentLimit,
-    age_limit: cur.ageLimit,
+    content_limit: cur.content_limit,
+    age_limit: cur.age_limit,
     original_language: originalLanguageLocal.value,
     // U1: "" = clear to unknown; TBA independent.
-    release_date: cur.releaseDate,
-    release_date_tba: cur.releaseDateTBA,
+    release_date: cur.release_date,
+    release_date_tba: cur.release_date_tba,
     is_minor: isMinor.value
   }
 
@@ -271,7 +271,7 @@ const handleSave = async () => {
       <div class="space-y-2">
         <h2 class="text-xl">VNDB 编号 (可选)</h2>
         <KunInput
-          v-model="draft.vndbId"
+          v-model="draft.vndb_id"
           placeholder="例如: v19658 (无 VNDB 可留空)"
         />
       </div>
@@ -302,12 +302,12 @@ const handleSave = async () => {
 
       <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
         <KunSelect
-          v-model="draft.contentLimit"
+          v-model="draft.content_limit"
           label="内容限制"
           :options="contentLimitOptions"
         />
         <KunSelect
-          v-model="draft.ageLimit"
+          v-model="draft.age_limit"
           label="年龄分级"
           :options="ageLimitOptions"
         />
@@ -320,12 +320,12 @@ const handleSave = async () => {
 
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         <KunInput
-          v-model="draft.releaseDate"
+          v-model="draft.release_date"
           type="date"
           label="发售日期 (留空=未公布)"
         />
         <KunSwitch
-          v-model="draft.releaseDateTBA"
+          v-model="draft.release_date_tba"
           label="发售日期待定 (TBA)"
         />
       </div>

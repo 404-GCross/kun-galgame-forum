@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <KunTooltip
-    :text="`${KUN_GALGAME_TAG_CATEGORY_MAP[tag.category]} - 含有 ${tag.galgameCount} 个 Galgame`"
+    :text="`${KUN_GALGAME_TAG_CATEGORY_MAP[tag.category]} - 含有 ${tag.galgame_count} 个 Galgame`"
   >
     <KunCard
       :is-transparent="false"
@@ -30,7 +30,7 @@ defineProps<{
         </span>
         {{ tag.name }}
         <KunChip size="xs">
-          {{ `+ ${tag.galgameCount}` }}
+          {{ `+ ${tag.galgame_count}` }}
         </KunChip>
       </h3>
     </KunCard>

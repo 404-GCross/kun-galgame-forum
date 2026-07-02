@@ -1,12 +1,12 @@
 // PR list item (kungal maps /galgame/:gid/pr/all → camelCase).
 export interface GalgamePR {
   id: number
-  galgameId: number
+  galgame_id: number
   status: number
   note: string
-  baseRevision: number
+  base_revision: number
   user: KunUser
-  completedTime: Date | string | null
+  completed_time: Date | string | null
   created: Date | string
 }
 
@@ -45,11 +45,11 @@ export interface WikiPRDetailResponse {
 // base-revision snapshot, new = pr.snapshot, limited to changed_keys.
 export interface GalgamePRDiffView {
   id: number
-  galgameId: number
+  galgame_id: number
   status: number
   note: string
-  changedKeys: Record<string, boolean>
-  oldSnap: Record<string, unknown>
-  newSnap: Record<string, unknown>
+  changed_keys: Record<string, boolean>
+  old_snap: Record<string, unknown>
+  new_snap: Record<string, unknown>
   names?: WikiSnapshotNames
 }

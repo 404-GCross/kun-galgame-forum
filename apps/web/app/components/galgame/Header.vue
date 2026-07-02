@@ -72,13 +72,13 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       <KunChip
         variant="solid"
         class="absolute top-2 left-2"
-        :color="galgame.contentLimit === 'sfw' ? 'success' : 'danger'"
+        :color="galgame.content_limit === 'sfw' ? 'success' : 'danger'"
       >
         <KunTooltip
           position="right"
-          :text="KUN_GALGAME_CONTENT_LIMIT_MAP[galgame.contentLimit]"
+          :text="KUN_GALGAME_CONTENT_LIMIT_MAP[galgame.content_limit]"
         >
-          {{ galgame.contentLimit.toLocaleUpperCase() }}
+          {{ galgame.content_limit.toLocaleUpperCase() }}
         </KunTooltip>
       </KunChip>
 
@@ -159,7 +159,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                  (IncrementView no-ops without a local row), so showing it reads
                  as a misleading stat. The 未收录 notice explains the empty page. -->
             <KunReaction
-              v-if="galgame.isOnForum !== false"
+              v-if="galgame.is_on_forum !== false"
               :count="galgame.view"
               :toggle="false"
               icon="lucide:eye"
@@ -171,15 +171,15 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             <GalgameLike
               :galgame-id="galgame.id"
               :target-user-id="galgame.user.id"
-              :like-count="galgame.likeCount"
-              :is-liked="galgame.isLiked"
+              :like-count="galgame.like_count"
+              :is-liked="galgame.is_liked"
             />
 
             <GalgameFavorite
               :galgame-id="galgame.id"
               :target-user-id="galgame.user.id"
-              :favorite-count="galgame.favoriteCount"
-              :is-favorited="galgame.isFavorited"
+              :favorite-count="galgame.favorite_count"
+              :is-favorited="galgame.is_favorited"
             />
           </div>
 

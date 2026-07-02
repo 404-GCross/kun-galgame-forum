@@ -7,21 +7,21 @@ import {
 
 const { canModerate } = useRole()
 const route = useRoute()
-const tagId = computed(() => {
+const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
 const pageData = reactive({
   page: 1,
   limit: 24,
-  tagId: tagId.value
+  tag_id: tag_id.value
 })
 
 const showTagModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
 const { data, status } = await useKunFetch<GalgameTagDetail>(
-  `/galgame-tag/${tagId.value}`,
+  `/galgame-tag/${tag_id.value}`,
   {
     method: 'GET',
     query: pageData
@@ -35,7 +35,7 @@ const openEditTagModal = () => {
   const res = data.value
   editingTag.value = {
     name: res.name,
-    tagId: res.id,
+    tag_id: res.id,
     description: res.description,
     category: res.category as (typeof KUN_GALGAME_TAG_TYPE)[number],
     alias: res.alias
@@ -68,7 +68,7 @@ const handleDeleteTag = async () => {
   )
   if (!ok) return
   isDeleting.value = true
-  const res = await kunFetch(`/galgame-tag/${tagId.value}`, {
+  const res = await kunFetch(`/galgame-tag/${tag_id.value}`, {
     method: 'DELETE'
   })
   if (res !== null) {
@@ -86,7 +86,7 @@ const handleDeleteTag = async () => {
   )
   if (!force) return
   isDeleting.value = true
-  const forced = await kunFetch(`/galgame-tag/${tagId.value}`, {
+  const forced = await kunFetch(`/galgame-tag/${tag_id.value}`, {
     method: 'DELETE',
     query: { force: true }
   })
@@ -167,20 +167,20 @@ const handleDeleteTag = async () => {
     />
 
     <KunPagination
-      v-if="data.galgameCount > pageData.limit"
+      v-if="data.galgame_count > pageData.limit"
       v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.galgameCount / pageData.limit)"
+      :total-page="Math.ceil(data.galgame_count / pageData.limit)"
       :is-loading="status === 'pending'"
     />
 
     <KunNull
-      v-if="!data.galgameCount"
+      v-if="!data.galgame_count"
       :description="`${data.name} 标签下暂无 Galgame`"
     />
 
     <GalgameRevisionList
       entity="tag"
-      :id="tagId"
+      :id="tag_id"
       :entity-label="`标签「${data.name}」`"
       :can-revert="canModerate"
     />

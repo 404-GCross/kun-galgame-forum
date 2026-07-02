@@ -105,10 +105,10 @@ const isOwner = computed(() => currentUserId === props.resource.user.id)
 const canManage = computed(() => isOwner.value || canModerate.value)
 
 const providerName = computed(() => {
-  const names = props.resource.providerNames
+  const names = props.resource.provider_names
   return names && names.length > 0
     ? names.join(' / ')
-    : props.resource.linkDomain
+    : props.resource.link_domain
 })
 
 const fetchDetail = async () => {
@@ -141,7 +141,7 @@ defineExpose({ prefetch: fetchDetail })
 const { status: reportStatus, report: reportExpire } =
   useReportResourceExpired()
 const handleReportExpire = () =>
-  reportExpire(props.resource.galgameId, props.resource.id, () =>
+  reportExpire(props.resource.galgame_id, props.resource.id, () =>
     props.refresh()
   )
 
@@ -154,7 +154,7 @@ const handleDelete = async () => {
 
   isFetching.value = true
   const result = await nuxtApp.runWithContext(() =>
-    kunFetch(`/galgame/${props.resource.galgameId}/resource`, {
+    kunFetch(`/galgame/${props.resource.galgame_id}/resource`, {
       method: 'DELETE',
       query: { galgameResourceId: props.resource.id }
     })
@@ -267,7 +267,7 @@ const handleEditDone = () => {
         >
           <div class="space-y-1.5">
             <div ref="noteRef" :style="noteStyle" class="overflow-hidden">
-              <KunContent compact :content="renderKatex(resource.noteHtml)" />
+              <KunContent compact :content="renderKatex(resource.note_html)" />
             </div>
 
             <button
@@ -340,7 +340,7 @@ const handleEditDone = () => {
           <KunInfo title="鲲的小请求">
             <p>
               在您下载这部 Galgame 并游玩之后, 可否请您在本网站的
-              <KunLink size="sm" :to="`/galgame/${resource.galgameId}`">
+              <KunLink size="sm" :to="`/galgame/${resource.galgame_id}`">
                 Galgame 评分页面
               </KunLink>
               为这部 Galgame 提交一个评分, 这将有助于我们把优秀的 Galgame
@@ -354,7 +354,7 @@ const handleEditDone = () => {
               可见经济并不宽裕。 如果条件允许, 请尽可能前往
               <KunLink
                 size="sm"
-                :to="`/galgame/${resource.galgameId}`"
+                :to="`/galgame/${resource.galgame_id}`"
                 class-name="inline"
               >
                 Galgame 详情
@@ -420,7 +420,7 @@ const handleEditDone = () => {
     <GalgameResourceLinkEditModal
       v-if="detail"
       v-model="isEditOpen"
-      :galgame-id="resource.galgameId"
+      :galgame-id="resource.galgame_id"
       :resource="detail"
       :refresh="handleEditDone"
     />

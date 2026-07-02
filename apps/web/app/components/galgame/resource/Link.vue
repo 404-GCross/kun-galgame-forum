@@ -30,10 +30,10 @@ const isOwner = computed(() => id === props.resource.user.id)
 // Backend-computed labels (e.g. "百度网盘 / OneDrive"). Falls back to the
 // raw domain when the resource pre-dates the backfill or matches no rule.
 const providerName = computed(() => {
-  const names = props.resource.providerNames
+  const names = props.resource.provider_names
   return names && names.length > 0
     ? names.join(' / ')
-    : props.resource.linkDomain
+    : props.resource.link_domain
 })
 
 // Long notes collapse behind a "展开全部" toggle: anything taller than this
@@ -117,7 +117,7 @@ const handleMarkValid = async () => {
 
   isFetching.value = true
   const result = await nuxtApp.runWithContext(() =>
-    kunFetch(`/galgame/${props.resource.galgameId}/resource/valid`, {
+    kunFetch(`/galgame/${props.resource.galgame_id}/resource/valid`, {
       method: 'PUT',
       body: { galgameResourceId: props.resource.id }
     })
@@ -226,11 +226,11 @@ const handleMarkValid = async () => {
 
         <GalgameResourceLike
           v-if="!isOwner"
-          :galgame-id="resource.galgameId"
+          :galgame-id="resource.galgame_id"
           :galgame-resource-id="resource.id"
           :target-user-id="resource.user.id"
-          :is-liked="resource.isLiked"
-          :like-count="resource.likeCount"
+          :is-liked="resource.is_liked"
+          :like-count="resource.like_count"
         />
 
         <KunButton

@@ -215,10 +215,10 @@ const handleDeleteRating = async () => {
       </div>
 
       <div
-        v-if="data.likedUsers?.length"
+        v-if="data.liked_users?.length"
         class="flex flex-wrap items-center gap-2"
       >
-        <KunAvatarGroup :users="data.likedUsers" :ellipsis="false" />
+        <KunAvatarGroup :users="data.liked_users" :ellipsis="false" />
         <span class="text-default-500 text-sm">点赞了该评分</span>
       </div>
 
@@ -233,8 +233,8 @@ const handleDeleteRating = async () => {
           <GalgameRatingDetailLike
             :rating-id="data.id"
             :target-user-id="data.user.id"
-            :like-count="data.likeCount"
-            :is-liked="data.isLiked"
+            :like-count="data.like_count"
+            :is-liked="data.is_liked"
           />
         </div>
 
@@ -264,14 +264,14 @@ const handleDeleteRating = async () => {
     <KunCard
       :is-hoverable="false"
       :is-transparent="false"
-      v-if="data?.galgameSeries"
+      v-if="data?.galgame_series"
     >
       <KunHeader
         name="所属 Galgame 系列"
         description="该作品所属的 Galgame 系列"
         scale="h3"
       />
-      <GalgameSeriesCard :series="data.galgameSeries" />
+      <GalgameSeriesCard :series="data.galgame_series" />
     </KunCard>
 
     <GalgameRatingCommentContainer
@@ -300,7 +300,7 @@ const handleDeleteRating = async () => {
         system: data.system,
         voice: data.voice,
         replay_value: data.replay_value,
-        galgameType: data.galgameType
+        galgameType: data.galgame_type
       }"
       @on-updated="refresh"
     />

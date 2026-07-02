@@ -7,7 +7,7 @@ import {
 
 const { canModerate } = useRole()
 const route = useRoute()
-const officialId = computed(() => {
+const official_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
@@ -26,7 +26,7 @@ const editingOfficial = ref<UpdateGalgameOfficialPayload>(
 )
 
 const { data, status } = await useKunFetch<GalgameOfficialDetail>(
-  `/galgame-official/${officialId.value}`,
+  `/galgame-official/${official_id.value}`,
   {
     method: 'GET',
     query: {
@@ -37,7 +37,7 @@ const { data, status } = await useKunFetch<GalgameOfficialDetail>(
       platform,
       sortField,
       sortOrder,
-      officialId
+      official_id
     }
   }
 )
@@ -53,7 +53,7 @@ const openEditOfficialModal = () => {
     // UpdateOfficialRequest. Hydrate from detail; empty string when
     // wiki returns no original-language name yet.
     original: res.original ?? '',
-    officialId: res.id,
+    official_id: res.id,
     link: res.link,
     lang: res.lang,
     description: res.description,
@@ -86,7 +86,7 @@ const handleDeleteOfficial = async () => {
   )
   if (!ok) return
   isDeleting.value = true
-  const res = await kunFetch(`/galgame-official/${officialId.value}`, {
+  const res = await kunFetch(`/galgame-official/${official_id.value}`, {
     method: 'DELETE'
   })
   if (res !== null) {
@@ -102,7 +102,7 @@ const handleDeleteOfficial = async () => {
   )
   if (!force) return
   isDeleting.value = true
-  const forced = await kunFetch(`/galgame-official/${officialId.value}`, {
+  const forced = await kunFetch(`/galgame-official/${official_id.value}`, {
     method: 'DELETE',
     query: { force: true }
   })
@@ -169,7 +169,7 @@ if (data.value) {
           <div class="flex flex-wrap justify-end gap-2">
             <GalgameRevisionModal
               entity="official"
-              :id="officialId"
+              :id="official_id"
               :entity-label="`会社「${data.name}」`"
               :can-revert="canModerate"
             />
@@ -211,14 +211,14 @@ if (data.value) {
     />
 
     <KunPagination
-      v-if="data.galgameCount > limit"
+      v-if="data.galgame_count > limit"
       v-model:current-page="page"
-      :total-page="Math.ceil(data.galgameCount / limit)"
+      :total-page="Math.ceil(data.galgame_count / limit)"
       :is-loading="status === 'pending'"
     />
 
     <KunNull
-      v-if="!data.galgameCount"
+      v-if="!data.galgame_count"
       :description="`${data.name} 会社下暂无 Galgame`"
     />
   </div>

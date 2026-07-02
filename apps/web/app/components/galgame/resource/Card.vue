@@ -42,7 +42,7 @@ defineProps<{
 
     <div class="space-y-2">
       <h3 class="hover:text-primary line-clamp-3 break-all transition-colors">
-        {{ getPreferredLanguageText(resource.galgameName) }}
+        {{ getPreferredLanguageText(resource.galgame_name) }}
       </h3>
 
       <div class="flex flex-wrap items-center justify-between gap-2">

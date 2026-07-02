@@ -7,7 +7,7 @@ import {
 
 const { canModerate } = useRole()
 const route = useRoute()
-const tagId = computed(() => {
+const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
@@ -24,7 +24,7 @@ const showTagModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
 const { data, status } = await useKunFetch<GalgameTagDetail>(
-  `/galgame-tag/${tagId.value}`,
+  `/galgame-tag/${tag_id.value}`,
   {
     method: 'GET',
     query: {
@@ -35,7 +35,7 @@ const { data, status } = await useKunFetch<GalgameTagDetail>(
       platform,
       sortField,
       sortOrder,
-      tagId
+      tag_id
     }
   }
 )
@@ -47,7 +47,7 @@ const openEditTagModal = () => {
   const res = data.value
   editingTag.value = {
     name: res.name,
-    tagId: res.id,
+    tag_id: res.id,
     description: res.description,
     category: res.category as (typeof KUN_GALGAME_TAG_TYPE)[number],
     alias: res.alias
@@ -128,7 +128,7 @@ if (data.value) {
           <div class="flex flex-wrap justify-end gap-2">
             <GalgameRevisionModal
               entity="tag"
-              :id="tagId"
+              :id="tag_id"
               :entity-label="`标签「${data.name}」`"
               :can-revert="canModerate"
             />
@@ -162,14 +162,14 @@ if (data.value) {
     />
 
     <KunPagination
-      v-if="data.galgameCount > limit"
+      v-if="data.galgame_count > limit"
       v-model:current-page="page"
-      :total-page="Math.ceil(data.galgameCount / limit)"
+      :total-page="Math.ceil(data.galgame_count / limit)"
       :is-loading="status === 'pending'"
     />
 
     <KunNull
-      v-if="!data.galgameCount"
+      v-if="!data.galgame_count"
       :description="`${data.name} 标签下暂无 Galgame`"
     />
   </div>

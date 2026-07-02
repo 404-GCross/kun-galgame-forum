@@ -16,7 +16,7 @@ export interface GalgameOfficialItem {
   category: KunGalgameOfficialCategory
   lang: string
   alias: string[]
-  galgameCount: number
+  galgame_count: number
 }
 
 export interface GalgameOfficialDetail {
@@ -33,5 +33,5 @@ export interface GalgameOfficialDetail {
   description: string
   alias: string[]
   galgame: GalgameCard[]
-  galgameCount: number
+  galgame_count: number
 }

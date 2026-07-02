@@ -9,20 +9,20 @@ import "encoding/json"
 type RatingListRequest struct {
 	Page         int    `query:"page" validate:"min=1"`
 	Limit        int    `query:"limit" validate:"min=1,max=50"`
-	SortField    string `query:"sortField"`
-	SortOrder    string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
-	SpoilerLevel string `query:"spoilerLevel"`
-	PlayStatus   string `query:"playStatus"`
-	GalgameType  string `query:"galgameType"`
+	SortField    string `query:"sort_field"`
+	SortOrder    string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
+	SpoilerLevel string `query:"spoiler_level"`
+	PlayStatus   string `query:"play_status"`
+	GalgameType  string `query:"galgame_type"`
 }
 
 // CreateRatingRequest is the body of POST /galgame-rating.
 // short_summary length drives the moemoepoint reward tier.
 type CreateRatingRequest struct {
-	GalgameID    int      `json:"galgameId" validate:"required,min=1"`
+	GalgameID    int      `json:"galgame_id" validate:"required,min=1"`
 	Recommend    string   `json:"recommend" validate:"required"`
 	Overall      int      `json:"overall" validate:"required,min=1,max=10"`
-	GalgameType  []string `json:"galgameType" validate:"required,min=1"`
+	GalgameType  []string `json:"galgame_type" validate:"required,min=1"`
 	PlayStatus   string   `json:"play_status" validate:"required"`
 	ShortSummary string   `json:"short_summary"`
 	SpoilerLevel string   `json:"spoiler_level"`
@@ -38,10 +38,10 @@ type CreateRatingRequest struct {
 
 // UpdateRatingRequest is the body of PUT /galgame-rating/:id.
 type UpdateRatingRequest struct {
-	GalgameRatingID int      `json:"galgameRatingId" validate:"required,min=1"`
+	GalgameRatingID int      `json:"galgame_rating_id" validate:"required,min=1"`
 	Recommend       string   `json:"recommend" validate:"required"`
 	Overall         int      `json:"overall" validate:"required,min=1,max=10"`
-	GalgameType     []string `json:"galgameType" validate:"required,min=1"`
+	GalgameType     []string `json:"galgame_type" validate:"required,min=1"`
 	PlayStatus      string   `json:"play_status" validate:"required"`
 	ShortSummary    string   `json:"short_summary"`
 	SpoilerLevel    string   `json:"spoiler_level" validate:"required"`
@@ -57,30 +57,30 @@ type UpdateRatingRequest struct {
 
 // DeleteRatingRequest is the query for DELETE /galgame-rating/:id.
 type DeleteRatingRequest struct {
-	GalgameRatingID int `query:"galgameRatingId" validate:"required,min=1"`
+	GalgameRatingID int `query:"galgame_rating_id" validate:"required,min=1"`
 }
 
 // ToggleRatingLikeRequest is the body of PUT /galgame-rating/:id/like.
 type ToggleRatingLikeRequest struct {
-	GalgameRatingID int `json:"galgameRatingId" validate:"required,min=1"`
+	GalgameRatingID int `json:"galgame_rating_id" validate:"required,min=1"`
 }
 
 // CreateRatingCommentRequest is the body of POST /galgame-rating/:id/comment.
 type CreateRatingCommentRequest struct {
-	GalgameRatingID int    `json:"galgameRatingId" validate:"required,min=1"`
-	TargetUserID    int    `json:"targetUserId" validate:"required,min=1"`
+	GalgameRatingID int    `json:"galgame_rating_id" validate:"required,min=1"`
+	TargetUserID    int    `json:"target_user_id" validate:"required,min=1"`
 	Content         string `json:"content" validate:"required,min=1,max=1314"`
 }
 
 // UpdateRatingCommentRequest is the body of PUT /galgame-rating/:id/comment.
 type UpdateRatingCommentRequest struct {
-	GalgameRatingCommentID int    `json:"galgameRatingCommentId" validate:"required,min=1"`
+	GalgameRatingCommentID int    `json:"galgame_rating_comment_id" validate:"required,min=1"`
 	Content                string `json:"content" validate:"required,min=1,max=1314"`
 }
 
 // DeleteRatingCommentRequest is the query for DELETE /galgame-rating/:id/comment.
 type DeleteRatingCommentRequest struct {
-	GalgameRatingCommentID int `query:"galgameRatingCommentId" validate:"required,min=1"`
+	GalgameRatingCommentID int `query:"galgame_rating_comment_id" validate:"required,min=1"`
 }
 
 // CreatedRating is the response shape for POST /galgame-rating — matches
@@ -91,13 +91,13 @@ type CreatedRating struct {
 	Recommend    string             `json:"recommend"`
 	Overall      int                `json:"overall"`
 	View         int                `json:"view"`
-	GalgameType  json.RawMessage    `json:"galgameType"`
+	GalgameType  json.RawMessage    `json:"galgame_type"`
 	PlayStatus   string             `json:"play_status"`
 	ShortSummary string             `json:"short_summary"`
 	SpoilerLevel string             `json:"spoiler_level"`
 	RatingScores                    // embedded scores
-	LikeCount    int                `json:"likeCount"`
-	IsLiked      bool               `json:"isLiked"`
+	LikeCount    int                `json:"like_count"`
+	IsLiked      bool               `json:"is_liked"`
 	Created      string             `json:"created"`
 	Updated      string             `json:"updated"`
 	Galgame      RatingGalgameBrief `json:"galgame"`
@@ -108,7 +108,7 @@ type CreatedRatingComment struct {
 	ID         int        `json:"id"`
 	Content    string     `json:"content"`
 	User       UserBrief  `json:"user"`
-	TargetUser *UserBrief `json:"targetUser"`
+	TargetUser *UserBrief `json:"target_user"`
 	Created    string     `json:"created"`
 	Updated    string     `json:"updated"`
 }
@@ -137,7 +137,7 @@ type RatingScores struct {
 // RatingGalgameBrief is the lightweight galgame info in rating lists.
 type RatingGalgameBrief struct {
 	ID           int         `json:"id"`
-	ContentLimit string      `json:"contentLimit"`
+	ContentLimit string      `json:"content_limit"`
 	Name         KunLanguage `json:"name"`
 }
 
@@ -148,19 +148,19 @@ type RatingCard struct {
 	Recommend    string             `json:"recommend"`
 	Overall      int                `json:"overall"`
 	View         int                `json:"view"`
-	GalgameType  json.RawMessage    `json:"galgameType"`
+	GalgameType  json.RawMessage    `json:"galgame_type"`
 	PlayStatus   string             `json:"play_status"`
 	ShortSummary string             `json:"short_summary"`
 	SpoilerLevel string             `json:"spoiler_level"`
 	RatingScores                    // embedded fields art/story/music/...
-	LikeCount    int                `json:"likeCount"`
+	LikeCount    int                `json:"like_count"`
 	Created      string             `json:"created"`
 	Updated      string             `json:"updated"`
 	Galgame      RatingGalgameBrief `json:"galgame"`
 }
 
 type RatingListPage struct {
-	RatingData []RatingCard `json:"ratingData"`
+	RatingData []RatingCard `json:"rating_data"`
 	Total      int64        `json:"total"`
 }
 
@@ -176,13 +176,13 @@ type RatingOfficial struct {
 	Category     string   `json:"category"`
 	Lang         string   `json:"lang"`
 	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgameCount"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 // RatingGalgameDetail is the full galgame panel on the rating detail page.
 type RatingGalgameDetail struct {
 	ID           int    `json:"id"`
-	ContentLimit string `json:"contentLimit"`
+	ContentLimit string `json:"content_limit"`
 	Banner       string `json:"banner"`
 	// U2 banner pair — FE getEffectiveBanner reads these first and only
 	// falls back to legacy `banner` when both are empty. New
@@ -193,10 +193,10 @@ type RatingGalgameDetail struct {
 	EffectiveBannerWidth     int              `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int              `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string           `json:"effective_banner_thumbhash,omitempty"`
-	AgeLimit                 string           `json:"ageLimit"`
-	OriginalLanguage         string           `json:"originalLanguage"`
+	AgeLimit                 string           `json:"age_limit"`
+	OriginalLanguage         string           `json:"original_language"`
 	Rating                   int64            `json:"rating"`
-	RatingCount              int64            `json:"ratingCount"`
+	RatingCount              int64            `json:"rating_count"`
 	Official                 []RatingOfficial `json:"official"`
 	Name                     KunLanguage      `json:"name"`
 }
@@ -206,7 +206,7 @@ type RatingCommentItem struct {
 	ID         int        `json:"id"`
 	Content    string     `json:"content"`
 	User       UserBrief  `json:"user"`
-	TargetUser *UserBrief `json:"targetUser"`
+	TargetUser *UserBrief `json:"target_user"`
 	Created    string     `json:"created"`
 	Updated    string     `json:"updated"`
 }
@@ -218,14 +218,14 @@ type RatingDetail struct {
 	Recommend    string              `json:"recommend"`
 	Overall      int                 `json:"overall"`
 	View         int                 `json:"view"`
-	GalgameType  json.RawMessage     `json:"galgameType"`
+	GalgameType  json.RawMessage     `json:"galgame_type"`
 	PlayStatus   string              `json:"play_status"`
 	ShortSummary string              `json:"short_summary"`
 	SpoilerLevel string              `json:"spoiler_level"`
 	RatingScores                     // embedded art/story/music/...
-	LikeCount    int                 `json:"likeCount"`
-	IsLiked      bool                `json:"isLiked"`
-	LikedUsers   []UserBrief         `json:"likedUsers"`
+	LikeCount    int                 `json:"like_count"`
+	IsLiked      bool                `json:"is_liked"`
+	LikedUsers   []UserBrief         `json:"liked_users"`
 	Comments     []RatingCommentItem `json:"comments"`
 	Created      string              `json:"created"`
 	Updated      string              `json:"updated"`
@@ -235,5 +235,5 @@ type RatingDetail struct {
 	// galgame isn't part of any series. SeriesListItem is reused
 	// verbatim here so a single FE component renders both /galgame-
 	// series list entries and this in-rating "所属系列" card.
-	GalgameSeries *SeriesListItem `json:"galgameSeries"`
+	GalgameSeries *SeriesListItem `json:"galgame_series"`
 }

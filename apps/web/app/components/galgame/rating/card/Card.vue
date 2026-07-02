@@ -84,7 +84,7 @@ const systemRating = (rating: GalgameRatingCard) => {
 
             <span class="flex items-center gap-1">
               <KunIcon name="lucide:thumbs-up" />
-              <span>{{ rating.likeCount }}</span>
+              <span>{{ rating.like_count }}</span>
             </span>
           </div>
 

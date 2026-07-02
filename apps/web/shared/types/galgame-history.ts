@@ -11,6 +11,6 @@ export interface GalgameRevision {
   action: GalgameRevisionAction
   note: string
   user: KunUser
-  isMinor: boolean
+  is_minor: boolean
   created: Date | string
 }

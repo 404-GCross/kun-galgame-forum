@@ -6,8 +6,8 @@ const props = defineProps<{
 }>()
 
 const { id } = usePersistUserStore()
-const isLiked = ref(props.comment.isLiked)
-const likesCount = ref(props.comment.likeCount)
+const isLiked = ref(props.comment.is_liked)
+const likesCount = ref(props.comment.like_count)
 const pending = ref(false)
 
 // Galgame comment likes are one-way (no un-like): KunReaction is disabled once
@@ -31,7 +31,7 @@ const onChange = async (next: boolean) => {
   }
   pending.value = true
   const result = await kunFetch(
-    `/galgame/${props.comment.galgameId}/comment/like`,
+    `/galgame/${props.comment.galgame_id}/comment/like`,
     { method: 'PUT', body: { commentId: props.comment.id } }
   )
   pending.value = false

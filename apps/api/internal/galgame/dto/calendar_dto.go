@@ -10,12 +10,12 @@ package dto
 // MaxMonth, per the current content_limit), so the FE disables paging at the
 // edges instead of walking into empty months forever.
 type CalendarMeta struct {
-	PrevMonth string `json:"prevMonth"`
-	NextMonth string `json:"nextMonth"`
-	HasPrev   bool   `json:"hasPrev"`
-	HasNext   bool   `json:"hasNext"`
-	MinMonth  string `json:"minMonth"`
-	MaxMonth  string `json:"maxMonth"`
+	PrevMonth string `json:"prev_month"`
+	NextMonth string `json:"next_month"`
+	HasPrev   bool   `json:"has_prev"`
+	HasNext   bool   `json:"has_next"`
+	MinMonth  string `json:"min_month"`
+	MaxMonth  string `json:"max_month"`
 	Count     int    `json:"count"`
 }
 

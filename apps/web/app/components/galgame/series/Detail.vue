@@ -28,10 +28,10 @@ const openEditSeriesModal = () => {
   }
   const res = props.data
   editingSeries.value = {
-    seriesId: res.id,
+    series_id: res.id,
     name: res.name,
     description: res.description,
-    galgameIds: res.galgame.map((g) => g.id)
+    galgame_ids: res.galgame.map((g) => g.id)
   } satisfies UpdateGalgameSeriesPayload
   showSeriesModal.value = true
 }
@@ -46,7 +46,7 @@ const handleUpdateSeries = async (data: UpdateGalgameSeriesPayload) => {
     body: {
       name: data.name,
       description: data.description,
-      galgame_ids: data.galgameIds
+      galgame_ids: data.galgame_ids
     }
   })
 
@@ -66,7 +66,7 @@ const handleDeleteSeries = async () => {
 
   const result = await kunFetch(`/galgame-series/${props.data.id}`, {
     method: 'DELETE',
-    query: { seriesId: props.data.id }
+    query: { series_id: props.data.id }
   })
 
   if (result) {

@@ -36,14 +36,14 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
 
   galgamePR.value[0] = {
     id: galgame.id,
-    vndbId: galgame.vndbId,
+    vndb_id: galgame.vndb_id,
     name: galgame.name,
     // Editor (type="rewrite") edits raw markdown — use `markdown`, NOT
     // `introduction` (that field is pre-rendered HTML).
     introduction: galgame.markdown,
-    contentLimit: galgame.contentLimit as 'sfw' | 'nsfw',
-    ageLimit: galgame.ageLimit,
-    originalLanguage: galgame.originalLanguage as Language,
+    content_limit: galgame.content_limit as 'sfw' | 'nsfw',
+    age_limit: galgame.age_limit,
+    original_language: galgame.original_language as Language,
     alias: [...galgame.alias],
     tags: [...galgame.tag],
     officials: [...galgame.official],
@@ -53,7 +53,7 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
     // so an untouched links section round-trips as "unchanged" → omitted →
     // preserved. A FAILED link fetch leaves both empty → unchanged → preserved
     // (not an empty replace-all that wipes every existing link on merge).
-    linksBaseline: JSON.stringify(
+    links_baseline: JSON.stringify(
       (linkRes ?? [])
         .map((l) => ({ name: l.name.trim(), link: l.link.trim() }))
         .filter((l) => l.name.length > 0 && l.link.length > 0)
@@ -64,8 +64,8 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
     // datetimes ("2016-11-25T00:00:00Z") so `toYMD` strips down to the
     // calendar date the schema actually accepts — without this the
     // submit immediately fails validation on the user's first edit.
-    releaseDate: toYMD(galgame.releaseDate),
-    releaseDateTBA: galgame.releaseDateTBA ?? false,
+    release_date: toYMD(galgame.release_date),
+    release_date_tba: galgame.release_date_tba ?? false,
     // U2: deep-clone each row — covers/screenshots are presence-replace,
     // and a shallow ...spread would let the editor mutate the original
     // detail object on add/remove/pin operations (subtle, ugly bugs).
@@ -75,16 +75,16 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
     // the images. Untouched → omit covers/screenshots from the payload so an
     // intro/tag-only edit can't roll the live cover back to this (possibly
     // stale) hydration. Stringified from the same row shape Footer compares.
-    coversBaseline: JSON.stringify(
+    covers_baseline: JSON.stringify(
       (galgame.covers ?? []).map((c) => ({ ...c }))
     ),
-    screenshotsBaseline: JSON.stringify(
+    screenshots_baseline: JSON.stringify(
       (galgame.screenshots ?? []).map((s) => ({ ...s }))
     ),
     // Creator or admin/moderator → wiki allows direct PUT (instant).
     // Everyone else → PR. Decided here (we have galgame.user + the user
     // store); Footer.vue branches the submit endpoint on this.
-    canDirectEdit: galgame.user.id === currentUserId || canModerate.value
+    can_direct_edit: galgame.user.id === currentUserId || canModerate.value
   }
 
   isOpening.value = false

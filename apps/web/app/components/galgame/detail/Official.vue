@@ -36,7 +36,7 @@ const getOfficialCategoryInfo = (category: string) => {
     <dt class="text-default-500 text-sm font-medium">制作方</dt>
     <dd class="mt-1.5 space-y-3">
       <div class="space-y-2" v-for="item in official" :key="item.id">
-        <KunTooltip :text="`该会社制作了 ${item.galgameCount} 个 Galgame`">
+        <KunTooltip :text="`该会社制作了 ${item.galgame_count} 个 Galgame`">
           <KunLink
             :to="`/galgame-official/${item.id}`"
             underline="none"
@@ -44,7 +44,7 @@ const getOfficialCategoryInfo = (category: string) => {
           >
             {{ item.name }}
             <KunChip size="xs">
-              {{ `+ ${item.galgameCount}` }}
+              {{ `+ ${item.galgame_count}` }}
             </KunChip>
           </KunLink>
         </KunTooltip>

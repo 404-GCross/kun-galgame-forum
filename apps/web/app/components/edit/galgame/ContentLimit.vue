@@ -3,13 +3,13 @@ const props = defineProps<{
   type: 'create' | 'rewrite'
 }>()
 
-const { contentLimit } = storeToRefs(usePersistEditGalgameStore())
+const { content_limit } = storeToRefs(usePersistEditGalgameStore())
 const { galgamePR } = storeToRefs(useTempGalgamePRStore())
 
 const isNsfw =
   props.type === 'create'
-    ? contentLimit.value === 'nsfw'
-    : galgamePR.value[0]!.contentLimit === 'nsfw'
+    ? content_limit.value === 'nsfw'
+    : galgamePR.value[0]!.content_limit === 'nsfw'
 const option = ref(isNsfw)
 
 watch(
@@ -17,9 +17,9 @@ watch(
   () => {
     const optionString = option.value ? 'nsfw' : 'sfw'
     if (props.type === 'create') {
-      contentLimit.value = optionString
+      content_limit.value = optionString
     } else {
-      galgamePR.value[0]!.contentLimit = optionString
+      galgamePR.value[0]!.content_limit = optionString
     }
   }
 )

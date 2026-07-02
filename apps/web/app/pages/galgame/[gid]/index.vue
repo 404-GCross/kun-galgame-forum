@@ -39,7 +39,7 @@ const galgame = data.value
 const isShowGalgame = ref(true)
 
 if (galgame) {
-  if (galgame.contentLimit === 'nsfw') {
+  if (galgame.content_limit === 'nsfw') {
     const title = getPreferredLanguageText(galgame.name)
     // Disable SEO meta either way — NSFW pages should never feed
     // OpenGraph / rich-result hints to crawlers, regardless of who's
@@ -71,7 +71,7 @@ if (galgame) {
       url: pageUrl,
       image: getEffectiveBanner(galgame),
       description: description,
-      inLanguage: galgame.originalLanguage,
+      inLanguage: galgame.original_language,
       datePublished: new Date(galgame.created).toISOString(),
       dateModified: new Date(galgame.updated).toISOString(),
       publisher: galgame.official.map((o) => ({
@@ -101,7 +101,7 @@ if (galgame) {
           interactionType: {
             '@type': 'LikeAction'
           },
-          userInteractionCount: galgame.likeCount
+          userInteractionCount: galgame.like_count
         },
         {
           '@type': 'InteractionCounter',

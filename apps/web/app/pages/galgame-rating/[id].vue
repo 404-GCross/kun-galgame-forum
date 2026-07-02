@@ -53,19 +53,19 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
     name: titleBase,
     url: gameUrl,
     image: getEffectiveBanner(rating.galgame),
-    inLanguage: rating.galgame.originalLanguage,
-    isFamilyFriendly: rating.galgame.ageLimit !== 'r18',
+    inLanguage: rating.galgame.original_language,
+    isFamilyFriendly: rating.galgame.age_limit !== 'r18',
     ...(rating.galgame.official?.length && {
       publisher: rating.galgame.official.map((o) => ({
         '@type': 'Organization',
         name: o.name
       }))
     }),
-    ...(rating.galgameSeries && {
+    ...(rating.galgame_series && {
       isPartOf: {
         '@type': 'CreativeWorkSeries',
-        name: rating.galgameSeries.name,
-        url: `${kungal.domain.main}/series/${rating.galgameSeries.id}`
+        name: rating.galgame_series.name,
+        url: `${kungal.domain.main}/series/${rating.galgame_series.id}`
       } satisfies CreativeWorkSeries
     })
   }
@@ -106,7 +106,7 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
       {
         '@type': 'InteractionCounter',
         interactionType: { '@type': 'LikeAction' },
-        userInteractionCount: rating.likeCount
+        userInteractionCount: rating.like_count
       },
       {
         '@type': 'InteractionCounter',
@@ -119,7 +119,7 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
 })
 
 if (data.value) {
-  if (data.value.galgame.contentLimit === 'nsfw') {
+  if (data.value.galgame.content_limit === 'nsfw') {
     useKunDisableSeo(`${data.value.user.name} 的评价`)
   } else {
     useHead({

@@ -11,7 +11,7 @@ export interface GalgameTagItem {
   id: number
   name: string
   category: KunGalgameTagCategory
-  galgameCount: number
+  galgame_count: number
 }
 
 export interface GalgameTagDetail {
@@ -21,5 +21,5 @@ export interface GalgameTagDetail {
   description: string
   alias: string[]
   galgame: GalgameCard[]
-  galgameCount: number
+  galgame_count: number
 }

@@ -6,5 +6,5 @@ export const getGalgameResourceSchema = z.object({
 })
 
 export const getGalgameResourceDetailSchema = z.object({
-  resourceId: z.coerce.number<number>().min(1).max(9999999)
+  resource_id: z.coerce.number<number>().min(1).max(9999999)
 })

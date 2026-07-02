@@ -20,14 +20,14 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.seriesId)
+const isEditing = computed(() => !!props.initialData?.series_id)
 const isSubmitting = ref(false)
 
 const getInitialFormData = (): UpdateGalgameSeriesPayload => ({
-  seriesId: 0,
+  series_id: 0,
   name: '',
   description: '',
-  galgameIds: [],
+  galgame_ids: [],
   ...(props.initialData || {})
 })
 
@@ -61,7 +61,7 @@ const handleSubmit = () => {
     return
   }
 
-  emits('submit', { seriesId: formData.seriesId, ...result.data })
+  emits('submit', { series_id: formData.series_id, ...result.data })
   isSubmitting.value = false
   isModalOpen.value = false
 }
@@ -86,7 +86,7 @@ const handleSubmit = () => {
         />
 
         <GalgameSeriesSelectGalgame
-          v-model="formData.galgameIds"
+          v-model="formData.galgame_ids"
           label="包含的 Galgame (最少 2 个，最多 200 个)"
           required
         />

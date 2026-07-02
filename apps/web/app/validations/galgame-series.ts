@@ -5,7 +5,7 @@ export const getSeriesGalgameNameSchema = z.object({
 })
 
 export const getSeriesDetailSchema = z.object({
-  seriesId: z.coerce.number<number>().min(1).max(9999999)
+  series_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getSearchResultSchema = z.object({
@@ -23,7 +23,7 @@ export const createGalgameSeriesSchema = z.object({
     .max(1000, '系列介绍最多 1000 个字符')
     .optional()
     .default(''),
-  galgameIds: z
+  galgame_ids: z
     .array(z.coerce.number<number>().min(1).max(9999999))
     .min(2, '一个系列最少 2 个 Galgame')
     .max(200, '一个系列最多 200 个 Galgame')
@@ -31,12 +31,12 @@ export const createGalgameSeriesSchema = z.object({
 
 export const updateGalgameSeriesSchema = createGalgameSeriesSchema.merge(
   z.object({
-    seriesId: z.coerce.number<number>().min(1).max(9999999)
+    series_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const deleteGalgameSeriesSchema = z.object({
-  seriesId: z.coerce.number<number>().min(1).max(9999999)
+  series_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getGalgameSeriesSchema = z.object({

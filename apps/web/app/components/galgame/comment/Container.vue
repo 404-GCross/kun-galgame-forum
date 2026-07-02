@@ -18,11 +18,11 @@ const gid = parseInt((route.params as { gid: string }).gid)
 const galgame = inject<GalgameDetail>('galgame')
 
 const pageData = reactive({
-  galgameId: gid,
+  galgame_id: gid,
   page: 1,
   limit: 30,
   // Roots default oldest-first (先发布在上); the toggle can flip it.
-  sortOrder: 'asc'
+  sort_order: 'asc'
 })
 
 // data.items holds ROOTS only; each root carries up to 3 of its most
@@ -61,9 +61,9 @@ const handleNewComment = (newComment: GalgameComment) => {
   const reply = newComment as CommentNode
 
   // Root: insert at the visible end of the current sort.
-  if (reply.parentCommentId == null) {
+  if (reply.parent_comment_id == null) {
     const nextItems =
-      pageData.sortOrder === 'desc'
+      pageData.sort_order === 'desc'
         ? [reply, ...data.value.items]
         : [...data.value.items, reply]
     data.value = { items: nextItems, total: (data.value.total ?? 0) + 1 }
@@ -71,7 +71,7 @@ const handleNewComment = (newComment: GalgameComment) => {
   }
 
   // Reply (any DB depth): flat-append to its root's replies list.
-  const rootId = reply.rootCommentId
+  const rootId = reply.root_comment_id
   if (rootId == null) return
   const rootIdx = data.value.items.findIndex((c) => c.id === rootId)
   if (rootIdx < 0) return
@@ -119,7 +119,7 @@ const handleReplyRemoved = (
         // grandchild that never made it into the inline 3). Still
         // shrink the count so "查看更多 N" stays honest.
         ...owner,
-        replyCount: Math.max(0, (owner.replyCount ?? 0) - removedSize)
+        reply_count: Math.max(0, (owner.reply_count ?? 0) - removedSize)
       }
   data.value = { items: nextItems, total: data.value.total }
 }
@@ -127,7 +127,7 @@ const handleReplyRemoved = (
 const handleReplyEdited = (updated: GalgameComment) => {
   if (!data.value) return
   const patch = updated as CommentNode
-  const rootId = patch.rootCommentId ?? patch.id
+  const rootId = patch.root_comment_id ?? patch.id
   const rootIdx = data.value.items.findIndex((c) => c.id === rootId)
   if (rootIdx < 0) return
 
@@ -184,18 +184,18 @@ const openThreadRootId = ref<number | null>(null)
         <div v-if="data.total" class="flex items-center gap-2">
           <KunButton
             :is-icon-only="true"
-            :variant="pageData.sortOrder === 'desc' ? 'flat' : 'light'"
+            :variant="pageData.sort_order === 'desc' ? 'flat' : 'light'"
             size="lg"
-            @click="pageData.sortOrder = 'desc'"
+            @click="pageData.sort_order = 'desc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-down" />
           </KunButton>
 
           <KunButton
             :is-icon-only="true"
-            :variant="pageData.sortOrder === 'asc' ? 'flat' : 'light'"
+            :variant="pageData.sort_order === 'asc' ? 'flat' : 'light'"
             size="lg"
-            @click="pageData.sortOrder = 'asc'"
+            @click="pageData.sort_order = 'asc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-up" />
           </KunButton>
@@ -206,7 +206,7 @@ const openThreadRootId = ref<number | null>(null)
 
       <KunNull
         v-if="
-          !data.total && status !== 'pending' && galgame?.isOnForum !== false
+          !data.total && status !== 'pending' && galgame?.is_on_forum !== false
         "
         description="没人评论, 是没人要这个 Galgame 的小只可爱软萌女孩子了吗, 呜呜呜呜呜呜！！"
       />

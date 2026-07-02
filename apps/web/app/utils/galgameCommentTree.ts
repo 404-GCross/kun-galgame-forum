@@ -4,7 +4,7 @@ import type { SerializeObject } from 'nitropack'
 //
 // The visual model is intentionally TWO TIERS only: root + a flat list
 // of replies. The DB still tracks the full parent_comment_id chain
-// (so true "回复给某条" semantics survive via targetUser), but the
+// (so true "回复给某条" semantics survive via target_user), but the
 // frontend always renders root.replies as a single flat group with no
 // further indent. These helpers therefore treat root.replies as a
 // flat array — never walk inside a reply looking for sub-replies.
@@ -17,7 +17,7 @@ import type { SerializeObject } from 'nitropack'
 
 type Node = SerializeObject<GalgameComment>
 
-// Append `newReply` at the BOTTOM of root.replies and bump replyCount.
+// Append `newReply` at the BOTTOM of root.replies and bump reply_count.
 // The inline + drawer views render replies oldest-first (先发布在上), so a
 // just-posted reply — the newest — lands at the end to stay visible at the
 // bottom of the list. Always returns a fresh root object.
@@ -25,7 +25,7 @@ export const appendReplyToRoot = (root: Node, newReply: Node): Node => {
   return {
     ...root,
     replies: [...(root.replies ?? []), newReply],
-    replyCount: (root.replyCount ?? 0) + 1
+    reply_count: (root.reply_count ?? 0) + 1
   }
 }
 
@@ -36,7 +36,7 @@ export const appendReplyToRoot = (root: Node, newReply: Node): Node => {
 //
 // `removedSize` is the subtree size reported by the caller (the
 // deleted node + all its DB descendants — most of which may not even
-// be loaded). We decrement replyCount by that exact amount because
+// be loaded). We decrement reply_count by that exact amount because
 // the count is authoritative for the WHOLE thread, not just what's
 // visible.
 // Patch a single comment node in the tree (root or one of its
@@ -51,12 +51,12 @@ export const replaceCommentInRoot = (
   // Did the root itself get edited?
   if (root.id === updated.id) {
     return {
-      // Keep the original replies + replyCount on the new root — the
+      // Keep the original replies + reply_count on the new root — the
       // edit only touches the content+edited+target fields.
       node: {
         ...updated,
         replies: root.replies,
-        replyCount: root.replyCount
+        reply_count: root.reply_count
       },
       replaced: true
     }
@@ -68,7 +68,7 @@ export const replaceCommentInRoot = (
   }
   const nextReplies = [...replies]
   // Replies are flat in our view model and don't carry their own
-  // replies/replyCount, so direct replacement is fine.
+  // replies/reply_count, so direct replacement is fine.
   nextReplies[idx] = updated
   return {
     node: { ...root, replies: nextReplies },
@@ -86,7 +86,7 @@ export const removeReplyFromRoot = (
     return { node: root, pruned: false }
   }
 
-  // Collect removedId + any loaded descendants. parentCommentId chains
+  // Collect removedId + any loaded descendants. parent_comment_id chains
   // can be multi-hop within the loaded set (a depth-3 reply pointing
   // at a depth-2 reply), so iterate until the frontier stops growing.
   const toRemove = new Set<number>([removedId])
@@ -95,8 +95,8 @@ export const removeReplyFromRoot = (
     added = false
     for (const r of replies) {
       if (
-        r.parentCommentId != null &&
-        toRemove.has(r.parentCommentId) &&
+        r.parent_comment_id != null &&
+        toRemove.has(r.parent_comment_id) &&
         !toRemove.has(r.id)
       ) {
         toRemove.add(r.id)
@@ -109,7 +109,7 @@ export const removeReplyFromRoot = (
     node: {
       ...root,
       replies: replies.filter((r) => !toRemove.has(r.id)),
-      replyCount: Math.max(0, (root.replyCount ?? 0) - removedSize)
+      reply_count: Math.max(0, (root.reply_count ?? 0) - removedSize)
     },
     pruned: true
   }

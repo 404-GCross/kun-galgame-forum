@@ -10,7 +10,7 @@ import type { GalgameTagItem } from './galgame-tag'
 import type { GalgameRatingCardOnGalgamePage } from './galgame-rating'
 
 export interface GalgameDetailTag extends GalgameTagItem {
-  spoilerLevel: number
+  spoiler_level: number
 }
 
 // U2: cover/screenshot row shapes (snake_case wire — matches wiki and
@@ -41,19 +41,19 @@ export interface GalgameScreenshot extends GalgameCover {
 
 export interface GalgameDetail {
   id: number
-  vndbId: string
+  vndb_id: string
   user: KunUser
   name: KunLanguage
   banner: string
   introduction: KunLanguage
-  contentLimit: string
+  content_limit: string
   markdown: KunLanguage
-  resourceUpdateTime: Date | string
+  resource_update_time: Date | string
   // U1 (wiki release_date / release_date_tba): nil = unknown; TBA flag is
   // independent of the date (a TBA entry may still carry a predicted
   // "YYYY-MM-DD"). Server passes through as null when unknown.
-  releaseDate: string | null
-  releaseDateTBA: boolean
+  release_date: string | null
+  release_date_tba: boolean
   // U2 / K-PR6: covers[sort_order=0] is the canonical banner source.
   // wiki exposes the derived hash; kungal's rewriteBanners walker
   // injects effective_banner_url. (banner_image_hash was retired in
@@ -71,20 +71,20 @@ export interface GalgameDetail {
   // false ⇒ a wiki-catalogue galgame the forum hasn't ingested (no local row).
   // The detail page shows a 未收录 notice + hides the (0) view count, keeping the
   // upload/rate/comment CTAs. Absent on older payloads → treated as on-forum.
-  isOnForum?: boolean
+  is_on_forum?: boolean
   // wiki 草稿状态: 0=已发布, 2=VNDB 草稿(可认领), 3/4=提交者自己的待审/被拒。
   // 未收录提示据此只在可认领的草稿(=2)上展示「认领成为创建者」。
   status?: number
-  originalLanguage: string
-  ageLimit: 'all' | 'r18'
+  original_language: string
+  age_limit: 'all' | 'r18'
   platform: string[]
   language: string[]
   type: string[]
   contributor: KunUser[]
-  likeCount: number
-  isLiked: boolean
-  favoriteCount: number
-  isFavorited: boolean
+  like_count: number
+  is_liked: boolean
+  favorite_count: number
+  is_favorited: boolean
   alias: string[]
   series: GalgameSeries | null
   engine: GalgameEngineItem[]
@@ -101,8 +101,8 @@ export interface GalgamePageRequestData {
   type: KunGalgameResourceTypeOptions
   language: KunGalgameResourceLanguageOptions
   platform: KunGalgameResourcePlatformOptions
-  sortField: 'time' | 'views'
-  sortOrder: KunOrder
+  sort_field: 'time' | 'views'
+  sort_order: KunOrder
 }
 
 export interface GalgameCard {
@@ -205,12 +205,12 @@ export const GalgameStatus = {
 // hasPrev/hasNext are data-boundary clamps (no day/month data before minMonth
 // or after maxMonth) — the page disables paging at the edges.
 export interface GalgameCalendarMeta {
-  prevMonth: string
-  nextMonth: string
-  hasPrev: boolean
-  hasNext: boolean
-  minMonth: string
-  maxMonth: string
+  prev_month: string
+  next_month: string
+  has_prev: boolean
+  has_next: boolean
+  min_month: string
+  max_month: string
   count: number
 }
 

@@ -63,8 +63,8 @@ const handleNewComment = (newComment: GalgameComment) => {
 
   if (!thread.value) return
   const reply = newComment as Node
-  if (reply.parentCommentId == null) return
-  if (reply.rootCommentId !== thread.value.id) return
+  if (reply.parent_comment_id == null) return
+  if (reply.root_comment_id !== thread.value.id) return
 
   thread.value = appendReplyToRoot(thread.value, reply)
 }
@@ -112,7 +112,7 @@ const handleReplyRemoved = (
       <div class="flex flex-col">
         <span class="text-default-800 text-base font-semibold">回复详情</span>
         <span v-if="thread" class="text-default-500 text-xs">
-          共 {{ (thread.replyCount ?? 0) + 1 }} 条评论
+          共 {{ (thread.reply_count ?? 0) + 1 }} 条评论
         </span>
       </div>
     </template>

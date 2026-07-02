@@ -10,7 +10,7 @@ import { kunGalgameOriginalLanguageOptions } from '~/constants/galgame'
 // free-form string. Empty input = unknown; TBA toggle is independent of
 // the date (a TBA-flagged entry can still carry a predicted date).
 
-const { ageLimit, originalLanguage, releaseDate, releaseDateTBA } = storeToRefs(
+const { age_limit, original_language, release_date, release_date_tba } = storeToRefs(
   usePersistEditGalgameStore()
 )
 
@@ -34,23 +34,23 @@ const originalLanguageOptions = kunGalgameOriginalLanguageOptions
     </p>
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <KunSelect
-        v-model="ageLimit"
+        v-model="age_limit"
         label="年龄分级"
         :options="ageLimitOptions"
       />
       <KunSelect
-        v-model="originalLanguage"
+        v-model="original_language"
         label="原始语言"
         :options="originalLanguageOptions"
       />
     </div>
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <KunInput
-        v-model="releaseDate"
+        v-model="release_date"
         type="date"
         label="发售日期 (可留空)"
       />
-      <KunSwitch v-model="releaseDateTBA" label="发售日期待定 (TBA)" />
+      <KunSwitch v-model="release_date_tba" label="发售日期待定 (TBA)" />
     </div>
   </div>
 </template>

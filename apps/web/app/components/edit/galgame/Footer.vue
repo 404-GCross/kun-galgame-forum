@@ -9,17 +9,17 @@ import { submitGalgameSchema } from '~/validations/galgame'
 // /edit/galgame/mine — status=3 isn't anonymously visible, so /galgame/:gid
 // would 404 for the submitter until approval.
 
-// No vndbId: submission is exclusively for VNDB-unlisted works (wiki has
+// No vndb_id: submission is exclusively for VNDB-unlisted works (wiki has
 // the full VNDB set as claimable drafts already) — see Galgame.vue.
 const {
   name,
-  contentLimit,
-  ageLimit,
-  originalLanguage,
+  content_limit,
+  age_limit,
+  original_language,
   introduction,
   aliases,
-  releaseDate,
-  releaseDateTBA
+  release_date,
+  release_date_tba
 } = storeToRefs(usePersistEditGalgameStore())
 
 const isPublishing = ref(false)
@@ -42,12 +42,12 @@ const handleSubmitGalgame = async () => {
     intro_ja_jp: introduction.value['ja-jp'],
     intro_zh_cn: introduction.value['zh-cn'],
     intro_zh_tw: introduction.value['zh-tw'],
-    content_limit: contentLimit.value,
-    age_limit: ageLimit.value,
-    original_language: originalLanguage.value,
+    content_limit: content_limit.value,
+    age_limit: age_limit.value,
+    original_language: original_language.value,
     // U1: empty string = unknown; wiki schema accepts "" or YYYY-MM-DD.
-    release_date: releaseDate.value,
-    release_date_tba: releaseDateTBA.value,
+    release_date: release_date.value,
+    release_date_tba: release_date_tba.value,
     banner,
     aliases: String(aliases.value)
   }

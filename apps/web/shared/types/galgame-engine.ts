@@ -15,7 +15,7 @@ export interface GalgameEngineItem {
   // not lying about the detail-embedded shape.
   description?: string
   alias: string[]
-  galgameCount: number
+  galgame_count: number
 }
 
 export interface GalgameEngineDetail {
@@ -24,5 +24,5 @@ export interface GalgameEngineDetail {
   description: string
   alias: string[]
   galgame: GalgameCard[]
-  galgameCount: number
+  galgame_count: number
 }

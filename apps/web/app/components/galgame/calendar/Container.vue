@@ -113,7 +113,7 @@ const addMonth = (ym: string, delta: number) => {
 
 const canGoPrev = computed(
   () =>
-    !!monthData.value && monthData.value.month > monthData.value.meta.minMonth
+    !!monthData.value && monthData.value.month > monthData.value.meta.min_month
 )
 
 const goPrevMonth = () => {

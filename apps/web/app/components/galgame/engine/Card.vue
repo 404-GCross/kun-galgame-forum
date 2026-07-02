@@ -13,7 +13,7 @@ defineProps<{
     <h3 class="text-default-900 font-semibold">
       {{ engine.name }}
       <KunChip size="xs">
-        {{ `+ ${engine.galgameCount}` }}
+        {{ `+ ${engine.galgame_count}` }}
       </KunChip>
     </h3>
     <div

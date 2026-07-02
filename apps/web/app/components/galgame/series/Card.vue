@@ -4,13 +4,13 @@ const props = defineProps<{
 }>()
 
 const includedGamesText = computed(() => {
-  if (!props.series.sampleGalgame.length) {
+  if (!props.series.sample_galgame.length) {
     return '暂无 Galgame'
   }
-  const names = props.series.sampleGalgame.map(
+  const names = props.series.sample_galgame.map(
     (g) => `《${getPreferredLanguageText(g.name)}》`
   )
-  return `${names.join('、')}${props.series.galgameCount > 5 ? ' 等' : ''}`
+  return `${names.join('、')}${props.series.galgame_count > 5 ? ' 等' : ''}`
 })
 </script>
 
@@ -24,14 +24,14 @@ const includedGamesText = computed(() => {
       <KunChip
         variant="solid"
         class="absolute top-2 left-2 z-100"
-        :color="series.isNSFW ? 'danger' : 'success'"
+        :color="series.is_nsfw ? 'danger' : 'success'"
       >
-        {{ series.isNSFW ? 'NSFW' : 'SFW' }}
+        {{ series.is_nsfw ? 'NSFW' : 'SFW' }}
       </KunChip>
 
       <GalgameSeriesBanner
-        :is-n-s-f-w="series.isNSFW"
-        :galgames="series.sampleGalgame"
+        :is-n-s-f-w="series.is_nsfw"
+        :galgames="series.sample_galgame"
       />
     </div>
 
@@ -49,7 +49,7 @@ const includedGamesText = computed(() => {
       <div class="mt-auto flex items-center justify-between">
         <div class="text-default-500 flex items-center gap-2 text-sm">
           <KunIcon name="lucide:gamepad-2" class="h-4 w-4" />
-          <span>共 {{ series.galgameCount }} 部 Galgame</span>
+          <span>共 {{ series.galgame_count }} 部 Galgame</span>
         </div>
 
         <div

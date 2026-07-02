@@ -1,7 +1,7 @@
 export interface GalgameResource {
   id: number
   view: number
-  galgameId: number
+  galgame_id: number
   user: KunUser
   type: string
   language: string
@@ -9,22 +9,22 @@ export interface GalgameResource {
   size: string
   status: number
   download: number
-  likeCount: number
-  isLiked: boolean
-  linkDomain: string
+  like_count: number
+  is_liked: boolean
+  link_domain: string
   /**
    * Pre-computed display labels for the resource's hosting providers
    * (e.g. ["百度网盘", "OneDrive"]). Resolved by the backend at write time
    * — do not re-derive from `linkDomain` in the UI.
    */
-  providerNames: string[]
+  provider_names: string[]
   note: string
   /**
    * Server-rendered, sanitized HTML of `note` (Markdown → HTML via the shared
    * markdown.Render pipeline, same as topic/comment content). Render this with
    * `<KunContent>`; keep `note` (raw markdown) only for re-seeding the editor.
    */
-  noteHtml: string
+  note_html: string
   created: Date | string
   edited: Date | string | null
 }
@@ -37,7 +37,7 @@ export interface GalgameResourceDetailLink extends GalgameResource {
 }
 
 export interface GalgameResourceCard extends GalgameResource {
-  galgameName: KunLanguage
+  galgame_name: KunLanguage
 }
 
 export interface GalgameResourceSummary {
@@ -50,11 +50,11 @@ export interface GalgameResourceSummary {
   effective_banner_width?: number
   effective_banner_height?: number
   effective_banner_thumbhash?: string
-  contentLimit: string
-  resourceUpdateTime: Date | string
+  content_limit: string
+  resource_update_time: Date | string
   view: number
-  originalLanguage: string
-  ageLimit: KunAgeLimit
+  original_language: string
+  age_limit: KunAgeLimit
   platform: string[]
   language: string[]
   type: string[]

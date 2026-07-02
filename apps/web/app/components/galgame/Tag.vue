@@ -68,7 +68,7 @@ const filteredTags = computed(() => {
   const filtered = props.tags.filter(
     (tag) =>
       selectedCategories.value.includes(tag.category) &&
-      selectedSpoilerLevels.value.includes(tag.spoilerLevel as 0)
+      selectedSpoilerLevels.value.includes(tag.spoiler_level as 0)
   )
   return filtered.sort((a, b) => a.id - b.id)
 })
@@ -139,10 +139,10 @@ const countColorByCategory = (category: string): string => {
           >
             {{ tag.name }}
             <span :class="cn('text-xs', countColorByCategory(tag.category))">
-              {{ `+${tag.galgameCount}` }}
+              {{ `+${tag.galgame_count}` }}
             </span>
-            <span v-if="tag.spoilerLevel > 0" class="text-warning-600 text-xs">
-              {{ tag.spoilerLevel > 1 ? '(严重剧透)' : '(剧透)' }}
+            <span v-if="tag.spoiler_level > 0" class="text-warning-600 text-xs">
+              {{ tag.spoiler_level > 1 ? '(严重剧透)' : '(剧透)' }}
             </span>
           </KunChip>
         </KunLink>

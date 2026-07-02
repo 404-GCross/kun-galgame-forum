@@ -15,15 +15,15 @@ const galgame = inject<GalgameDetail>('galgame')
       <GalgameLike
         :galgame-id="galgame.id"
         :target-user-id="galgame.user.id"
-        :like-count="galgame.likeCount"
-        :is-liked="galgame.isLiked"
+        :like-count="galgame.like_count"
+        :is-liked="galgame.is_liked"
       />
 
       <GalgameFavorite
         :galgame-id="galgame.id"
         :target-user-id="galgame.user.id"
-        :favorite-count="galgame.favoriteCount"
-        :is-favorited="galgame.isFavorited"
+        :favorite-count="galgame.favorite_count"
+        :is-favorited="galgame.is_favorited"
       />
 
       <GalgameRewrite :galgame="galgame" />

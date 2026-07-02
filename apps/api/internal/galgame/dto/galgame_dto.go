@@ -20,28 +20,28 @@ type GalgameListRequest struct {
 	Type                 string `query:"type"`
 	Language             string `query:"language"`
 	Platform             string `query:"platform"`
-	GameType             string `query:"gameType" validate:"omitempty,oneof=all ba_saku plot moe daily uncategorized"`
-	SortField            string `query:"sortField"`
-	SortOrder            string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
-	IncludeProviders     string `query:"includeProviders"`
-	ExcludeOnlyProviders string `query:"excludeOnlyProviders"`
+	GameType             string `query:"game_type" validate:"omitempty,oneof=all ba_saku plot moe daily uncategorized"`
+	SortField            string `query:"sort_field"`
+	SortOrder            string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
+	IncludeProviders     string `query:"include_providers"`
+	ExcludeOnlyProviders string `query:"exclude_only_providers"`
 	// Release-date filter, wiki §17 format: "YYYY" or "YYYY-MM" (empty =
 	// no bound). Validated + resolved to date boundaries in the service;
 	// malformed input → 400.
-	ReleasedFrom string `query:"releasedFrom"`
-	ReleasedTo   string `query:"releasedTo"`
+	ReleasedFrom string `query:"released_from"`
+	ReleasedTo   string `query:"released_to"`
 	// Discontinuous month set, wiki §17.10: csv of 1–12 (e.g. "3,7").
 	// AND-combined with the year range. Malformed → 400.
-	ReleasedMonths string `query:"releasedMonths"`
+	ReleasedMonths string `query:"released_months"`
 	// Bayesian-rating advanced filters. minRatingCount = high-confidence
 	// gate (>= N votes); minRating = Bayesian score >= X (0–10). Sort by
 	// rating is driven by sortField=rating.
-	MinRatingCount int     `query:"minRatingCount" validate:"omitempty,min=0"`
-	MinRating      float64 `query:"minRating" validate:"omitempty,min=0,max=10"`
+	MinRatingCount int     `query:"min_rating_count" validate:"omitempty,min=0"`
+	MinRating      float64 `query:"min_rating" validate:"omitempty,min=0,max=10"`
 	// ShowNoResource controls whether galgames with NO download resources
 	// appear. Default false (the "显示没有下载资源的 Galgame" toggle is off) →
 	// resource-less galgames are hidden; true → include them.
-	ShowNoResource bool `query:"showNoResource"`
+	ShowNoResource bool `query:"show_no_resource"`
 }
 
 // ──────────────────────────────────────────
@@ -132,7 +132,7 @@ type GalgameDetailOfficial struct {
 	Category     string   `json:"category"`
 	Lang         string   `json:"lang"`
 	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgameCount"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 // GalgameDetailEngine is an engine entry on the detail page.
@@ -140,7 +140,7 @@ type GalgameDetailEngine struct {
 	ID           int      `json:"id"`
 	Name         string   `json:"name"`
 	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgameCount"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 // GalgameDetailTag is a tag entry on the detail page (with spoiler_level).
@@ -148,8 +148,8 @@ type GalgameDetailTag struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	Category     string `json:"category"`
-	GalgameCount int    `json:"galgameCount"`
-	SpoilerLevel int    `json:"spoilerLevel"`
+	GalgameCount int    `json:"galgame_count"`
+	SpoilerLevel int    `json:"spoiler_level"`
 }
 
 // GalgameDetailSeries is the series info shown on the detail page.
@@ -157,9 +157,9 @@ type GalgameDetailSeries struct {
 	ID            int             `json:"id"`
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"isNSFW"`
-	SampleGalgame []GalgameSample `json:"sampleGalgame"`
-	GalgameCount  int             `json:"galgameCount"`
+	IsNSFW        bool            `json:"is_nsfw"`
+	SampleGalgame []GalgameSample `json:"sample_galgame"`
+	GalgameCount  int             `json:"galgame_count"`
 	Created       string          `json:"created"`
 	Updated       string          `json:"updated"`
 }
@@ -167,7 +167,7 @@ type GalgameDetailSeries struct {
 // GalgameDetailRatingGalgame is the tiny galgame embed inside each rating card.
 type GalgameDetailRatingGalgame struct {
 	ID           int         `json:"id"`
-	ContentLimit string      `json:"contentLimit"`
+	ContentLimit string      `json:"content_limit"`
 	Name         KunLanguage `json:"name"`
 }
 
@@ -178,7 +178,7 @@ type GalgameDetailRating struct {
 	Recommend    string                     `json:"recommend"`
 	Overall      int                        `json:"overall"`
 	View         int                        `json:"view"`
-	GalgameType  json.RawMessage            `json:"galgameType"`
+	GalgameType  json.RawMessage            `json:"galgame_type"`
 	PlayStatus   string                     `json:"play_status"`
 	ShortSummary string                     `json:"short_summary"`
 	SpoilerLevel string                     `json:"spoiler_level"`
@@ -190,9 +190,9 @@ type GalgameDetailRating struct {
 	System       int                        `json:"system"`
 	Voice        int                        `json:"voice"`
 	ReplayValue  int                        `json:"replay_value"`
-	LikeCount    int                        `json:"likeCount"`
-	IsLiked      bool                       `json:"isLiked"`
-	GalgameID    int                        `json:"galgameId"`
+	LikeCount    int                        `json:"like_count"`
+	IsLiked      bool                       `json:"is_liked"`
+	GalgameID    int                        `json:"galgame_id"`
 	Created      string                     `json:"created"`
 	Updated      string                     `json:"updated"`
 	Galgame      GalgameDetailRatingGalgame `json:"galgame"`
@@ -201,30 +201,30 @@ type GalgameDetailRating struct {
 // GalgameDetail is the full response for GET /galgame/:gid.
 type GalgameDetail struct {
 	ID                 int         `json:"id"`
-	VndbID             string      `json:"vndbId"`
+	VndbID             string      `json:"vndb_id"`
 	User               UserBrief   `json:"user"`
 	Name               KunLanguage `json:"name"`
 	Banner             string      `json:"banner"`
 	Introduction       KunLanguage `json:"introduction"`
 	Markdown           KunLanguage `json:"markdown"`
-	ContentLimit       string      `json:"contentLimit"`
-	ResourceUpdateTime string      `json:"resourceUpdateTime"`
+	ContentLimit       string      `json:"content_limit"`
+	ResourceUpdateTime string      `json:"resource_update_time"`
 	View               int         `json:"view"`
 	// IsOnForum is false for a wiki-catalogue galgame the forum has never
 	// ingested (no local row). The detail page then shows a 未收录 notice and
 	// hides the forum-only view count, keeping the upload/rate/comment CTAs (the
 	// recording funnel — those create the local row on first use).
-	IsOnForum bool `json:"isOnForum"`
+	IsOnForum bool `json:"is_on_forum"`
 	// Status = wiki 草稿状态 (0=已发布, 2=VNDB 草稿, 3/4=提交者自己的待审/被拒)。
 	// 未收录提示用它判断是否可认领：只有 VNDB 草稿 (status=2) 能被认领成为创建者，
 	// 已发布条目 (status=0) 已有创建者、不能再认领。
 	Status           int    `json:"status"`
-	OriginalLanguage string `json:"originalLanguage"`
-	AgeLimit         string `json:"ageLimit"`
+	OriginalLanguage string `json:"original_language"`
+	AgeLimit         string `json:"age_limit"`
 	// U1 (release_date / release_date_tba): nil = unknown; TBA is
 	// independent of the date (a TBA entry may still carry "预计 Y/M").
-	ReleaseDate    *string `json:"releaseDate"`
-	ReleaseDateTBA bool    `json:"releaseDateTBA"`
+	ReleaseDate    *string `json:"release_date"`
+	ReleaseDateTBA bool    `json:"release_date_tba"`
 	// U2: derived effective banner (sort_order=0 cover). URL is injected
 	// by client.rewriteBanners so the FE never has to hash → URL on its
 	// own. covers/screenshots also receive a `cdn_url` per row from the
@@ -241,10 +241,10 @@ type GalgameDetail struct {
 	Language                 []string                `json:"language"`
 	Type                     []string                `json:"type"`
 	Contributor              []UserBrief             `json:"contributor"`
-	LikeCount                int                     `json:"likeCount"`
-	IsLiked                  bool                    `json:"isLiked"`
-	FavoriteCount            int                     `json:"favoriteCount"`
-	IsFavorited              bool                    `json:"isFavorited"`
+	LikeCount                int                     `json:"like_count"`
+	IsLiked                  bool                    `json:"is_liked"`
+	FavoriteCount            int                     `json:"favorite_count"`
+	IsFavorited              bool                    `json:"is_favorited"`
 	Alias                    []string                `json:"alias"`
 	Series                   *GalgameDetailSeries    `json:"series"`
 	Engine                   []GalgameDetailEngine   `json:"engine"`

@@ -25,11 +25,11 @@ const nuxtApp = useNuxtApp()
 // Backend-computed labels (e.g. "百度网盘 / OneDrive"). Falls back to the
 // raw domain when the resource pre-dates the backfill or matches no rule.
 const providerName = computed(() => {
-  const names = props.resource.providerNames
+  const names = props.resource.provider_names
   if (names && names.length > 0) {
     return names.join(' / ')
   }
-  return props.resource.linkDomain
+  return props.resource.link_domain
 })
 
 const isFetching = ref(false)
@@ -44,7 +44,7 @@ const handleDeleteResource = async () => {
   if (!res) return
 
   const result = await kunFetch(
-    `/galgame/${props.resource.galgameId}/resource`,
+    `/galgame/${props.resource.galgame_id}/resource`,
     {
       method: 'DELETE',
       query: { galgameResourceId: props.resource.id }
@@ -53,7 +53,7 @@ const handleDeleteResource = async () => {
 
   if (result) {
     useMessage('删除资源成功', 'success')
-    await navigateTo(`/galgame/${props.resource.galgameId}`)
+    await navigateTo(`/galgame/${props.resource.galgame_id}`)
   }
 }
 
@@ -62,7 +62,7 @@ const handleDeleteResource = async () => {
 const { status: reportStatus, report: reportExpire } =
   useReportResourceExpired()
 const handleReportExpire = () =>
-  reportExpire(props.resource.galgameId, props.resource.id, () =>
+  reportExpire(props.resource.galgame_id, props.resource.id, () =>
     props.refresh()
   )
 
@@ -120,7 +120,7 @@ const handleEditDone = () => {
       color="info"
       title="下载备注信息"
     >
-      <KunContent compact :content="renderKatex(resource.noteHtml)" />
+      <KunContent compact :content="renderKatex(resource.note_html)" />
     </KunInfo>
 
     <KunAdAIFYBanner class-name="block lg:hidden" />
@@ -182,7 +182,7 @@ const handleEditDone = () => {
             <p>
               须知 Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭,
               可见经济并不宽裕。如果条件允许, 请尽可能前往
-              <KunLink size="sm" :to="`/galgame/${resource.galgameId}`">
+              <KunLink size="sm" :to="`/galgame/${resource.galgame_id}`">
                 Galgame 详情
               </KunLink>
               中的 Galgame 制作商部分 进行正版 Galgame 补票, 感谢您对 Galgame
@@ -209,7 +209,7 @@ const handleEditDone = () => {
     <KunInfo title="鲲的小请求">
       <p>
         在您下载这部 Galgame 并游玩之后, 可否请您在本网站的
-        <KunLink size="sm" :to="`/galgame/${resource.galgameId}`">
+        <KunLink size="sm" :to="`/galgame/${resource.galgame_id}`">
           Galgame 评分页面
         </KunLink>
         为这部 Galgame 提交一个评分, 这将有助于我们把优秀的 Galgame
@@ -250,7 +250,7 @@ const handleEditDone = () => {
         </KunButton>
       </div>
 
-      <KunButton variant="flat" :href="`/galgame/${resource.galgameId}`">
+      <KunButton variant="flat" :href="`/galgame/${resource.galgame_id}`">
         反馈资源问题
       </KunButton>
     </div>
@@ -260,7 +260,7 @@ const handleEditDone = () => {
     <GalgameResourceLinkEditModal
       v-if="detail"
       v-model="isEditOpen"
-      :galgame-id="resource.galgameId"
+      :galgame-id="resource.galgame_id"
       :resource="detail"
       :refresh="handleEditDone"
     />

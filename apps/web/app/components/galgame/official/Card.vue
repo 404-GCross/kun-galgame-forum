@@ -40,7 +40,7 @@ const getOfficialCategoryInfo = (category: string) => {
     <h3 class="text-default-900 font-semibold">
       {{ official.name }}
       <KunChip size="xs">
-        {{ `+ ${official.galgameCount}` }}
+        {{ `+ ${official.galgame_count}` }}
       </KunChip>
     </h3>
     <div class="flex items-center gap-x-2">

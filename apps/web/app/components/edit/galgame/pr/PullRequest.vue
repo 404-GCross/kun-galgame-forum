@@ -68,10 +68,10 @@ const originalLanguageOptions: KunSelectOption[] = [
 
         <template v-else>
           <KunInfo
-            :color="pr!.canDirectEdit ? 'success' : 'primary'"
-            :title="pr!.canDirectEdit ? '直接编辑模式' : '更新请求模式'"
+            :color="pr!.can_direct_edit ? 'success' : 'primary'"
+            :title="pr!.can_direct_edit ? '直接编辑模式' : '更新请求模式'"
             :description="
-              pr!.canDirectEdit
+              pr!.can_direct_edit
                 ? '你是创建者或管理员, 保存后立即生效并记录一条版本历史。'
                 : '你的修改将作为更新请求提交, 由创建者或管理员审核合并后生效。'
             "
@@ -116,12 +116,12 @@ const originalLanguageOptions: KunSelectOption[] = [
 
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
               <KunSelect
-                v-model="pr!.ageLimit"
+                v-model="pr!.age_limit"
                 label="年龄分级"
                 :options="ageLimitOptions"
               />
               <KunSelect
-                v-model="pr!.originalLanguage"
+                v-model="pr!.original_language"
                 label="原始语言"
                 :options="originalLanguageOptions"
               />
@@ -129,12 +129,12 @@ const originalLanguageOptions: KunSelectOption[] = [
 
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
               <KunInput
-                v-model="pr!.releaseDate"
+                v-model="pr!.release_date"
                 type="date"
                 label="发售日期 (留空=未公布)"
               />
               <KunSwitch
-                v-model="pr!.releaseDateTBA"
+                v-model="pr!.release_date_tba"
                 label="发售日期待定 (TBA)"
               />
             </div>
@@ -145,7 +145,7 @@ const originalLanguageOptions: KunSelectOption[] = [
                 该作品在 VNDB 的编号, 无对应条目 (如原创 / 同人作品) 可留空。
               </p>
               <KunInput
-                v-model="pr!.vndbId"
+                v-model="pr!.vndb_id"
                 placeholder="例如: v19658 (可留空)"
               />
             </div>

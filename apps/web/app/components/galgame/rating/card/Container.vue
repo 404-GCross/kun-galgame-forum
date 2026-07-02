@@ -8,11 +8,11 @@ import {
 const params = reactive({
   page: 1,
   limit: 24,
-  sortField: 'time',
-  sortOrder: 'desc',
-  spoilerLevel: 'all',
-  playStatus: 'all',
-  galgameType: 'all'
+  sort_field: 'time',
+  sort_order: 'desc',
+  spoiler_level: 'all',
+  play_status: 'all',
+  galgame_type: 'all'
 })
 
 const { data, status } = await useKunFetch<{
@@ -41,27 +41,27 @@ const { data, status } = await useKunFetch<{
         class="flex w-full shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-transparent sm:flex-nowrap"
       >
         <div class="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
-          <KunSelect v-model="params.spoilerLevel" :options="spoilerOptions" />
-          <KunSelect v-model="params.playStatus" :options="playStatusOptions" />
-          <KunSelect v-model="params.galgameType" :options="typeOptions" />
-          <KunSelect v-model="params.sortField" :options="sortFieldOptions" />
+          <KunSelect v-model="params.spoiler_level" :options="spoilerOptions" />
+          <KunSelect v-model="params.play_status" :options="playStatusOptions" />
+          <KunSelect v-model="params.galgame_type" :options="typeOptions" />
+          <KunSelect v-model="params.sort_field" :options="sortFieldOptions" />
         </div>
 
         <div class="flex items-center gap-2">
           <KunButton
             :is-icon-only="true"
-            :variant="params.sortOrder === 'desc' ? 'flat' : 'light'"
+            :variant="params.sort_order === 'desc' ? 'flat' : 'light'"
             size="lg"
-            @click="params.sortOrder = 'desc'"
+            @click="params.sort_order = 'desc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-down" />
           </KunButton>
 
           <KunButton
             :is-icon-only="true"
-            :variant="params.sortOrder === 'asc' ? 'flat' : 'light'"
+            :variant="params.sort_order === 'asc' ? 'flat' : 'light'"
             size="lg"
-            @click="params.sortOrder = 'asc'"
+            @click="params.sort_order = 'asc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-up" />
           </KunButton>

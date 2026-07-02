@@ -13,13 +13,13 @@ export const getGalgameOfficialSchema = z.object({
 
 export const getGalgameByOfficialSchema = getGalgameOfficialSchema.merge(
   z.object({
-    officialId: z.coerce.number<number>().min(1).max(9999999),
+    official_id: z.coerce.number<number>().min(1).max(9999999),
     limit: z.coerce.number<number>().min(1).max(24),
     type: z.enum([...KUN_RESOURCE_TYPE_CONST, 'all']),
     language: z.enum([...KUN_RESOURCE_LANGUAGE_CONST, 'all']),
     platform: z.enum([...KUN_RESOURCE_PLATFORM_CONST, 'all']),
-    sortField: z.enum(['time', 'created', 'view']),
-    sortOrder: z.enum(['asc', 'desc'])
+    sort_field: z.enum(['time', 'created', 'view']),
+    sort_order: z.enum(['asc', 'desc'])
   })
 )
 
@@ -32,7 +32,7 @@ export const getGalgameOfficialBySearchSchema = z.object({
 })
 
 export const updateGalgameOfficialSchema = z.object({
-  officialId: z.coerce.number<number>().min(1).max(9999999),
+  official_id: z.coerce.number<number>().min(1).max(9999999),
   name: z.string().min(1).max(200, 'Galgame 制作会社名最多 200 个字符'),
   // K-PR6 (wiki PR4 sub-change): UpdateOfficialRequest gained
   // `Original *string` — the Japanese / original-language name that

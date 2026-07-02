@@ -5,8 +5,8 @@ const { galgamePR } = storeToRefs(useTempGalgamePRStore())
 
 // Creator/admin edit directly (instant); others open a PR. Drives the
 // button label here and the endpoint branch in the handler.
-const canDirectEdit = computed(
-  () => galgamePR.value[0]?.canDirectEdit ?? false
+const can_direct_edit = computed(
+  () => galgamePR.value[0]?.can_direct_edit ?? false
 )
 
 const isPublishing = ref(false)
@@ -41,7 +41,7 @@ const handlePublishGalgamePR = async () => {
   // `/link/all` hydration failed, `links` and the baseline are BOTH empty →
   // unchanged → omitted → existing links are preserved, instead of an empty
   // replace-all silently wiping every link of the galgame on merge.
-  const linksChanged = JSON.stringify(links) !== (galgame.linksBaseline ?? '[]')
+  const linksChanged = JSON.stringify(links) !== (galgame.links_baseline ?? '[]')
 
   // U2 (K-PR3b): covers/screenshots are presence-replace; strip the
   // server-injected `cdn_url` preview field — wiki doesn't accept it on
@@ -70,9 +70,9 @@ const handlePublishGalgamePR = async () => {
   // the cover back if that hydration was at all stale — the reported "edit
   // intro → cover reverts" bug. Untouched → omit → wiki keeps the current set.
   const coversChanged =
-    JSON.stringify(galgame.covers) !== (galgame.coversBaseline ?? '')
+    JSON.stringify(galgame.covers) !== (galgame.covers_baseline ?? '')
   const screenshotsChanged =
-    JSON.stringify(galgame.screenshots) !== (galgame.screenshotsBaseline ?? '')
+    JSON.stringify(galgame.screenshots) !== (galgame.screenshots_baseline ?? '')
 
   const data: Record<
     string,
@@ -84,7 +84,7 @@ const handlePublishGalgamePR = async () => {
     | { name: string; link: string }[]
     | Record<string, unknown>[]
   > = {
-    vndb_id: galgame.vndbId,
+    vndb_id: galgame.vndb_id,
     name_en_us: galgame.name['en-us'],
     name_ja_jp: galgame.name['ja-jp'],
     name_zh_cn: galgame.name['zh-cn'],
@@ -93,12 +93,12 @@ const handlePublishGalgamePR = async () => {
     intro_ja_jp: galgame.introduction['ja-jp'],
     intro_zh_cn: galgame.introduction['zh-cn'],
     intro_zh_tw: galgame.introduction['zh-tw'],
-    content_limit: galgame.contentLimit,
-    age_limit: galgame.ageLimit,
-    original_language: galgame.originalLanguage,
+    content_limit: galgame.content_limit,
+    age_limit: galgame.age_limit,
+    original_language: galgame.original_language,
     // U1: empty = clear to unknown; TBA is independent.
-    release_date: galgame.releaseDate,
-    release_date_tba: galgame.releaseDateTBA,
+    release_date: galgame.release_date,
+    release_date_tba: galgame.release_date_tba,
     aliases: aliasList,
     tag_ids: galgame.tags.map((t) => t.id),
     official_ids: galgame.officials.map((o) => o.id),
@@ -129,8 +129,8 @@ const handlePublishGalgamePR = async () => {
   }
   // Creator / admin edit directly (PUT /galgame/:gid — instant, new
   // revision). Everyone else opens a PR (POST /:gid/prs). Decided in
-  // Rewrite.vue at hydration; see GalgameEditStoreTemp.canDirectEdit.
-  const direct = canDirectEdit.value
+  // Rewrite.vue at hydration; see GalgameEditStoreTemp.can_direct_edit.
+  const direct = can_direct_edit.value
 
   const res = await useComponentMessageStore().alert(
     direct ? '确定直接保存对该 Galgame 的修改吗?' : '确定发布 Galgame 信息更新请求吗?',
@@ -273,7 +273,7 @@ const reconcileAliasesLinks = async (
       size="lg"
       @click="handlePublishGalgamePR"
     >
-      {{ canDirectEdit ? '保存修改' : '提交更新请求' }}
+      {{ can_direct_edit ? '保存修改' : '提交更新请求' }}
     </KunButton>
   </div>
 </template>

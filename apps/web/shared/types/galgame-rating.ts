@@ -4,10 +4,10 @@ import type { GalgameSeries } from './galgame-series'
 export interface GalgameRatingGalgameInfo {
   id: number
   name: KunLanguage
-  contentLimit: string
+  content_limit: string
   official: GalgameOfficialItem[]
-  ageLimit: string
-  originalLanguage: string
+  age_limit: string
+  original_language: string
   banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
@@ -17,7 +17,7 @@ export interface GalgameRatingGalgameInfo {
   effective_banner_thumbhash?: string
   // rating overall average
   rating: number
-  ratingCount: number
+  rating_count: number
 }
 
 export interface GalgameRatingCard {
@@ -26,7 +26,7 @@ export interface GalgameRatingCard {
   recommend: string
   overall: number
   view: number
-  galgameType: string[]
+  galgame_type: string[]
   play_status: string
   // Author's short writeup; BE returns it on every list row (RatingCard),
   // so listing it here mirrors the wire shape. Card.vue doesn't render it
@@ -44,14 +44,14 @@ export interface GalgameRatingCard {
   replay_value: number
   spoiler_level: string
 
-  likeCount: number
+  like_count: number
   created: Date | string
   updated: Date | string
 
   galgame: {
     id: number
     name: KunLanguage
-    contentLimit: string
+    content_limit: string
   }
 }
 
@@ -59,20 +59,20 @@ export interface GalgameRatingComment {
   id: number
   content: string
   user: KunUser
-  targetUser: KunUser | null
+  target_user: KunUser | null
 
   created: Date | string
   updated: Date | string
 }
 
 export interface GalgameRatingDetails extends GalgameRatingCard {
-  isLiked: boolean
-  likedUsers: KunUser[]
+  is_liked: boolean
+  liked_users: KunUser[]
   comments: GalgameRatingComment[]
   galgame: GalgameRatingGalgameInfo
-  galgameSeries: GalgameSeries | null
+  galgame_series: GalgameSeries | null
 }
 
 export interface GalgameRatingCardOnGalgamePage extends GalgameRatingCard {
-  isLiked: boolean
+  is_liked: boolean
 }

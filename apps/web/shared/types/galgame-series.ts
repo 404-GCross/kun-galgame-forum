@@ -11,9 +11,9 @@ export interface GalgameSeries {
   id: number
   name: string
   description: string
-  isNSFW: boolean
-  sampleGalgame: GalgameSeriesSample[]
-  galgameCount: number
+  is_nsfw: boolean
+  sample_galgame: GalgameSeriesSample[]
+  galgame_count: number
   created: Date | string
   updated: Date | string
 }

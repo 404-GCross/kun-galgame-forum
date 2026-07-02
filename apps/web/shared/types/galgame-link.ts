@@ -1,7 +1,7 @@
 export interface GalgameLink {
   id: number
   user: KunUser
-  galgameId: number
+  galgame_id: number
   name: string
   link: string
 }

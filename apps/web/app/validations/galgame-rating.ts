@@ -11,10 +11,10 @@ const SORT_ORDER_CONST = ['asc', 'desc'] as const
 
 export const createGalgameRatingSchema = z
   .object({
-    galgameId: z.coerce.number<number>().min(1).max(9999999),
+    galgame_id: z.coerce.number<number>().min(1).max(9999999),
     recommend: z.enum(KUN_GALGAME_RATING_RECOMMEND_CONST),
     overall: z.coerce.number<number>().int().min(1).max(10),
-    galgameType: z
+    galgame_type: z
       .array(z.enum(KUN_GALGAME_RATING_GAME_TYPE_CONST))
       .min(1, { message: '请至少选择一个' }),
     play_status: z.enum(KUN_GALGAME_RATING_PLAY_STATUS_CONST),
@@ -45,10 +45,10 @@ export const createGalgameRatingSchema = z
 
 export const updateGalgameRatingSchema = z
   .object({
-    galgameRatingId: z.coerce.number<number>().min(1).max(9999999),
+    galgame_rating_id: z.coerce.number<number>().min(1).max(9999999),
     recommend: z.enum(KUN_GALGAME_RATING_RECOMMEND_CONST),
     overall: z.coerce.number<number>().int().min(1).max(10),
-    galgameType: z
+    galgame_type: z
       .array(z.enum(KUN_GALGAME_RATING_GAME_TYPE_CONST))
       .min(1, { message: '请至少选择一个' }),
     play_status: z.enum(KUN_GALGAME_RATING_PLAY_STATUS_CONST),
@@ -81,41 +81,41 @@ export const updateGalgameRatingSchema = z
   })
 
 export const deleteGalgameRatingSchema = z.object({
-  galgameRatingId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getGalgameRatingsSchema = z.object({
-  galgameId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(50),
-  sortField: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
-  sortOrder: z.enum(SORT_ORDER_CONST),
-  spoilerLevel: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
-  playStatus: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
-  galgameType: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
+  sort_field: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
+  sort_order: z.enum(SORT_ORDER_CONST),
+  spoiler_level: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
+  play_status: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
+  galgame_type: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
 })
 
 export const getGalgameRatingDetailSchema = z.object({
-  galgameRatingId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getAllGalgameRatingsSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(50),
-  sortField: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
-  sortOrder: z.enum(SORT_ORDER_CONST),
-  spoilerLevel: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
-  playStatus: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
-  galgameType: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
+  sort_field: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
+  sort_order: z.enum(SORT_ORDER_CONST),
+  spoiler_level: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
+  play_status: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
+  galgame_type: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
 })
 
 export const updateGalgameRatingLikeSchema = z.object({
-  galgameRatingId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createGalgameRatingCommentSchema = z.object({
-  galgameRatingId: z.coerce.number<number>().min(1).max(9999999),
-  targetUserId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999),
+  target_user_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
     .string()
     .min(1)
@@ -123,10 +123,10 @@ export const createGalgameRatingCommentSchema = z.object({
 })
 
 export const deleteGalgameRatingCommentSchema = z.object({
-  galgameRatingCommentId: z.coerce.number<number>().min(1).max(9999999)
+  galgame_rating_comment_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateGalgameRatingCommentSchema = z.object({
-  galgameRatingCommentId: z.coerce.number<number>().min(1).max(9999999),
+  galgame_rating_comment_id: z.coerce.number<number>().min(1).max(9999999),
   content: z.string().min(1).max(1314, { message: '内容长度不能超过 1314 字' })
 })

@@ -55,7 +55,7 @@ const getLanguageName = getGalgameOriginalLanguageName
           <KunTooltip
             v-for="item in engine"
             :key="item.id"
-            :text="`${item.galgameCount} 个 Galgame 使用此引擎制作`"
+            :text="`${item.galgame_count} 个 Galgame 使用此引擎制作`"
           >
             <KunLink
               :to="`/galgame-engine/${item.id}`"
@@ -64,7 +64,7 @@ const getLanguageName = getGalgameOriginalLanguageName
             >
               {{ item.name }}
               <KunChip size="xs">
-                {{ `+ ${item.galgameCount}` }}
+                {{ `+ ${item.galgame_count}` }}
               </KunChip>
             </KunLink>
           </KunTooltip>

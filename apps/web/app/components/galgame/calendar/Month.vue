@@ -20,7 +20,7 @@ const isCurrentMonth = computed(
   () => props.data.month === props.data.today.slice(0, 7)
 )
 // Backward stops at the data floor; forward is unbounded (parent computes it).
-const canGoPrev = computed(() => props.data.month > props.data.meta.minMonth)
+const canGoPrev = computed(() => props.data.month > props.data.meta.min_month)
 
 // Today's day-of-month, or -1 when today isn't in the viewed month.
 const todayDay = computed(() =>

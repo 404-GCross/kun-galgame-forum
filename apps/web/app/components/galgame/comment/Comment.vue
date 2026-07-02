@@ -9,7 +9,7 @@ import type { SerializeObject } from 'nitropack'
 // We never render past depth 1. The DB still tracks the true parent
 // chain via parent_comment_id, but the inline list and the drawer
 // both render replies as one flat group beneath the root. The
-// "回复 @<user>" context survives via comment.targetUser ("A => B").
+// "回复 @<user>" context survives via comment.target_user ("A => B").
 //
 // Mutations bubble up as events; Container / ThreadDrawer own the
 // state and apply immutable updates.
@@ -63,11 +63,11 @@ const visibleReplies = computed(() =>
 const showLoadMore = computed(
   () =>
     props.depth === 0 &&
-    (props.comment.replyCount ?? 0) > visibleReplies.value.length
+    (props.comment.reply_count ?? 0) > visibleReplies.value.length
 )
 
 const rootAnchorId = computed(
-  () => props.comment.rootCommentId ?? props.comment.id
+  () => props.comment.root_comment_id ?? props.comment.id
 )
 
 const handleStartEdit = () => {
@@ -97,7 +97,7 @@ const handleSubmitEdit = async () => {
 
   isSavingEdit.value = true
   const updated = await kunFetch<GalgameComment>(
-    `/galgame/${props.comment.galgameId}/comment`,
+    `/galgame/${props.comment.galgame_id}/comment`,
     {
       method: 'PUT',
       body: { commentId: props.comment.id, content: text }
@@ -116,14 +116,14 @@ const handleDelete = async () => {
   const ok = await useComponentMessageStore().alert('您确定删除评论吗？')
   if (!ok) return
 
-  const result = await kunFetch(`/galgame/${props.comment.galgameId}/comment`, {
+  const result = await kunFetch(`/galgame/${props.comment.galgame_id}/comment`, {
     method: 'DELETE',
     query: { commentId: props.comment.id }
   })
 
   if (result) {
     useMessage(10538, 'success')
-    const removed = 1 + (props.comment.replyCount ?? 0)
+    const removed = 1 + (props.comment.reply_count ?? 0)
     emit('replyRemoved', props.comment.id, removed, rootAnchorId.value)
   }
 }
@@ -138,14 +138,14 @@ const handleDelete = async () => {
         <span class="text-default-800 text-sm font-medium">
           {{ comment.user.name }}
         </span>
-        <template v-if="comment.targetUser">
+        <template v-if="comment.target_user">
           <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
           <KunLink
             underline="hover"
             size="sm"
-            :to="`/user/${comment.targetUser.id}`"
+            :to="`/user/${comment.target_user.id}`"
           >
-            {{ comment.targetUser.name }}
+            {{ comment.target_user.name }}
           </KunLink>
         </template>
         <span class="text-default-400 text-xs">
@@ -161,7 +161,7 @@ const handleDelete = async () => {
       <KunContent
         v-if="!isEditing"
         compact
-        :content="renderKatex(comment.contentHtml)"
+        :content="renderKatex(comment.content_html)"
       />
 
       <!-- Edit mode: same Milkdown editor as the new-comment Panel,
@@ -265,7 +265,7 @@ const handleDelete = async () => {
         @click="emit('openThread', rootAnchorId)"
       >
         <KunIcon name="lucide:messages-square" />
-        查看更多 {{ comment.replyCount }} 条回复
+        查看更多 {{ comment.reply_count }} 条回复
       </KunButton>
     </div>
   </div>

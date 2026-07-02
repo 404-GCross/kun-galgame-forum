@@ -47,11 +47,11 @@ const platformLabels = computed(() => {
         />
 
         <KunChip
-          :color="galgame.contentLimit === 'sfw' ? 'success' : 'danger'"
+          :color="galgame.content_limit === 'sfw' ? 'success' : 'danger'"
           class-name="absolute top-2 left-2"
           variant="solid"
         >
-          {{ props.galgame.contentLimit.toUpperCase() }}
+          {{ props.galgame.content_limit.toUpperCase() }}
         </KunChip>
       </div>
 
@@ -68,13 +68,13 @@ const platformLabels = computed(() => {
             </KunLink>
             <KunChip
               class-name="ml-2 -translate-y-1"
-              :color="galgame.contentLimit === 'all' ? 'success' : 'danger'"
+              :color="galgame.content_limit === 'all' ? 'success' : 'danger'"
             >
-              {{ galgame.contentLimit === 'all' ? '全年龄' : 'R18' }}
+              {{ galgame.content_limit === 'all' ? '全年龄' : 'R18' }}
             </KunChip>
           </h2>
           <p class="text-default-500 mt-1 text-sm">
-            最近更新 <KunTime :time="galgame.resourceUpdateTime" /> ·
+            最近更新 <KunTime :time="galgame.resource_update_time" /> ·
             {{ galgame.view.toLocaleString() }} 次浏览
           </p>
         </div>

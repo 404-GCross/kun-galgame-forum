@@ -43,7 +43,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
          and only offers 认领 on a claimable VNDB draft (status=2) — a published
          entry (status=0) already has a creator and can't be claimed. -->
     <KunInfo
-      v-if="galgame.isOnForum === false"
+      v-if="galgame.is_on_forum === false"
       color="danger"
       title="该游戏尚未在本站收录"
       description="本站还没有这款 Galgame 的任何本地数据, 当前页面的资料均来自百科。点赞 / 收藏 / 评论 / 评分 都会让它被本站收录, 但您不会成为该 Galgame 的创建者, 也不会获得萌萌点奖励; 发布下载资源同样会让它被收录, 并照常获得发布资源的萌萌点奖励。"
@@ -97,7 +97,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
 
           <GalgameResource />
 
-          <GalgamePatchContainer :vndb-id="galgame.vndbId" />
+          <GalgamePatchContainer :vndb-id="galgame.vndb_id" />
 
           <div v-if="galgame.series" class="space-y-3">
             <KunHeader
@@ -123,10 +123,10 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
         <GalgameInfo
           :official="galgame.official"
           :engine="galgame.engine"
-          :age-limit="galgame.ageLimit"
-          :original-language="galgame.originalLanguage"
-          :release-date="galgame.releaseDate"
-          :release-date-tba="galgame.releaseDateTBA"
+          :age-limit="galgame.age_limit"
+          :original-language="galgame.original_language"
+          :release-date="galgame.release_date"
+          :release-date-tba="galgame.release_date_tba"
         />
 
         <KunCard

@@ -20,7 +20,7 @@ if (data.value && data.value !== 'not found') {
   // NSFW resources must not feed crawlers: useKunSeoMeta below would
   // otherwise overwrite the robots=noindex from useKunDisableSeo and
   // leak title/description/og:image. Branch hard.
-  if (data.value.galgame.contentLimit === 'nsfw') {
+  if (data.value.galgame.content_limit === 'nsfw') {
     useKunDisableSeo(titleBase)
   } else {
     const resource = data.value.resource

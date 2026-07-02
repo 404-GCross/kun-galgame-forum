@@ -72,9 +72,9 @@ type SeriesListItem struct {
 	ID            int             `json:"id"`
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"isNSFW"`
-	SampleGalgame []GalgameSample `json:"sampleGalgame"`
-	GalgameCount  int             `json:"galgameCount"`
+	IsNSFW        bool            `json:"is_nsfw"`
+	SampleGalgame []GalgameSample `json:"sample_galgame"`
+	GalgameCount  int             `json:"galgame_count"`
 	Created       string          `json:"created"`
 	Updated       string          `json:"updated"`
 }
@@ -88,9 +88,9 @@ type SeriesDetail struct {
 	ID            int             `json:"id"`
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"isNSFW"`
-	SampleGalgame []GalgameSample `json:"sampleGalgame"`
-	GalgameCount  int             `json:"galgameCount"`
+	IsNSFW        bool            `json:"is_nsfw"`
+	SampleGalgame []GalgameSample `json:"sample_galgame"`
+	GalgameCount  int             `json:"galgame_count"`
 	Galgame       []GalgameCard   `json:"galgame"`
 	Created       string          `json:"created"`
 	Updated       string          `json:"updated"`
@@ -107,7 +107,7 @@ type OfficialListItem struct {
 	Category     string   `json:"category"`
 	Lang         string   `json:"lang"`
 	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgameCount"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 type OfficialListPage struct {
@@ -128,7 +128,7 @@ type OfficialDetail struct {
 	Description  string        `json:"description"`
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`
-	GalgameCount int64         `json:"galgameCount"`
+	GalgameCount int64         `json:"galgame_count"`
 }
 
 // ──────────────────────────────────────────
@@ -140,7 +140,7 @@ type EngineListItem struct {
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
 	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgameCount"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 type EngineDetail struct {
@@ -149,7 +149,7 @@ type EngineDetail struct {
 	Description  string        `json:"description"`
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`
-	GalgameCount int64         `json:"galgameCount"`
+	GalgameCount int64         `json:"galgame_count"`
 }
 
 // ──────────────────────────────────────────
@@ -160,7 +160,7 @@ type TagListItem struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	Category     string `json:"category"`
-	GalgameCount int    `json:"galgameCount"`
+	GalgameCount int    `json:"galgame_count"`
 }
 
 type TagListPage struct {
@@ -175,5 +175,5 @@ type TagDetail struct {
 	Description  string        `json:"description"`
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`
-	GalgameCount int64         `json:"galgameCount"`
+	GalgameCount int64         `json:"galgame_count"`
 }

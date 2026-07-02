@@ -15,7 +15,7 @@ const { data } = await useKunFetch<GalgameSeriesDetail>(`/galgame-series/${serie
 })
 
 if (data.value) {
-  if (data.value.isNSFW) {
+  if (data.value.is_nsfw) {
     useKunDisableSeo(data.value.name)
   } else {
     useKunSeoMeta({

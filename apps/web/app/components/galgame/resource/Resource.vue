@@ -46,7 +46,7 @@ const groupedResources = computed(() => {
     other: []
   }
   for (const r of data.value ?? []) {
-    grouped[bucketizeResourceProvider(r.providerNames)].push(r)
+    grouped[bucketizeResourceProvider(r.provider_names)].push(r)
   }
   return GALGAME_RESOURCE_PROVIDER_BUCKETS.flatMap((bucket) => {
     const items = grouped[bucket.key]
@@ -170,7 +170,7 @@ const activeBucket = computed(() =>
     <KunAdAIFYBanner />
 
     <KunNull
-      v-if="!data?.length && galgame?.isOnForum !== false"
+      v-if="!data?.length && galgame?.is_on_forum !== false"
       description="这个 Galgame 还没有资源链接, 快添加一个吧!"
     />
 

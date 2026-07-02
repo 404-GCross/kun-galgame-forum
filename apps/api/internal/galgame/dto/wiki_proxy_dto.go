@@ -9,7 +9,7 @@ package dto
 type GalgameLink struct {
 	ID        int       `json:"id"`
 	User      UserBrief `json:"user"`
-	GalgameID int       `json:"galgameId"`
+	GalgameID int       `json:"galgame_id"`
 	Name      string    `json:"name"`
 	Link      string    `json:"link"`
 }
@@ -25,7 +25,7 @@ type GalgameRevision struct {
 	Action   string    `json:"action"`
 	Note     string    `json:"note"`
 	User     UserBrief `json:"user"`
-	IsMinor  bool      `json:"isMinor"`
+	IsMinor  bool      `json:"is_minor"`
 	Created  string    `json:"created"`
 }
 
@@ -41,12 +41,12 @@ type GalgameRevisionListPage struct {
 // GalgamePR is a pending/completed pull request on a galgame.
 type GalgamePR struct {
 	ID            int       `json:"id"`
-	GalgameID     int       `json:"galgameId"`
+	GalgameID     int       `json:"galgame_id"`
 	Status        int       `json:"status"`
 	Note          string    `json:"note"`
-	BaseRevision  int       `json:"baseRevision"`
+	BaseRevision  int       `json:"base_revision"`
 	User          UserBrief `json:"user"`
-	CompletedTime *string   `json:"completedTime"`
+	CompletedTime *string   `json:"completed_time"`
 	Created       string    `json:"created"`
 }
 
