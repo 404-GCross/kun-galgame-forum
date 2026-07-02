@@ -4,7 +4,7 @@ import type { updateToolsetSchema } from '~/validations/toolset'
 export type UpdateFormType = z.infer<typeof updateToolsetSchema>
 
 export const toolsetUpdateForm = reactive<UpdateFormType>({
-  toolsetId: 0,
+  toolset_id: 0,
   name: '',
   description: '',
   language: 'zh-cn',

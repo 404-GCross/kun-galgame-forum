@@ -40,7 +40,7 @@ watch(
 // adjusts it but a new reply doesn't.
 const addNewComment = (comment: ToolsetComment) => {
   const node = comment as SerializeObject<ToolsetComment>
-  if (node.parentId == null) {
+  if (node.parent_id == null) {
     // Root: end under asc (oldest-first), top under desc.
     if (pageData.sortOrder === 'asc') {
       comments.value.push(node)
@@ -52,11 +52,11 @@ const addNewComment = (comment: ToolsetComment) => {
   }
   // Reply: attach to the root that IS, or CONTAINS, the parent.
   const root = comments.value.find(
-    (r) => r.id === node.parentId || r.reply.some((c) => c.id === node.parentId)
+    (r) => r.id === node.parent_id || r.reply.some((c) => c.id === node.parent_id)
   )
   if (root) {
     root.reply.push(node)
-    root.replyCount = (root.replyCount ?? 0) + 1
+    root.reply_count = (root.reply_count ?? 0) + 1
   }
 }
 
@@ -71,7 +71,7 @@ const removeComment = (commentId: number) => {
     const idx = root.reply.findIndex((c) => c.id === commentId)
     if (idx !== -1) {
       root.reply.splice(idx, 1)
-      root.replyCount = Math.max(0, (root.replyCount ?? 0) - 1)
+      root.reply_count = Math.max(0, (root.reply_count ?? 0) - 1)
       return
     }
   }

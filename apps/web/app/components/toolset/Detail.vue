@@ -55,9 +55,9 @@ const handleDeleteToolset = async () => {
 }
 
 const handleRewriteToolset = () => {
-  toolsetUpdateForm.toolsetId = data.value.id
+  toolsetUpdateForm.toolset_id = data.value.id
   toolsetUpdateForm.name = data.value.name
-  toolsetUpdateForm.description = data.value.contentMarkdown
+  toolsetUpdateForm.description = data.value.content_markdown
   toolsetUpdateForm.language = data.value.language as 'zh-cn'
   toolsetUpdateForm.platform = data.value.platform as 'windows'
   toolsetUpdateForm.type = data.value.type as 'others'
@@ -148,7 +148,7 @@ const handleResourceUpdated = (res: ToolsetResource) => {
 
         <KunDivider class-name="my-6" />
 
-        <KunContent :content="renderKatex(data.contentHtml)" />
+        <KunContent :content="renderKatex(data.content_html)" />
       </div>
 
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">

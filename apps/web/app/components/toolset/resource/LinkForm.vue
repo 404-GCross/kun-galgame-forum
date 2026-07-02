@@ -25,12 +25,12 @@ const emits = defineEmits<{
 // in this form is computed separately so users still see "1.5 MB"
 // rather than a raw byte integer.
 const formData = reactive({
-  toolsetId: props.toolsetId,
+  toolset_id: props.toolsetId,
   type: props.type,
   // s3: content stays empty — the download URL is resolved server-side from the
   // artifact uuid. user: the link typed into the textarea below.
   content: '',
-  artifactUuid: props.type === 's3' ? props.uploadResult.artifactUuid : '',
+  artifact_uuid: props.type === 's3' ? props.uploadResult.artifact_uuid : '',
   size:
     props.type === 's3' && props.uploadResult.size
       ? String(props.uploadResult.size)
@@ -63,13 +63,13 @@ watch(
     // Switching modes resets content/uuid + size — s3 rebinds to upload data,
     // user mode clears so the inputs start empty for manual entry.
     if (props.type === 's3') {
-      formData.artifactUuid = props.uploadResult.artifactUuid
+      formData.artifact_uuid = props.uploadResult.artifact_uuid
       formData.content = ''
       formData.size = props.uploadResult.size
         ? String(props.uploadResult.size)
         : ''
     } else {
-      formData.artifactUuid = ''
+      formData.artifact_uuid = ''
       formData.content = ''
       formData.size = ''
     }
@@ -80,7 +80,7 @@ watch(
   () => props.uploadResult,
   () => {
     if (props.type === 's3') {
-      formData.artifactUuid = props.uploadResult.artifactUuid
+      formData.artifact_uuid = props.uploadResult.artifact_uuid
       formData.size = props.uploadResult.size
         ? String(props.uploadResult.size)
         : ''

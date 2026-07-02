@@ -15,7 +15,7 @@ import (
 // resource id at a time.
 
 type ResourceDetailRequest struct {
-	ResourceID int `query:"toolsetResourceId" validate:"required,min=1"`
+	ResourceID int `query:"toolset_resource_id" validate:"required,min=1"`
 }
 
 type CreateResourceRequest struct {
@@ -24,7 +24,7 @@ type CreateResourceRequest struct {
 	// ArtifactUUID is the completed-upload handle for s3 resources (from
 	// POST /upload/complete). For s3 rows the download URL is resolved from this
 	// at read time, so Content is left empty. Ignored for 'user' rows.
-	ArtifactUUID string `json:"artifactUuid" validate:"max=36"`
+	ArtifactUUID string `json:"artifact_uuid" validate:"max=36"`
 	Code         string `json:"code" validate:"max=1007"`
 	Password     string `json:"password" validate:"max=1007"`
 	Size         string `json:"size" validate:"max=107"`
@@ -32,7 +32,7 @@ type CreateResourceRequest struct {
 }
 
 type UpdateResourceRequest struct {
-	ResourceID int    `json:"toolsetResourceId" validate:"required,min=1"`
+	ResourceID int    `json:"toolset_resource_id" validate:"required,min=1"`
 	Content    string `json:"content" validate:"max=1007"`
 	Code       string `json:"code" validate:"max=1007"`
 	Password   string `json:"password" validate:"max=1007"`
@@ -41,7 +41,7 @@ type UpdateResourceRequest struct {
 }
 
 type DeleteResourceRequest struct {
-	ResourceID int `query:"toolsetResourceId" validate:"required,min=1"`
+	ResourceID int `query:"toolset_resource_id" validate:"required,min=1"`
 }
 
 // ──────────────────────────────────────────

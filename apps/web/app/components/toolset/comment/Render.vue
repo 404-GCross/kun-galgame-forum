@@ -87,10 +87,10 @@ const canManage = (comment: ToolsetComment) =>
       <div class="flex w-full flex-col space-y-2">
         <div class="flex flex-wrap items-center">
           <span class="text-default-700">{{ com.user.name }}</span>
-          <div v-if="com.targetUser">
+          <div v-if="com.target_user">
             <span class="mx-2">=></span>
-            <KunLink underline="hover" :to="`/user/${com.targetUser.id}`">
-              {{ `${com.targetUser.name}` }}
+            <KunLink underline="hover" :to="`/user/${com.target_user.id}`">
+              {{ `${com.target_user.name}` }}
             </KunLink>
           </div>
         </div>

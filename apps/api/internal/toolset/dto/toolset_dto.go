@@ -19,8 +19,8 @@ type ToolsetListRequest struct {
 	Language  string `query:"language"`
 	Platform  string `query:"platform"`
 	Version   string `query:"version"`
-	SortField string `query:"sortField"`
-	SortOrder string `query:"sortOrder"`
+	SortField string `query:"sort_field"`
+	SortOrder string `query:"sort_order"`
 	// UserID is set by the per-user handler (GET /user/:id/toolsets) from the
 	// path, NOT bound from the query — so the public /toolset list can't be
 	// author-filtered by an arbitrary caller.
@@ -67,8 +67,8 @@ type ToolsetCard struct {
 	Version            string              `json:"version"`
 	View               int                 `json:"view"`
 	Download           int                 `json:"download"`
-	CommentCount       int                 `json:"commentCount"`
-	PracticalityAvg    any                 `json:"practicalityAvg"`
+	CommentCount       int                 `json:"comment_count"`
+	PracticalityAvg    any                 `json:"practicality_avg"`
 	ResourceUpdateTime any                 `json:"resource_update_time"`
 }
 
@@ -91,8 +91,8 @@ type ToolsetResourceItem struct {
 type ToolsetDetailResponse struct {
 	ID                 int                           `json:"id"`
 	Name               string                        `json:"name"`
-	ContentMarkdown    string                        `json:"contentMarkdown"`
-	ContentHTML        string                        `json:"contentHtml"`
+	ContentMarkdown    string                        `json:"content_markdown"`
+	ContentHTML        string                        `json:"content_html"`
 	Type               string                        `json:"type"`
 	Platform           string                        `json:"platform"`
 	Language           string                        `json:"language"`
@@ -102,16 +102,16 @@ type ToolsetDetailResponse struct {
 	Download           int64                         `json:"download"`
 	User               userModel.UserBrief           `json:"user"`
 	Aliases            []string                      `json:"aliases"`
-	PracticalityAvg    *float64                      `json:"practicalityAvg"`
-	PracticalityCount  int64                         `json:"practicalityCount"`
-	RatingCounts       map[int]int64                 `json:"ratingCounts"`
+	PracticalityAvg    *float64                      `json:"practicality_avg"`
+	PracticalityCount  int64                         `json:"practicality_count"`
+	RatingCounts       map[int]int64                 `json:"rating_counts"`
 	ResourceUpdateTime time.Time                     `json:"resource_update_time"`
 	Resource           []ToolsetResourceItem         `json:"resource"`
 	Edited             *time.Time                    `json:"edited"`
 	Created            time.Time                     `json:"created"`
 	Updated            time.Time                     `json:"updated"`
-	CommentCount       int64                         `json:"commentCount"`
-	CommentPreview     []CommentDetailItem           `json:"commentPreview"`
+	CommentCount       int64                         `json:"comment_count"`
+	CommentPreview     []CommentDetailItem           `json:"comment_preview"`
 	Contributors       []userModel.UserBrief         `json:"contributors"`
 }
 

@@ -36,7 +36,7 @@ const onPicked = (e: Event) => {
   // and any content edit changes size or mtime, so this still guarantees it's
   // the same file version (avoids stitching a different file's bytes onto the
   // already-uploaded parts).
-  if (file.size !== record.size || file.lastModified !== record.lastModified) {
+  if (file.size !== record.size || file.lastModified !== record.last_modified) {
     useMessage('所选文件与未完成的上传不一致, 请选择同一个文件', 'warn')
     return
   }
@@ -50,7 +50,7 @@ const onPicked = (e: Event) => {
 
     <div
       v-for="item in pending"
-      :key="item.artifactUuid"
+      :key="item.artifact_uuid"
       class="border-default-200 flex flex-col gap-2 rounded-lg border p-3"
     >
       <div class="flex items-center gap-2">
@@ -77,7 +77,7 @@ const onPicked = (e: Event) => {
             size="sm"
             variant="light"
             color="danger"
-            @click="emits('delete', item.artifactUuid)"
+            @click="emits('delete', item.artifact_uuid)"
           >
             彻底删除
           </KunButton>

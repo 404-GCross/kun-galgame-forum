@@ -34,7 +34,7 @@ const DEFAULT_BINARY_CONTENT_TYPE = 'application/octet-stream'
 type ToolsetUploadStatus =
   (typeof KUN_GALGAME_TOOLSET_UPLOAD_STATUS_CONST)[number]
 type ToolsetUploadPart = {
-  partNumber: number
+  part_number: number
   etag: string
 }
 
@@ -114,8 +114,8 @@ const setSelectedUploadFile = (file: File) => {
   // guarantees the same file version.
   const match = resumeStore
     .list()
-    .find((p) => p.size === file.size && p.lastModified === file.lastModified)
-  resumeUuid.value = match ? match.artifactUuid : null
+    .find((p) => p.size === file.size && p.last_modified === file.lastModified)
+  resumeUuid.value = match ? match.artifact_uuid : null
 }
 
 const throwIfUploadFailed = (response: Response) => {
@@ -246,12 +246,12 @@ const refreshPending = () => {
 // Remember (insert / replace) an in-flight multipart upload so it can be resumed.
 const rememberPending = (f: File, artifactUuid: string, prog: number) => {
   resumeStore.upsert({
-    artifactUuid,
+    artifact_uuid: artifactUuid,
     name: f.name,
     size: f.size,
-    lastModified: f.lastModified,
+    last_modified: f.lastModified,
     progress: prog,
-    updatedAt: Date.now()
+    updated_at: Date.now()
   })
 }
 
@@ -270,7 +270,7 @@ const forgetPending = (artifactUuid: string) => {
 const putParts = async (
   artifactUuid: string,
   f: File,
-  partList: { partNumber: number; url: string }[],
+  partList: { part_number: number; url: string }[],
   partSize: number,
   contentType: string,
   totalParts: number,
@@ -282,7 +282,7 @@ const putParts = async (
     if (!cur) {
       throw new Error('Missing upload part')
     }
-    const start = (cur.partNumber - 1) * partSize
+    const start = (cur.part_number - 1) * partSize
     const end = Math.min(start + partSize, f.size)
     const resp = await fetch(cur.url, {
       headers: { 'Content-Type': contentType },
@@ -294,7 +294,7 @@ const putParts = async (
     if (!etag) {
       throw new Error('Missing ETag')
     }
-    out.push({ partNumber: cur.partNumber, etag })
+    out.push({ part_number: cur.part_number, etag })
     progress.value = Math.round(((doneCount + i + 1) / totalParts) * 100)
     // Persist after each part so the resume list stays accurate even if the tab
     // is closed mid-upload (no interruption event fires then).
@@ -323,7 +323,7 @@ const completeUpload = async (
     return false
   }
   useMessage('上传成功', 'success')
-  emits('onUploadSuccess', { artifactUuid: done.artifactUuid, size: done.size })
+  emits('onUploadSuccess', { artifact_uuid: done.artifact_uuid, size: done.size })
   progress.value = 100
   uploadStatus.value = 'complete'
   forgetPending(artifactUuid)
@@ -371,14 +371,14 @@ const uploadToArtifact = async (f: File) => {
 
   if (init.multipart) {
     // Persist BEFORE the first PUT so even an immediate failure is resumable.
-    rememberPending(f, init.artifactUuid, 0)
+    rememberPending(f, init.artifact_uuid, 0)
     refreshPending()
     const partList = init.parts ?? []
-    const partSize = init.partSize || LARGE_CHUNK_SIZE
+    const partSize = init.part_size || LARGE_CHUNK_SIZE
     try {
       uploadStatus.value = 'largeUploading'
       const parts = await putParts(
-        init.artifactUuid,
+        init.artifact_uuid,
         f,
         partList,
         partSize,
@@ -387,12 +387,12 @@ const uploadToArtifact = async (f: File) => {
         0
       )
       uploadStatus.value = 'largeComplete'
-      if (!(await completeUpload(init.artifactUuid, parts))) {
-        registerResumable(init.artifactUuid, f)
+      if (!(await completeUpload(init.artifact_uuid, parts))) {
+        registerResumable(init.artifact_uuid, f)
       }
     } catch (error) {
       // Keep the artifact — its uploaded parts stay in B2 for resume.
-      registerResumable(init.artifactUuid, f)
+      registerResumable(init.artifact_uuid, f)
       notifyUploadTransferError(error)
     }
     return
@@ -401,10 +401,10 @@ const uploadToArtifact = async (f: File) => {
   // Single-part (small file): no resume bookkeeping — a failure just re-inits.
   try {
     uploadStatus.value = 'smallUploading'
-    if (!init.uploadUrl) {
+    if (!init.upload_url) {
       throw new Error('Missing upload URL')
     }
-    const resp = await fetch(init.uploadUrl, {
+    const resp = await fetch(init.upload_url, {
       headers: { 'Content-Type': contentType },
       method: 'PUT',
       body: f
@@ -412,11 +412,11 @@ const uploadToArtifact = async (f: File) => {
     throwIfUploadFailed(resp)
     uploadStatus.value = 'smallComplete'
     progress.value = 100
-    if (!(await completeUpload(init.artifactUuid, undefined))) {
+    if (!(await completeUpload(init.artifact_uuid, undefined))) {
       resetUploadState()
     }
   } catch (error) {
-    await abortUpload(init.artifactUuid)
+    await abortUpload(init.artifact_uuid)
     notifyUploadTransferError(error)
     resetUploadState()
   }
@@ -451,10 +451,10 @@ const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
   if (!resume.multipart) {
     try {
       uploadStatus.value = 'smallUploading'
-      if (!resume.uploadUrl) {
+      if (!resume.upload_url) {
         throw new Error('Missing upload URL')
       }
-      const resp = await fetch(resume.uploadUrl, {
+      const resp = await fetch(resume.upload_url, {
         headers: { 'Content-Type': contentType },
         method: 'PUT',
         body: f
@@ -471,8 +471,8 @@ const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
     return
   }
 
-  const partSize = resume.partSize || LARGE_CHUNK_SIZE
-  const uploaded = resume.uploadedParts ?? []
+  const partSize = resume.part_size || LARGE_CHUNK_SIZE
+  const uploaded = resume.uploaded_parts ?? []
   const missing = resume.parts ?? []
   const totalParts = uploaded.length + missing.length
   try {
@@ -489,9 +489,9 @@ const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
       uploaded.length
     )
     const parts: ToolsetUploadPart[] = [
-      ...uploaded.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
+      ...uploaded.map((p) => ({ part_number: p.part_number, etag: p.etag })),
       ...fresh
-    ].sort((a, b) => a.partNumber - b.partNumber)
+    ].sort((a, b) => a.part_number - b.part_number)
     uploadStatus.value = 'largeComplete'
     if (!(await completeUpload(artifactUuid, parts))) {
       registerResumable(artifactUuid, f)
@@ -519,7 +519,7 @@ const submit = async () => {
 // in ResumeList), so select it and continue from the breakpoint.
 const handleContinuePending = (record: ToolsetPendingUpload, file: File) => {
   setSelectedUploadFile(file)
-  resumeUploadToArtifact(file, record.artifactUuid)
+  resumeUploadToArtifact(file, record.artifact_uuid)
 }
 
 // Discard an unfinished upload: soft-delete the artifact (its B2 parts are

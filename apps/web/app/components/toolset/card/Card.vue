@@ -40,8 +40,8 @@ defineProps<{
           <span>浏览 {{ t.view }}</span>
           <span>下载 {{ t.download }}</span>
         </div>
-        <span v-if="t.practicalityAvg != null">
-          实用性 {{ t.practicalityAvg.toFixed(1) }}
+        <span v-if="t.practicality_avg != null">
+          实用性 {{ t.practicality_avg.toFixed(1) }}
         </span>
       </div>
 

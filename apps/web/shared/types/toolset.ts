@@ -10,16 +10,16 @@ export interface ToolsetCard {
   version: string
   view: number
   download: number
-  commentCount: number
-  practicalityAvg: number | null
+  comment_count: number
+  practicality_avg: number | null
   resource_update_time: Date | string
 }
 
 export interface ToolsetDetail {
   id: number
   name: string
-  contentHtml: string
-  contentMarkdown: string
+  content_html: string
+  content_markdown: string
   type: string
   platform: string
   language: string
@@ -29,16 +29,16 @@ export interface ToolsetDetail {
   view: number
   user: KunUser
   aliases: string[]
-  practicalityAvg: number | null
-  practicalityCount: number
+  practicality_avg: number | null
+  practicality_count: number
   resource_update_time: Date | string
   resource: ToolsetResource[]
   edited: Date | string | null
   created: Date | string
   updated: Date | string
-  ratingCounts: Record<number, number>
-  commentCount: number
-  commentPreview: ToolsetComment[]
+  rating_counts: Record<number, number>
+  comment_count: number
+  comment_preview: ToolsetComment[]
   contributors: KunUser[]
 }
 
@@ -55,19 +55,19 @@ export interface ToolsetRating {
 // When multipart is false the browser does one PUT to uploadUrl; otherwise it
 // slices by partSize and PUTs each part to parts[i].url, collecting ETags.
 export interface ToolsetUploadInitResponse {
-  artifactUuid: string
+  artifact_uuid: string
   multipart: boolean
-  uploadUrl?: string
-  partSize?: number
+  upload_url?: string
+  part_size?: number
   parts?: {
-    partNumber: number
+    part_number: number
     url: string
   }[]
-  expiresAt: string
+  expires_at: string
 }
 
 export interface ToolsetUploadCompleteResponse {
-  artifactUuid: string
+  artifact_uuid: string
   size: number
 }
 
@@ -76,27 +76,27 @@ export interface ToolsetUploadCompleteResponse {
 // only the missing parts. Same shape as init so the multipart PUT loop is shared;
 // a single-part upload comes back multipart=false + a fresh uploadUrl.
 export interface ToolsetUploadResumeResponse {
-  artifactUuid: string
+  artifact_uuid: string
   multipart: boolean
-  uploadUrl?: string
-  partSize?: number
+  upload_url?: string
+  part_size?: number
   parts?: {
-    partNumber: number
+    part_number: number
     url: string
   }[]
-  uploadedParts?: {
-    partNumber: number
+  uploaded_parts?: {
+    part_number: number
     etag: string
     size: number
   }[]
-  expiresAt: string
+  expires_at: string
 }
 
 // Result emitted from the S3 upload widget once a full upload (init → PUT →
 // complete) succeeds. The artifact uuid binds the upload to a toolset_resource
 // row at create time; size pre-fills the file size input.
 export interface ToolsetUploadResult {
-  artifactUuid: string
+  artifact_uuid: string
   size: number
 }
 
@@ -108,12 +108,12 @@ export interface ToolsetUploadResult {
 // display-only. progress is the last-known % (updated
 // as parts upload + on interruption) so the resume list can show how far it got.
 export interface ToolsetPendingUpload {
-  artifactUuid: string
+  artifact_uuid: string
   name: string
   size: number
-  lastModified: number
+  last_modified: number
   progress: number
-  updatedAt: number
+  updated_at: number
 }
 
 export interface ToolsetResource {

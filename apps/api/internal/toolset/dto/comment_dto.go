@@ -14,7 +14,7 @@ import (
 type CommentListRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=100"`
-	SortOrder string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
+	SortOrder string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
 }
 
 // ToolsetCommentItem is the camelCase shape returned by GET
@@ -26,37 +26,37 @@ type CommentListRequest struct {
 // reveals them inline from this payload (no thread endpoint).
 type ToolsetCommentItem struct {
 	ID         int                  `json:"id"`
-	ToolsetID  int                  `json:"toolsetId"`
+	ToolsetID  int                  `json:"toolset_id"`
 	Content    string               `json:"content"`
 	Created    time.Time            `json:"created"`
 	Edited     *time.Time           `json:"edited"`
-	ParentID   *int                 `json:"parentId"`
-	UserID     int                  `json:"userId"`
+	ParentID   *int                 `json:"parent_id"`
+	UserID     int                  `json:"user_id"`
 	Reply      []ToolsetCommentItem `json:"reply"`
-	ReplyCount int                  `json:"replyCount"`
+	ReplyCount int                  `json:"reply_count"`
 	User       userModel.UserBrief  `json:"user"`
-	TargetUser *userModel.UserBrief `json:"targetUser"`
+	TargetUser *userModel.UserBrief `json:"target_user"`
 }
 
 // ToolsetCommentListResponse is the wrapper for GET /toolset/:id/comment/all.
 // Uses `commentData` + `total` to match the frontend Container.vue contract.
 type ToolsetCommentListResponse struct {
-	CommentData []ToolsetCommentItem `json:"commentData"`
+	CommentData []ToolsetCommentItem `json:"comment_data"`
 	Total       int64                `json:"total"`
 }
 
 type CreateCommentRequest struct {
 	Content  string `json:"content" validate:"required,min=1,max=1007"`
-	ParentID *int   `json:"parentId"`
+	ParentID *int   `json:"parent_id"`
 }
 
 type UpdateCommentRequest struct {
-	CommentID int    `json:"commentId" validate:"required,min=1"`
+	CommentID int    `json:"comment_id" validate:"required,min=1"`
 	Content   string `json:"content" validate:"required,min=1,max=1007"`
 }
 
 type DeleteCommentRequest struct {
-	CommentID int `query:"commentId" validate:"required,min=1"`
+	CommentID int `query:"comment_id" validate:"required,min=1"`
 }
 
 // ──────────────────────────────────────────
@@ -83,9 +83,9 @@ type CommentItem struct {
 type CommentDetailItem struct {
 	ID        int                 `json:"id"`
 	Content   string              `json:"content"`
-	UserID    int                 `json:"userId"`
-	ToolsetID int                 `json:"toolsetId"`
-	ParentID  *int                `json:"parentId"`
+	UserID    int                 `json:"user_id"`
+	ToolsetID int                 `json:"toolset_id"`
+	ParentID  *int                `json:"parent_id"`
 	Edited    *time.Time          `json:"edited"`
 	Created   time.Time           `json:"created"`
 	Updated   time.Time           `json:"updated"`

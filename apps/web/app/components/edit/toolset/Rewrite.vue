@@ -31,14 +31,14 @@ const handleSubmit = async () => {
   }
 
   isSubmitting.value = true
-  await kunFetch(`/toolset/${toolsetUpdateForm.toolsetId}`, {
+  await kunFetch(`/toolset/${toolsetUpdateForm.toolset_id}`, {
     method: 'PUT',
     body: toolsetUpdateForm
   })
   isSubmitting.value = false
 
   useMessage('更新工具信息成功', 'success')
-  navigateTo(`/toolset/${toolsetUpdateForm.toolsetId}`)
+  navigateTo(`/toolset/${toolsetUpdateForm.toolset_id}`)
 }
 
 const handleUpdatePageLink = (value: string | number) => {

@@ -30,7 +30,7 @@ const toolset = data.value
 if (toolset) {
   const title = `${toolset.name} 资源下载`
   const pageUrl = `${kungal.domain.main}${route.path}`
-  const description = markdownToText(toolset.contentMarkdown).slice(0, 175)
+  const description = markdownToText(toolset.content_markdown).slice(0, 175)
 
   const osMap: Record<string, string> = {
     windows: 'Windows',
@@ -73,13 +73,13 @@ if (toolset) {
         userInteractionCount: toolset.download || 0
       }
     ],
-    ...(toolset.practicalityAvg && toolset.practicalityCount
+    ...(toolset.practicality_avg && toolset.practicality_count
       ? {
           aggregateRating: {
             '@type': 'AggregateRating',
-            ratingValue: Number(toolset.practicalityAvg.toFixed(2)),
-            ratingCount: toolset.practicalityCount,
-            reviewCount: toolset.commentCount || toolset.practicalityCount,
+            ratingValue: Number(toolset.practicality_avg.toFixed(2)),
+            ratingCount: toolset.practicality_count,
+            reviewCount: toolset.comment_count || toolset.practicality_count,
             bestRating: 5,
             worstRating: 1
           } as AggregateRating
@@ -97,7 +97,7 @@ if (toolset) {
     ]
   })
 
-  if (toolset.commentCount && toolset.commentCount > 0) {
+  if (toolset.comment_count && toolset.comment_count > 0) {
     const forumJsonLd: WithContext<DiscussionForumPosting> = {
       '@context': 'https://schema.org',
       '@type': 'DiscussionForumPosting',
@@ -107,8 +107,8 @@ if (toolset) {
       datePublished: new Date(toolset.created).toISOString(),
       dateModified: new Date(toolset.updated).toISOString(),
       author: { '@type': 'Person', name: toolset.user.name } as Person,
-      commentCount: toolset.commentCount,
-      comment: (toolset.commentPreview || []).map((c) => ({
+      commentCount: toolset.comment_count,
+      comment: (toolset.comment_preview || []).map((c) => ({
         '@type': 'Comment',
         text: (c.content as string)?.slice(0, 280)?.replace(/\\|\n/g, ''),
         datePublished: new Date(c.created).toISOString(),

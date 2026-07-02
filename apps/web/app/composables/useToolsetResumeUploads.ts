@@ -35,12 +35,12 @@ export const useToolsetResumeUploads = (toolsetId: number) => {
 
   // Newest first, so the list reads most-recent-on-top.
   const list = (): ToolsetPendingUpload[] =>
-    read().sort((a, b) => b.updatedAt - a.updatedAt)
+    read().sort((a, b) => b.updated_at - a.updated_at)
 
   // Insert or replace by uuid.
   const upsert = (record: ToolsetPendingUpload) => {
     write([
-      ...read().filter((p) => p.artifactUuid !== record.artifactUuid),
+      ...read().filter((p) => p.artifact_uuid !== record.artifact_uuid),
       record
     ])
   }
@@ -49,17 +49,17 @@ export const useToolsetResumeUploads = (toolsetId: number) => {
   // if the tab is closed mid-upload (no interruption event fires then).
   const setProgress = (artifactUuid: string, progress: number) => {
     const all = read()
-    const record = all.find((p) => p.artifactUuid === artifactUuid)
+    const record = all.find((p) => p.artifact_uuid === artifactUuid)
     if (!record) {
       return
     }
     record.progress = progress
-    record.updatedAt = Date.now()
+    record.updated_at = Date.now()
     write(all)
   }
 
   const remove = (artifactUuid: string) => {
-    write(read().filter((p) => p.artifactUuid !== artifactUuid))
+    write(read().filter((p) => p.artifact_uuid !== artifactUuid))
   }
 
   return { list, upsert, setProgress, remove }

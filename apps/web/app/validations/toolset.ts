@@ -13,12 +13,12 @@ export const getToolsetSchema = z.object({
   language: z.enum([...KUN_TOOLSET_LANGUAGE_CONST, 'all']),
   platform: z.enum([...KUN_TOOLSET_PLATFORM_CONST, 'all']),
   version: z.enum([...KUN_TOOLSET_VERSION_CONST, 'all']),
-  sortField: z.enum(['resource_update_time', 'created', 'view']),
-  sortOrder: z.enum(['asc', 'desc'])
+  sort_field: z.enum(['resource_update_time', 'created', 'view']),
+  sort_order: z.enum(['asc', 'desc'])
 })
 
 export const getToolsetDetailSchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999)
+  toolset_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createToolsetSchema = z.object({
@@ -34,49 +34,49 @@ export const createToolsetSchema = z.object({
 
 export const updateToolsetSchema = createToolsetSchema.merge(
   z.object({
-    toolsetId: z.coerce.number<number>().min(1).max(9999999)
+    toolset_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const deleteToolsetDetailSchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999)
+  toolset_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getToolsetPracticalitySchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999)
+  toolset_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateToolsetPracticalitySchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999),
+  toolset_id: z.coerce.number<number>().min(1).max(9999999),
   rate: z.coerce.number<number>().min(1).max(5)
 })
 
 // Toolset comment
 export const getToolsetCommentSchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999),
+  toolset_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30),
-  sortOrder: z.enum(['asc', 'desc'])
+  sort_order: z.enum(['asc', 'desc'])
 })
 
 export const createToolsetCommentSchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999),
+  toolset_id: z.coerce.number<number>().min(1).max(9999999),
   content: z.string().min(1).max(1007),
-  parentId: z.coerce.number<number>().min(1).optional().nullable()
+  parent_id: z.coerce.number<number>().min(1).optional().nullable()
 })
 
 export const updateToolsetCommentSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999),
+  comment_id: z.coerce.number<number>().min(1).max(9999999),
   content: z.string().min(1).max(1007)
 })
 
 export const deleteToolsetCommentSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999)
+  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 // Toolset resource & upload
 export const getToolsetResourceDetailSchema = z.object({
-  toolsetResourceId: z.coerce.number<number>().min(1).max(9999999)
+  toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 // In s3 mode the wire value of `size` is a raw byte-count string
@@ -85,12 +85,12 @@ export const getToolsetResourceDetailSchema = z.object({
 // the user types it themselves and Item.vue prints it verbatim.
 export const createToolsetResourceSchema = z
   .object({
-    toolsetId: z.coerce.number<number>().min(1).max(9999999),
+    toolset_id: z.coerce.number<number>().min(1).max(9999999),
     type: z.enum(['s3', 'user']),
     content: z.string().max(1007).optional().default(''),
     // s3 resources carry the completed-upload artifact uuid (the download URL is
     // resolved server-side from it); content stays empty.
-    artifactUuid: z.string().max(36).optional().default(''),
+    artifact_uuid: z.string().max(36).optional().default(''),
     size: z.string(),
     code: z.string().max(1007).optional().default(''),
     password: z.string().max(1007).optional().default(''),
@@ -98,7 +98,7 @@ export const createToolsetResourceSchema = z
   })
   .superRefine((val, ctx) => {
     if (val.type === 's3') {
-      if (!val.artifactUuid) {
+      if (!val.artifact_uuid) {
         ctx.addIssue({
           code: 'custom',
           path: ['artifactUuid'],
@@ -129,7 +129,7 @@ export const createToolsetResourceSchema = z
 // the schema honest and avoids silent acceptance of typo'd values.
 export const updateToolsetResourceSchema = z
   .object({
-    toolsetResourceId: z.coerce.number<number>().min(1).max(9999999),
+    toolset_resource_id: z.coerce.number<number>().min(1).max(9999999),
     type: z.enum(['s3', 'user']),
     content: z.string().max(1007).optional().default(''),
     size: z.string(),
@@ -156,11 +156,11 @@ export const updateToolsetResourceSchema = z
   })
 
 export const deleteToolsetResourceSchema = z.object({
-  toolsetResourceId: z.coerce.number<number>().min(1).max(9999999)
+  toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const initToolsetUploadSchema = z.object({
-  toolsetId: z.coerce.number<number>().min(1).max(9999999),
+  toolset_id: z.coerce.number<number>().min(1).max(9999999),
   filename: z
     .string()
     .min(1)
@@ -169,20 +169,20 @@ export const initToolsetUploadSchema = z.object({
       message: '文件名必须以 .7z, .zip 或 .rar 结尾'
     }),
   filesize: z.coerce.number<number>().int().positive(),
-  contentType: z.string().min(1).max(100)
+  content_type: z.string().min(1).max(100)
 })
 
 export const completeToolsetUploadSchema = z.object({
-  artifactUuid: z.string().min(1).max(36),
+  artifact_uuid: z.string().min(1).max(36),
   parts: z
     .array(z.object({ partNumber: z.number().int().min(1), etag: z.string() }))
     .optional()
 })
 
 export const resumeToolsetUploadSchema = z.object({
-  artifactUuid: z.string().min(1).max(36)
+  artifact_uuid: z.string().min(1).max(36)
 })
 
 export const abortToolsetUploadSchema = z.object({
-  artifactUuid: z.string().min(1).max(36)
+  artifact_uuid: z.string().min(1).max(36)
 })
