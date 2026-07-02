@@ -51,16 +51,16 @@ type UserProfileDetail struct {
 
 	// Created counts
 	Topic                  int64 `json:"topic"`
-	TopicPoll              int64 `json:"topicPoll"`
-	ReplyCreated           int64 `json:"replyCreated"`
-	CommentCreated         int64 `json:"commentCreated"`
+	TopicPoll              int64 `json:"topic_poll"`
+	ReplyCreated           int64 `json:"reply_created"`
+	CommentCreated         int64 `json:"comment_created"`
 	Galgame                int64 `json:"galgame"`
-	ContributeGalgame      int64 `json:"contributeGalgame"`
-	GalgameComment         int64 `json:"galgameComment"`
-	GalgameRating          int64 `json:"galgameRating"`
-	GalgameResource        int64 `json:"galgameResource"`
-	GalgameToolset         int64 `json:"galgameToolset"`
-	GalgameToolsetResource int64 `json:"galgameToolsetResource"`
+	ContributeGalgame      int64 `json:"contribute_galgame"`
+	GalgameComment         int64 `json:"galgame_comment"`
+	GalgameRating          int64 `json:"galgame_rating"`
+	GalgameResource        int64 `json:"galgame_resource"`
+	GalgameToolset         int64 `json:"galgame_toolset"`
+	GalgameToolsetResource int64 `json:"galgame_toolset_resource"`
 
 	// Received interaction counts
 	Upvote  int64 `json:"upvote"`
@@ -68,8 +68,8 @@ type UserProfileDetail struct {
 	Dislike int64 `json:"dislike"`
 
 	// Daily counts
-	DailyTopicCount   int64 `json:"dailyTopicCount"`
-	DailyGalgameCount int64 `json:"dailyGalgameCount"`
+	DailyTopicCount   int64 `json:"daily_topic_count"`
+	DailyGalgameCount int64 `json:"daily_galgame_count"`
 }
 
 // ──────────────────────────────────────────
@@ -90,13 +90,13 @@ type UpdateUsernameRequest struct {
 
 type UserStatusResponse struct {
 	Moemoepoints            int   `json:"moemoepoints"`
-	IsCheckIn               bool  `json:"isCheckIn"`
-	HasNewMessage           bool  `json:"hasNewMessage"`
-	DailyToolsetUploadBytes int64 `json:"dailyToolsetUploadBytes"`
+	IsCheckIn               bool  `json:"is_check_in"`
+	HasNewMessage           bool  `json:"has_new_message"`
+	DailyToolsetUploadBytes int64 `json:"daily_toolset_upload_bytes"`
 	// IsCreator drives the avatar-menu "创作者申请" entry (hidden once held).
 	// Derived from the live OAuth role (cached ~10min), same source as the
 	// profile badge.
-	IsCreator bool `json:"isCreator"`
+	IsCreator bool `json:"is_creator"`
 }
 
 type UserGalgamesRequest struct {
@@ -105,7 +105,7 @@ type UserGalgamesRequest struct {
 	Limit int    `query:"limit" validate:"min=1,max=50"`
 	// ShowNoResource: false (default) hides galgames with no download resource
 	// (the global "显示没有下载资源的 Galgame" toggle); true includes them.
-	ShowNoResource bool `query:"showNoResource"`
+	ShowNoResource bool `query:"show_no_resource"`
 }
 
 type UserTopicsRequest struct {

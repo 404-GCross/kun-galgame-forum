@@ -17,22 +17,22 @@ export interface UserInfo {
   like: number
   dislike: number
 
-  replyCreated: number
-  commentCreated: number
+  reply_created: number
+  comment_created: number
   topic: number
-  topicPoll: number
+  topic_poll: number
 
   galgame: number
-  contributeGalgame: number
-  galgameComment: number
-  galgameRating: number
+  contribute_galgame: number
+  galgame_comment: number
+  galgame_rating: number
 
-  galgameResource: number
-  galgameToolset: number
-  galgameToolsetResource: number
+  galgame_resource: number
+  galgame_toolset: number
+  galgame_toolset_resource: number
 
-  dailyTopicCount: number
-  dailyGalgameCount: number
+  daily_topic_count: number
+  daily_galgame_count: number
 }
 
 export interface UserTopic {
@@ -45,8 +45,8 @@ export type UserGalgame = GalgameCard
 
 export interface UserGalgameResource {
   id: number
-  galgameId: number
-  galgameName: KunLanguage
+  galgame_id: number
+  galgame_name: KunLanguage
   type: string
   language: string
   platform: string
@@ -60,7 +60,7 @@ export interface UserGalgameResource {
 }
 
 export interface UserReply {
-  topicId: number
+  topic_id: number
   // Floor → deep-link to this reply (/topic/:id?reply=<floor>).
   floor: number
   content: string
@@ -69,33 +69,33 @@ export interface UserReply {
 
 export interface UserGetUserReplyRequestData {
   id: number
-  ridArray: number[]
+  rid_array: number[]
 }
 
 export interface UserComment {
   // Comment id → deep-link to it (/topic/:id?comment=<id>).
   id: number
-  topicId: number
+  topic_id: number
   content: string
   created: Date | string
 }
 
 export interface UserGetUserCommentRequestData {
   id: number
-  cidArray: number[]
+  cid_array: number[]
 }
 
 export interface UserFloatingCard extends KunUser {
   moemoepoint: number
-  topicCount: number
-  topicReplyCount: number
-  topicCommentCount: number
-  galgameResourceCount: number
+  topic_count: number
+  topic_reply_count: number
+  topic_comment_count: number
+  galgame_resource_count: number
 }
 
 export type UserUpdateAvatarResponseData = {
   avatar: string
-  avatarMin: string
+  avatar_min: string
 }
 
 export type UserGetUserEmailResponseData = {

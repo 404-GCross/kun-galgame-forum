@@ -21,7 +21,7 @@ const metrics = computed(() => [
   { label: '萌萌点', value: props.user.moemoepoint, accent: true },
   { label: '话题', value: props.user.topic },
   { label: 'Galgame', value: props.user.galgame },
-  { label: '评分', value: props.user.galgameRating },
+  { label: '评分', value: props.user.galgame_rating },
   { label: '被赞', value: props.user.like },
   { label: '被推', value: props.user.upvote }
 ])

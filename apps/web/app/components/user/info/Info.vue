@@ -6,16 +6,16 @@ const user = computed(() => props.user)
 
 const statsBlocks = [
   { key: 'topic', label: '话题' },
-  { key: 'topicPoll', label: '话题投票' },
-  { key: 'replyCreated', label: '回复' },
-  { key: 'commentCreated', label: '评论' },
+  { key: 'topic_poll', label: '话题投票' },
+  { key: 'reply_created', label: '回复' },
+  { key: 'comment_created', label: '评论' },
   { key: 'galgame', label: 'Galgame' },
-  { key: 'contributeGalgame', label: 'Galgame 贡献' },
-  { key: 'galgameComment', label: 'Galgame 评论' },
-  { key: 'galgameRating', label: 'Galgame 评分' },
-  { key: 'galgameResource', label: 'Galgame 资源' },
-  { key: 'galgameToolset', label: 'Galgame 工具' },
-  { key: 'galgameToolsetResource', label: 'Galgame 工具资源' }
+  { key: 'contribute_galgame', label: 'Galgame 贡献' },
+  { key: 'galgame_comment', label: 'Galgame 评论' },
+  { key: 'galgame_rating', label: 'Galgame 评分' },
+  { key: 'galgame_resource', label: 'Galgame 资源' },
+  { key: 'galgame_toolset', label: 'Galgame 工具' },
+  { key: 'galgame_toolset_resource', label: 'Galgame 工具资源' }
 ]
 
 const interactionBlocks = [
@@ -41,8 +41,8 @@ const interactionBlocks = [
 
 const infoList = [
   { label: '注册序号', value: (u: UserInfo) => u.id },
-  { label: '今日发布话题', value: (u: UserInfo) => u.dailyTopicCount },
-  { label: '今日发布 Galgame', value: (u: UserInfo) => u.dailyGalgameCount }
+  { label: '今日发布话题', value: (u: UserInfo) => u.daily_topic_count },
+  { label: '今日发布 Galgame', value: (u: UserInfo) => u.daily_galgame_count }
 ]
 </script>
 

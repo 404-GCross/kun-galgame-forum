@@ -4,7 +4,7 @@ package dto
 type UserRatingGalgame struct {
 	ID           int         `json:"id"`
 	Name         KunLanguage `json:"name"`
-	ContentLimit string      `json:"contentLimit"`
+	ContentLimit string      `json:"content_limit"`
 }
 
 // UserRatingItem mirrors the legacy rating-list response shape. Field names
@@ -21,7 +21,7 @@ type UserRatingItem struct {
 	Recommend   string    `json:"recommend"`
 	Overall     int       `json:"overall"`
 	View        int       `json:"view"`
-	GalgameType []string  `json:"galgameType"`
+	GalgameType []string  `json:"galgame_type"`
 	PlayStatus  string    `json:"play_status"`
 	// Author writeup; mirrors RatingCard.short_summary. Without it the
 	// user rating cards never carry the preview text (K-PR6 added the
@@ -36,7 +36,7 @@ type UserRatingItem struct {
 	Voice        int               `json:"voice"`
 	ReplayValue  int               `json:"replay_value"`
 	SpoilerLevel string            `json:"spoiler_level"`
-	LikeCount    int               `json:"likeCount"`
+	LikeCount    int               `json:"like_count"`
 	Created      string            `json:"created"`
 	Updated      string            `json:"updated"`
 	Galgame      UserRatingGalgame `json:"galgame"`
@@ -44,6 +44,6 @@ type UserRatingItem struct {
 
 // UserRatingsResponse is the payload for GET /api/user/:userID/ratings.
 type UserRatingsResponse struct {
-	RatingData []UserRatingItem `json:"ratingData"`
+	RatingData []UserRatingItem `json:"rating_data"`
 	Total      int64            `json:"total"`
 }

@@ -3,8 +3,8 @@ package dto
 // UserResourceItem is an entry in GET /api/user/:userID/resources.
 type UserResourceItem struct {
 	ID          int         `json:"id"`
-	GalgameID   int         `json:"galgameId"`
-	GalgameName KunLanguage `json:"galgameName"`
+	GalgameID   int         `json:"galgame_id"`
+	GalgameName KunLanguage `json:"galgame_name"`
 	Type        string      `json:"type"`
 	Language    string      `json:"language"`
 	Platform    string      `json:"platform"`

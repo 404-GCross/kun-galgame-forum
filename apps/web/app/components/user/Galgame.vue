@@ -42,7 +42,7 @@ const pageData = reactive({
 
 interface UserGalgameCommentItem {
   id: number
-  galgameId: number
+  galgame_id: number
   content: string
   contentHtml: string
   user: { id: number; name: string; avatar: string }
@@ -126,14 +126,14 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
         <KunCard
           v-for="c in commentData.comments"
           :key="c.id"
-          :href="`/galgame/${c.galgameId}`"
+          :href="`/galgame/${c.galgame_id}`"
           content-class="space-y-2"
         >
           <KunContent compact :content="renderKatex(c.contentHtml)" />
           <div
             class="text-default-500 flex items-center justify-between text-sm"
           >
-            <span>评论于 Galgame #{{ c.galgameId }}</span>
+            <span>评论于 Galgame #{{ c.galgame_id }}</span>
             <KunTime :time="c.created" type="date" show-year />
           </div>
         </KunCard>

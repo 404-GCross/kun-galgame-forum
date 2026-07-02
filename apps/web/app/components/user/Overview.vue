@@ -51,23 +51,23 @@ const topicItems = computed(() =>
 )
 const resourceItems = computed(() =>
   (resources.data.value?.resources ?? []).map((r) => ({
-    text: getPreferredLanguageText(r.galgameName),
+    text: getPreferredLanguageText(r.galgame_name),
     time: r.created,
-    href: `/galgame/${r.galgameId}`
+    href: `/galgame/${r.galgame_id}`
   }))
 )
 const replyItems = computed(() =>
   (replies.data.value?.replies ?? []).map((r) => ({
     text: markdownToText(r.content),
     time: r.created,
-    href: replyPermalink(`/topic/${r.topicId}`, r.floor)
+    href: replyPermalink(`/topic/${r.topic_id}`, r.floor)
   }))
 )
 const commentItems = computed(() =>
   (comments.data.value?.comments ?? []).map((c) => ({
     text: markdownToText(c.content),
     time: c.created,
-    href: commentPermalink(`/topic/${c.topicId}`, c.id)
+    href: commentPermalink(`/topic/${c.topic_id}`, c.id)
   }))
 )
 const galgameItems = computed(() => galgames.data.value?.items ?? [])

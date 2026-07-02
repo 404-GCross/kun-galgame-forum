@@ -50,7 +50,7 @@ const submitFix = async (index: number) => {
     return
   }
   const res = data.value.resources[index]
-  if (!res?.id || !res?.galgameId) {
+  if (!res?.id || !res?.galgame_id) {
     return
   }
 
@@ -59,7 +59,7 @@ const submitFix = async (index: number) => {
     .filter(Boolean)
 
   const payload = {
-    galgameId: res.galgameId,
+    galgameId: res.galgame_id,
     galgameResourceId: res.id,
     type: res.type,
     language: res.language,
@@ -72,11 +72,11 @@ const submitFix = async (index: number) => {
   }
 
   await Promise.all([
-    kunFetch(`/galgame/${res.galgameId}/resource`, {
+    kunFetch(`/galgame/${res.galgame_id}/resource`, {
       method: 'PUT',
       body: payload
     }),
-    kunFetch(`/galgame/${res.galgameId}/resource/valid`, {
+    kunFetch(`/galgame/${res.galgame_id}/resource/valid`, {
       method: 'PUT',
       body: { galgameResourceId: res.id }
     })
@@ -105,7 +105,7 @@ const submitFix = async (index: number) => {
           :key="index"
         >
           <div class="mb-2 text-lg font-medium">
-            {{ getPreferredLanguageText(res.galgameName) }}
+            {{ getPreferredLanguageText(res.galgame_name) }}
           </div>
 
           <div class="mb-2 flex flex-wrap items-center gap-2">
@@ -157,10 +157,10 @@ const submitFix = async (index: number) => {
         <KunCard
           v-for="(res, index) in data.resources"
           :key="index"
-          :href="`/galgame/${res.galgameId}`"
+          :href="`/galgame/${res.galgame_id}`"
         >
           <div>
-            {{ getPreferredLanguageText(res.galgameName) }}
+            {{ getPreferredLanguageText(res.galgame_name) }}
           </div>
 
           <div class="flex items-center justify-between">

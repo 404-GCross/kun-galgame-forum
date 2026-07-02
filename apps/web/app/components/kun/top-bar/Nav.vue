@@ -28,15 +28,15 @@ onMounted(async () => {
   if (id.value) {
     const result = await kunFetch<{
       moemoepoints: number
-      isCheckIn: boolean
-      hasNewMessage: boolean
-      dailyToolsetUploadBytes: number
+      is_check_in: boolean
+      has_new_message: boolean
+      daily_toolset_upload_bytes: number
     }>('/user/status')
     if (result) {
-      isCheckIn.value = result.isCheckIn
+      isCheckIn.value = result.is_check_in
       moemoepoint.value = result.moemoepoints
-      messageStatus.value = result.hasNewMessage ? 'new' : 'online'
-      dailyToolsetUploadBytes.value = result.dailyToolsetUploadBytes
+      messageStatus.value = result.has_new_message ? 'new' : 'online'
+      dailyToolsetUploadBytes.value = result.daily_toolset_upload_bytes
     }
   }
 

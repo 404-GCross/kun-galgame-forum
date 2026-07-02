@@ -83,10 +83,10 @@ const handleMouseLeave = () => {
 const stats = computed(() => {
   if (!userData.value) return []
   return [
-    { label: '话题', value: userData.value.topicCount },
-    { label: '回复', value: userData.value.topicReplyCount },
-    { label: '评论', value: userData.value.topicCommentCount },
-    { label: 'Galgame 资源', value: userData.value.galgameResourceCount }
+    { label: '话题', value: userData.value.topic_count },
+    { label: '回复', value: userData.value.topic_reply_count },
+    { label: '评论', value: userData.value.topic_comment_count },
+    { label: 'Galgame 资源', value: userData.value.galgame_resource_count }
   ]
 })
 

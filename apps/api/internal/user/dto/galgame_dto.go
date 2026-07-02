@@ -50,9 +50,9 @@ type UserGalgameCard struct {
 // + click-through to the parent galgame, no more.
 type UserGalgameComment struct {
 	ID          int       `json:"id"`
-	GalgameID   int       `json:"galgameId"`
+	GalgameID   int       `json:"galgame_id"`
 	Content     string    `json:"content"`
-	ContentHtml string    `json:"contentHtml"`
+	ContentHtml string    `json:"content_html"`
 	User        UserBrief `json:"user"`
 	Created     string    `json:"created"`
 }
