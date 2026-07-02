@@ -164,13 +164,15 @@ func decodeEnvelope(resp *http.Response) (json.RawMessage, error) {
 }
 
 // oauthErrToCode maps a standard RFC 6749 error string to the legacy envelope
-// code kungal branches on. invalid_grant/invalid_client mean the refresh token
-// is unusable (→ re-login); anything else maps to 0 (unknown → transient).
-// A banned user surfaces as invalid_grant on the token endpoint and is then
-// re-blocked at /userinfo (which still returns the enveloped 10014).
+// code kungal branches on. invalid_grant / unauthorized_client (the OAuth
+// server's grant-allowlist rejection, legacy 15005) / invalid_client all mean
+// the refresh token is unusable (→ re-login); anything else maps to 0
+// (unknown → transient). A banned user surfaces as invalid_grant on the token
+// endpoint and is then re-blocked at /userinfo (which still returns the
+// enveloped 10014).
 func oauthErrToCode(errStr string) int {
 	switch errStr {
-	case "invalid_grant":
+	case "invalid_grant", "unauthorized_client":
 		return CodeInvalidGrant
 	case "invalid_client":
 		return CodeInvalidClientSecret
