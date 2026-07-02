@@ -31,9 +31,9 @@ const handlePostComment = async () => {
     {
       method: 'POST',
       body: {
-        websiteId: props.websiteId,
+        website_id: props.websiteId,
         content: newCommentContent.value,
-        parentId: props.parentId
+        parent_id: props.parentId
       }
     }
   )

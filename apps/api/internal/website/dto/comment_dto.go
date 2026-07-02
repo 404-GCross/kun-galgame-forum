@@ -5,17 +5,17 @@ package dto
 // ──────────────────────────────────────────
 
 type CommentListRequest struct {
-	WebsiteID int `query:"websiteId" validate:"required,min=1"`
+	WebsiteID int `query:"website_id" validate:"required,min=1"`
 }
 
 type CreateCommentRequest struct {
 	Content   string `json:"content" validate:"required,min=1,max=1007"`
-	WebsiteID int    `json:"websiteId" validate:"required,min=1"`
-	ParentID  *int   `json:"parentId"`
+	WebsiteID int    `json:"website_id" validate:"required,min=1"`
+	ParentID  *int   `json:"parent_id"`
 }
 
 type DeleteCommentRequest struct {
-	CommentID int `query:"commentId" validate:"required,min=1"`
+	CommentID int `query:"comment_id" validate:"required,min=1"`
 }
 
 // ──────────────────────────────────────────
@@ -37,13 +37,13 @@ type CommentUser struct {
 type CommentItem struct {
 	ID         int            `json:"id"`
 	Content    string         `json:"content"`
-	ParentID   *int           `json:"parentId"`
-	UserID     int            `json:"userId"`
-	WebsiteID  int            `json:"websiteId"`
+	ParentID   *int           `json:"parent_id"`
+	UserID     int            `json:"user_id"`
+	WebsiteID  int            `json:"website_id"`
 	Created    string         `json:"created"`
 	Edited     *string        `json:"edited"`
 	Reply      []*CommentItem `json:"reply"`
-	ReplyCount int            `json:"replyCount"`
+	ReplyCount int            `json:"reply_count"`
 	User       CommentUser    `json:"user"`
-	TargetUser any            `json:"targetUser"`
+	TargetUser any            `json:"target_user"`
 }

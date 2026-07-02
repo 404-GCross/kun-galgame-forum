@@ -9,7 +9,7 @@ const { data } = await useKunFetch<WebsiteComment[]>(
   `/website/${props.websiteId}/comment`,
   {
     watch: false,
-    query: { websiteId: props.websiteId }
+    query: { website_id: props.websiteId }
   }
 )
 
@@ -18,7 +18,7 @@ const { data } = await useKunFetch<WebsiteComment[]>(
 const comments = ref<WebsiteComment[]>(data.value ?? [])
 
 const addNewComment = (newComment: WebsiteComment) => {
-  if (newComment.parentId == null) {
+  if (newComment.parent_id == null) {
     // Root: append (the list is oldest-first) and scroll to it.
     comments.value.push(newComment)
     nextTick(() => scrollIntoComment(newComment.id))
@@ -27,12 +27,12 @@ const addNewComment = (newComment: WebsiteComment) => {
   // Reply: attach to the root that IS, or CONTAINS, the parent.
   const root = comments.value.find(
     (r) =>
-      r.id === newComment.parentId ||
-      r.reply.some((c) => c.id === newComment.parentId)
+      r.id === newComment.parent_id ||
+      r.reply.some((c) => c.id === newComment.parent_id)
   )
   if (root) {
     root.reply.push(newComment)
-    root.replyCount = (root.replyCount ?? 0) + 1
+    root.reply_count = (root.reply_count ?? 0) + 1
   }
 }
 
@@ -46,7 +46,7 @@ const removeComment = (commentId: number) => {
     const idx = root.reply.findIndex((c) => c.id === commentId)
     if (idx !== -1) {
       root.reply.splice(idx, 1)
-      root.replyCount = Math.max(0, (root.replyCount ?? 0) - 1)
+      root.reply_count = Math.max(0, (root.reply_count ?? 0) - 1)
       return
     }
   }

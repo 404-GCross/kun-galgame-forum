@@ -32,7 +32,7 @@ const openEditTagModal = () => {
     name: data.value.name,
     label: data.value.label,
     level: data.value.level,
-    tagId: data.value.id,
+    tag_id: data.value.id,
     description: data.value.description
   } satisfies UpdateWebsiteTagPayload
   showTagModal.value = true
@@ -41,7 +41,7 @@ const openEditTagModal = () => {
 const handleTagSubmit = async (
   data: CreateWebsiteTagPayload | UpdateWebsiteTagPayload
 ) => {
-  if ('tagId' in data) {
+  if ('tag_id' in data) {
     const result = await kunFetch(`/website-tag`, {
       method: 'PUT',
       body: data

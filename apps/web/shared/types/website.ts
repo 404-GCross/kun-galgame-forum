@@ -19,7 +19,7 @@ export interface WebsiteTagDetail {
   label: string
   level: number
   description: string
-  websiteCount: number
+  website_count: number
   websites: WebsiteCard[]
   created: Date | string
   updated: Date | string
@@ -30,7 +30,7 @@ export interface WebsiteCategoryDetail {
   name: string
   label: string
   description: string
-  websiteCount: number
+  website_count: number
   websites: WebsiteCard[]
   created: Date | string
   updated: Date | string
@@ -41,14 +41,14 @@ export interface WebsiteCard {
   name: string
   description: string
   domain: string
-  ageLimit: string
+  age_limit: string
   level: number
   /** Legacy icon URL. */
   icon: string
   /** Content-addressed image hash. */
-  iconImageHash: string
+  icon_image_hash: string
   /** Resolved CDN url for display (falls back to the legacy `icon`). */
-  iconUrl: string
+  icon_url: string
   price: number
   category: string
 }
@@ -61,20 +61,20 @@ export interface WebsiteDetail {
   /** Legacy icon URL. */
   icon: string
   /** Content-addressed image hash. */
-  iconImageHash: string
+  icon_image_hash: string
   /** Resolved CDN url for display (falls back to the legacy `icon`). */
-  iconUrl: string
+  icon_url: string
   view: number
   language: string
-  ageLimit: 'all' | 'r18'
+  age_limit: 'all' | 'r18'
   category: WebsiteCategory
   tags: WebsiteTag[]
-  likeCount: number
-  isLiked: boolean
-  favoriteCount: number
-  isFavorited: boolean
+  like_count: number
+  is_liked: boolean
+  favorite_count: number
+  is_favorited: boolean
   domain: string[]
-  createTime: string
+  create_time: string
   comment: {
     id: number
     content: string
@@ -89,16 +89,16 @@ export interface WebsiteDetail {
 
 export interface WebsiteComment {
   id: number
-  websiteId: number
+  website_id: number
   content: string
-  parentId: number | null
-  userId: number
+  parent_id: number | null
+  user_id: number
   created: Date | string
   edited: Date | string | null
   // Roots carry their full set of descendants flattened here (oldest-first, one
   // visual tier); replies leave it empty. replyCount = reply.length.
   reply: WebsiteComment[]
-  replyCount: number
+  reply_count: number
   user: KunUser
-  targetUser?: KunUser | null
+  target_user?: KunUser | null
 }

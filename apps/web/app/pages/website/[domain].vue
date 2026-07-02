@@ -50,8 +50,8 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
     url: website.url,
     description: website.description,
     inLanguage: website.language,
-    isFamilyFriendly: website.ageLimit !== 'r18',
-    image: website.iconUrl
+    isFamilyFriendly: website.age_limit !== 'r18',
+    image: website.icon_url
   }
 
   const reviewsSchema: Review[] = website.comment.map((comment) => {
@@ -73,7 +73,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
     mainEntityOfPage: pageUrl,
     headline: `关于 ${website.name} 的介绍与评价`,
     description: website.description,
-    image: website.iconUrl,
+    image: website.icon_url,
     datePublished: new Date(website.created).toISOString(),
     dateModified: new Date(website.updated).toISOString(),
     author: publisherSchema,
@@ -93,7 +93,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
 })
 
 if (data.value) {
-  if (data.value.ageLimit === 'all') {
+  if (data.value.age_limit === 'all') {
     useHead({
       script: [
         {
@@ -107,7 +107,7 @@ if (data.value) {
     useKunSeoMeta({
       title: data.value.name,
       description: data.value.description,
-      ogImage: data.value.iconUrl,
+      ogImage: data.value.icon_url,
       articlePublishedTime: data.value.created.toString(),
       articleModifiedTime: data.value.updated.toString()
     })
@@ -131,7 +131,7 @@ if (data.value) {
         <div class="flex items-start space-x-6">
           <div class="flex-shrink-0">
             <KunImage
-              :src="data.iconUrl"
+              :src="data.icon_url"
               :alt="data.name"
               class="h-20 w-20 rounded-2xl object-cover"
             />

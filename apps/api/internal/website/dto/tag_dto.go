@@ -18,7 +18,7 @@ type CreateWebsiteTagRequest struct {
 }
 
 type UpdateWebsiteTagRequest struct {
-	TagID       int    `json:"tagId" validate:"required,min=1"`
+	TagID       int    `json:"tag_id" validate:"required,min=1"`
 	Name        string `json:"name" validate:"required,min=1,max=30"`
 	Label       string `json:"label" validate:"required,min=1,max=30"`
 	Description string `json:"description" validate:"max=300"`
@@ -26,7 +26,7 @@ type UpdateWebsiteTagRequest struct {
 }
 
 type DeleteWebsiteTagRequest struct {
-	TagID int `query:"tagId" validate:"required,min=1"`
+	TagID int `query:"tag_id" validate:"required,min=1"`
 }
 
 // ──────────────────────────────────────────
@@ -40,7 +40,7 @@ type WebsiteTagDetailResponse struct {
 	Label        string        `json:"label"`
 	Level        int           `json:"level"`
 	Description  string        `json:"description"`
-	WebsiteCount int           `json:"websiteCount"`
+	WebsiteCount int           `json:"website_count"`
 	Websites     []WebsiteCard `json:"websites"`
 	Created      time.Time     `json:"created"`
 	Updated      time.Time     `json:"updated"`

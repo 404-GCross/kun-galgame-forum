@@ -42,10 +42,10 @@ const utmLink = useUtmLink()
       <div class="flex items-center justify-between">
         <span class="text-default-500 text-sm">年龄限制</span>
         <KunChip
-          :variant="data.ageLimit === 'all' ? 'flat' : 'solid'"
-          :color="data.ageLimit === 'all' ? 'success' : 'danger'"
+          :variant="data.age_limit === 'all' ? 'flat' : 'solid'"
+          :color="data.age_limit === 'all' ? 'success' : 'danger'"
         >
-          {{ KUN_WEBSITE_ACG_LIMIT_MAP[data.ageLimit] }}
+          {{ KUN_WEBSITE_ACG_LIMIT_MAP[data.age_limit] }}
         </KunChip>
       </div>
 

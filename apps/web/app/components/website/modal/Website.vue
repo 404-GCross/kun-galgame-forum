@@ -8,10 +8,10 @@ import {
 import type { CreateWebsitePayload, UpdateWebsitePayload } from './types'
 import type { KunSelectOption } from '@kungal/ui-vue'
 
-// `iconUrl` is preview-only (resolved CDN url) — not part of the submit payload.
+// `icon_url` is preview-only (resolved CDN url) — not part of the submit payload.
 type WebsiteData = CreateWebsitePayload & {
-  websiteId?: number
-  iconUrl?: string
+  website_id?: number
+  icon_url?: string
 }
 
 const props = defineProps<{
@@ -41,7 +41,7 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.websiteId)
+const isEditing = computed(() => !!props.initialData?.website_id)
 const newDomain = ref('')
 
 const getInitialFormData = (): WebsiteData => ({
@@ -51,21 +51,21 @@ const getInitialFormData = (): WebsiteData => ({
   // Keep the legacy URL so editing an un-migrated site preserves it; the hash
   // drives the new uploader.
   icon: '',
-  iconImageHash: '',
-  iconUrl: '',
+  icon_image_hash: '',
+  icon_url: '',
   language: 'zh-cn',
-  ageLimit: 'all',
-  categoryId: 1,
+  age_limit: 'all',
+  category_id: 1,
   tag_ids: [],
   domain: [],
-  createTime: '',
+  create_time: '',
   ...(props.initialData || {})
 })
 
 const formData = reactive<WebsiteData>(getInitialFormData())
 
 // Resolved CDN url of the edited site's icon — preview only (empty on create).
-const initialIconUrl = computed(() => props.initialData?.iconUrl ?? '')
+const initialIconUrl = computed(() => props.initialData?.icon_url ?? '')
 
 const { data, status } = useKunFetch<WebsiteTag[]>('/website-tag')
 
@@ -117,11 +117,11 @@ const handleSubmit = () => {
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <KunInput v-model="formData.name" label="网站名称" required />
-        <KunInput v-model="formData.createTime" label="网站创建时间" required />
+        <KunInput v-model="formData.create_time" label="网站创建时间" required />
 
         <div class="md:col-span-2">
           <KunCoverUpload
-            v-model="formData.iconImageHash"
+            v-model="formData.icon_image_hash"
             :preview-url="initialIconUrl"
             label="网站图标"
           />
@@ -144,7 +144,7 @@ const handleSubmit = () => {
         />
 
         <KunSelect
-          v-model="formData.categoryId"
+          v-model="formData.category_id"
           label="分类"
           :options="categoryOptions"
         />
@@ -156,7 +156,7 @@ const handleSubmit = () => {
         />
 
         <KunSelect
-          v-model="formData.ageLimit"
+          v-model="formData.age_limit"
           label="年龄限制"
           :options="ageLimitOptions"
         />

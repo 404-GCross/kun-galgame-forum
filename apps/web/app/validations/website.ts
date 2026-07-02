@@ -53,14 +53,14 @@ const websiteBaseSchema = z.object({
     .min(10, '网站介绍最少 10 个字符')
     .max(1000, '网站介绍最多 1000 个字符'),
   icon: z.string().max(500, '图标 URL 最多 500 个字符').optional().default(''),
-  iconImageHash: z
+  icon_image_hash: z
     .string()
     .max(128, '图标 hash 最多 128 个字符')
     .optional()
     .default(''),
   language: z.enum(['en-us', 'ja-jp', 'zh-cn', 'zh-tw']).default('zh-cn'),
-  ageLimit: z.enum(['all', 'r18']).default('all'),
-  categoryId: z.coerce.number<number>().min(1).max(9999999),
+  age_limit: z.enum(['all', 'r18']).default('all'),
+  category_id: z.coerce.number<number>().min(1).max(9999999),
   tag_ids: z
     .array(z.coerce.number<number>().min(1).max(9999999))
     .max(20, '网站最多 20 个标签')
@@ -71,7 +71,7 @@ const websiteBaseSchema = z.object({
     .max(10, '可用域名最多 10 个')
     .optional()
     .default([]),
-  createTime: z.string().max(20, '网站创建时间描述最多 20 个字符').default('')
+  create_time: z.string().max(20, '网站创建时间描述最多 20 个字符').default('')
 })
 
 // Keep the icon effectively required: either the new hash or the legacy URL.
@@ -87,22 +87,22 @@ export const createWebsiteSchema = websiteBaseSchema.refine(
 
 export const updateWebsiteSchema = websiteBaseSchema
   .extend({
-    websiteId: z.coerce.number<number>().min(1).max(9999999)
+    website_id: z.coerce.number<number>().min(1).max(9999999)
   })
   .refine(hasIcon, ICON_REQUIRED)
 
 export const toggleLikeFavoriteSchema = z.object({
-  websiteId: z.coerce.number<number>().min(1).max(9999999)
+  website_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const deleteWebsiteSchema = z.object({
-  websiteId: z.coerce.number<number>().min(1).max(9999999)
+  website_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /* tag */
 
 export const getWebsiteTagSchema = z.object({
-  websiteId: z.coerce.number<number>().min(1).max(9999999).optional()
+  website_id: z.coerce.number<number>().min(1).max(9999999).optional()
 })
 
 export const getWebsiteByTagSchema = z.object({
@@ -124,11 +124,11 @@ export const createWebsiteTagSchema = z.object({
 })
 
 export const updateWebsiteTagSchema = createWebsiteTagSchema.extend({
-  tagId: z.coerce.number<number>().min(1).max(9999999)
+  tag_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const deleteWebsiteTagSchema = z.object({
-  tagId: z.coerce.number<number>().min(1).max(9999999)
+  tag_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /* category */
@@ -138,7 +138,7 @@ export const getWebsiteByCategorySchema = z.object({
 })
 
 export const updateWebsiteCategorySchema = z.object({
-  categoryId: z.coerce.number<number>().min(1).max(9999999),
+  category_id: z.coerce.number<number>().min(1).max(9999999),
   name: z.string().min(1, '分类名称不能为空').max(30, '分类名称最多 30 个字符'),
   label: z
     .string()
@@ -150,18 +150,18 @@ export const updateWebsiteCategorySchema = z.object({
 /* comment */
 
 export const getCommentsSchema = z.object({
-  websiteId: z.coerce.number<number>().min(1).max(9999999)
+  website_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createCommentSchema = z.object({
-  websiteId: z.coerce.number<number>().min(1).max(9999999),
+  website_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
     .string()
     .min(1, '评论内容不能为空')
     .max(1007, '评论内容最多 1007 个字符'),
-  parentId: z.coerce.number<number>().min(1).max(9999999).optional()
+  parent_id: z.coerce.number<number>().min(1).max(9999999).optional()
 })
 
 export const deleteCommentSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999)
+  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })

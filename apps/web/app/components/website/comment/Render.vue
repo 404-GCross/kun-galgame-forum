@@ -48,14 +48,14 @@ const onReplyPublished = (comment: WebsiteComment) => {
         <span class="text-default-800 text-sm font-medium">
           {{ comment.user.name }}
         </span>
-        <template v-if="comment.targetUser">
+        <template v-if="comment.target_user">
           <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
           <KunLink
             underline="hover"
             size="sm"
-            :to="`/user/${comment.targetUser.id}`"
+            :to="`/user/${comment.target_user.id}`"
           >
-            {{ comment.targetUser.name }}
+            {{ comment.target_user.name }}
           </KunLink>
         </template>
         <span class="text-default-400 text-xs">

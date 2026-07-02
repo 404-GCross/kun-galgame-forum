@@ -21,19 +21,19 @@ defineProps<{
       <div class="flex items-center justify-between">
         <span class="text-default-600">点赞数</span>
         <span class="text-default-900 font-semibold">
-          {{ formatNumber(data.likeCount) }}
+          {{ formatNumber(data.like_count) }}
         </span>
       </div>
       <div class="flex items-center justify-between">
         <span class="text-default-600">收藏数</span>
         <span class="text-default-900 font-semibold">
-          {{ formatNumber(data.favoriteCount) }}
+          {{ formatNumber(data.favorite_count) }}
         </span>
       </div>
       <div class="flex items-center justify-between">
         <span class="text-default-600">网站建立时间</span>
         <span class="text-default-900 font-semibold">
-          {{ data.createTime }}
+          {{ data.create_time }}
         </span>
       </div>
       <div class="flex items-center justify-between">

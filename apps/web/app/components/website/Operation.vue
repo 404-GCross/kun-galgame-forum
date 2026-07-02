@@ -9,7 +9,7 @@ const emits = defineEmits<{
   refresh: []
 }>()
 
-type WebsiteData = (CreateWebsitePayload & { websiteId?: number }) | undefined
+type WebsiteData = (CreateWebsitePayload & { website_id?: number }) | undefined
 
 const { id } = usePersistUserStore()
 const { canModerate } = useRole()
@@ -17,10 +17,10 @@ const { canModerate } = useRole()
 // Tag the outbound 访问网站 jump with utm_source=<current domain>.
 const utmLink = useUtmLink()
 
-const isLiked = ref(props.website.isLiked)
-const likeCount = ref(props.website.likeCount)
-const isFavorited = ref(props.website.isFavorited)
-const favoriteCount = ref(props.website.favoriteCount)
+const isLiked = ref(props.website.is_liked)
+const likeCount = ref(props.website.like_count)
+const isFavorited = ref(props.website.is_favorited)
+const favoriteCount = ref(props.website.favorite_count)
 type ActionType = 'like' | 'favorite' | 'update' | 'delete'
 const loadingStates = reactive<Record<ActionType, boolean>>({
   like: false,
@@ -36,7 +36,7 @@ const toggleLike = () =>
   handleAction('like', async () => {
     const result = await kunFetch(`/website/${props.website.id}/like`, {
       method: 'PUT',
-      body: { websiteId: props.website.id }
+      body: { website_id: props.website.id }
     })
 
     if (result) {
@@ -50,7 +50,7 @@ const toggleFavorite = () =>
   handleAction('favorite', async () => {
     const result = await kunFetch(`/website/${props.website.id}/favorite`, {
       method: 'PUT',
-      body: { websiteId: props.website.id }
+      body: { website_id: props.website.id }
     })
 
     if (result) {
@@ -64,16 +64,16 @@ const toggleFavorite = () =>
   })
 
 const handleOpenUpdateModal = () => {
-  const { ageLimit, category, tags, createTime, language, ...rest } =
+  const { age_limit, category, tags, create_time, language, ...rest } =
     props.website
   editingWebsite.value = {
     ...rest,
     language: language as keyof KunLanguage,
     tag_ids: tags.map((t) => t.id),
-    categoryId: category.id,
-    ageLimit,
-    createTime,
-    websiteId: props.website.id
+    category_id: category.id,
+    age_limit,
+    create_time,
+    website_id: props.website.id
   }
   showWebsiteModal.value = true
 }
@@ -103,7 +103,7 @@ const handleDelete = () =>
 
     const result = await kunFetch(`/website/${props.website.id}`, {
       method: 'DELETE',
-      query: { websiteId: props.website.id }
+      query: { website_id: props.website.id }
     })
 
     if (result) {
