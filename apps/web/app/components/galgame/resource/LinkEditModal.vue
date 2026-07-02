@@ -110,10 +110,10 @@ const handleSubmit = async () => {
   const body = isEditing.value
     ? {
         ...form.value,
-        galgameId: props.galgameId,
-        galgameResourceId: props.resource!.id
+        galgame_id: props.galgameId,
+        galgame_resource_id: props.resource!.id
       }
-    : { ...form.value, galgameId: props.galgameId }
+    : { ...form.value, galgame_id: props.galgameId }
 
   isSubmitting.value = true
   const result = await nuxtApp.runWithContext(() =>

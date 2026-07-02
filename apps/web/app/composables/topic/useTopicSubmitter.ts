@@ -43,7 +43,7 @@ export const useTopicSubmitter = () => {
     }
 
     const submitData = isRewriteMode.value
-      ? { ...data, topicId: tempStore.id }
+      ? { ...data, topic_id: tempStore.id }
       : data
 
     const result = createTopicSchema.safeParse(submitData)

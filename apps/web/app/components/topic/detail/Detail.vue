@@ -47,8 +47,8 @@ if (targetFloor > 0 || targetCommentId > 0) {
   const located = await kunFetch<{
     page: number
     floor: number
-    replyId: number
-    commentId: number
+    reply_id: number
+    comment_id: number
   }>(`/topic/${props.topic.id}/reply/locate`, {
     query:
       targetCommentId > 0
