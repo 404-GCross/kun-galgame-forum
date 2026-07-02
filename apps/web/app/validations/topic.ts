@@ -37,6 +37,8 @@ export const createTopicSchema = z.object({
     .min(1, { message: '话题内容最少 1 个字符' })
     .max(100007, { message: '话题标题最大长度为 100007 个字符' })
     .refine((t) => t.trim().length, { message: '话题内容最少为 1 个字符' }),
+  // Tags are no longer added at publish time; existing topics keep theirs
+  // (rewrite resubmits them). So the array is optional — 0..7 tags allowed.
   tag: z
     .array(
       z
@@ -47,8 +49,8 @@ export const createTopicSchema = z.object({
           message: '每个标签最少为 1 个字符'
         })
     )
-    .min(1, { message: '每个话题至少有一个标签' })
-    .max(7, { message: '每个话题最多有 7 个标签' }),
+    .max(7, { message: '每个话题最多有 7 个标签' })
+    .optional(),
   category: z.enum(KUN_TOPIC_CATEGORY_CONST),
   section: z
     .array(z.enum(KUN_TOPIC_SECTION_CONST))

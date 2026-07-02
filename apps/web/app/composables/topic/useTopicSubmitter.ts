@@ -66,13 +66,8 @@ export const useTopicSubmitter = () => {
       )
       return
     }
-    const confirmation = await useComponentMessageStore().alert(
-      `确定要${isRewriteMode.value ? '提交更改' : '发布话题'}吗?`,
-      hasConsumeSection
-        ? `发布此分类的话题将会消耗您 10 萌萌点, 您目前有 ${moemoepoint} 萌萌点`
-        : ''
-    )
-    if (!confirmation) return
+    // The publish modal is itself the deliberate confirmation step now, so no
+    // extra alert() — the seek/help moemoepoint cost is surfaced inline there.
 
     isSubmitting.value = true
     if (isRewriteMode.value) {
@@ -97,16 +92,6 @@ export const useTopicSubmitter = () => {
     }
     isSubmitting.value = false
   }
-
-  const onKeydown = (event: KeyboardEvent) => {
-    if (event.ctrlKey && event.key === 'Enter') {
-      event.preventDefault()
-      submit()
-    }
-  }
-
-  onMounted(() => window.addEventListener('keydown', onKeydown))
-  onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
   return {
     rules,

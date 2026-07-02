@@ -292,3 +292,12 @@
   max-height: 500px;
   overflow-y: auto;
 }
+
+/* The topic writing surface (edit/topic) is a full-document editor: let it grow
+   with content so the PAGE scrolls (and the sticky toolbar pins), instead of the
+   editor being an inner 500px scroller. Higher specificity beats the cap above. */
+.kun-doc-editor .kun-editor__wysiwyg .ProseMirror {
+  max-height: none;
+  min-height: 60vh;
+  overflow: visible;
+}
