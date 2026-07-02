@@ -34,10 +34,10 @@ const handlePublishComment = async () => {
     {
       method: 'POST',
       body: {
-        topicId: topicId,
-        replyId: props.replyId,
-        targetUserId: props.targetUser.id,
-        parentCommentId: props.parentCommentId,
+        topic_id: topicId,
+        reply_id: props.replyId,
+        target_user_id: props.targetUser.id,
+        parent_comment_id: props.parentCommentId,
         content: commentValue.value
       }
     }

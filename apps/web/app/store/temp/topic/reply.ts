@@ -31,7 +31,7 @@ export const useTempReplyStore = defineStore(
       isReplyRewriting.value = true
       replyRewrite.value = {
         id: reply.id,
-        mainContent: reply.contentMarkdown
+        mainContent: reply.content_markdown
       }
     }
 

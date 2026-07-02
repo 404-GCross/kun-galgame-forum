@@ -47,8 +47,8 @@ type ReactionHistoryItem struct {
 type ListTopicsRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=50"`
-	SortField string `query:"sortField"`
-	SortOrder string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
+	SortField string `query:"sort_field"`
+	SortOrder string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
 	Category  string `query:"category"`
 }
 
@@ -109,38 +109,38 @@ type MyTopicInteractions struct {
 type TopicDetail struct {
 	ID          int      `json:"id"`
 	Title       string   `json:"title"`
-	Content     string   `json:"contentMarkdown"`
-	ContentHtml string   `json:"contentHtml"`
+	Content     string   `json:"content_markdown"`
+	ContentHtml string   `json:"content_html"`
 	View        int      `json:"view"`
 	Status      int      `json:"status"`
-	IsNSFW      bool     `json:"isNSFW"`
+	IsNSFW      bool     `json:"is_nsfw"`
 	Category    string   `json:"category"`
 	Sections    []string `json:"section"`
 	Tags        []string `json:"tag"`
-	CoverImages []string `json:"coverImages"`
+	CoverImages []string `json:"cover_images"`
 	// See TopicCard.CoverImageMeta — keyed by the /image/<hash> cover token.
-	CoverImageMeta   map[string]imageclient.ImageMeta `json:"coverImageMeta,omitempty"`
+	CoverImageMeta   map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
 	User             KunUserWithMoemoepoint           `json:"user"`
-	LikeCount        int                              `json:"likeCount"`
-	IsLiked          bool                             `json:"isLiked"`
-	DislikeCount     int                              `json:"dislikeCount"`
-	IsDisliked       bool                             `json:"isDisliked"`
-	FavoriteCount    int                              `json:"favoriteCount"`
-	IsFavorited      bool                             `json:"isFavorited"`
-	UpvoteCount      int                              `json:"upvoteCount"`
-	IsUpvoted        bool                             `json:"isUpvoted"`
+	LikeCount        int                              `json:"like_count"`
+	IsLiked          bool                             `json:"is_liked"`
+	DislikeCount     int                              `json:"dislike_count"`
+	IsDisliked       bool                             `json:"is_disliked"`
+	FavoriteCount    int                              `json:"favorite_count"`
+	IsFavorited      bool                             `json:"is_favorited"`
+	UpvoteCount      int                              `json:"upvote_count"`
+	IsUpvoted        bool                             `json:"is_upvoted"`
 	Reactions        []ReactionSummary                `json:"reactions"`
-	ReplyCount       int                              `json:"replyCount"`
-	IsPollTopic      bool                             `json:"isPollTopic"`
-	StatusUpdateTime time.Time                        `json:"statusUpdateTime"`
-	UpvoteTime       *time.Time                       `json:"upvoteTime"`
+	ReplyCount       int                              `json:"reply_count"`
+	IsPollTopic      bool                             `json:"is_poll_topic"`
+	StatusUpdateTime time.Time                        `json:"status_update_time"`
+	UpvoteTime       *time.Time                       `json:"upvote_time"`
 	Edited           *time.Time                       `json:"edited"`
 	Created          time.Time                        `json:"created"`
 	// Best answer summary — populated when topic.best_answer_id is set.
 	// Embedded here (instead of forcing a second /reply fetch) so the
 	// topic detail page can render JSON-LD `acceptedAnswer` schema during
 	// SSR. nil = no best answer set.
-	BestAnswer *TopicBestAnswer `json:"bestAnswer,omitempty"`
+	BestAnswer *TopicBestAnswer `json:"best_answer,omitempty"`
 }
 
 // TopicBestAnswer is the slim projection of the chosen reply that
@@ -149,8 +149,8 @@ type TopicBestAnswer struct {
 	ID              int       `json:"id"`
 	Floor           int       `json:"floor"`
 	User            KunUser   `json:"user"`
-	ContentMarkdown string    `json:"contentMarkdown"`
-	ContentHtml     string    `json:"contentHtml"`
+	ContentMarkdown string    `json:"content_markdown"`
+	ContentHtml     string    `json:"content_html"`
 	Created         time.Time `json:"created"`
 }
 
@@ -165,7 +165,7 @@ type CreateTopicRequest struct {
 	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
 	Sections    []string `json:"section" validate:"required,min=1,max=3"`
 	IsNSFW      bool     `json:"is_nsfw"`
-	CoverImages []string `json:"coverImages" validate:"omitempty,max=9"`
+	CoverImages []string `json:"cover_images" validate:"omitempty,max=9"`
 }
 
 type UpdateTopicRequest struct {
@@ -175,9 +175,9 @@ type UpdateTopicRequest struct {
 	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
 	Sections    []string `json:"section" validate:"required,min=1,max=3"`
 	IsNSFW      bool     `json:"is_nsfw"`
-	CoverImages []string `json:"coverImages" validate:"omitempty,max=9"`
+	CoverImages []string `json:"cover_images" validate:"omitempty,max=9"`
 }
 
 type TopicInteractionRequest struct {
-	TopicID int `json:"topicId" validate:"required,min=1"`
+	TopicID int `json:"topic_id" validate:"required,min=1"`
 }

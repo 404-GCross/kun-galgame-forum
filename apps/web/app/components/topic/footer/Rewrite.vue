@@ -27,12 +27,12 @@ const isShowRewrite = computed(
 const rewriteTopic = async () => {
   id.value = props.topic.id
   title.value = props.topic.title
-  content.value = props.topic.contentMarkdown
+  content.value = props.topic.content_markdown
   tags.value = props.topic.tag
   category.value = props.topic.category
   section.value = props.topic.section ?? []
-  isNSFW.value = !!props.topic.isNSFW
-  coverImages.value = props.topic.coverImages ?? []
+  isNSFW.value = !!props.topic.is_nsfw
+  coverImages.value = props.topic.cover_images ?? []
   isTopicRewriting.value = true
 
   await navigateTo('/edit/topic')

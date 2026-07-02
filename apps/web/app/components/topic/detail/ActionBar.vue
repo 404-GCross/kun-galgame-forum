@@ -46,8 +46,8 @@ const handleShare = () => {
 
     <TopicFooterFavorite
       :topic-id="topic.id"
-      :favorite-count="topic.favoriteCount"
-      :is-favorite="topic.isFavorited"
+      :favorite-count="topic.favorite_count"
+      :is-favorite="topic.is_favorited"
     />
 
     <KunTooltip text="跳到评论区">
@@ -69,8 +69,8 @@ const handleShare = () => {
           menu
           :topic-id="topic.id"
           :target-user-id="topic.user.id"
-          :upvote-count="topic.upvoteCount"
-          :is-upvoted="topic.isUpvoted"
+          :upvote-count="topic.upvote_count"
+          :is-upvoted="topic.is_upvoted"
         />
         <KunButton
           variant="light"

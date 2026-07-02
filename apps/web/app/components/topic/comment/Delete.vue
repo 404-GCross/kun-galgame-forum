@@ -15,7 +15,7 @@ const isAdmin = canModerate.value
 const canDelete = computed(() => id === props.comment.user.id || isAdmin)
 
 const handleDeleteComment = async () => {
-  const moemoepointToDecrease = 3 * (props.comment.likeCount + 1)
+  const moemoepointToDecrease = 3 * (props.comment.like_count + 1)
 
   if (moemoepoint < moemoepointToDecrease && isCommonUser) {
     useMessage(
@@ -38,7 +38,7 @@ const handleDeleteComment = async () => {
   }
 
   const result = await kunFetch<string>(
-    `/topic/${props.comment.topicId}/comment`,
+    `/topic/${props.comment.topic_id}/comment`,
     {
       method: 'DELETE',
       query: { commentId: props.comment.id }

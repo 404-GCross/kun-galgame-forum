@@ -15,13 +15,13 @@ const SORT_ORDER_CONST = ['asc', 'desc'] as const
 export const getTopicSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30),
-  sortField: z.enum(TOPIC_SORT_FIELD_CONST),
-  sortOrder: z.enum(SORT_ORDER_CONST),
+  sort_field: z.enum(TOPIC_SORT_FIELD_CONST),
+  sort_order: z.enum(SORT_ORDER_CONST),
   category: z.enum(KUN_TOPIC_CATEGORY_CONST)
 })
 
 export const getTopicDetailSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const createTopicSchema = z.object({
@@ -57,7 +57,7 @@ export const createTopicSchema = z.object({
   is_nsfw: z.coerce.boolean({ message: '未找到话题的 NSFW 设置' }),
   // Optional 1..9 cover images, each a /image/<64hex> content token returned by
   // the /image/topic upload endpoint (see CoverPicker.vue). Empty = no covers.
-  coverImages: z
+  cover_images: z
     .array(
       z
         .string()
@@ -68,32 +68,32 @@ export const createTopicSchema = z.object({
 })
 
 export const updateTopicSchema = createTopicSchema.extend({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicLikeSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicDislikeSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicUpvoteSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicFavoriteSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicBestAnswerSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999),
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999),
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateTopicHideStatusSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -101,20 +101,20 @@ export const updateTopicHideStatusSchema = z.object({
  */
 
 export const getReplySchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999),
+  topic_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30),
-  sortOrder: z.enum(SORT_ORDER_CONST)
+  sort_order: z.enum(SORT_ORDER_CONST)
 })
 
 export const getReplyDetailSchema = z.object({
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 // A reply is a single body now (multi-target tabs retired); @mention / #quote
 // references live inline in `content` as tokens.
 export const createReplySchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999),
+  topic_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
     .string()
     .trim()
@@ -123,7 +123,7 @@ export const createReplySchema = z.object({
 })
 
 export const updateReplySchema = z.object({
-  replyId: z.coerce.number<number>().min(1).max(9999999),
+  reply_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
     .string()
     .trim()
@@ -132,20 +132,20 @@ export const updateReplySchema = z.object({
 })
 
 export const updateReplyPinSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999),
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  topic_id: z.coerce.number<number>().min(1).max(9999999),
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateReplyLikeSchema = z.object({
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const updateReplyDislikeSchema = z.object({
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const deleteReplySchema = z.object({
-  replyId: z.coerce.number<number>().min(1).max(9999999)
+  reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 /*
@@ -153,9 +153,9 @@ export const deleteReplySchema = z.object({
  */
 
 export const createCommentSchema = z.object({
-  topicId: z.coerce.number<number>().min(1).max(9999999),
-  replyId: z.coerce.number<number>().min(1).max(9999999),
-  targetUserId: z.coerce.number<number>().min(1).max(9999999),
+  topic_id: z.coerce.number<number>().min(1).max(9999999),
+  reply_id: z.coerce.number<number>().min(1).max(9999999),
+  target_user_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
     .string()
     .min(1, { message: '评论最少 1 个字符' })
@@ -163,9 +163,9 @@ export const createCommentSchema = z.object({
 })
 
 export const updateCommentLikeSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999)
+  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const deleteCommentSchema = z.object({
-  commentId: z.coerce.number<number>().min(1).max(9999999)
+  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })

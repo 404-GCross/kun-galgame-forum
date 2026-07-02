@@ -40,14 +40,14 @@ const { preview, keepPreview, hidePreview } = useQuoteContent(contentRef)
 // Short plain-text slug for the reply's anchor id. markdownToText first so a
 // mention/quote token isn't sliced mid-form into the id.
 const replyContent = computed(() =>
-  markdownToText(props.reply.contentMarkdown).slice(0, 20)
+  markdownToText(props.reply.content_markdown).slice(0, 20)
 )
 
 const cardClasses = computed(() => {
-  if (props.reply.isBestAnswer) {
+  if (props.reply.is_best_answer) {
     return 'border-l-4 border-success-600 dark:border-success-700'
   }
-  if (props.reply.isPinned) {
+  if (props.reply.is_pinned) {
     return 'border-l-4 border-secondary-500 dark:border-secondary-600'
   }
   return ''
@@ -86,7 +86,7 @@ const handleNewComment = (comment: TopicComment) => {
       content-class="gap-3"
     >
       <div
-        v-if="reply.isBestAnswer"
+        v-if="reply.is_best_answer"
         :class="
           cn(
             'bg-success-500/20 text-success-700 dark:text-success-300',
@@ -103,7 +103,7 @@ const handleNewComment = (comment: TopicComment) => {
       </div>
 
       <div
-        v-else-if="reply.isPinned"
+        v-else-if="reply.is_pinned"
         :class="
           cn(
             'bg-secondary-500/20 text-secondary-700 dark:text-secondary-300',
@@ -123,15 +123,15 @@ const handleNewComment = (comment: TopicComment) => {
         :user="reply.user"
         :created="reply.created"
         :edited="reply.edited"
-        :topic-id="reply.topicId"
+        :topic-id="reply.topic_id"
         :floor="reply.floor"
       />
 
       <div ref="contentRef">
         <KunContent
-          v-if="reply.contentMarkdown && reply.contentMarkdown.trim()"
+          v-if="reply.content_markdown && reply.content_markdown.trim()"
           compact
-          :content="renderKatex(reply.contentHtml)"
+          :content="renderKatex(reply.content_html)"
         />
       </div>
 

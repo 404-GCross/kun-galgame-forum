@@ -41,10 +41,10 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
       `/topic/${_topicId}/reply`,
       {
         query: {
-          topicId: _topicId,
+          topic_id: _topicId,
           page: fetchPage,
           limit: 30,
-          sortOrder: fetchSortOrder
+          sort_order: fetchSortOrder
         }
       }
     )

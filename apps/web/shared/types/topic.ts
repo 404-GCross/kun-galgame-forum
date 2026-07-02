@@ -34,48 +34,48 @@ export interface TopicBestAnswerSummary {
   id: number
   floor: number
   user: KunUser
-  contentMarkdown: string
-  contentHtml: string
+  content_markdown: string
+  content_html: string
   created: Date | string
 }
 
 export interface TopicDetail {
   id: number
   title: string
-  contentMarkdown: string
-  contentHtml: string
+  content_markdown: string
+  content_html: string
   view: number
   status: number
-  isNSFW: boolean
+  is_nsfw: boolean
   category: string
   section: string[]
   tag: string[]
   // Optional 1..9 cover images as /image/<hash> tokens; used to prefill the
   // cover picker when editing, and (empty = none) for the feed card.
-  coverImages: string[]
+  cover_images: string[]
   // See TopicCard.cover_image_meta — keyed by the /image/<hash> cover token.
-  coverImageMeta?: Record<string, KunImageMeta>
+  cover_image_meta?: Record<string, KunImageMeta>
   user: KunUser & { moemoepoint: number }
 
-  likeCount: number
-  isLiked: boolean
-  dislikeCount: number
-  isDisliked: boolean
-  favoriteCount: number
-  isFavorited: boolean
-  upvoteCount: number
-  isUpvoted: boolean
+  like_count: number
+  is_liked: boolean
+  dislike_count: number
+  is_disliked: boolean
+  favorite_count: number
+  is_favorited: boolean
+  upvote_count: number
+  is_upvoted: boolean
   reactions: KunReaction[]
 
-  replyCount: number
-  isPollTopic: boolean
+  reply_count: number
+  is_poll_topic: boolean
 
-  statusUpdateTime: Date | string
-  upvoteTime: Date | string | null
+  status_update_time: Date | string
+  upvote_time: Date | string | null
   edited: Date | string | null
   created: Date | string
 
   // Embedded by BE when topic.best_answer_id is set; omitted otherwise.
   // Drives JSON-LD `acceptedAnswer` for SEO on the topic detail page.
-  bestAnswer?: TopicBestAnswerSummary
+  best_answer?: TopicBestAnswerSummary
 }

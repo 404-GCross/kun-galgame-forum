@@ -36,10 +36,10 @@ provide(
         <TopicTagGroup
           :section="topic.section"
           :tags="topic.tag"
-          :upvote-time="topic.upvoteTime"
+          :upvote-time="topic.upvote_time"
           :has-best-answer="false"
-          :is-poll-topic="topic.isPollTopic"
-          :is-n-s-f-w-topic="topic.isNSFW"
+          :is-poll-topic="topic.is_poll_topic"
+          :is-n-s-f-w-topic="topic.is_nsfw"
           :is-nav-to-section="true"
         />
 
@@ -62,8 +62,8 @@ provide(
       </header>
 
       <TopicDetailBestAnswer
-        v-if="topic.bestAnswer"
-        :best-answer="topic.bestAnswer"
+        v-if="topic.best_answer"
+        :best-answer="topic.best_answer"
       />
 
       <TopicDetailUser
@@ -80,7 +80,7 @@ provide(
 
       <KunContent
         class="kun-master"
-        :content="renderKatex(topic.contentHtml)"
+        :content="renderKatex(topic.content_html)"
       />
 
       <KunDivider />

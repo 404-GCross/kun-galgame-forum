@@ -39,7 +39,7 @@ export const useTopicSubmitter = () => {
       category: category.value,
       section: section.value,
       is_nsfw: isNSFW.value,
-      coverImages: coverImages.value
+      cover_images: coverImages.value
     }
 
     const submitData = isRewriteMode.value

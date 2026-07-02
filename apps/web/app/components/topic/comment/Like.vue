@@ -4,8 +4,8 @@ const props = defineProps<{
 }>()
 
 const { id } = usePersistUserStore()
-const isLiked = ref(props.comment.isLiked)
-const likeCount = ref(props.comment.likeCount)
+const isLiked = ref(props.comment.is_liked)
+const likeCount = ref(props.comment.like_count)
 const pending = ref(false)
 
 const revert = (next: boolean) => {
@@ -26,7 +26,7 @@ const onChange = async (next: boolean) => {
   }
   pending.value = true
   const result = await kunFetch<string>(
-    `/topic/${props.comment.topicId}/comment/like`,
+    `/topic/${props.comment.topic_id}/comment/like`,
     { method: 'PUT', body: { commentId: props.comment.id } }
   )
   pending.value = false

@@ -12,7 +12,7 @@ const isDisabled = computed(() => id !== props.reply.user.id && isCommonUser)
 
 const handleDeleteReply = async () => {
   const moemoepointToDecrease =
-    3 * (props.reply.comment.length + props.reply.likeCount + 1)
+    3 * (props.reply.comment.length + props.reply.like_count + 1)
 
   if (moemoepoint < moemoepointToDecrease && isCommonUser) {
     useMessage(
@@ -34,7 +34,7 @@ const handleDeleteReply = async () => {
     return
   }
 
-  const result = await kunFetch<string>(`/topic/${props.reply.topicId}/reply`, {
+  const result = await kunFetch<string>(`/topic/${props.reply.topic_id}/reply`, {
     method: 'DELETE',
     query: { replyId: props.reply.id }
   })

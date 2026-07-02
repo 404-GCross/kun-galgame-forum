@@ -58,7 +58,7 @@ const handleNewComment = (comment: TopicComment) => {
               class-name="w-full justify-start gap-2 whitespace-nowrap"
               @click="
                 useKunCopy(
-                  `${title}: https://www.kungal.com/topic/${reply.topicId}?reply=${reply.floor}`
+                  `${title}: https://www.kungal.com/topic/${reply.topic_id}?reply=${reply.floor}`
                 )
               "
             >

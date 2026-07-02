@@ -16,7 +16,7 @@ export interface TOCItem {
 // running into Ref variance — the computed below tracks whatever they touch.
 export interface TopicTocSource {
   getContentHtml: () => string
-  getReplies: () => { floor: number; contentMarkdown: string }[]
+  getReplies: () => { floor: number; content_markdown: string }[]
   // The currently-active reply floor — the deep-link target, which also follows
   // same-page #floor / feed-card jumps (a ?comment resolves to its parent reply's
   // floor); a getter so the rail's bold reactively tracks it. 0 = none.
@@ -67,7 +67,7 @@ export const useTopicTOC = (source: TopicTocSource) => {
 
     for (const reply of source.getReplies()) {
       // Mirror Reply.vue's anchor id (`${floor}.${slug}`) exactly.
-      const slug = markdownToText(reply.contentMarkdown).slice(0, 20)
+      const slug = markdownToText(reply.content_markdown).slice(0, 20)
       items.push({
         id: `${reply.floor}.${slug}`,
         level: 2,

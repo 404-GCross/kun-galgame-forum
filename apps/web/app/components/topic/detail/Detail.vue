@@ -106,7 +106,7 @@ provide('activeReplyFloor', activeFloor)
 // Feed the TOC rail from data so it renders server-side (no flash on refresh);
 // the scrollspy inside useTopicTOC stays client-only.
 provide(TOPIC_TOC_SOURCE, {
-  getContentHtml: () => props.topic.contentHtml,
+  getContentHtml: () => props.topic.content_html,
   getReplies: () => replies.value,
   getTargetFloor: () => activeFloor.value
 })
@@ -159,7 +159,7 @@ watch(
            lands the reply-count header at the top, not under the topbar. -->
       <div id="comments-anchor" class="scroll-mt-20">
         <TopicDetailTool
-          :reply-count="topic.replyCount"
+          :reply-count="topic.reply_count"
           :status="status"
           :sort-order="sortOrder"
           @set-sort-order="setSort"

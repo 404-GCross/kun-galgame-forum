@@ -27,12 +27,12 @@ const threadedComments = computed(() => {
     let cur = c
     const seen = new Set<number>()
     while (
-      cur.parentCommentId != null &&
-      byId.has(cur.parentCommentId) &&
+      cur.parent_comment_id != null &&
+      byId.has(cur.parent_comment_id) &&
       !seen.has(cur.id)
     ) {
       seen.add(cur.id)
-      cur = byId.get(cur.parentCommentId)!
+      cur = byId.get(cur.parent_comment_id)!
     }
     return cur
   }
@@ -143,7 +143,7 @@ const handleSaveEdit = async (comment: TopicComment) => {
 
   isSaving.value = true
   const updated = await kunFetch<TopicComment>(
-    `/topic/${comment.topicId}/comment`,
+    `/topic/${comment.topic_id}/comment`,
     {
       method: 'PUT',
       body: { commentId: comment.id, content }
@@ -188,9 +188,9 @@ const handleSaveEdit = async (comment: TopicComment) => {
                 <KunLink
                   size="sm"
                   underline="hover"
-                  :to="`/user/${comment.targetUser.id}`"
+                  :to="`/user/${comment.target_user.id}`"
                 >
-                  {{ comment.targetUser.name }}
+                  {{ comment.target_user.name }}
                 </KunLink>
               </div>
 

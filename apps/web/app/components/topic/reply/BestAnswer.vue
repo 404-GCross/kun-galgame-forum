@@ -11,7 +11,7 @@ const isDisabled = !canModerate.value && topicUserId !== id
 
 const handleUpdateTopicBestAnswer = async () => {
   const res = await useComponentMessageStore().alert(
-    props.reply.isBestAnswer
+    props.reply.is_best_answer
       ? '您确定取消设置该回复为最佳答案吗, 该操作将会扣除该回复人 7 萌萌点'
       : '您确定设置这个回复为最佳答案吗， 该操作将会为该回复人增加 7 萌萌点'
   )
@@ -20,16 +20,16 @@ const handleUpdateTopicBestAnswer = async () => {
   }
 
   const result = await kunFetch<string>(
-    `/topic/${props.reply.topicId}/best-answer`,
+    `/topic/${props.reply.topic_id}/best-answer`,
     {
       method: 'PUT',
-      body: { topicId: props.reply.topicId, replyId: props.reply.id }
+      body: { topicId: props.reply.topic_id, replyId: props.reply.id }
     }
   )
 
   if (result) {
     useMessage(
-      props.reply.isBestAnswer ? '取消设置最佳答案成功' : '设置最佳答案成功',
+      props.reply.is_best_answer ? '取消设置最佳答案成功' : '设置最佳答案成功',
       'success'
     )
   }
@@ -39,13 +39,13 @@ const handleUpdateTopicBestAnswer = async () => {
 <template>
   <KunButton
     variant="light"
-    :color="reply.isBestAnswer ? 'warning' : 'default'"
+    :color="reply.is_best_answer ? 'warning' : 'default'"
     size="sm"
     :disabled="isDisabled"
     @click="handleUpdateTopicBestAnswer"
     class-name="whitespace-nowrap gap-2 justify-start"
   >
     <KunIcon class-name="text-lg" name="lucide:bookmark-check" />
-    {{ reply.isBestAnswer ? '取消设置最佳答案' : '将该回复设为最佳答案' }}
+    {{ reply.is_best_answer ? '取消设置最佳答案' : '将该回复设为最佳答案' }}
   </KunButton>
 </template>

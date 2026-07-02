@@ -17,8 +17,8 @@ const { data, status, refresh } = await useKunFetch<{
   query: {
     page,
     limit,
-    sortField: 'status_update_time',
-    sortOrder: 'desc',
+    sort_field: 'status_update_time',
+    sort_order: 'desc',
     category: 'all'
   },
   // Don't auto-refetch on every query-ref change: opening a topic navigates to

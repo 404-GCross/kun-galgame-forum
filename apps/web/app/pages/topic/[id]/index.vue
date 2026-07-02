@@ -81,8 +81,8 @@ const getFirstImageSrc = (htmlString: string) => {
 if (data.value) {
   const topic = data.value
 
-  const markdown = topic.contentMarkdown
-  const banner = getFirstImageSrc(topic.contentHtml)
+  const markdown = topic.content_markdown
+  const banner = getFirstImageSrc(topic.content_html)
   const created = new Date(topic.created).toString()
   const updated = topic.edited ? new Date(topic.edited).toString() : ''
   const description = computed(() =>
@@ -105,21 +105,21 @@ if (data.value) {
         interactionType: {
           '@type': 'CommentAction'
         },
-        userInteractionCount: topic.replyCount
+        userInteractionCount: topic.reply_count
       },
       {
         '@type': 'InteractionCounter',
         interactionType: {
           '@type': 'LikeAction'
         },
-        userInteractionCount: topic.likeCount
+        userInteractionCount: topic.like_count
       },
       {
         '@type': 'InteractionCounter',
         interactionType: {
           '@type': 'VoteAction'
         },
-        userInteractionCount: topic.upvoteCount
+        userInteractionCount: topic.upvote_count
       }
     ]
 
@@ -127,11 +127,11 @@ if (data.value) {
     // topic.best_answer_id is set (see TopicBestAnswerSummary). Mapping
     // it to schema.org Comment surfaces the acceptedAnswer in Google's
     // Q&A rich result — critical for forum-style SEO.
-    const ba = topic.bestAnswer
+    const ba = topic.best_answer
     const acceptedAnswerSchema: Comment | undefined = ba
       ? {
           '@type': 'Comment',
-          text: markdownToText(ba.contentMarkdown).trim().slice(0, 5000),
+          text: markdownToText(ba.content_markdown).trim().slice(0, 5000),
           datePublished: new Date(ba.created).toISOString(),
           url: `${topicUrl}#k${ba.floor}`,
           author: {
@@ -156,7 +156,7 @@ if (data.value) {
         ? new Date(topic.edited).toISOString()
         : new Date(topic.created).toISOString(),
       interactionStatistic: interactionStatistics,
-      commentCount: topic.replyCount,
+      commentCount: topic.reply_count,
       ...(acceptedAnswerSchema && { acceptedAnswer: acceptedAnswerSchema }),
       keywords: [
         ...topic.section.map((s) => KUN_TOPIC_SECTION[s]).filter(Boolean),
@@ -175,7 +175,7 @@ if (data.value) {
     ]
   })
 
-  if (topic.isNSFW) {
+  if (topic.is_nsfw) {
     const trustedVisitor = !!userId || isNsfwMode.value
     useKunDisableSeo(trustedVisitor ? topic.title : '')
     if (!trustedVisitor) {
