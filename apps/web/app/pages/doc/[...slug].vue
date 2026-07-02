@@ -11,11 +11,11 @@ if (data.value) {
   useKunSeoMeta({
     title: data.value.title,
     description: data.value.description,
-    ogImage: data.value.bannerUrl,
+    ogImage: data.value.banner_url,
     ogType: 'article',
-    articleAuthor: [`${kungal.domain.main}/user/${data.value.authorId}`],
-    articlePublishedTime: data.value.publishedTime?.toString(),
-    articleModifiedTime: data.value.editedTime?.toString()
+    articleAuthor: [`${kungal.domain.main}/user/${data.value.author_id}`],
+    articlePublishedTime: data.value.published_time?.toString(),
+    articleModifiedTime: data.value.edited_time?.toString()
   })
 } else {
   useKunDisableSeo('未找到该文档')
@@ -29,7 +29,7 @@ if (data.value) {
 
       <article class="min-w-0 flex-1 space-y-6 pl-0 lg:pr-67 xl:pl-67">
         <DocDetailHeader :metadata="data" />
-        <KunContent :content="renderKatex(data.contentHtml)" />
+        <KunContent :content="renderKatex(data.content_html)" />
         <DocDetailFooter />
       </article>
 

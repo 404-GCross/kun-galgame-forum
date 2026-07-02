@@ -10,8 +10,8 @@ const [{ data: categoryResponse }, { data: articleResponse }] =
       query: {
         page: 1,
         limit: 100,
-        orderBy: 'publishedTime',
-        sortOrder: 'desc'
+        order_by: 'publishedTime',
+        sort_order: 'desc'
       }
     })
   ])

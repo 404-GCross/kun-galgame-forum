@@ -39,14 +39,14 @@ const articles = computed(() => articleResponse.value?.items || [])
       >
         <div class="flex items-center gap-3 text-sm">
           <KunChip color="default">
-            {{ post.category?.title || `分类 #${post.categoryId}` }}
+            {{ post.category?.title || `分类 #${post.category_id}` }}
           </KunChip>
 
           <time
-            :datetime="post.publishedTime?.toString()"
+            :datetime="post.published_time?.toString()"
             class="text-default-500"
           >
-            <KunTime :time="post.publishedTime" type="date" show-year />
+            <KunTime :time="post.published_time" type="date" show-year />
           </time>
         </div>
 
@@ -54,7 +54,7 @@ const articles = computed(() => articleResponse.value?.items || [])
           <img
             :alt="post.title"
             class="rounded-lg"
-            :src="post.bannerUrl || '/kungalgame.webp'"
+            :src="post.banner_url || '/kungalgame.webp'"
             width="100%"
             height="100%"
           />

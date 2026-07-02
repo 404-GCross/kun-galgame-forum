@@ -9,7 +9,7 @@ type GetTagsRequest struct {
 
 // DeleteTagRequest is the query for DELETE /doc/tag.
 type DeleteTagRequest struct {
-	TagID int `query:"tagId" validate:"required,min=1"`
+	TagID int `query:"tag_id" validate:"required,min=1"`
 }
 
 // CreateTagRequest is the body for POST /doc/tag. Dedicated DTO instead
@@ -24,7 +24,7 @@ type CreateTagRequest struct {
 
 // UpdateTagRequest is the body for PUT /doc/tag.
 type UpdateTagRequest struct {
-	TagID       int    `json:"tagId" validate:"required,min=1"`
+	TagID       int    `json:"tag_id" validate:"required,min=1"`
 	Slug        string `json:"slug" validate:"required,min=1,max=100"`
 	Title       string `json:"title" validate:"required,min=1,max=100"`
 	Description string `json:"description" validate:"max=500"`

@@ -41,17 +41,17 @@ export const createDocCategorySchema = z.object({
     .max(233, '分类标题最长 233 个字符'),
   description: optionalString(500),
   icon: optionalString(200),
-  sortOrder: z.coerce.number<number>().int().min(0).max(9999).default(0)
+  sort_order: z.coerce.number<number>().int().min(0).max(9999).default(0)
 })
 
 export const updateDocCategorySchema = createDocCategorySchema.merge(
   z.object({
-    categoryId: z.coerce.number<number>().min(1).max(9999999)
+    category_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const deleteDocCategorySchema = z.object({
-  categoryId: z.coerce.number<number>().min(1).max(9999999)
+  category_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 export const getDocTagListSchema = z.object(paginationSchema)
@@ -69,12 +69,12 @@ export const createDocTagSchema = z.object({
 
 export const updateDocTagSchema = createDocTagSchema.merge(
   z.object({
-    tagId: z.coerce.number<number>().min(1).max(9999999)
+    tag_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const deleteDocTagSchema = z.object({
-  tagId: z.coerce.number<number>().min(1).max(9999999)
+  tag_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
 const docArticleOrderFields = [
@@ -86,12 +86,12 @@ const docArticleOrderFields = [
 
 export const getDocArticleListSchema = z.object({
   ...paginationSchema,
-  categoryId: z.coerce.number<number>().min(1).max(9999999).optional(),
+  category_id: z.coerce.number<number>().min(1).max(9999999).optional(),
   status: z.coerce.number<number>().int().min(0).max(2).optional(),
-  isPin: z.coerce.boolean().optional(),
-  tagId: z.coerce.number<number>().min(1).max(9999999).optional(),
-  orderBy: z.enum(docArticleOrderFields).default('publishedTime'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  is_pin: z.coerce.boolean().optional(),
+  tag_id: z.coerce.number<number>().min(1).max(9999999).optional(),
+  order_by: z.enum(docArticleOrderFields).default('publishedTime'),
+  sort_order: z.enum(['asc', 'desc']).default('desc')
 })
 
 // All caps mirror apps/api/internal/doc/dto/article_dto.go.
@@ -108,14 +108,14 @@ const docArticleBaseSchema = z.object({
   description: optionalString(1000),
   banner: optionalString(500),
   status: z.coerce.number<number>().int().min(0).max(2).default(1),
-  isPin: z.coerce.boolean().default(false),
-  contentMarkdown: z
+  is_pin: z.coerce.boolean().default(false),
+  content_markdown: z
     .string()
     .trim()
     .min(1, '正文内容不能为空')
     .max(100007, '正文长度超出限制'),
-  categoryId: z.coerce.number<number>().min(1).max(9999999),
-  tagIds: z
+  category_id: z.coerce.number<number>().min(1).max(9999999),
+  tag_ids: z
     .array(z.coerce.number<number>().min(1).max(9999999))
     .optional()
     .default([])
@@ -125,10 +125,10 @@ export const createDocArticleSchema = docArticleBaseSchema
 
 export const updateDocArticleSchema = docArticleBaseSchema.merge(
   z.object({
-    articleId: z.coerce.number<number>().min(1).max(9999999)
+    article_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
 
 export const deleteDocArticleSchema = z.object({
-  articleId: z.coerce.number<number>().min(1).max(9999999)
+  article_id: z.coerce.number<number>().min(1).max(9999999)
 })

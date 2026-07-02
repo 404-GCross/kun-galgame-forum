@@ -20,20 +20,20 @@ type CreateCategoryRequest struct {
 	Title       string `json:"title" validate:"required,min=1,max=233"`
 	Description string `json:"description" validate:"max=500"`
 	Icon        string `json:"icon" validate:"max=200"`
-	SortOrder   int    `json:"sortOrder" validate:"min=0,max=9999"`
+	SortOrder   int    `json:"sort_order" validate:"min=0,max=9999"`
 }
 
 // UpdateCategoryRequest is the payload for PUT /doc/category.
 type UpdateCategoryRequest struct {
-	CategoryID  int    `json:"categoryId" validate:"required,min=1"`
+	CategoryID  int    `json:"category_id" validate:"required,min=1"`
 	Slug        string `json:"slug" validate:"required,min=1,max=100"`
 	Title       string `json:"title" validate:"required,min=1,max=233"`
 	Description string `json:"description" validate:"max=500"`
 	Icon        string `json:"icon" validate:"max=200"`
-	SortOrder   int    `json:"sortOrder" validate:"min=0,max=9999"`
+	SortOrder   int    `json:"sort_order" validate:"min=0,max=9999"`
 }
 
 // DeleteCategoryRequest is the query for DELETE /doc/category.
 type DeleteCategoryRequest struct {
-	CategoryID int `query:"categoryId" validate:"required,min=1"`
+	CategoryID int `query:"category_id" validate:"required,min=1"`
 }

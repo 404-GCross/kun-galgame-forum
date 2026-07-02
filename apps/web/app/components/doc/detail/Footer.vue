@@ -7,8 +7,8 @@ const { data: articleResponse } = await useKunFetch<DocArticleListResponse>(
     query: {
       page: 1,
       limit: 100,
-      orderBy: 'publishedTime',
-      sortOrder: 'desc'
+      order_by: 'publishedTime',
+      sort_order: 'desc'
     }
   }
 )

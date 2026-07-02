@@ -23,13 +23,13 @@ const statusOptions = computed<KunSelectOption[]>(() =>
   }))
 )
 
-const isTagSelected = (tagId: number) => form.tagIds.includes(tagId)
+const isTagSelected = (tagId: number) => form.tag_ids.includes(tagId)
 
 const toggleTag = (tagId: number) => {
   if (isTagSelected(tagId)) {
-    form.tagIds = form.tagIds.filter((id) => id !== tagId)
+    form.tag_ids = form.tag_ids.filter((id) => id !== tagId)
   } else {
-    form.tagIds = Array.from(new Set([...form.tagIds, tagId]))
+    form.tag_ids = Array.from(new Set([...form.tag_ids, tagId]))
   }
 }
 
@@ -94,7 +94,7 @@ const handleCreateTag = async () => {
         created,
         ...tags.value.filter((tag) => tag.id !== created.id)
       ]
-      form.tagIds = Array.from(new Set([...form.tagIds, created.id]))
+      form.tag_ids = Array.from(new Set([...form.tag_ids, created.id]))
       useMessage('创建标签成功', 'success')
       resetNewTagForm()
       await refreshTags()
@@ -125,7 +125,7 @@ const handleCreateTag = async () => {
       />
 
       <KunCoverUpload
-        v-model="form.bannerImageHash"
+        v-model="form.banner_image_hash"
         :preview-url="initialBannerUrl"
         label="封面"
       />
@@ -144,7 +144,7 @@ const handleCreateTag = async () => {
 
     <div class="space-y-4">
       <KunSelect
-        v-model="form.categoryId"
+        v-model="form.category_id"
         :options="categoryOptions"
         label="文档分类"
         placeholder="请选择分类"
@@ -176,7 +176,7 @@ const handleCreateTag = async () => {
           <p class="text-sm font-medium">首页置顶</p>
           <p class="text-default-500 text-xs">开启后会在首页轮播中固定展示</p>
         </div>
-        <KunSwitch v-model="form.isPin" color="primary" />
+        <KunSwitch v-model="form.is_pin" color="primary" />
       </div>
     </div>
 
@@ -210,13 +210,13 @@ const handleCreateTag = async () => {
       </div>
 
       <div
-        v-if="form.tagIds.length"
+        v-if="form.tag_ids.length"
         class="text-default-500 grid grid-cols-1 gap-2 text-sm"
       >
         <span>已选择：</span>
         <div class="flex flex-wrap gap-2">
           <KunChip
-            v-for="tagId in form.tagIds"
+            v-for="tagId in form.tag_ids"
             :key="tagId"
             color="secondary"
             variant="flat"

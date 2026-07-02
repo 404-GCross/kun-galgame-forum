@@ -55,39 +55,39 @@ watch(
 )
 
 const createDefaultForm = (): DocEditorForm => ({
-  articleId: null,
+  article_id: null,
   title: '',
   slug: '',
   description: '',
   banner: '',
-  bannerImageHash: '',
+  banner_image_hash: '',
   status: 1,
-  isPin: false,
-  contentMarkdown: '',
-  categoryId: 0,
-  tagIds: []
+  is_pin: false,
+  content_markdown: '',
+  category_id: 0,
+  tag_ids: []
 })
 
 const form = reactive<DocEditorForm>(createDefaultForm())
 const isSubmitting = ref(false)
 const readingMinute = computed(() =>
-  form.contentMarkdown.trim() ? computeReadingMinute(form.contentMarkdown) : 0
+  form.content_markdown.trim() ? computeReadingMinute(form.content_markdown) : 0
 )
 
 const applyArticleToForm = (article: DocArticleDetail) => {
-  form.articleId = article.id
+  form.article_id = article.id
   form.title = article.title
   form.slug = article.slug
   form.description = article.description
   // Keep the legacy URL so submitting an un-migrated doc preserves it; the hash
   // drives the new uploader.
   form.banner = article.banner || ''
-  form.bannerImageHash = article.bannerImageHash ?? ''
+  form.banner_image_hash = article.banner_image_hash ?? ''
   form.status = article.status
-  form.isPin = article.isPin
-  form.contentMarkdown = article.contentMarkdown
-  form.categoryId = article.categoryId
-  form.tagIds = article.tagIds ?? []
+  form.is_pin = article.is_pin
+  form.content_markdown = article.content_markdown
+  form.category_id = article.category_id
+  form.tag_ids = article.tag_ids ?? []
 }
 
 const resetForm = () => {
@@ -122,10 +122,10 @@ const validateForm = () => {
   if (!form.description.trim()) {
     return '请输入简介'
   }
-  if (!form.contentMarkdown.trim()) {
+  if (!form.content_markdown.trim()) {
     return '请输入正文内容'
   }
-  if (!form.categoryId) {
+  if (!form.category_id) {
     return '请选择文档分类'
   }
   return true
@@ -142,7 +142,7 @@ const handleSubmit = async () => {
     return
   }
 
-  if (isRewriteMode.value && !form.articleId) {
+  if (isRewriteMode.value && !form.article_id) {
     useMessage('未找到文档 ID，无法更新', 'error')
     return
   }
@@ -155,16 +155,16 @@ const handleSubmit = async () => {
       slug: normalizedSlug,
       description: form.description.trim(),
       banner: form.banner.trim(),
-      bannerImageHash: form.bannerImageHash,
+      banner_image_hash: form.banner_image_hash,
       status: form.status,
-      isPin: form.isPin,
-      contentMarkdown: form.contentMarkdown,
-      categoryId: form.categoryId as number,
-      tagIds: Array.from(new Set(form.tagIds))
+      is_pin: form.is_pin,
+      content_markdown: form.content_markdown,
+      category_id: form.category_id as number,
+      tag_ids: Array.from(new Set(form.tag_ids))
     }
 
     if (isRewriteMode.value) {
-      body.articleId = form.articleId
+      body.article_id = form.article_id
     }
 
     const result = await kunFetch<DocArticleDetail>('/doc/article', {
@@ -203,7 +203,7 @@ provideDocEditorContext({
   resetForm,
   refreshTags,
   readingMinute,
-  initialBannerUrl: props.initialArticle?.bannerUrl ?? ''
+  initialBannerUrl: props.initialArticle?.banner_url ?? ''
 })
 </script>
 

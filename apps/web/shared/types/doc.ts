@@ -55,23 +55,23 @@ export interface DocArticle {
   banner: string
   // Content-addressed cover: `bannerImageHash` is the stored hash (write +
   // read), `bannerUrl` is the BE-resolved CDN url (falls back to `banner`).
-  bannerImageHash: string
-  bannerUrl: string
+  banner_image_hash: string
+  banner_url: string
   status: number
-  isPin: boolean
+  is_pin: boolean
   view: number
-  publishedTime: Date | string
-  editedTime: Date | string | null
-  contentMarkdown: string
-  categoryId: number
-  authorId: number
+  published_time: Date | string
+  edited_time: Date | string | null
+  content_markdown: string
+  category_id: number
+  author_id: number
   category: DocArticleCategoryBrief
   // Embedded by BE so the rewrite flow can pre-fill the tag picker
   // without a second fetch. List endpoints may omit; detail always sets.
-  tagIds?: number[]
+  tag_ids?: number[]
   created: Date | string
   updated: Date | string
-  contentHtml?: string
+  content_html?: string
   toc?: DocTocLink[]
 }
 

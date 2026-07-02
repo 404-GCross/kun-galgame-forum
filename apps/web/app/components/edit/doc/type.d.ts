@@ -1,7 +1,7 @@
 export type DocEditorMode = 'create' | 'rewrite'
 
 export interface DocEditorForm {
-  articleId: number | null
+  article_id: number | null
   title: string
   slug: string
   description: string
@@ -9,10 +9,10 @@ export interface DocEditorForm {
   // doc without touching the cover never wipes its existing URL.
   banner: string
   // Content-addressed cover hash (the value managed by KunCoverUpload).
-  bannerImageHash: string
+  banner_image_hash: string
   status: number
-  isPin: boolean
-  contentMarkdown: string
-  categoryId: number
-  tagIds: number[]
+  is_pin: boolean
+  content_markdown: string
+  category_id: number
+  tag_ids: number[]
 }

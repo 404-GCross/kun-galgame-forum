@@ -16,7 +16,7 @@ const metadata = computed(() => props.metadata)
            box that fills the aspect-video container. -->
       <KunLightboxGallery>
         <KunLightboxGalleryItem
-          :src="metadata.bannerUrl || '/kungalgame.webp'"
+          :src="metadata.banner_url || '/kungalgame.webp'"
           :alt="metadata.title"
           :wrap="false"
           v-slot="{ open }"
@@ -24,7 +24,7 @@ const metadata = computed(() => props.metadata)
           <KunImage
             :alt="metadata.title"
             class="size-full cursor-zoom-in rounded-lg object-cover"
-            :src="metadata.bannerUrl || '/kungalgame.webp'"
+            :src="metadata.banner_url || '/kungalgame.webp'"
             loading="eager"
             fetchpriority="high"
             width="100%"
@@ -42,7 +42,7 @@ const metadata = computed(() => props.metadata)
 
       <div class="flex flex-wrap items-center gap-3 text-sm">
         <KunChip color="secondary">
-          {{ metadata.category?.title || `分类 #${metadata.categoryId}` }}
+          {{ metadata.category?.title || `分类 #${metadata.category_id}` }}
         </KunChip>
         <div class="text-default-500 flex items-center gap-1">
           <KunIcon name="lucide:eye" class="h-4 w-4" />
@@ -56,7 +56,7 @@ const metadata = computed(() => props.metadata)
             <KunIcon name="lucide:calendar-days" />
             <p class="text-small text-inherit">
               <KunTime
-                :time="metadata.publishedTime"
+                :time="metadata.published_time"
                 type="datetime"
                 show-year
               />

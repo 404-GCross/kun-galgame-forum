@@ -19,7 +19,7 @@ const DOC_STATUS_CHIP: Record<number, { label: string; color: KunUIColor }> = {
 const { data, refresh: refetch } = await useKunFetch<DocArticleListResponse>(
   '/admin/doc/article',
   {
-    query: { page: 1, limit: 100, orderBy: 'order', sortOrder: 'asc' }
+    query: { page: 1, limit: 100, order_by: 'order', sort_order: 'asc' }
   }
 )
 
@@ -85,7 +85,7 @@ const handleDelete = async (row: DocArticleSummary) => {
 
   const result = await kunFetch('/doc/article', {
     method: 'DELETE',
-    query: { articleId: row.id }
+    query: { article_id: row.id }
   })
   if (result) {
     useMessage('删除文档成功', 'success')
@@ -96,16 +96,16 @@ const handleDelete = async (row: DocArticleSummary) => {
 // Quick first-page pin toggle (optimistic; reverts on failure). Uses the
 // lightweight pin endpoint so we don't have to re-send the whole article.
 const handleTogglePin = async (row: DocArticleSummary, value: boolean) => {
-  const prev = row.isPin
-  row.isPin = value
+  const prev = row.is_pin
+  row.is_pin = value
   const result = await kunFetch('/doc/article/pin', {
     method: 'PUT',
-    body: { articleId: row.id, isPin: value }
+    body: { article_id: row.id, is_pin: value }
   })
   if (result) {
     useMessage(value ? '已置顶' : '已取消置顶', 'success')
   } else {
-    row.isPin = prev
+    row.is_pin = prev
   }
 }
 </script>
@@ -148,13 +148,13 @@ const handleTogglePin = async (row: DocArticleSummary, value: boolean) => {
               </KunChip>
             </div>
             <span class="text-default-500 block truncate text-xs">
-              {{ article.category?.title || `分类 #${article.categoryId}` }}
+              {{ article.category?.title || `分类 #${article.category_id}` }}
             </span>
           </div>
           <div class="flex shrink-0 items-center gap-1.5">
             <span class="text-default-500 text-sm">置顶</span>
             <KunSwitch
-              :model-value="article.isPin"
+              :model-value="article.is_pin"
               color="primary"
               @update:model-value="(v) => handleTogglePin(article, v)"
             />

@@ -128,7 +128,7 @@ onBeforeUnmount(() => stopAutoplay())
         >
           <div class="relative h-40 w-full select-none">
             <KunImageNative
-              :src="post.bannerUrl || '/kungalgame.webp'"
+              :src="post.banner_url || '/kungalgame.webp'"
               :alt="post.title"
               :loading="index === 0 ? 'eager' : 'lazy'"
               :fetchpriority="index === 0 ? 'high' : undefined"

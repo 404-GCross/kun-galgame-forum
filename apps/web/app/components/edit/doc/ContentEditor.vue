@@ -22,8 +22,8 @@ const { form, readingMinute } = useDocEditorContext()
     </div>
 
     <KunMilkdownDualEditorProvider
-      :value-markdown="form.contentMarkdown"
-      @set-markdown="(value) => (form.contentMarkdown = value)"
+      :value-markdown="form.content_markdown"
+      @set-markdown="(value) => (form.content_markdown = value)"
     >
       <template #default>
         <KunLink
