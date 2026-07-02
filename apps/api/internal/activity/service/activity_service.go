@@ -67,7 +67,7 @@ func NewActivityService(
 // page ("" when there are no more rows behind it).
 type Result struct {
 	Items      []dto.ActivityItem `json:"items"`
-	NextCursor string             `json:"nextCursor"`
+	NextCursor string             `json:"next_cursor"`
 }
 
 // GetActivity returns a filtered activity feed. type "all" → the mixed

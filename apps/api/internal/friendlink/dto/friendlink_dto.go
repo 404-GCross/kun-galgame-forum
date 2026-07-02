@@ -9,7 +9,7 @@ type CreateRequest struct {
 	Link            string `json:"link" validate:"required,url,max=500"`
 	Description     string `json:"description" validate:"max=500"`
 	Banner          string `json:"banner" validate:"max=500"`
-	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
+	BannerImageHash string `json:"banner_image_hash" validate:"max=128"`
 	Status          string `json:"status" validate:"omitempty,oneof=normal essential down"`
 }
 
@@ -20,7 +20,7 @@ type UpdateRequest struct {
 	Link            string `json:"link" validate:"required,url,max=500"`
 	Description     string `json:"description" validate:"max=500"`
 	Banner          string `json:"banner" validate:"max=500"`
-	BannerImageHash string `json:"bannerImageHash" validate:"max=128"`
+	BannerImageHash string `json:"banner_image_hash" validate:"max=128"`
 	Status          string `json:"status" validate:"omitempty,oneof=normal essential down"`
 }
 

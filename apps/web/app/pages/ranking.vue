@@ -54,17 +54,17 @@ const sortOptions = computed(() => {
         <div class="w-48">
           <KunSelect
             v-if="activeTab === 'topic'"
-            v-model="topicRankingPageData.sortField"
+            v-model="topicRankingPageData.sort_field"
             :options="sortOptions"
           />
           <KunSelect
             v-if="activeTab === 'galgame'"
-            v-model="galgameRankingPageData.sortField"
+            v-model="galgameRankingPageData.sort_field"
             :options="sortOptions"
           />
           <KunSelect
             v-if="activeTab === 'user'"
-            v-model="userRankingPageData.sortField"
+            v-model="userRankingPageData.sort_field"
             :options="sortOptions"
           />
         </div>

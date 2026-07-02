@@ -9,7 +9,7 @@ const pageData = reactive({
   limit: 30,
   // Roots default oldest-first (先发布在上), consistent with the galgame
   // comment area; changing it re-runs the fetch via the reactive query.
-  sortOrder: 'asc'
+  sort_order: 'asc'
 })
 
 const { data, status } = await useKunFetch<{
@@ -42,7 +42,7 @@ const addNewComment = (comment: ToolsetComment) => {
   const node = comment as SerializeObject<ToolsetComment>
   if (node.parent_id == null) {
     // Root: end under asc (oldest-first), top under desc.
-    if (pageData.sortOrder === 'asc') {
+    if (pageData.sort_order === 'asc') {
       comments.value.push(node)
     } else {
       comments.value.unshift(node)
@@ -115,18 +115,18 @@ const updateComment = (commentId: number, content: string, edited: string) => {
       <div class="flex items-center gap-2">
         <KunButton
           :is-icon-only="true"
-          :variant="pageData.sortOrder === 'desc' ? 'flat' : 'light'"
+          :variant="pageData.sort_order === 'desc' ? 'flat' : 'light'"
           size="lg"
-          @click="pageData.sortOrder = 'desc'"
+          @click="pageData.sort_order = 'desc'"
         >
           <KunIcon class="text-inherit" name="lucide:arrow-down" />
         </KunButton>
 
         <KunButton
           :is-icon-only="true"
-          :variant="pageData.sortOrder === 'asc' ? 'flat' : 'light'"
+          :variant="pageData.sort_order === 'asc' ? 'flat' : 'light'"
           size="lg"
-          @click="pageData.sortOrder = 'asc'"
+          @click="pageData.sort_order = 'asc'"
         >
           <KunIcon class="text-inherit" name="lucide:arrow-up" />
         </KunButton>

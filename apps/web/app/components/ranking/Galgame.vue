@@ -9,7 +9,7 @@ const settings = usePersistSettingsStore()
 const { data } = await useKunFetch<RankingGalgameItem[]>('/ranking/galgame', {
   query: computed(() => ({
     ...galgameRankingPageData,
-    showNoResource: settings.showKUNGalgameNoResource
+    show_no_resource: settings.showKUNGalgameNoResource
   }))
 })
 </script>

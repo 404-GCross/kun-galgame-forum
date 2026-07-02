@@ -8,7 +8,7 @@ type ListMessagesRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=30"`
 	Type      string `query:"type"`
-	SortOrder string `query:"sortOrder" validate:"required,oneof=asc desc"`
+	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
 }
 
 // ──────────────────────────────────────────

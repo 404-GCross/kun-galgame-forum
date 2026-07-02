@@ -20,13 +20,13 @@ type ActivityRequest struct {
 	// ShowNoResource mirrors the user's 显示设置 → 显示没有下载资源的 Galgame
 	// preference. Default false (omitted) hides resource-less galgames, so their
 	// GALGAME_CREATION activity is dropped from the feed too.
-	ShowNoResource bool `query:"showNoResource"`
+	ShowNoResource bool `query:"show_no_resource"`
 }
 
 type TimelineRequest struct {
 	Cursor         string `query:"cursor"`
 	Limit          int    `query:"limit" validate:"min=1,max=50"`
-	ShowNoResource bool   `query:"showNoResource"`
+	ShowNoResource bool   `query:"show_no_resource"`
 }
 
 // TabRequest drives the home-page feed. Types (comma-separated activity kinds —
@@ -39,11 +39,11 @@ type TabRequest struct {
 	Types          string `query:"types"`
 	Cursor         string `query:"cursor"`
 	Limit          int    `query:"limit" validate:"min=1,max=50"`
-	ShowNoResource bool   `query:"showNoResource"`
+	ShowNoResource bool   `query:"show_no_resource"`
 	// ForceSfw makes the 全部 tab always SFW regardless of the viewer's NSFW
 	// setting: the FE sets it for the "全部" tab so NSFW topics (+ their replies/
 	// comments) and NSFW galgame-scoped activity never appear in the main stream.
-	ForceSfw bool `query:"forceSfw"`
+	ForceSfw bool `query:"force_sfw"`
 }
 
 // ──────────────────────────────────────────

@@ -50,20 +50,20 @@ const autoLoadCount = ref(0)
 let controller: AbortController | null = null
 
 // First page is SSR-rendered (SEO, no spinner). The reactive query re-fetches
-// when the tab or the showNoResource toggle changes; the watch re-seeds the
+// when the tab or the show_no_resource toggle changes; the watch re-seeds the
 // accumulator from whichever first page is current.
 const { data, status } = await useKunFetch<{
   items: ActivityItem[]
-  nextCursor: string
+  next_cursor: string
 }>('/activity/tab', {
   method: 'GET',
   query: computed(() => ({
     types: activeTypes.value,
     limit: 30,
-    showNoResource: settings.showKUNGalgameNoResource,
+    show_no_resource: settings.showKUNGalgameNoResource,
     // 全部 tab is always SFW — NSFW topics + galgame activity are filtered out of
     // the main stream regardless of the viewer's NSFW setting.
-    forceSfw: activeTab.value === 'all'
+    force_sfw: activeTab.value === 'all'
   }))
 })
 
@@ -72,8 +72,8 @@ watch(
   (page) => {
     if (!page) return
     items.value = page.items
-    cursor.value = page.nextCursor
-    hasMore.value = !!page.nextCursor
+    cursor.value = page.next_cursor
+    hasMore.value = !!page.next_cursor
   },
   { immediate: true }
 )
@@ -100,7 +100,7 @@ const loadMore = async (auto = false) => {
   const types = activeTypes.value
   isLoadingMore.value = true
   controller = new AbortController()
-  const next = await kunFetch<{ items: ActivityItem[]; nextCursor: string }>(
+  const next = await kunFetch<{ items: ActivityItem[]; next_cursor: string }>(
     '/activity/tab',
     {
       method: 'GET',
@@ -108,8 +108,8 @@ const loadMore = async (auto = false) => {
         types,
         limit: 30,
         cursor: cursor.value,
-        showNoResource: settings.showKUNGalgameNoResource,
-        forceSfw: tab === 'all'
+        show_no_resource: settings.showKUNGalgameNoResource,
+        force_sfw: tab === 'all'
       },
       signal: controller.signal
     }
@@ -118,8 +118,8 @@ const loadMore = async (auto = false) => {
   // Discard a stale page: aborted (kunFetch → null), or the tab changed mid-flight.
   if (!next || activeTab.value !== tab) return
   items.value.push(...next.items)
-  cursor.value = next.nextCursor
-  hasMore.value = !!next.nextCursor
+  cursor.value = next.next_cursor
+  hasMore.value = !!next.next_cursor
 }
 
 // Auto-load near the bottom, THROTTLED so a fast scroll fires at most ~once/600ms

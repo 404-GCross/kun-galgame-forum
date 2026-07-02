@@ -12,22 +12,22 @@ type User = z.infer<typeof getUserRankingSchema>
 export const topicRankingPageData = reactive<Topic>({
   page: 1,
   limit: 50,
-  sortField: 'view',
-  sortOrder: 'desc'
+  sort_field: 'view',
+  sort_order: 'desc'
 })
 
 export const galgameRankingPageData = reactive<Galgame>({
   page: 1,
   limit: 50,
-  sortField: 'view',
-  sortOrder: 'desc'
+  sort_field: 'view',
+  sort_order: 'desc'
 })
 
 export const userRankingPageData = reactive<User>({
   page: 1,
   limit: 50,
-  sortField: 'moemoepoint',
-  sortOrder: 'desc'
+  sort_field: 'moemoepoint',
+  sort_order: 'desc'
 })
 
 export const getRankClasses = (index: number) => {

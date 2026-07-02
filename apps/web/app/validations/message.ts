@@ -19,5 +19,5 @@ export const getNoticeMessageSchema = z.object({
       ''
     ])
     .optional(),
-  sortOrder: z.enum(['asc', 'desc'])
+  sort_order: z.enum(['asc', 'desc'])
 })

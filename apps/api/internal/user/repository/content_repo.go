@@ -203,7 +203,7 @@ func (r *UserContentRepository) FindUserTopics(userID int, queryType string, pag
 // ──────────────────────────────────────────
 
 type UserReply struct {
-	TopicID int `gorm:"column:topic_id" json:"topicId"`
+	TopicID int `gorm:"column:topic_id" json:"topic_id"`
 	// Floor anchors the deep-link to this reply (/topic/:id?reply=<floor>).
 	Floor   int    `gorm:"column:floor" json:"floor"`
 	Content string `gorm:"column:content" json:"content"`
@@ -260,7 +260,7 @@ func (r *UserContentRepository) FindUserReplies(userID int, queryType string, pa
 type UserComment struct {
 	// ID anchors the deep-link to this comment (/topic/:id?comment=<id>).
 	ID      int    `gorm:"column:id" json:"id"`
-	TopicID int    `gorm:"column:topic_id" json:"topicId"`
+	TopicID int    `gorm:"column:topic_id" json:"topic_id"`
 	Content string `gorm:"column:content" json:"content"`
 	Created string `gorm:"column:created" json:"created"`
 }
@@ -305,7 +305,7 @@ func (r *UserContentRepository) FindUserComments(userID int, queryType string, p
 
 type UserResource struct {
 	ID        int    `gorm:"column:id" json:"id"`
-	GalgameID int    `gorm:"column:galgame_id" json:"galgameId"`
+	GalgameID int    `gorm:"column:galgame_id" json:"galgame_id"`
 	Type      string `gorm:"column:type" json:"type"`
 	Language  string `gorm:"column:language" json:"language"`
 	Platform  string `gorm:"column:platform" json:"platform"`
@@ -373,7 +373,7 @@ func (r *UserContentRepository) FindResourceLinks(resourceIDs []int) (map[int][]
 // at the service layer via userclient.
 type UserRating struct {
 	ID           int    `gorm:"column:id" json:"id"`
-	GalgameID    int    `gorm:"column:galgame_id" json:"galgameId"`
+	GalgameID    int    `gorm:"column:galgame_id" json:"galgame_id"`
 	Recommend    string `gorm:"column:recommend" json:"recommend"`
 	Overall      int    `gorm:"column:overall" json:"overall"`
 	View         int    `gorm:"column:view" json:"view"`
@@ -389,7 +389,7 @@ type UserRating struct {
 	PlayStatus   string `gorm:"column:play_status" json:"play_status"`
 	ShortSummary string `gorm:"column:short_summary" json:"short_summary"`
 	SpoilerLevel string `gorm:"column:spoiler_level" json:"spoiler_level"`
-	LikeCount    int    `gorm:"column:like_count" json:"likeCount"`
+	LikeCount    int    `gorm:"column:like_count" json:"like_count"`
 	UserID       int    `gorm:"column:user_id" json:"-"`
 	Created      string `gorm:"column:created" json:"created"`
 	Updated      string `gorm:"column:updated" json:"updated"`

@@ -18,16 +18,16 @@ const isLoadingMore = ref(false)
 const settings = usePersistSettingsStore()
 
 // First page renders on the server. The computed query re-fetches whenever the
-// category or the showNoResource toggle changes; the watch re-seeds the feed.
+// category or the show_no_resource toggle changes; the watch re-seeds the feed.
 const { data, status } = await useKunFetch<{
   items: ActivityItem[]
-  nextCursor: string
+  next_cursor: string
 }>('/activity', {
   method: 'GET',
   query: computed(() => ({
     limit: 50,
     type: selectedType.value,
-    showNoResource: settings.showKUNGalgameNoResource
+    show_no_resource: settings.showKUNGalgameNoResource
   }))
 })
 
@@ -36,8 +36,8 @@ watch(
   (page) => {
     if (!page) return
     items.value = page.items
-    cursor.value = page.nextCursor
-    hasMore.value = !!page.nextCursor
+    cursor.value = page.next_cursor
+    hasMore.value = !!page.next_cursor
   },
   { immediate: true }
 )
@@ -53,7 +53,7 @@ const selectCategory = (type: string) => {
 const loadMore = async () => {
   if (isLoadingMore.value || !hasMore.value || !cursor.value) return
   isLoadingMore.value = true
-  const next = await kunFetch<{ items: ActivityItem[]; nextCursor: string }>(
+  const next = await kunFetch<{ items: ActivityItem[]; next_cursor: string }>(
     '/activity',
     {
       method: 'GET',
@@ -61,15 +61,15 @@ const loadMore = async () => {
         limit: 50,
         type: selectedType.value,
         cursor: cursor.value,
-        showNoResource: settings.showKUNGalgameNoResource
+        show_no_resource: settings.showKUNGalgameNoResource
       }
     }
   )
   isLoadingMore.value = false
   if (!next) return
   items.value.push(...next.items)
-  cursor.value = next.nextCursor
-  hasMore.value = !!next.nextCursor
+  cursor.value = next.next_cursor
+  hasMore.value = !!next.next_cursor
 }
 
 const sentinel = ref<HTMLElement | null>(null)

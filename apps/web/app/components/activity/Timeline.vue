@@ -5,7 +5,7 @@ import { KUN_ACTIVITY_TYPE_TYPE } from '~/constants/activity'
 // Keyset (cursor) pagination + infinite scroll. The old numbered pages re-ran
 // `ORDER BY created` (no tiebreaker) per page, so rows sharing a timestamp
 // reordered between pages → duplicated / skipped entries. The API now returns a
-// deterministic page plus an opaque `nextCursor`; we accumulate and seek.
+// deterministic page plus an opaque `next_cursor`; we accumulate and seek.
 const settings = usePersistSettingsStore()
 
 const items = ref<ActivityItem[]>([])
@@ -14,16 +14,16 @@ const hasMore = ref(true)
 const isLoadingMore = ref(false)
 
 // First page renders on the server (SEO + no load spinner). The computed query
-// re-fetches when the showNoResource toggle flips; the watch below re-seeds the
+// re-fetches when the show_no_resource toggle flips; the watch below re-seeds the
 // accumulator from whatever first page is current.
 const { data, status } = await useKunFetch<{
   items: ActivityItem[]
-  nextCursor: string
+  next_cursor: string
 }>('/activity/timeline', {
   method: 'GET',
   query: computed(() => ({
     limit: 50,
-    showNoResource: settings.showKUNGalgameNoResource
+    show_no_resource: settings.showKUNGalgameNoResource
   }))
 })
 
@@ -32,8 +32,8 @@ watch(
   (page) => {
     if (!page) return
     items.value = page.items
-    cursor.value = page.nextCursor
-    hasMore.value = !!page.nextCursor
+    cursor.value = page.next_cursor
+    hasMore.value = !!page.next_cursor
   },
   { immediate: true }
 )
@@ -41,22 +41,22 @@ watch(
 const loadMore = async () => {
   if (isLoadingMore.value || !hasMore.value || !cursor.value) return
   isLoadingMore.value = true
-  const next = await kunFetch<{ items: ActivityItem[]; nextCursor: string }>(
+  const next = await kunFetch<{ items: ActivityItem[]; next_cursor: string }>(
     '/activity/timeline',
     {
       method: 'GET',
       query: {
         limit: 50,
         cursor: cursor.value,
-        showNoResource: settings.showKUNGalgameNoResource
+        show_no_resource: settings.showKUNGalgameNoResource
       }
     }
   )
   isLoadingMore.value = false
   if (!next) return
   items.value.push(...next.items)
-  cursor.value = next.nextCursor
-  hasMore.value = !!next.nextCursor
+  cursor.value = next.next_cursor
+  hasMore.value = !!next.next_cursor
 }
 
 // Auto-load when the sentinel near the page bottom scrolls into view. SSR-safe

@@ -29,7 +29,7 @@ func (h *CommentHandler) GetComments(c fiber.Ctx) error {
 	var req struct {
 		Page      int    `query:"page" validate:"min=1"`
 		Limit     int    `query:"limit" validate:"min=1,max=50"`
-		SortOrder string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
+		SortOrder string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
 	}
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -61,8 +61,8 @@ func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 
 	var req struct {
 		Content         string `json:"content" validate:"required,min=1,max=5000"`
-		TargetUserID    *int   `json:"targetUserId"`
-		ParentCommentID *int   `json:"parentCommentId"`
+		TargetUserID    *int   `json:"target_user_id"`
+		ParentCommentID *int   `json:"parent_comment_id"`
 	}
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -105,7 +105,7 @@ func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 	}
 
 	var req struct {
-		CommentID int    `json:"commentId" validate:"required,min=1"`
+		CommentID int    `json:"comment_id" validate:"required,min=1"`
 		Content   string `json:"content" validate:"required,min=1,max=5000"`
 	}
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
@@ -128,7 +128,7 @@ func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	}
 
 	var req struct {
-		CommentID int `query:"commentId" validate:"required,min=1"`
+		CommentID int `query:"comment_id" validate:"required,min=1"`
 	}
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
@@ -150,7 +150,7 @@ func (h *CommentHandler) ToggleCommentLike(c fiber.Ctx) error {
 	}
 
 	var req struct {
-		CommentID int `json:"commentId" validate:"required,min=1"`
+		CommentID int `json:"comment_id" validate:"required,min=1"`
 	}
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)

@@ -19,7 +19,7 @@ const category = computed(
 const { data, status } = await useKunFetch<SectionTopicList>('/section', {
   query: {
     section: props.section,
-    sortOrder: 'desc',
+    sort_order: 'desc',
     page,
     limit: 30
   }

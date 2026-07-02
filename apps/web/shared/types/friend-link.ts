@@ -37,6 +37,6 @@ export interface FriendLinkInput {
   /** Legacy URL, kept and submitted unchanged so un-migrated rows aren't wiped. */
   banner: string
   /** Content-addressed image hash from the cover uploader. */
-  bannerImageHash: string
+  banner_image_hash: string
   status: FriendLinkStatus
 }

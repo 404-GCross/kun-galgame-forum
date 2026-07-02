@@ -58,25 +58,25 @@ type CommentItem struct {
 	// MathJax, tables, and KaTeX consistently with the rest of the
 	// site. Keeps Content as the raw source for the edit-mode
 	// textarea to round-trip cleanly.
-	ContentHtml     string   `json:"contentHtml"`
-	GalgameID       int      `json:"galgameId"`
+	ContentHtml     string   `json:"content_html"`
+	GalgameID       int      `json:"galgame_id"`
 	User            UserObj  `json:"user"`
-	TargetUser      *UserObj `json:"targetUser"`
-	ParentCommentID *int     `json:"parentCommentId"`
-	RootCommentID   *int     `json:"rootCommentId"`
-	LikeCount       int      `json:"likeCount"`
+	TargetUser      *UserObj `json:"target_user"`
+	ParentCommentID *int     `json:"parent_comment_id"`
+	RootCommentID   *int     `json:"root_comment_id"`
+	LikeCount       int      `json:"like_count"`
 	// IsLiked is per-viewer: set by GetComments/GetCommentThread from a
 	// batch query against galgame_comment_like. Anonymous callers see
 	// false. The FE Like component initialises its toggled state from
 	// this flag — without it the heart icon would always render off
 	// even after the user has already clicked it.
-	IsLiked bool   `json:"isLiked"`
+	IsLiked bool   `json:"is_liked"`
 	Created string `json:"created"`
 	// Edited: ISO timestamp when the author last rewrote this comment;
 	// null if untouched. Drives the "已编辑" badge in the UI.
 	Edited     *string        `json:"edited"`
 	Replies    []*CommentItem `json:"replies"`
-	ReplyCount int            `json:"replyCount"`
+	ReplyCount int            `json:"reply_count"`
 }
 
 type CommentListResult struct {

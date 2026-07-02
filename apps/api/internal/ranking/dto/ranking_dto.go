@@ -12,11 +12,11 @@ package dto
 type GalgameRankingRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=50"`
-	SortField string `query:"sortField" validate:"required,oneof=view like favorite resource rating"`
-	SortOrder string `query:"sortOrder" validate:"required,oneof=asc desc"`
+	SortField string `query:"sort_field" validate:"required,oneof=view like favorite resource rating"`
+	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
 	// ShowNoResource: false (default) hides galgames with no download resource
 	// (the global "显示没有下载资源的 Galgame" toggle); true includes them.
-	ShowNoResource bool `query:"showNoResource"`
+	ShowNoResource bool `query:"show_no_resource"`
 }
 
 // SortField uses the FE's short names; the repo (topicSortColumn) maps them to
@@ -25,8 +25,8 @@ type GalgameRankingRequest struct {
 type TopicRankingRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=50"`
-	SortField string `query:"sortField" validate:"required,oneof=view upvote like reply comment favorite"`
-	SortOrder string `query:"sortOrder" validate:"required,oneof=asc desc"`
+	SortField string `query:"sort_field" validate:"required,oneof=view upvote like reply comment favorite"`
+	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
 }
 
 // SortField: moemoepoint reads kungal_user_state; the rest are per-user COUNT(*)
@@ -35,8 +35,8 @@ type TopicRankingRequest struct {
 type UserRankingRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=50"`
-	SortField string `query:"sortField" validate:"required,oneof=moemoepoint topic reply_created comment_created galgame_resource"`
-	SortOrder string `query:"sortOrder" validate:"required,oneof=asc desc"`
+	SortField string `query:"sort_field" validate:"required,oneof=moemoepoint topic reply_created comment_created galgame_resource"`
+	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
 }
 
 // ──────────────────────────────────────────

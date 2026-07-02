@@ -32,7 +32,7 @@ const getInitial = (): FriendLinkInput => {
     // Keep the legacy URL so submitting an un-migrated friend preserves it; the
     // hash drives the new uploader.
     banner: d?.banner ?? '',
-    bannerImageHash: d?.banner_image_hash ?? '',
+    banner_image_hash: d?.banner_image_hash ?? '',
     status: d?.status ?? 'normal'
   }
   return d?.id ? { ...base, id: d.id } : base
@@ -103,7 +103,7 @@ const handleSubmit = () => {
 
         <div class="md:col-span-2">
           <KunCoverUpload
-            v-model="form.bannerImageHash"
+            v-model="form.banner_image_hash"
             :preview-url="initialBannerUrl"
             label="图标 / Banner"
           />

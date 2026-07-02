@@ -55,7 +55,7 @@ const getMessageHistory = async () => {
   const histories = await kunFetch<ChatMessage[]>('/message/chat/history', {
     method: 'GET',
     query: {
-      receiverId: userId,
+      receiver_id: userId,
       page: pageData.page,
       limit: pageData.limit
     }
@@ -77,7 +77,7 @@ const postMessage = async (content: string): Promise<boolean> => {
   isSending.value = true
   const result = await kunFetch('/message/chat/send', {
     method: 'POST',
-    body: { receiverId: userId, content }
+    body: { receiver_id: userId, content }
   })
   isSending.value = false
 
@@ -230,7 +230,7 @@ const handleRecallContextMenu = async (payload: {
 
   const ok = await kunFetch<string>('/message/chat/recall', {
     method: 'POST',
-    body: { messageId: target.id }
+    body: { message_id: target.id }
   })
   if (!ok) {
     return
