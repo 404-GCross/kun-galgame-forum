@@ -62,12 +62,6 @@ export const usePersistEditGalgameStore = defineStore(
   },
   {
     persist: {
-      // v2: the snake_case migration renamed every scalar field (vndbId→vndb_id,
-      // contentLimit→content_limit, …). A pre-migration draft would rehydrate its
-      // old camelCase keys as dead cruft while the new snake refs stay at their
-      // defaults — a confusing half-reset draft. Bump the key so a stale draft is
-      // dropped cleanly (fresh draft) rather than resumed half-populated.
-      key: 'KUNGalgameEditGalgame:v2',
       storage: piniaPluginPersistedstate.localStorage()
     }
   }
