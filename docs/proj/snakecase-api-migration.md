@@ -4,7 +4,13 @@
 > 与 infra / wiki / moyu 及未来「鲲 Galgame」App / 开发者平台对齐,消除跨仓命名分歧。
 > 前端直接使用后端 snake_case 字段名。
 >
-> **状态:规划中。** 本文件是这场跨会话迁移的主干:程序、顺序、安全网、进度。
+> **状态:100% 完成(2026-07-02)。** 全 17 域 request+response 均已 snake_case;
+> `apps/api` 全量扫描 0 个 camelCase json/query tag;go build + vet + test + nuxt
+> typecheck 全绿。本文件是这场迁移的主干:程序、顺序、安全网、进度 + 收尾记录。
+>
+> **仍分离的独立项(非 snake 范围)**:PR `note`→`title`/`message` 真 bug(见
+> `openapi-types-forum.md`,note/message 都是单词,与 snake 无关)+ WikiPRDetailResponse
+> 别名到生成 spec —— 二者仍待做,是独立任务。
 >
 > 备注:此前评估倾向「不做全量,改用 BFF 适配层 + oapi-codegen 契约校验」(见
 > `openapi-types-forum.md`)。owner 选择全量对齐;本计划据此**以安全为先**落地。
