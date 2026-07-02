@@ -192,7 +192,7 @@ export const buildSitemapUrls = async (
     },
     {
       path: '/galgame-rating/all',
-      pick: (d) => ((d as { ratingData?: [] })?.ratingData ?? []) as Record<string, unknown>[],
+      pick: (d) => ((d as { rating_data?: [] })?.rating_data ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame-rating/${num(r, 'id')}`,
       lastmod: (r) => toIso(r.updated ?? r.created),

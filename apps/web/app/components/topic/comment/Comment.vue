@@ -146,7 +146,7 @@ const handleSaveEdit = async (comment: TopicComment) => {
     `/topic/${comment.topic_id}/comment`,
     {
       method: 'PUT',
-      body: { commentId: comment.id, content }
+      body: { comment_id: comment.id, content }
     }
   )
   isSaving.value = false

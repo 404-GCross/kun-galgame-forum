@@ -27,9 +27,9 @@ const handlePostComment = async () => {
     {
       method: 'POST',
       body: {
-        toolsetId: props.toolsetId,
+        toolset_id: props.toolsetId,
         content: newCommentContent.value,
-        parentId: props.parentId || null
+        parent_id: props.parentId || null
       }
     }
   )

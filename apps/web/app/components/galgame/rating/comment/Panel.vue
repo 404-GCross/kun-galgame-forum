@@ -28,8 +28,8 @@ const handlePublishComment = async () => {
     {
       method: 'POST',
       body: {
-        galgameRatingId: props.ratingId,
-        targetUserId: props.targetUserId,
+        galgame_rating_id: props.ratingId,
+        target_user_id: props.targetUserId,
         content: text
       }
     }

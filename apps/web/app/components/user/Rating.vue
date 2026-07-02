@@ -10,15 +10,15 @@ const pageData = reactive({
 })
 
 const { data, status } = await useKunFetch<{
-  ratingData: GalgameRatingCard[]
+  rating_data: GalgameRatingCard[]
   total: number
 }>(`/user/${props.userId}/ratings`, { query: pageData })
 </script>
 
 <template>
   <div class="space-y-3">
-    <div v-if="data && data.ratingData.length" class="space-y-3">
-      <GalgameRatingCard :ratings="data.ratingData" :is-transparent="false" />
+    <div v-if="data && data.rating_data.length" class="space-y-3">
+      <GalgameRatingCard :ratings="data.rating_data" :is-transparent="false" />
 
       <KunPagination
         v-if="data.total > pageData.limit"
@@ -28,6 +28,6 @@ const { data, status } = await useKunFetch<{
       />
     </div>
 
-    <KunNull v-if="data && !data.ratingData.length" description="暂无评分" />
+    <KunNull v-if="data && !data.rating_data.length" description="暂无评分" />
   </div>
 </template>

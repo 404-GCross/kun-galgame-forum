@@ -43,7 +43,7 @@ const submitEdit = async () => {
     {
       method: 'PUT',
       body: {
-        galgameRatingCommentId: props.comment.id,
+        galgame_rating_comment_id: props.comment.id,
         content: text
       }
     }
@@ -63,7 +63,7 @@ const deleteComment = async () => {
   if (!ok) return
   const res = await kunFetch(`/galgame-rating/${props.ratingId}/comment`, {
     method: 'DELETE',
-    query: { galgameRatingCommentId: props.comment.id }
+    query: { galgame_rating_comment_id: props.comment.id }
   })
   if (res) {
     useMessage('删除成功', 'success')

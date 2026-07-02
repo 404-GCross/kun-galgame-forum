@@ -11,7 +11,7 @@ const resourceId = computed(() => Number((route.params as { id: string }).id))
 const { data, refresh } = await useKunFetch<
   GalgameResourcePageData | 'not found'
 >(`/galgame-resource/${resourceId.value}`, {
-  query: { resourceId }
+  query: { resource_id: resourceId }
 })
 
 if (data.value && data.value !== 'not found') {

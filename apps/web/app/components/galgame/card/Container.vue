@@ -41,17 +41,17 @@ const { data, status, refresh } = await useKunFetch<{
     type,
     language,
     platform,
-    gameType,
-    sortField,
-    sortOrder,
-    releasedFrom,
-    releasedTo,
-    releasedMonths,
-    includeProviders,
-    excludeOnlyProviders,
-    minRatingCount,
-    minRating,
-    showNoResource: showKUNGalgameNoResource
+    game_type: gameType,
+    sort_field: sortField,
+    sort_order: sortOrder,
+    released_from: releasedFrom,
+    released_to: releasedTo,
+    released_months: releasedMonths,
+    include_providers: includeProviders,
+    exclude_only_providers: excludeOnlyProviders,
+    min_rating_count: minRatingCount,
+    min_rating: minRating,
+    show_no_resource: showKUNGalgameNoResource
   },
   // Don't auto-refetch on every query-ref change: clicking a card navigates to
   // /galgame/:id, which resets these URL-backed filters to their defaults and

@@ -31,7 +31,7 @@ const onChange = async (next: boolean) => {
   pending.value = true
   const result = await kunFetch(`/galgame/${props.galgameId}/resource/like`, {
     method: 'PUT',
-    body: { galgameResourceId: props.galgameResourceId }
+    body: { galgame_resource_id: props.galgameResourceId }
   })
   pending.value = false
   if (!result) {

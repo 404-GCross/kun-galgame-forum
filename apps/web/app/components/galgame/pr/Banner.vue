@@ -33,7 +33,7 @@ const { data, refresh } = await useKunFetch<{
   method: 'GET',
   server: false,
   immediate: canReview.value,
-  query: { page: 1, limit: 50, galgameId: props.galgame.id }
+  query: { page: 1, limit: 50, galgame_id: props.galgame.id }
 })
 
 const pendingCount = computed(() => {

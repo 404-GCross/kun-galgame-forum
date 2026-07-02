@@ -59,7 +59,7 @@ const handleDelete = async () => {
   }
   const res = await kunFetch(`/toolset/${props.toolsetId}/comment`, {
     method: 'DELETE',
-    query: { commentId: props.comment.id }
+    query: { comment_id: props.comment.id }
   })
   if (res) {
     useMessage(10538, 'success')
@@ -83,7 +83,7 @@ const saveEdit = async () => {
   isSaving.value = true
   const ok = await kunFetch(`/toolset/${props.toolsetId}/comment`, {
     method: 'PUT',
-    body: { commentId: props.comment.id, content: editContent.value }
+    body: { comment_id: props.comment.id, content: editContent.value }
   })
   isSaving.value = false
   if (ok) {

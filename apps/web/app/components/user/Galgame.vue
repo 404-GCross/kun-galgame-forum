@@ -44,7 +44,7 @@ interface UserGalgameCommentItem {
   id: number
   galgame_id: number
   content: string
-  contentHtml: string
+  content_html: string
   user: { id: number; name: string; avatar: string }
   created: string
 }
@@ -63,7 +63,7 @@ const { data: galgameData, status: galgameStatus } = await useKunFetch<{
 }>(() => `/user/${props.userId}/galgames`, {
   query: computed(() => ({
     ...pageData,
-    showNoResource: settings.showKUNGalgameNoResource
+    show_no_resource: settings.showKUNGalgameNoResource
   })),
   watch: [
     () => pageData.page,
@@ -129,7 +129,7 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
           :href="`/galgame/${c.galgame_id}`"
           content-class="space-y-2"
         >
-          <KunContent compact :content="renderKatex(c.contentHtml)" />
+          <KunContent compact :content="renderKatex(c.content_html)" />
           <div
             class="text-default-500 flex items-center justify-between text-sm"
           >

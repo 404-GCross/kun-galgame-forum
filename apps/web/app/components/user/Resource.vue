@@ -59,8 +59,8 @@ const submitFix = async (index: number) => {
     .filter(Boolean)
 
   const payload = {
-    galgameId: res.galgame_id,
-    galgameResourceId: res.id,
+    galgame_id: res.galgame_id,
+    galgame_resource_id: res.id,
     type: res.type,
     language: res.language,
     platform: res.platform,
@@ -78,7 +78,7 @@ const submitFix = async (index: number) => {
     }),
     kunFetch(`/galgame/${res.galgame_id}/resource/valid`, {
       method: 'PUT',
-      body: { galgameResourceId: res.id }
+      body: { galgame_resource_id: res.id }
     })
   ])
 

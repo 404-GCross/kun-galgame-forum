@@ -16,7 +16,7 @@ const params = reactive({
 })
 
 const { data, status } = await useKunFetch<{
-  ratingData: GalgameRatingCard[]
+  rating_data: GalgameRatingCard[]
   total: number
 }>(`/galgame-rating/all`, {
   method: 'GET',
@@ -69,7 +69,7 @@ const { data, status } = await useKunFetch<{
       </div>
     </div>
 
-    <GalgameRatingCard v-if="data" :ratings="data.ratingData" />
+    <GalgameRatingCard v-if="data" :ratings="data.rating_data" />
 
     <KunPagination
       v-if="(data?.total || 0) > params.limit"

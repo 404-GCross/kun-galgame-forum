@@ -175,7 +175,7 @@ export const initToolsetUploadSchema = z.object({
 export const completeToolsetUploadSchema = z.object({
   artifact_uuid: z.string().min(1).max(36),
   parts: z
-    .array(z.object({ partNumber: z.number().int().min(1), etag: z.string() }))
+    .array(z.object({ part_number: z.number().int().min(1), etag: z.string() }))
     .optional()
 })
 

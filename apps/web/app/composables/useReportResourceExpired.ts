@@ -38,7 +38,7 @@ export const useReportResourceExpired = () => {
     const result = await nuxtApp.runWithContext(() =>
       kunFetch<{ verdict: string; marked: boolean }>(
         `/galgame/${galgameId}/resource/expired`,
-        { method: 'PUT', body: { galgameResourceId: resourceId } }
+        { method: 'PUT', body: { galgame_resource_id: resourceId } }
       )
     )
 

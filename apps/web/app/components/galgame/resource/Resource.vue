@@ -26,7 +26,7 @@ const { data, status, refresh } = await useKunFetch<GalgameResource[]>(
   {
     lazy: true,
     method: 'GET',
-    query: { galgameId: gid.value }
+    query: { galgame_id: gid.value }
   }
 )
 

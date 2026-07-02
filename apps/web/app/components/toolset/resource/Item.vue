@@ -74,7 +74,7 @@ const links = computed(() => {
 // author. UI presentation goes through s3DisplaySize separately so the
 // user still sees "1.5 MB" rather than a raw byte count.
 const formData = reactive({
-  toolsetResourceId: base.value.id,
+  toolset_resource_id: base.value.id,
   type: base.value.type,
   size: base.value.size || '',
   code: '',
@@ -93,13 +93,13 @@ const fetchResourceDetail = async () => {
     `/toolset/${props.toolsetId}/resource/detail`,
     {
       method: 'GET',
-      query: { toolsetResourceId: base.value.id }
+      query: { toolset_resource_id: base.value.id }
     }
   )
   fetching.value = false
   if (res) {
     detail.value = res
-    formData.toolsetResourceId = res.id
+    formData.toolset_resource_id = res.id
     formData.type = base.value.type
     formData.size = base.value.size || ''
     formData.code = res.code || ''
@@ -132,7 +132,7 @@ const handleDelete = async () => {
   isDeleting.value = true
   const res = await kunFetch(`/toolset/${props.toolsetId}/resource`, {
     method: 'DELETE',
-    query: { toolsetResourceId: base.value.id }
+    query: { toolset_resource_id: base.value.id }
   })
   isDeleting.value = false
   if (res) {
@@ -143,7 +143,7 @@ const handleDelete = async () => {
 
 const handleSave = async () => {
   const body = {
-    toolsetResourceId: base.value.id,
+    toolset_resource_id: base.value.id,
     type: base.value.type,
     size: formData.size,
     code: formData.code,

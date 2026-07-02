@@ -5,7 +5,7 @@ import {
 } from '~/validations/website'
 import type { CreateWebsiteTagPayload, UpdateWebsiteTagPayload } from './types'
 
-type TagData = CreateWebsiteTagPayload & { tagId?: number }
+type TagData = CreateWebsiteTagPayload & { tag_id?: number }
 
 const props = defineProps<{
   modelValue: boolean
@@ -22,7 +22,7 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.tagId)
+const isEditing = computed(() => !!props.initialData?.tag_id)
 const isSubmitting = ref(false)
 
 const getInitialFormData = (): TagData => ({

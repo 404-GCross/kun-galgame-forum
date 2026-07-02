@@ -32,7 +32,7 @@ const onChange = async (next: boolean) => {
   pending.value = true
   const result = await kunFetch(
     `/galgame/${props.comment.galgame_id}/comment/like`,
-    { method: 'PUT', body: { commentId: props.comment.id } }
+    { method: 'PUT', body: { comment_id: props.comment.id } }
   )
   pending.value = false
   if (!result) {

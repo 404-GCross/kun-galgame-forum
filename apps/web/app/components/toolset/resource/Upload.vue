@@ -135,7 +135,7 @@ const notifyUploadTransferError = (error: unknown) => {
 }
 
 const abortUpload = async (artifactUuid: string) => {
-  const abortUploadData = { artifactUuid }
+  const abortUploadData = { artifact_uuid: artifactUuid }
   if (!useKunSchemaValidator(abortToolsetUploadSchema, abortUploadData)) {
     return
   }
@@ -309,7 +309,7 @@ const completeUpload = async (
   parts: ToolsetUploadPart[] | undefined
 ): Promise<boolean> => {
   const completeData = {
-    artifactUuid,
+    artifact_uuid: artifactUuid,
     parts: parts && parts.length ? parts : undefined
   }
   if (!useKunSchemaValidator(completeToolsetUploadSchema, completeData)) {
@@ -349,10 +349,10 @@ const registerResumable = (artifactUuid: string, f: File) => {
 const uploadToArtifact = async (f: File) => {
   const contentType = resolveContentType(f)
   const initData = {
-    toolsetId: props.toolsetId,
+    toolset_id: props.toolsetId,
     filename: f.name,
     filesize: f.size,
-    contentType
+    content_type: contentType
   }
   if (!useKunSchemaValidator(initToolsetUploadSchema, initData)) {
     return
@@ -428,7 +428,7 @@ const uploadToArtifact = async (f: File) => {
 // completed / expired → resume 404s).
 const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
   const contentType = resolveContentType(f)
-  const resumeData = { artifactUuid }
+  const resumeData = { artifact_uuid: artifactUuid }
   if (!useKunSchemaValidator(resumeToolsetUploadSchema, resumeData)) {
     return
   }

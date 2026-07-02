@@ -41,7 +41,7 @@ provide<number>('topicId', topicId.value)
 const { data } = await useKunFetch<TopicDetail>(`/topic/${topicId.value}`, {
   method: 'GET',
   watch: false,
-  query: { topicId: topicId.value }
+  query: { topic_id: topicId.value }
 })
 
 onBeforeRouteLeave(async () => {

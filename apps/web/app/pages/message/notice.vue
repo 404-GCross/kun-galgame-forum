@@ -10,7 +10,7 @@ useKunSeoMeta({
 const pageData = reactive({
   page: 1,
   limit: 30,
-  sortOrder: 'desc'
+  sort_order: 'desc'
 })
 
 const { data, status, refresh } = await useKunFetch<MessageList>('/message', {

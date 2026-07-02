@@ -23,7 +23,7 @@ const handleUpdateTopicBestAnswer = async () => {
     `/topic/${props.reply.topic_id}/best-answer`,
     {
       method: 'PUT',
-      body: { topicId: props.reply.topic_id, replyId: props.reply.id }
+      body: { topic_id: props.reply.topic_id, reply_id: props.reply.id }
     }
   )
 

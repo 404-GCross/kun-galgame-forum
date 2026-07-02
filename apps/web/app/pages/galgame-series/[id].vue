@@ -11,7 +11,7 @@ const seriesId = computed(() => {
 
 const { data } = await useKunFetch<GalgameSeriesDetail>(`/galgame-series/${seriesId.value}`, {
   method: 'GET',
-  query: { seriesId: seriesId.value }
+  query: { series_id: seriesId.value }
 })
 
 if (data.value) {

@@ -58,7 +58,7 @@ const handleDeleteRating = async () => {
 
   const res = await kunFetch(`/galgame-rating/${props.data.id}`, {
     method: 'DELETE',
-    query: { galgameRatingId: props.data.id }
+    query: { galgame_rating_id: props.data.id }
   })
   if (res) {
     useMessage('删除成功', 'success')

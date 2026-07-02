@@ -24,7 +24,7 @@ const handleDeleteComment = async () => {
 
   const result = await kunFetch(`/website/${props.comment.website_id}/comment`, {
     method: 'DELETE',
-    query: { commentId: props.comment.id }
+    query: { comment_id: props.comment.id }
   })
 
   if (result) {

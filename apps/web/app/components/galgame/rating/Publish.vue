@@ -182,7 +182,7 @@ const resetForm = () => {
 const submit = async () => {
   if (isEditing.value) {
     const body = {
-      galgameRatingId: props.initialData!.galgameRatingId,
+      galgame_rating_id: props.initialData!.galgameRatingId,
       recommend: recommend.value,
       overall: overall.value,
       play_status: playStatus.value,
@@ -196,7 +196,7 @@ const submit = async () => {
       system: dims.value.system,
       voice: dims.value.voice,
       replay_value: dims.value.replay_value,
-      galgameType: selectedTypes.value
+      galgame_type: selectedTypes.value
     }
     const valid = useKunSchemaValidator(updateGalgameRatingSchema, body)
     if (!valid) {
@@ -219,7 +219,7 @@ const submit = async () => {
     }
   } else {
     const body = {
-      galgameId: props.galgameId,
+      galgame_id: props.galgameId,
       recommend: recommend.value,
       overall: overall.value,
       play_status: playStatus.value,
@@ -233,7 +233,7 @@ const submit = async () => {
       system: dims.value.system,
       voice: dims.value.voice,
       replay_value: dims.value.replay_value,
-      galgameType: selectedTypes.value
+      galgame_type: selectedTypes.value
     }
     const valid = useKunSchemaValidator(createGalgameRatingSchema, body)
     if (!valid) return

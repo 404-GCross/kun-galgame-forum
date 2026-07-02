@@ -44,7 +44,7 @@ const handleDeleteToolset = async () => {
   isDeleting.value = true
   const ok = await kunFetch(`/toolset/${data.value.id}`, {
     method: 'DELETE',
-    query: { toolsetId: data.value.id }
+    query: { toolset_id: data.value.id }
   })
   isDeleting.value = false
 
@@ -80,7 +80,7 @@ const loadPracticalityMine = async () => {
     `/toolset/${props.id}/practicality`,
     {
       method: 'GET',
-      query: { toolsetId: props.id }
+      query: { toolset_id: props.id }
     }
   )
   if (res) {

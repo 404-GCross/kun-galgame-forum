@@ -31,7 +31,7 @@ const handleDeleteComment = async (commentId: number) => {
 
   const result = await kunFetch(`/toolset/${props.toolsetId}/comment`, {
     method: 'DELETE',
-    query: { commentId }
+    query: { comment_id: commentId }
   })
   if (result) {
     useMessage(10538, 'success')
@@ -56,7 +56,7 @@ const handleSaveEdit = async (commentId: number) => {
   }
   const result = await kunFetch(`/toolset/${props.toolsetId}/comment`, {
     method: 'PUT',
-    body: { commentId, content: editingContent.value }
+    body: { comment_id: commentId, content: editingContent.value }
   })
   if (result) {
     useMessage('已更新评论', 'success')

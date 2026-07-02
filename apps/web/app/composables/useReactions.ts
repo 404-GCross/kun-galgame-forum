@@ -63,7 +63,7 @@ export const useReactions = (opts: UseReactionsOptions): ReactionsState => {
         })
       : kunFetch(`/topic/0/reply/reaction`, {
           method: 'PUT',
-          body: { replyId: opts.replyId, reaction }
+          body: { reply_id: opts.replyId, reaction }
         })
 
   const removeMine = (idx: number) => {

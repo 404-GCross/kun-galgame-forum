@@ -13,7 +13,7 @@ const { data } = await useKunFetch<GalgameLink[]>(
   {
     lazy: true,
     method: 'GET',
-    query: { galgameId: gid.value },
+    query: { galgame_id: gid.value },
     watch: false
   }
 )

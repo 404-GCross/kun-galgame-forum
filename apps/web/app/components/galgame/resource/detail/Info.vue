@@ -47,7 +47,7 @@ const handleDeleteResource = async () => {
     `/galgame/${props.resource.galgame_id}/resource`,
     {
       method: 'DELETE',
-      query: { galgameResourceId: props.resource.id }
+      query: { galgame_resource_id: props.resource.id }
     }
   )
 
@@ -74,7 +74,7 @@ const handleGetResourceLink = async () => {
     `/galgame-resource/${props.resource.id}/detail`,
     {
       method: 'GET',
-      query: { galgameResourceId: props.resource.id }
+      query: { galgame_resource_id: props.resource.id }
     }
   )
   isFetching.value = false

@@ -27,7 +27,7 @@ const onChange = async (next: boolean) => {
   pending.value = true
   const result = await kunFetch<string>(
     `/topic/${props.comment.topic_id}/comment/like`,
-    { method: 'PUT', body: { commentId: props.comment.id } }
+    { method: 'PUT', body: { comment_id: props.comment.id } }
   )
   pending.value = false
   if (!result) {

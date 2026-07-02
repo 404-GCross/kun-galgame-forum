@@ -60,9 +60,9 @@ const handlePublishComment = async () => {
     {
       method: 'POST',
       body: {
-        galgameId: galgameId.value,
-        targetUserId: effectiveTargetUserId.value,
-        parentCommentId: props.parentCommentId ?? null,
+        galgame_id: galgameId.value,
+        target_user_id: effectiveTargetUserId.value,
+        parent_comment_id: props.parentCommentId ?? null,
         content: content.value
       }
     }

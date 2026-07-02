@@ -76,8 +76,8 @@ const websiteBaseSchema = z.object({
 
 // Keep the icon effectively required: either the new hash or the legacy URL.
 // Root-level refine (no path) so the message renders cleanly on its own.
-const hasIcon = (data: { icon?: string; iconImageHash?: string }) =>
-  !!(data.iconImageHash || data.icon)
+const hasIcon = (data: { icon?: string; icon_image_hash?: string }) =>
+  !!(data.icon_image_hash || data.icon)
 const ICON_REQUIRED = { message: '请上传网站图标' }
 
 export const createWebsiteSchema = websiteBaseSchema.refine(

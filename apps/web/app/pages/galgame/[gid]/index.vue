@@ -32,7 +32,7 @@ const gid = computed(() => {
 const { data } = await useKunFetch<GalgameDetail>(`/galgame/${gid.value}`, {
   method: 'GET',
   watch: false,
-  query: { galgameId: gid.value }
+  query: { galgame_id: gid.value }
 })
 
 const galgame = data.value

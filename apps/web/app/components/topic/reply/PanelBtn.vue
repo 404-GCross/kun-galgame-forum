@@ -20,7 +20,7 @@ const handlePublish = async () => {
   }
 
   const body = {
-    topicId: topicId.value,
+    topic_id: topicId.value,
     content: replyDraft.value.mainContent || ''
   }
   const result = createReplySchema.safeParse(body)
@@ -57,7 +57,7 @@ const handleRewrite = async () => {
   }
 
   const body = {
-    replyId: replyRewrite.value!.id,
+    reply_id: replyRewrite.value!.id,
     content: replyRewrite.value!.mainContent || ''
   }
   const result = updateReplySchema.safeParse(body)

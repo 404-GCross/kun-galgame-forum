@@ -187,21 +187,21 @@ func (r *MessageRepository) GetNavSummary(userID int) ([]map[string]any, error) 
 
 	result := []map[string]any{
 		{
-			"chatroomName":    "",
+			"chatroom_name":    "",
 			"content":         noticeContent,
-			"lastMessageTime": noticeTime,
+			"last_message_time": noticeTime,
 			"count":           noticeTotal,
-			"unreadCount":     noticeUnread,
+			"unread_count":     noticeUnread,
 			"route":           "notice",
 			"title":           "zako~",
 			"avatar":          "",
 		},
 		{
-			"chatroomName":    "",
+			"chatroom_name":    "",
 			"content":         "",
-			"lastMessageTime": sysTime,
+			"last_message_time": sysTime,
 			"count":           sysTotal,
-			"unreadCount":     sysUnread,
+			"unread_count":     sysUnread,
 			"route":           "system",
 			"title":           "zako~",
 			"avatar":          "",

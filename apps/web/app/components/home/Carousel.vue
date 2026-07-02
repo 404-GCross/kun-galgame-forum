@@ -7,7 +7,7 @@ const { data: pinnedResponse } = await useKunFetch<DocArticleListResponse>(
     query: {
       page: 1,
       limit: 10,
-      isPin: true,
+      is_pin: true,
       order_by: 'view',
       sort_order: 'desc'
     }

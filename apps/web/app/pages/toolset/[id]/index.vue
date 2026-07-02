@@ -20,7 +20,7 @@ const { data } = await useKunFetch<ToolsetDetail>(
   `/toolset/${id.value}`,
   {
     method: 'GET',
-    query: { toolsetId: id.value },
+    query: { toolset_id: id.value },
     watch: false
   }
 )

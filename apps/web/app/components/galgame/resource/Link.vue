@@ -119,7 +119,7 @@ const handleMarkValid = async () => {
   const result = await nuxtApp.runWithContext(() =>
     kunFetch(`/galgame/${props.resource.galgame_id}/resource/valid`, {
       method: 'PUT',
-      body: { galgameResourceId: props.resource.id }
+      body: { galgame_resource_id: props.resource.id }
     })
   )
   isFetching.value = false

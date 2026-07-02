@@ -100,7 +100,7 @@ const handleSubmitEdit = async () => {
     `/galgame/${props.comment.galgame_id}/comment`,
     {
       method: 'PUT',
-      body: { commentId: props.comment.id, content: text }
+      body: { comment_id: props.comment.id, content: text }
     }
   )
   isSavingEdit.value = false
@@ -118,7 +118,7 @@ const handleDelete = async () => {
 
   const result = await kunFetch(`/galgame/${props.comment.galgame_id}/comment`, {
     method: 'DELETE',
-    query: { commentId: props.comment.id }
+    query: { comment_id: props.comment.id }
   })
 
   if (result) {

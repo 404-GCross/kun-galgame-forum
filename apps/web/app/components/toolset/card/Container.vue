@@ -25,8 +25,8 @@ const { data, status } = await useKunFetch<{
     language,
     platform,
     version,
-    sortField,
-    sortOrder
+    sort_field: sortField,
+    sort_order: sortOrder
   }
 })
 </script>

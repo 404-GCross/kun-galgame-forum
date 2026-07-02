@@ -9,7 +9,7 @@ const res = await kunFetch<{ name: string; avatar: string }>(
   `/user/${props.id}`,
   {
     method: 'GET',
-    query: { userId: props.id }
+    query: { user_id: props.id }
   }
 )
 

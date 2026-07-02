@@ -13,7 +13,7 @@ const pageData = reactive({
 })
 
 const { data, status } = await useKunFetch<{
-  commentData: SerializeObject<ToolsetComment>[]
+  comment_data: SerializeObject<ToolsetComment>[]
   total: number
 }>(`/toolset/${props.toolsetId}/comment/all`, {
   method: 'GET',
@@ -23,14 +23,14 @@ const { data, status } = await useKunFetch<{
 
 // Own the comment list locally so publish / edit / delete are reactive: the
 // fetch returns a SHALLOW data ref (Nuxt's default deep:false), so mutating the
-// nested data.value.commentData wouldn't re-render. Re-seed from each fetch
+// nested data.value.comment_data wouldn't re-render. Re-seed from each fetch
 // (sort change / page / refresh re-assign data.value → shallow ref fires).
 const comments = ref<SerializeObject<ToolsetComment>[]>([])
 const total = ref(0)
 watch(
   data,
   (d) => {
-    comments.value = d?.commentData ?? []
+    comments.value = d?.comment_data ?? []
     total.value = d?.total ?? 0
   },
   { immediate: true }
