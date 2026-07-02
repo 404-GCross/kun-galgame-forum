@@ -44,7 +44,7 @@ const fetchUserData = async () => {
     `/user/${props.userId}/floating`,
     {
       method: 'GET',
-      query: { userId: props.userId }
+      query: { user_id: props.userId }
     }
   )
   userData.value = data
