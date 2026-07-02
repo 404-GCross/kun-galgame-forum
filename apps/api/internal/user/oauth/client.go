@@ -110,14 +110,6 @@ func NewClient(cfg config.OAuthConfig) *Client {
 	}
 }
 
-// envelope is the standard {code, message, data} body that every OAuth
-// endpoint returns. Used by decodeEnvelope below.
-type envelope struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
-}
-
 // decodeEnvelope reads resp.Body, parses the standard envelope, and returns
 // either the data payload (success) or a structured *Error (failure).
 //
@@ -130,24 +122,60 @@ func decodeEnvelope(resp *http.Response) (json.RawMessage, error) {
 		return nil, &Error{HTTPStatus: resp.StatusCode, Message: "读取响应体失败: " + err.Error()}
 	}
 
-	var env envelope
-	if jerr := json.Unmarshal(body, &env); jerr != nil {
-		// Unparseable body — we know the HTTP status but not the envelope
-		// code. Caller will treat this as transient (IsTransient → true).
+	// Tolerant reader (expand→contract for the OAuth server's standard-wire
+	// cutover): accept BOTH the legacy {code,message,data} envelope AND the
+	// spec-compliant top-level JSON. The `code` key is present iff it's the
+	// envelope; a standard error object carries `error`/`error_description`.
+	var p struct {
+		Code             *int            `json:"code"` // pointer: nil when absent (standard)
+		Message          string          `json:"message"`
+		Data             json.RawMessage `json:"data"`
+		Error            string          `json:"error"`
+		ErrorDescription string          `json:"error_description"`
+	}
+	if jerr := json.Unmarshal(body, &p); jerr != nil {
+		// Unparseable body — status known, code unknown. Treated as transient.
 		return nil, &Error{
 			HTTPStatus: resp.StatusCode,
 			Message:    fmt.Sprintf("解析响应失败: %v, body=%s", jerr, truncateBody(body)),
 		}
 	}
 
-	if resp.StatusCode == http.StatusOK && env.Code == 0 && len(env.Data) > 0 {
-		return env.Data, nil
+	if p.Code != nil {
+		// Legacy {code,message,data} envelope.
+		if resp.StatusCode == http.StatusOK && *p.Code == 0 && len(p.Data) > 0 {
+			return p.Data, nil
+		}
+		return nil, &Error{Code: *p.Code, HTTPStatus: resp.StatusCode, Message: p.Message}
 	}
 
-	return nil, &Error{
-		Code:       env.Code,
-		HTTPStatus: resp.StatusCode,
-		Message:    env.Message,
+	// Standard-wire response: the whole body IS the payload.
+	if resp.StatusCode == http.StatusOK {
+		return json.RawMessage(body), nil
+	}
+	// Standard OAuth error object {error, error_description}. Map the error
+	// string back to the envelope code the callers branch on, so the cutover
+	// preserves the "refresh dead vs transient" decision.
+	msg := p.ErrorDescription
+	if msg == "" {
+		msg = p.Error
+	}
+	return nil, &Error{Code: oauthErrToCode(p.Error), HTTPStatus: resp.StatusCode, Message: msg}
+}
+
+// oauthErrToCode maps a standard RFC 6749 error string to the legacy envelope
+// code kungal branches on. invalid_grant/invalid_client mean the refresh token
+// is unusable (→ re-login); anything else maps to 0 (unknown → transient).
+// A banned user surfaces as invalid_grant on the token endpoint and is then
+// re-blocked at /userinfo (which still returns the enveloped 10014).
+func oauthErrToCode(errStr string) int {
+	switch errStr {
+	case "invalid_grant":
+		return CodeInvalidGrant
+	case "invalid_client":
+		return CodeInvalidClientSecret
+	default:
+		return 0
 	}
 }
 
