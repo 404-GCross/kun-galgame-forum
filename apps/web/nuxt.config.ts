@@ -21,7 +21,9 @@ export default defineNuxtConfig({
   // auto-imports all components & composables from @kungal/ui-vue and wires
   // NuxtLink / @nuxt/icon / @nuxt/image. The app owns its Tailwind entry
   // (app/styles/tailwindcss.css → @kungal/ui-tokens + ui-vue style + @source).
-  extends: ['@kungal/ui-nuxt'],
+  // @kungal/editor-nuxt auto-imports <KunEditor> (the extracted Milkdown editor)
+  // + its KunUI chrome; it assumes ui-nuxt is already extended, so it comes 2nd.
+  extends: ['@kungal/ui-nuxt', '@kungal/editor-nuxt'],
 
   devtools: { enabled: false },
 

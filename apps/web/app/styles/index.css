@@ -9,6 +9,10 @@
 @import 'overlayscrollbars/overlayscrollbars.css';
 @import './prose.css';
 @import './editor.css';
+/* Reference stylesheet for the headless @kungal/editor <KunEditor> — themes its
+   stable class hooks (.kun-editor__*, .kun-mention-dropdown*) with KunUI tokens.
+   Copied from the library's apps/docs reference; keep in sync on lib upgrades. */
+@import './editor/kun-editor.css';
 @import './code-theme.css';
 @import './editor/code-mirror.css';
 @import './editor/katex.css';

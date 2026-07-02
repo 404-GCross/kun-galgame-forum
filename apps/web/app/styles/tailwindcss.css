@@ -17,6 +17,10 @@
  */
 @import '@kungal/ui-tokens';
 @import '@kungal/ui-vue/style.css';
+/* Generate the Tailwind utility classes used by @kungal/editor-nuxt's KunUI
+   chrome (<KunEditorToolbar> / <KunEditorViewSwitch> / the sticker grid). The
+   package's tailwind.css @source's its own runtime components (pnpm-safe). */
+@import '@kungal/editor-nuxt/tailwind.css';
 
 /*
  * Tailwind v4 does not scan node_modules by default, so it would drop the
