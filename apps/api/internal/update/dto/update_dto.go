@@ -24,7 +24,7 @@ type CreateHistoryRequest struct {
 }
 
 type DeleteHistoryRequest struct {
-	ID int `query:"updateLogId" validate:"required,min=1"`
+	ID int `query:"update_log_id" validate:"required,min=1"`
 }
 
 type CreateTodoRequest struct {
@@ -37,11 +37,11 @@ type CreateTodoRequest struct {
 }
 
 type DeleteTodoRequest struct {
-	ID int `query:"todoId" validate:"required,min=1"`
+	ID int `query:"todo_id" validate:"required,min=1"`
 }
 
 type UpdateHistoryRequest struct {
-	ID          int    `json:"updateLogId" validate:"required,min=1"`
+	ID          int    `json:"update_log_id" validate:"required,min=1"`
 	Type        string `json:"type" validate:"required"`
 	Version     string `json:"version" validate:"max=20"`
 	ContentEnUS string `json:"content_en_us" validate:"max=1000"`
@@ -51,7 +51,7 @@ type UpdateHistoryRequest struct {
 }
 
 type UpdateTodoRequest struct {
-	ID          int    `json:"todoId" validate:"required,min=1"`
+	ID          int    `json:"todo_id" validate:"required,min=1"`
 	Type        string `json:"type" validate:"required"`
 	Status      int    `json:"status" validate:"min=0,max=10"`
 	ContentEnUS string `json:"content_en_us" validate:"max=1000"`

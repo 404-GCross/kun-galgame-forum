@@ -21,7 +21,7 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.todoId)
+const isEditing = computed(() => !!props.initialData?.todo_id)
 const isSubmitting = ref(false)
 
 const todoStatusOptions = Object.entries(KUN_UPDATE_LOG_STATUS_MAP).map(
@@ -32,7 +32,7 @@ const todoStatusOptions = Object.entries(KUN_UPDATE_LOG_STATUS_MAP).map(
 )
 
 const getInitialFormData = (): UpdateTodoPayload => ({
-  todoId: 0,
+  todo_id: 0,
   type: 'forum',
   status: 0,
   content_en_us: '',
@@ -70,7 +70,7 @@ const handleSubmit = () => {
     return
   }
 
-  emits('submit', { todoId: formData.todoId, ...result.data })
+  emits('submit', { todo_id: formData.todo_id, ...result.data })
   isSubmitting.value = false
   isModalOpen.value = false
 }

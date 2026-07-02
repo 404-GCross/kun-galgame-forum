@@ -46,19 +46,19 @@ const openEditTodoModal = (log: UpdateTodo) => {
     content_ja_jp: log.content_ja_jp,
     content_zh_cn: log.content_zh_cn,
     content_zh_tw: log.content_zh_tw,
-    todoId: log.id
+    todo_id: log.id
   } satisfies UpdateTodoPayload
   showTodoModal.value = true
 }
 
 const handleTodoAction = async (data: UpdateTodoPayload) => {
   const result = await kunFetch('/update/todo', {
-    method: data.todoId ? 'PUT' : 'POST',
+    method: data.todo_id ? 'PUT' : 'POST',
     body: data
   })
 
   if (result) {
-    useMessage(data.todoId ? '更新成功' : '发布待办成功', 'success')
+    useMessage(data.todo_id ? '更新成功' : '发布待办成功', 'success')
     refresh()
   }
 }

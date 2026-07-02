@@ -33,6 +33,6 @@ export const createTodoSchema = z.object({
 
 export const updateTodoSchema = createTodoSchema.merge(
   z.object({
-    todoId: z.coerce.number<number>().min(1).max(9999999)
+    todo_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )

@@ -21,7 +21,7 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.updateLogId)
+const isEditing = computed(() => !!props.initialData?.update_log_id)
 const isSubmitting = ref(false)
 
 const logTypeOptions = KUN_UPDATE_LOG.map((type) => ({
@@ -30,7 +30,7 @@ const logTypeOptions = KUN_UPDATE_LOG.map((type) => ({
 }))
 
 const getInitialFormData = (): UpdateUpdateLogPayload => ({
-  updateLogId: 0,
+  update_log_id: 0,
   version: '',
   type: 'feat',
   content_en_us: '',
@@ -68,7 +68,7 @@ const handleSubmit = () => {
     return
   }
 
-  emits('submit', { updateLogId: formData.updateLogId, ...result.data })
+  emits('submit', { update_log_id: formData.update_log_id, ...result.data })
   isSubmitting.value = false
   isModalOpen.value = false
 }

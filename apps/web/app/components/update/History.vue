@@ -31,19 +31,19 @@ const openEditUpdateLogModal = (log: UpdateLog) => {
     content_zh_cn: log.content_zh_cn,
     content_zh_tw: log.content_zh_tw,
     type: log.type,
-    updateLogId: log.id
+    update_log_id: log.id
   } satisfies UpdateUpdateLogPayload
   showUpdateLogModal.value = true
 }
 
 const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
   const result = await kunFetch('/update/history', {
-    method: data.updateLogId ? 'PUT' : 'POST',
+    method: data.update_log_id ? 'PUT' : 'POST',
     body: data
   })
 
   if (result) {
-    useMessage(data.updateLogId ? '更新成功' : '发布更新日志成功', 'success')
+    useMessage(data.update_log_id ? '更新成功' : '发布更新日志成功', 'success')
     refresh()
   }
 }

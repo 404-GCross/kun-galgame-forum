@@ -36,5 +36,5 @@ export const createUpdateLogSchema = z.object({
 })
 
 export const updateUpdateLogSchema = createUpdateLogSchema.extend({
-  updateLogId: z.coerce.number<number>().min(1).max(9999999)
+  update_log_id: z.coerce.number<number>().min(1).max(9999999)
 })
