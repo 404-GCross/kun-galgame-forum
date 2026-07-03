@@ -93,6 +93,7 @@ type App struct {
 	UserProfileHandler         *handler.ProfileHandler
 	HomeHandler                *homeHandler.HomeHandler
 	TopicHandler               *topicHandler.TopicHandler
+	TopicDraftHandler          *topicHandler.TopicDraftHandler
 	ReplyHandler               *topicHandler.ReplyHandler
 	TopicCommentHandler        *topicHandler.CommentHandler
 	PollHandler                *topicHandler.PollHandler
@@ -282,11 +283,13 @@ func New(cfg *config.Config) *App {
 	replyRepository := topicRepo.NewReplyRepository(db)
 	topicCommentRepo := topicRepo.NewCommentRepository(db)
 	pollRepository := topicRepo.NewPollRepository(db)
+	draftRepository := topicRepo.NewTopicDraftRepository(db)
 	topicSvc := topicService.NewTopicService(topicRepository, topicListRepo, topicTaxonomyRepo, rdb, uc, userStateRepo)
 	topicWriteSvc := topicService.NewTopicWriteService(topicRepository, topicTaxonomyRepo, replyRepository, userStateRepo, rdb, notifier)
 	replySvc := topicService.NewReplyService(replyRepository, topicCommentRepo, topicRepository, userStateRepo, uc, rdb)
 	commentSvc := topicService.NewCommentService(replyRepository, topicCommentRepo, userStateRepo, uc, rdb)
 	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb)
+	draftSvc := topicService.NewDraftService(draftRepository)
 
 	// Galgame
 	galgameCommentRepo := galgameRepo.NewCommentRepository(db)
@@ -378,6 +381,7 @@ func New(cfg *config.Config) *App {
 		UserProfileHandler:     handler.NewProfileHandler(oauthClient, uc),
 		HomeHandler:            homeHandler.NewHomeHandler(homeService.NewHomeService(homeRepo.NewHomeRepository(db), gc, uc, rdb)),
 		TopicHandler:           topicHandler.NewTopicHandler(topicSvc, topicWriteSvc),
+		TopicDraftHandler:      topicHandler.NewTopicDraftHandler(draftSvc),
 		ReplyHandler:           topicHandler.NewReplyHandler(replySvc),
 		TopicCommentHandler:    topicHandler.NewCommentHandler(commentSvc),
 		PollHandler:            topicHandler.NewPollHandler(pollSvc),

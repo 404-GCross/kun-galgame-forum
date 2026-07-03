@@ -211,6 +211,16 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/galgame-rating/:id", a.GalgameRatingHandler.GetRatingDetail)
 
 	// Topic (optional auth for interaction status)
+	// Private per-user topic drafts. Registered here (on `api`, with an explicit
+	// auth middleware) BEFORE the /topic/:tid routes below because Fiber matches
+	// in REGISTRATION ORDER: a later static /topic/draft would otherwise be
+	// captured by the earlier /topic/:tid param route (tid="draft" → 400).
+	topicDraftAuth := middleware.Auth(a.Redis, a.OAuthClient)
+	api.Get("/topic/draft", topicDraftAuth, a.TopicDraftHandler.List)
+	api.Post("/topic/draft", topicDraftAuth, a.TopicDraftHandler.Save)
+	api.Get("/topic/draft/:id", topicDraftAuth, a.TopicDraftHandler.Get)
+	api.Delete("/topic/draft/:id", topicDraftAuth, a.TopicDraftHandler.Delete)
+
 	optAuth.Get("/topic", a.TopicHandler.GetList)
 	optAuth.Get("/topic/:tid", a.TopicHandler.GetDetail)
 	optAuth.Get("/topic/:tid/upvotes", a.TopicHandler.GetUpvotes)

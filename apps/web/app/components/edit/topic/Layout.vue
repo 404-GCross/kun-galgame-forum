@@ -27,6 +27,10 @@ const openPublish = () => {
   isPublishOpen.value = true
 }
 
+// Drafts (server-side, private) only make sense for a NEW topic — hidden while
+// rewriting an existing one (that edits live content, not a draft).
+const isDraftOpen = ref(false)
+
 type EditorViewMode = 'wysiwyg' | 'source' | 'split'
 const editorMode = ref<EditorViewMode>('wysiwyg')
 const onSetMode = (
@@ -99,14 +103,23 @@ onBeforeRouteLeave(async () => {
       >
         <div id="et-toolbar" class="w-max" />
       </KunScrollShadow>
-      <KunButton
-        color="primary"
-        class="order-1 ml-auto shrink-0 sm:order-none sm:ml-0"
-        @click="openPublish"
+      <div
+        class="order-1 ml-auto flex shrink-0 items-center gap-2 sm:order-none sm:ml-0"
       >
-        <KunIcon name="lucide:send" class="mr-1 h-4 w-4" />
-        发布话题
-      </KunButton>
+        <KunButton
+          v-if="!tempStore.isTopicRewriting"
+          variant="light"
+          color="primary"
+          @click="isDraftOpen = true"
+        >
+          <KunIcon name="lucide:notebook-pen" class="mr-1 h-4 w-4" />
+          草稿
+        </KunButton>
+        <KunButton color="primary" @click="openPublish">
+          <KunIcon name="lucide:send" class="mr-1 h-4 w-4" />
+          发布话题
+        </KunButton>
+      </div>
     </div>
 
     <!-- TOC rail (left) + the document card. The rail is desktop-only (lg+) and
@@ -178,6 +191,7 @@ onBeforeRouteLeave(async () => {
     </div>
 
     <EditTopicPublishModal v-model="isPublishOpen" />
+    <EditTopicDraftModal v-model="isDraftOpen" />
   </div>
 </template>
 
