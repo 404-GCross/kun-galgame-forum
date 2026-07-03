@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
+import type { KunEditorExpose, KunHeading } from '@kungal/editor-vue'
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 import { KUN_EDITOR_TOOLBAR_ITEMS } from '~/constants/editor'
 // The topic writing surface — a Tencent-Docs-style layout: a sticky formatting
@@ -14,6 +15,12 @@ import { KUN_EDITOR_TOOLBAR_ITEMS } from '~/constants/editor'
 const tempStore = useTempEditStore()
 const { content } = useTopicEditorStore()
 const adapters = useKunEditorAdapters()
+
+// The editor's live heading outline (emitted by <KunEditor> on every change) →
+// a faint TOC rail on the left; clicking an entry scrolls the active view (and
+// drops the caret) to that heading via the editor's scrollToHeading(index).
+const headings = ref<KunHeading[]>([])
+const editorRef = ref<KunEditorExpose | null>(null)
 
 const isPublishOpen = ref(false)
 const openPublish = () => {
@@ -102,44 +109,70 @@ onBeforeRouteLeave(async () => {
       </KunButton>
     </div>
 
-    <!-- The document card: title + body share one shadowed surface, with a faint
-         divider between them; neither draws its own border/shadow. -->
-    <!-- The doc card is a centered reading column (max-w-3xl), but in split mode
-         it widens to the full topbar/content width so the two panes get room. -->
-    <div :class="cn('mx-auto', editorMode === 'split' ? 'max-w-none' : 'max-w-3xl')">
-      <div class="bg-content1 shadow-kun-md px-6 sm:px-16">
-        <div class="border-default-200/60 border-b pt-8 pb-4 sm:pt-14 sm:pb-5">
-          <EditTopicTitle />
-        </div>
+    <!-- TOC rail (left) + the document card. The rail is desktop-only (lg+) and
+         appears only when the content has headings; it lives in the left blank
+         area. The card is a centered reading column (max-w-3xl); in split mode it
+         becomes flex-1 and fills the width LEFT of the rail (so the two panes get
+         room, with the rail carving out the left). title + body share one
+         shadowed surface split by a faint divider; neither draws its own border. -->
+    <div class="flex justify-center gap-6">
+      <aside v-if="headings.length" class="hidden w-48 shrink-0 lg:block">
+        <nav class="sticky top-32 space-y-1 py-1 text-sm">
+          <button
+            v-for="(h, i) in headings"
+            :key="i"
+            type="button"
+            :style="{ paddingInlineStart: `${(h.level - 1) * 0.75}rem` }"
+            :title="h.text"
+            class="text-default-400 hover:text-primary-500 block w-full truncate text-left transition-colors"
+            @click="editorRef?.scrollToHeading(i)"
+          >
+            {{ h.text || '(无标题)' }}
+          </button>
+        </nav>
+      </aside>
 
-        <div class="pt-5 pb-10 sm:pt-7 sm:pb-20">
-          <ClientOnly>
-            <KunEditor
-              v-model="content"
-              :adapters="adapters"
-              :views="editorViews"
-              placeholder="在此输入您的话题正文..."
-              class="kun-doc-editor"
-            >
-              <template #view-switch="api">
-                <Teleport to="#et-viewswitch" defer>
-                  <KunEditorViewSwitch
-                    v-bind="api"
-                    :set-mode="(mode) => onSetMode(mode, api.setMode)"
-                  />
-                </Teleport>
-              </template>
-              <template #toolbar="api">
-                <Teleport to="#et-toolbar" defer>
-                  <KunEditorToolbar
-                    v-if="editorMode === 'wysiwyg'"
-                    v-bind="api"
-                    :items="KUN_EDITOR_TOOLBAR_ITEMS"
-                  />
-                </Teleport>
-              </template>
-            </KunEditor>
-          </ClientOnly>
+      <div
+        :class="
+          cn('min-w-0', editorMode === 'split' ? 'flex-1' : 'w-full max-w-3xl')
+        "
+      >
+        <div class="bg-content1 shadow-kun-md px-6 sm:px-16">
+          <div class="border-default-200/60 border-b pt-8 pb-4 sm:pt-14 sm:pb-5">
+            <EditTopicTitle />
+          </div>
+
+          <div class="pt-5 pb-10 sm:pt-7 sm:pb-20">
+            <ClientOnly>
+              <KunEditor
+                ref="editorRef"
+                v-model="content"
+                :adapters="adapters"
+                :views="editorViews"
+                placeholder="在此输入您的话题正文..."
+                class="kun-doc-editor"
+                @update:headings="headings = $event"
+              >
+                <template #view-switch="api">
+                  <Teleport to="#et-viewswitch" defer>
+                    <KunEditorViewSwitch
+                      v-bind="api"
+                      :set-mode="(mode) => onSetMode(mode, api.setMode)"
+                    />
+                  </Teleport>
+                </template>
+                <template #toolbar="api">
+                  <Teleport to="#et-toolbar" defer>
+                    <KunEditorToolbar
+                      v-if="editorMode === 'wysiwyg'"
+                      v-bind="api"
+                      :items="KUN_EDITOR_TOOLBAR_ITEMS"
+                    />
+                  </Teleport>
+                </template>
+              </KunEditor>
+            </ClientOnly>
+          </div>
         </div>
       </div>
     </div>
