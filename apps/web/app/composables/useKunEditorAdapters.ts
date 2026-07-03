@@ -3,7 +3,7 @@ import type {
   MentionUser,
   StickerPack
 } from '@kungal/editor-core'
-import { stickerArray } from '~/components/kun/milkdown/plugins/sticker/_stickers'
+import { stickerArray } from '~/constants/sticker'
 
 // Forum POLICY for the extracted <KunEditor> (@kungal/editor-*). The editor ships
 // the MECHANISM (ProseMirror nodes / keymaps / serialization); these adapters

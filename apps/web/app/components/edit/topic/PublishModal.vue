@@ -5,7 +5,11 @@
 // title + editor (a Tencent-Docs-style writing surface).
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 import { useTopicSubmitter } from '~/composables/topic/useTopicSubmitter'
-import type { KunTabItem } from '@kungal/ui-vue'
+import type {
+  KunTabItem,
+  KunCheckBoxGroupOption,
+  KunCheckBoxGroupInvalidReason
+} from '@kungal/ui-vue'
 import {
   TOPIC_CATEGORIES,
   TOPIC_SECTIONS,
@@ -41,15 +45,17 @@ const availableSections = computed(() =>
   category.value ? TOPIC_SECTIONS[category.value] : {}
 )
 
-const isSectionSelected = (key: string) => section.value.includes(key)
+// Section is multi-select (1..3), so it uses KunUI's multi-select KunCheckBoxGroup
+// (the `max` prop enforces the cap) — KunTab is single-select and can't.
+const sectionOptions = computed<KunCheckBoxGroupOption[]>(() =>
+  Object.entries(availableSections.value).map(([value, label]) => ({
+    value,
+    label
+  }))
+)
 
-const handleToggleSection = (key: string) => {
-  const index = section.value.indexOf(key)
-  if (index > -1) {
-    section.value.splice(index, 1)
-  } else if (section.value.length < MAX_SECTIONS) {
-    section.value.push(key)
-  } else {
+const onSectionInvalid = (reason: KunCheckBoxGroupInvalidReason) => {
+  if (reason === 'max-reached') {
     useMessage(`最多只能选择 ${MAX_SECTIONS} 个分区`, 'warn')
   }
 }
@@ -101,23 +107,16 @@ const confirmText = computed(() => {
                 (已选 {{ section.length }}/{{ MAX_SECTIONS }})
               </span>
             </h3>
-            <div class="flex flex-wrap gap-2">
-              <KunButton
-                v-for="(label, key) in availableSections"
-                :key="key"
-                :variant="isSectionSelected(key) ? 'solid' : 'light'"
-                :color="isSectionSelected(key) ? 'primary' : 'default'"
-                :disabled="
-                  section.length >= MAX_SECTIONS && !isSectionSelected(key)
-                "
-                :class-name="isSectionSelected(key) ? '' : 'bg-default-500/20'"
-                rounded="full"
-                size="sm"
-                @click="handleToggleSection(key)"
-              >
-                {{ label }}
-              </KunButton>
-            </div>
+            <KunCheckBoxGroup
+              v-model="section"
+              :options="sectionOptions"
+              :max="MAX_SECTIONS"
+              variant="pill"
+              color="primary"
+              size="sm"
+              orientation="horizontal"
+              @invalid="onSectionInvalid"
+            />
           </section>
         </Transition>
 

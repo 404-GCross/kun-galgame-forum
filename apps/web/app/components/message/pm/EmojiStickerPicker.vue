@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // Chat emoji + sticker picker. Emits `emoji` (inserted at the textarea caret by
 // the parent) and `sticker` (sent immediately as its own message). Reuses the
-// emoji data + sticker URL scheme the milkdown editor plugins already use, so
-// there's a single source of truth for both. The segmented pill toggle is a
-// deliberately cleaner take than kun-galgame-patch's underlined tab.
-import { emojiArray } from '../../kun/milkdown/plugins/emoji/_isoEmoji'
-import { stickerArray } from '../../kun/milkdown/plugins/sticker/_stickers'
+// shared emoji data + sticker URL scheme (also used by the editor's upload
+// adapter), so there's a single source of truth for both. The segmented pill
+// toggle is a deliberately cleaner take than kun-galgame-patch's underlined tab.
+import { emojiArray } from '~/constants/emoji'
+import { stickerArray } from '~/constants/sticker'
 
 const emit = defineEmits<{
   emoji: [emoji: string]

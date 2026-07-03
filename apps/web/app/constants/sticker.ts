@@ -1,6 +1,6 @@
-// Single source of truth for the sticker URLs, shared by the milkdown editor
-// sticker plugin (Container.vue) and the chat picker (EmojiStickerPicker.vue) —
-// mirrors how plugins/emoji/_isoEmoji.ts is shared for emoji.
+// Single source of truth for the sticker URLs, shared by the editor's upload
+// adapter (useKunEditorAdapters → the KunEditor sticker picker) and the chat
+// picker (EmojiStickerPicker.vue) — mirrors how constants/emoji.ts is shared.
 //
 // sticker.kungal.com layout (verified 2026-06-25 via HEAD requests): sets
 // KUNgal1..7; sets 1-6 hold 80 stickers each, set 7 (the latest) currently holds
