@@ -30,6 +30,18 @@ func NewUserContentService(
 	}
 }
 
+// hideTarget reports whether the profile owner (userID) is banned. When true,
+// every content tab must render nothing: the profile page itself already
+// degrades to a stub (user_service.GetUserProfile), but the content-list
+// endpoints are separate routes with no shared gate — and topics/replies/
+// comments don't hydrate identity, so a per-row filter can't cover them.
+// Fails open (a transient OAuth error yields a zero-Status renderable user)
+// so an OAuth outage doesn't blank every profile.
+func (s *UserContentService) hideTarget(ctx context.Context, userID int) bool {
+	u, _, _ := s.userClient.User(ctx, userID)
+	return !userclient.IsRenderable(u)
+}
+
 // ──────────────────────────────────────────
 // User galgame list — GET /user/:userID/galgames
 // ──────────────────────────────────────────
@@ -47,6 +59,9 @@ func (s *UserContentService) GetUserGalgameCards(
 	req *dto.UserGalgamesRequest,
 	isSFW bool,
 ) ([]dto.UserGalgameCard, int64, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return []dto.UserGalgameCard{}, 0, nil
+	}
 	// "已发布" (galgame_publish): ownership lives in the wiki — kungal's local
 	// galgame mirror has no user_id after the OAuth migration — so the list
 	// comes straight from the wiki endpoint (already ordered, paginated and
@@ -151,6 +166,9 @@ func (s *UserContentService) buildGalgameCards(
 // ──────────────────────────────────────────
 
 func (s *UserContentService) GetUserTopics(ctx context.Context, userID int, req *dto.UserTopicsRequest, isSFW bool) ([]dto.UserTopic, int64, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return []dto.UserTopic{}, 0, nil
+	}
 	items, total, err := s.userContentRepo.FindUserTopics(userID, req.Type, req.Page, req.Limit, isSFW)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取用户话题列表失败")
@@ -159,6 +177,9 @@ func (s *UserContentService) GetUserTopics(ctx context.Context, userID int, req 
 }
 
 func (s *UserContentService) GetUserReplies(ctx context.Context, userID int, req *dto.UserRepliesRequest, isSFW bool) ([]repository.UserReply, int64, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return []repository.UserReply{}, 0, nil
+	}
 	items, total, err := s.userContentRepo.FindUserReplies(userID, req.Type, req.Page, req.Limit, isSFW)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取用户回复列表失败")
@@ -167,6 +188,9 @@ func (s *UserContentService) GetUserReplies(ctx context.Context, userID int, req
 }
 
 func (s *UserContentService) GetUserComments(ctx context.Context, userID int, req *dto.UserCommentsRequest, isSFW bool) ([]repository.UserComment, int64, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return []repository.UserComment{}, 0, nil
+	}
 	items, total, err := s.userContentRepo.FindUserComments(userID, req.Type, req.Page, req.Limit, isSFW)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取用户评论列表失败")
@@ -185,6 +209,9 @@ func (s *UserContentService) GetUserGalgameComments(
 	req *dto.UserGalgameCommentsRequest,
 	isSFW bool,
 ) ([]dto.UserGalgameComment, int64, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return []dto.UserGalgameComment{}, 0, nil
+	}
 	rows, total, err := s.userContentRepo.FindUserGalgameComments(userID, req.Type, req.Page, req.Limit)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取用户 Galgame 评论列表失败")
@@ -219,6 +246,11 @@ func (s *UserContentService) GetUserGalgameComments(
 			continue
 		}
 		u := userMap[r.UserID]
+		// Drop comments authored by a banned user — the 被评论 / 点赞评论 tabs
+		// list third-party comments (flat list, no nesting).
+		if !userclient.IsRenderable(u) {
+			continue
+		}
 		items = append(items, dto.UserGalgameComment{
 			ID:          r.ID,
 			GalgameID:   r.GalgameID,
@@ -241,6 +273,9 @@ func (s *UserContentService) GetUserResources(
 	req *dto.UserResourcesRequest,
 	isSFW bool,
 ) (*dto.UserResourcesResponse, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return &dto.UserResourcesResponse{Resources: []dto.UserResourceItem{}, Total: 0}, nil
+	}
 	rows, total, err := s.userContentRepo.FindUserResources(userID, req.Type, req.Page, req.Limit)
 	if err != nil {
 		return nil, errors.ErrInternal("获取用户资源列表失败")
@@ -306,6 +341,9 @@ func (s *UserContentService) GetUserRatings(
 	req *dto.UserRatingsRequest,
 	isSFW bool,
 ) (*dto.UserRatingsResponse, *errors.AppError) {
+	if s.hideTarget(ctx, userID) {
+		return &dto.UserRatingsResponse{RatingData: []dto.UserRatingItem{}, Total: 0}, nil
+	}
 	rows, total, err := s.userContentRepo.FindUserRatings(userID, req.Page, req.Limit)
 	if err != nil {
 		return nil, errors.ErrInternal("获取用户评分列表失败")
