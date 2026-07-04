@@ -16,6 +16,7 @@ export const KUN_EDITOR_TOOLBAR_ITEMS: KunToolbarItem[] = [
   'italic',
   'strike',
   'code',
+  'link',
   '|',
   'bulletList',
   'orderedList',

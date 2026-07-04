@@ -22,6 +22,13 @@ const adapters = useKunEditorAdapters()
 const headings = ref<KunHeading[]>([])
 const editorRef = ref<KunEditorExpose | null>(null)
 
+// The edit page uses its own image dialog (URL / multi-upload / recent history)
+// rendered beside the toolbar, so drop the built-in image button from this
+// toolbar's items. Reply/comment editors keep the built-in one (shared items).
+const editorToolbarItems = KUN_EDITOR_TOOLBAR_ITEMS.filter(
+  (item) => item !== 'image'
+)
+
 const isPublishOpen = ref(false)
 const openPublish = () => {
   isPublishOpen.value = true
@@ -101,7 +108,7 @@ onBeforeRouteLeave(async () => {
         draggable
         class="bg-default-100 order-last w-full rounded-lg px-1 py-1 sm:order-none sm:w-auto sm:min-w-0 sm:flex-1 sm:rounded-none sm:bg-transparent sm:p-0"
       >
-        <div id="et-toolbar" class="w-max" />
+        <div id="et-toolbar" class="flex w-max items-center" />
       </KunScrollShadow>
       <div
         class="order-1 ml-auto flex shrink-0 items-center gap-2 sm:order-none sm:ml-0"
@@ -176,11 +183,14 @@ onBeforeRouteLeave(async () => {
                 </template>
                 <template #toolbar="api">
                   <Teleport to="#et-toolbar" defer>
-                    <KunEditorToolbar
-                      v-if="editorMode === 'wysiwyg'"
-                      v-bind="api"
-                      :items="KUN_EDITOR_TOOLBAR_ITEMS"
-                    />
+                    <template v-if="editorMode === 'wysiwyg'">
+                      <KunEditorToolbar v-bind="api" :items="editorToolbarItems" />
+                      <span
+                        class="bg-default-200 mx-1 h-5 w-px"
+                        aria-hidden="true"
+                      />
+                      <EditTopicImageDialog v-bind="api" />
+                    </template>
                   </Teleport>
                 </template>
               </KunEditor>

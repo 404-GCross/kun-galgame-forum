@@ -86,7 +86,7 @@ const confirmText = computed(() => {
           <KunTab
             :model-value="category"
             :items="categoryItems"
-            variant="bordered"
+            variant="light"
             color="primary"
             :full-width="true"
             @update:model-value="(v) => handleSelectCategory(v as TopicCategoryKey)"
