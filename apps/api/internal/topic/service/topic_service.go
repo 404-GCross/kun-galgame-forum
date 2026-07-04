@@ -153,9 +153,8 @@ func (s *TopicService) GetResourceList(
 
 // mapListRows enriches topic card rows with tags+sections and maps to DTOs.
 // Identity (UserName/UserAvatar) is hydrated from OAuth via userclient since
-// kungal no longer keeps a local users table; banned authors get a
-// placeholder so the row still renders (per agreed "hide" policy at the
-// column level, full row-drop is left to the frontend).
+// kungal no longer keeps a local users table; rows authored by a banned user
+// are dropped from the listing (see the IsRenderable skip below).
 func (s *TopicService) mapListRows(ctx context.Context, rows []repository.TopicCardRow, total int64) ([]dto.TopicCard, int64, *errors.AppError) {
 	topicIDs := make([]int, len(rows))
 	for i, r := range rows {

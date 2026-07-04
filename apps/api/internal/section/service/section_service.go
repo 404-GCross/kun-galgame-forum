@@ -53,11 +53,36 @@ func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionT
 
 // GetCategoryStats returns section stats (topic count + view count + latest topic)
 // filtered by category.
-func (s *SectionService) GetCategoryStats(category string) ([]dto.SectionStat, *errors.AppError) {
+//
+// The "latest topic" preview must not surface a banned author's topic (title +
+// link), so we pull a few newest candidates per section and pick the newest
+// whose author is renderable. The topic_count / view_count aggregates still
+// include banned authors' topics — ban status is OAuth-owned, not a local
+// column, so it can't be filtered in SQL; this is the same over-report every
+// other list's `total` carries.
+func (s *SectionService) GetCategoryStats(ctx context.Context, category string) ([]dto.SectionStat, *errors.AppError) {
 	rows, err := s.repo.FindCategoryStats(category)
 	if err != nil {
 		return nil, errors.ErrInternal("获取板块统计失败")
 	}
+
+	// Fetch candidates for every section first, then hydrate all their authors
+	// in one batch so the per-section pick is a cheap in-memory scan.
+	const latestCandidates = 10
+	candBySection := make(map[int][]repository.LatestTopicRow, len(rows))
+	uidSet := map[int]struct{}{}
+	for _, r := range rows {
+		cands := s.repo.FindLatestTopicsInSection(r.SectionID, category, latestCandidates)
+		candBySection[r.SectionID] = cands
+		for _, c := range cands {
+			uidSet[c.UserID] = struct{}{}
+		}
+	}
+	uids := make([]int, 0, len(uidSet))
+	for id := range uidSet {
+		uids = append(uids, id)
+	}
+	userMap := s.userClient.Hydrate(ctx, uids)
 
 	stats := make([]dto.SectionStat, len(rows))
 	for i, r := range rows {
@@ -67,12 +92,16 @@ func (s *SectionService) GetCategoryStats(category string) ([]dto.SectionStat, *
 			TopicCount: r.TopicCount,
 			ViewCount:  r.ViewCount,
 		}
-		if latest := s.repo.FindLatestTopicInSection(r.SectionID, category); latest != nil {
-			stats[i].LatestTopic = &dto.LatestTopic{
-				ID:      latest.ID,
-				Title:   latest.Title,
-				Created: latest.Created,
+		for _, c := range candBySection[r.SectionID] {
+			if !userclient.IsRenderable(userMap[c.UserID]) {
+				continue
 			}
+			stats[i].LatestTopic = &dto.LatestTopic{
+				ID:      c.ID,
+				Title:   c.Title,
+				Created: c.Created,
+			}
+			break
 		}
 	}
 	return stats, nil

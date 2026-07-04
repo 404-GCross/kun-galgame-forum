@@ -43,6 +43,7 @@ type LatestTopicRow struct {
 	ID      int    `gorm:"column:id"`
 	Title   string `gorm:"column:title"`
 	Created string `gorm:"column:created"`
+	UserID  int    `gorm:"column:user_id"`
 }
 
 // ──────────────────────────────────────────
@@ -89,20 +90,19 @@ func (r *SectionRepository) FindCategoryStats(category string) ([]SectionStatRow
 	return rows, err
 }
 
-// FindLatestTopicInSection returns the most recent topic in a section for the given category.
-// Returns nil if no matching topic exists.
-func (r *SectionRepository) FindLatestTopicInSection(sectionID int, category string) *LatestTopicRow {
-	var latest LatestTopicRow
-	result := r.db.Raw(`
-		SELECT t.id, t.title, t.created
+// FindLatestTopicsInSection returns up to `limit` most-recent topics in a
+// section for the given category, newest first, each with its author id so the
+// caller can skip banned authors when picking the "latest topic" preview.
+// Empty slice if none match.
+func (r *SectionRepository) FindLatestTopicsInSection(sectionID int, category string, limit int) []LatestTopicRow {
+	var rows []LatestTopicRow
+	r.db.Raw(`
+		SELECT t.id, t.title, t.created, t.user_id
 		FROM topic t
 		JOIN topic_section_relation tsr ON tsr.topic_id = t.id
 		WHERE tsr.topic_section_id = ? AND t.status != 1
 			AND t.category = ?
-		ORDER BY t.created DESC LIMIT 1
-	`, sectionID, category).Scan(&latest)
-	if result.RowsAffected == 0 {
-		return nil
-	}
-	return &latest
+		ORDER BY t.created DESC LIMIT ?
+	`, sectionID, category, limit).Scan(&rows)
+	return rows
 }

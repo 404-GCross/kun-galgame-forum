@@ -318,8 +318,9 @@ func (s *ActivityService) serveKeyset(ctx context.Context, types []string, curso
 // cachedTopicKeyset / serveTopicKeyset are the 话题-tab counterparts of
 // cachedKeyset / serveKeyset: the page comes from FetchTopicFeed (topics sorted by
 // status_update_time) instead of FetchFeed, but the enrichment + opaque cursor are
-// shared. Topics are never dropped by enrichment (galgame_id 0), so there's no
-// fill-to-limit loop — one fetch is one page.
+// shared. There's no fill-to-limit loop — one fetch is one page — so a page can
+// come back short when a banned author's topics are dropped by hydrateActors;
+// the cursor is the last raw row, so pagination still self-heals across pages.
 func (s *ActivityService) cachedTopicKeyset(ctx context.Context, cacheKey, cursor string, limit int, isSFW bool, sectionMode string) (*Result, *errors.AppError) {
 	if cached, ok := s.getCachedResult(ctx, cacheKey); ok {
 		return cached, nil

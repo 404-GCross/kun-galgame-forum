@@ -166,9 +166,6 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 		return nil, errors.ErrNotFound("未找到该工具")
 	}
 
-	// View +1 async
-	go s.toolsetRepo.IncrementView(id)
-
 	descriptionHTML := markdown.Render(toolset.Description)
 	aliases := s.toolsetRepo.FindAliases(id)
 
@@ -188,6 +185,11 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 	if !userclient.IsRenderable(userMap[toolset.UserID]) {
 		return nil, errors.ErrNotFound("未找到该工具")
 	}
+
+	// View +1 async — after the ban gate so a hidden toolset never counts a
+	// view (consistent with the other detail endpoints).
+	go s.toolsetRepo.IncrementView(id)
+
 	user := userBriefFromClient(userMap[toolset.UserID])
 	contributors := make([]userModel.UserBrief, 0, len(contributorIDs))
 	for _, userID := range contributorIDs {

@@ -42,7 +42,7 @@ func (h *SectionHandler) GetCategories(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	stats, appErr := h.sectionService.GetCategoryStats(req.Category)
+	stats, appErr := h.sectionService.GetCategoryStats(c.Context(), req.Category)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
