@@ -51,22 +51,24 @@ type TopicTagRow struct {
 }
 
 type ReplyRow struct {
-	ID         int
-	TopicID    int
-	TopicTitle string
-	Content    string
-	Floor      int
-	UserID     int
-	Created    time.Time
+	ID          int
+	TopicID     int
+	TopicTitle  string
+	TopicUserID int
+	Content     string
+	Floor       int
+	UserID      int
+	Created     time.Time
 }
 
 type CommentRow struct {
-	ID         int
-	TopicID    int
-	TopicTitle string
-	Content    string
-	UserID     int
-	Created    time.Time
+	ID          int
+	TopicID     int
+	TopicTitle  string
+	TopicUserID int
+	Content     string
+	UserID      int
+	Created     time.Time
 }
 
 // ──────────────────────────────────────────
@@ -154,7 +156,7 @@ func (r *SearchRepository) SearchReplies(keywords []string, page, limit int) (ro
 	// A reply's text is in r.content (the legacy multi-target rows were folded
 	// into it by the Phase-4 migration), so snippet + keyword match use it.
 	query := r.db.Table("topic_reply r").
-		Select(`r.id, r.topic_id, t.title AS topic_title,
+		Select(`r.id, r.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
 			SUBSTRING(COALESCE(r.content, ''), 1, 233) AS content, r.floor,
 			r.user_id, r.created`).
 		Joins("LEFT JOIN topic t ON t.id = r.topic_id")
@@ -173,7 +175,7 @@ func (r *SearchRepository) SearchReplies(keywords []string, page, limit int) (ro
 // the service layer via userclient.
 func (r *SearchRepository) SearchComments(keywords []string, page, limit int) (rows []CommentRow, total int64) {
 	query := r.db.Table("topic_comment c").
-		Select(`c.id, c.topic_id, t.title AS topic_title,
+		Select(`c.id, c.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
 			SUBSTRING(c.content, 1, 233) AS content,
 			c.user_id, c.created`).
 		Joins("LEFT JOIN topic t ON t.id = c.topic_id")

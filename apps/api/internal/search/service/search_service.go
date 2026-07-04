@@ -156,12 +156,25 @@ func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, lim
 	rows, total := s.repo.SearchReplies(keywords, page, limit)
 
 	uids := userclient.CollectIDs(rows, func(r repository.ReplyRow) int { return r.UserID })
+	// Also hydrate the parent-topic authors so a reply under a banned author's
+	// (now-hidden) topic can be dropped too.
+	for _, r := range rows {
+		if r.TopicUserID > 0 {
+			uids = append(uids, r.TopicUserID)
+		}
+	}
 	userMap := s.userClient.Hydrate(ctx, uids)
 
 	items := make([]dto.ReplyItem, 0, len(rows))
 	for _, r := range rows {
 		u := userMap[r.UserID]
 		if !userclient.IsRenderable(u) {
+			continue
+		}
+		// Drop when the PARENT topic's author is banned: that topic is hidden
+		// (its detail 404s), so this hit is a dead link that would still leak
+		// the banned author's title as context.
+		if r.TopicUserID > 0 && !userclient.IsRenderable(userMap[r.TopicUserID]) {
 			continue
 		}
 		items = append(items, dto.ReplyItem{
@@ -237,12 +250,25 @@ func (s *SearchService) SearchComments(ctx context.Context, raw string, page, li
 	rows, total := s.repo.SearchComments(keywords, page, limit)
 
 	uids := userclient.CollectIDs(rows, func(r repository.CommentRow) int { return r.UserID })
+	// Also hydrate the parent-topic authors so a comment under a banned
+	// author's (now-hidden) topic can be dropped too.
+	for _, r := range rows {
+		if r.TopicUserID > 0 {
+			uids = append(uids, r.TopicUserID)
+		}
+	}
 	userMap := s.userClient.Hydrate(ctx, uids)
 
 	items := make([]dto.CommentItem, 0, len(rows))
 	for _, r := range rows {
 		u := userMap[r.UserID]
 		if !userclient.IsRenderable(u) {
+			continue
+		}
+		// Drop when the PARENT topic's author is banned: that topic is hidden
+		// (its detail 404s), so this hit is a dead link that would still leak
+		// the banned author's title as context.
+		if r.TopicUserID > 0 && !userclient.IsRenderable(userMap[r.TopicUserID]) {
 			continue
 		}
 		items = append(items, dto.CommentItem{
