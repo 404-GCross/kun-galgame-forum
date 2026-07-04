@@ -23,7 +23,11 @@ export interface GalgameStorePersist {
 // tags/officials/engines hold the FULL entity objects (not just ids) so
 // the selectors can render names without a second lookup; Footer.vue
 // derives the *_ids[] wire arrays at submit time. links mirrors the wiki
-// PR `links` shape ({name, link}); note is the PR description.
+// PR `links` shape ({name, link}). Two distinct description surfaces the
+// wiki keeps separate (docs/galgame_wiki/02-revisions-and-prs.md): a
+// direct edit writes a REVISION → uses `note`; opening a PR → uses
+// `title` + `message`. Footer.vue sends whichever the submit endpoint
+// consumes, based on can_direct_edit.
 //
 // IMPORTANT (wiki "replace-all" semantics): aliases / tag_ids /
 // official_ids / engine_ids / links each REPLACE the entire set on
@@ -44,7 +48,10 @@ export interface GalgameEditStoreTemp {
   officials: GalgameOfficialItem[]
   engines: GalgameEngineItem[]
   links: { name: string; link: string }[]
+  // Revision note (direct-edit path). PR path uses title + message instead.
   note: string
+  title: string
+  message: string
   // U1: "" = unknown (cleared); concrete "YYYY-MM-DD" or any (TBA may set
   // a predicted partial date — wiki accepts the same string format).
   release_date: string

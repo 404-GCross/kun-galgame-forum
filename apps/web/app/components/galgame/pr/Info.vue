@@ -49,7 +49,6 @@ const handleGetDetails = async (galgamePrId: number) => {
     id: detail.pr.id,
     galgame_id: detail.pr.galgame_id,
     status: detail.pr.status,
-    note: detail.pr.note,
     changed_keys: detail.changed_keys ?? {},
     old_snap: baseRev?.snapshot ?? {},
     new_snap: detail.pr.snapshot ?? {},
@@ -115,9 +114,14 @@ watch(
       </div>
     </div>
 
-    <p v-if="pr.note" class="text-default-600 text-sm">
-      <span class="text-default-400">说明: </span>{{ pr.note }}
-    </p>
+    <div v-if="pr.title || pr.message" class="space-y-0.5 text-sm">
+      <p v-if="pr.title" class="text-default-700 font-medium">
+        {{ pr.title }}
+      </p>
+      <p v-if="pr.message" class="text-default-600">
+        <span class="text-default-400">说明: </span>{{ pr.message }}
+      </p>
+    </div>
 
     <GalgamePrDetails v-if="details" :details="details" :refresh="refresh" />
   </div>

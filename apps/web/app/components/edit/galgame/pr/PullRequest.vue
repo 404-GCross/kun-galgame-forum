@@ -161,11 +161,27 @@ const originalLanguageOptions: KunSelectOption[] = [
             <div
               class="border-default-200 bg-content1/90 flex flex-col gap-3 rounded-xl border p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center"
             >
+              <!-- Direct edit writes a revision (uses `note`); a PR uses
+                   title + message. Show only what the submit endpoint
+                   consumes — see Footer.vue + docs 02-revisions-and-prs. -->
               <KunInput
+                v-if="pr!.can_direct_edit"
                 v-model="pr!.note"
                 class="flex-1"
-                placeholder="PR 说明 (可选): 简述本次修改了什么 / 来源依据, 便于审核"
+                placeholder="版本说明 (可选): 简述本次修改了什么 / 来源依据"
               />
+              <template v-else>
+                <KunInput
+                  v-model="pr!.title"
+                  class="flex-1"
+                  placeholder="更新请求标题 (可选)"
+                />
+                <KunInput
+                  v-model="pr!.message"
+                  class="flex-1"
+                  placeholder="更新请求说明 (可选): 简述改了什么 / 来源依据, 便于审核"
+                />
+              </template>
               <EditGalgamePrFooter />
             </div>
           </div>

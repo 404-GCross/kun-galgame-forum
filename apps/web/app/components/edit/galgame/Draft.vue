@@ -125,15 +125,17 @@ watch(
           ? g.original_language
           : 'ja-jp',
         alias: [],
-        // Draft (status=3/4) PATCH doesn't touch relations/links/note —
-        // patchDraftSchema has no such fields. These are only here to
-        // satisfy the shared GalgameEditStoreTemp shape (the PR flow
-        // uses them); Draft.vue neither reads nor submits them.
+        // Draft (status=3/4) PATCH doesn't touch relations/links/note/
+        // title/message — patchDraftSchema has no such fields. These are
+        // only here to satisfy the shared GalgameEditStoreTemp shape (the
+        // PR flow uses them); Draft.vue neither reads nor submits them.
         tags: [],
         officials: [],
         engines: [],
         links: [],
         note: '',
+        title: '',
+        message: '',
         // U1: empty string when wiki has no date (draft.release_date is
         // nullable on the wire); user can fill in the form below.
         release_date: g.release_date ?? '',

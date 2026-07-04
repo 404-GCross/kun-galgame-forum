@@ -1,9 +1,12 @@
 // PR list item (kungal maps /galgame/:gid/pr/all → camelCase).
+// PRs carry title + message (the old single `note` was retired for PRs;
+// revisions still use `note`). See docs/galgame_wiki/02-revisions-and-prs.md.
 export interface GalgamePR {
   id: number
   galgame_id: number
   status: number
-  note: string
+  title: string
+  message: string
   base_revision: number
   user: KunUser
   completed_time: Date | string | null
@@ -30,7 +33,8 @@ export interface WikiPRDetailResponse {
     galgame_id: number
     user_id: number
     status: number
-    note: string
+    title: string
+    message: string
     base_revision: number
     snapshot: Record<string, unknown>
     completed_by: number | null
@@ -47,7 +51,6 @@ export interface GalgamePRDiffView {
   id: number
   galgame_id: number
   status: number
-  note: string
   changed_keys: Record<string, boolean>
   old_snap: Record<string, unknown>
   new_snap: Record<string, unknown>

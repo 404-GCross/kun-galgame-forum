@@ -58,7 +58,10 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
         .map((l) => ({ name: l.name.trim(), link: l.link.trim() }))
         .filter((l) => l.name.length > 0 && l.link.length > 0)
     ),
+    // Fresh each edit: note (direct→revision) / title+message (→PR).
     note: '',
+    title: '',
+    message: '',
     // U1: hydrate from detail; nil → empty (treated as "unknown" by the
     // schema's `"" | YYYY-MM-DD` refinement). The wire ships ISO
     // datetimes ("2016-11-25T00:00:00Z") so `toYMD` strips down to the

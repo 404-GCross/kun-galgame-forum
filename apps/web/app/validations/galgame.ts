@@ -404,7 +404,16 @@ export const updateGalgameSchema = z
       )
       .max(107, { message: '相关链接最多 107 条' })
       .default([]),
-    note: z.string().max(1007, { message: 'PR 说明最多 1007 字' }).default('')
+    // The same form serves both submit endpoints (Footer branches on
+    // can_direct_edit): a direct edit → revision `note`; a PR →
+    // `title` + `message`. All optional so either path validates; Footer
+    // only attaches the pair the target endpoint consumes.
+    note: z.string().max(1007, { message: '版本说明最多 1007 字' }).default(''),
+    title: z.string().max(1007, { message: '更新请求标题最多 1007 字' }).default(''),
+    message: z
+      .string()
+      .max(1007, { message: '更新请求说明最多 1007 字' })
+      .default('')
   })
   .superRefine((data, ctx) => {
     if (data.aliases.length >= 30) {

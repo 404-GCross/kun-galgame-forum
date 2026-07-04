@@ -102,8 +102,19 @@ const handlePublishGalgamePR = async () => {
     aliases: aliasList,
     tag_ids: galgame.tags.map((t) => t.id),
     official_ids: galgame.officials.map((o) => o.id),
-    engine_ids: galgame.engines.map((e) => e.id),
-    note: galgame.note
+    engine_ids: galgame.engines.map((e) => e.id)
+  }
+
+  // The wiki keeps the two description surfaces separate (docs
+  // 02-revisions-and-prs.md): a direct edit writes a REVISION and takes
+  // `note`; a PR takes `title` + `message` (the old single `note` field is
+  // retired for PRs). Send only what the target endpoint consumes so a PR
+  // no longer arrives with a blank title/message.
+  if (can_direct_edit.value) {
+    data.note = galgame.note
+  } else {
+    data.title = galgame.title
+    data.message = galgame.message
   }
 
   // Only when the user actually touched it (see above) — otherwise the key is
