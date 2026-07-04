@@ -117,6 +117,13 @@ func (s *ResourceService) GetResourceDetail(
 		return nil, &ResourceNotFound{}, nil
 	}
 
+	// A banned owner's resource is hidden even by direct link — treat as
+	// not-found before counting a view.
+	ownerUser, _, _ := s.userClient.User(ctx, row.UserID)
+	if !userclient.IsRenderable(ownerUser) {
+		return nil, &ResourceNotFound{}, nil
+	}
+
 	// Fire-and-forget view increment. We add 1 to the returned value too so
 	// the client sees the freshly-incremented count without re-fetching.
 	s.resourceRepo.IncrementView(resourceID)
@@ -124,8 +131,6 @@ func (s *ResourceService) GetResourceDetail(
 
 	links := s.resourceRepo.FindLinks(resourceID)
 	isLiked := s.resourceRepo.IsLikedBy(resourceID, currentUserID)
-
-	ownerUser, _, _ := s.userClient.User(ctx, row.UserID)
 
 	resource := rowToMeta(row, links, isLiked, ownerUser)
 
@@ -157,12 +162,18 @@ func (s *ResourceService) GetResourceDownloadDetail(
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
+	// A banned owner's resource is hidden even by direct link — 404 before
+	// counting a download.
+	owner, _, _ := s.userClient.User(ctx, row.UserID)
+	if !userclient.IsRenderable(owner) {
+		return nil, errors.ErrNotFound("未找到该资源")
+	}
+
 	s.resourceRepo.IncrementDownload(resourceID)
 	row.Download++
 
 	links := s.resourceRepo.FindLinks(resourceID)
 	isLiked := s.resourceRepo.IsLikedBy(resourceID, currentUserID)
-	owner, _, _ := s.userClient.User(ctx, row.UserID)
 
 	detail := rowToDownloadDetail(row, links, isLiked, owner)
 	return &detail, nil

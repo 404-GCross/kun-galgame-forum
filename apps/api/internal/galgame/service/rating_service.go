@@ -127,6 +127,12 @@ func (s *RatingService) GetRatingDetail(
 		return nil, errors.ErrNotFound("评分不存在")
 	}
 
+	// A banned author's rating is hidden even by direct link — 404 before
+	// counting a view. (Cached; the batch hydrate below reuses it.)
+	if author, _, _ := s.userClient.User(ctx, row.UserID); !userclient.IsRenderable(author) {
+		return nil, errors.ErrNotFound("评分不存在")
+	}
+
 	// Fire-and-forget view increment; reflect it in response too.
 	s.ratingRepo.IncrementView(ratingID)
 	row.View++
@@ -153,9 +159,13 @@ func (s *RatingService) GetRatingDetail(
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
 
-	comments := make([]dto.RatingCommentItem, len(commentRows))
-	for i, cm := range commentRows {
-		comments[i] = ratingCommentRowToDTO(cm, userMap)
+	comments := make([]dto.RatingCommentItem, 0, len(commentRows))
+	for _, cm := range commentRows {
+		// Hide comments authored by a banned user (flat list — no nesting).
+		if !userclient.IsRenderable(userMap[cm.UserID]) {
+			continue
+		}
+		comments = append(comments, ratingCommentRowToDTO(cm, userMap))
 	}
 
 	// Galgame detail from wiki + (when present) its parent series.

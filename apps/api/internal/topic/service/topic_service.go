@@ -206,6 +206,7 @@ func (s *TopicService) GetDetail(
 	g, _ := errgroup.WithContext(ctx)
 
 	var author *repository.TopicAuthorUser
+	var authorBanned bool
 	var tags []string
 	var sections []string
 	var hasPoll bool
@@ -216,6 +217,11 @@ func (s *TopicService) GetDetail(
 		u, _, e := s.userClient.User(ctx, topic.UserID)
 		if e != nil {
 			return e
+		}
+		// A banned author's topic is hidden even by direct link (404 below).
+		if !userclient.IsRenderable(u) {
+			authorBanned = true
+			return nil
 		}
 		moe := 0
 		if state, _ := s.stateRepo.FindByID(topic.UserID); state != nil {
@@ -264,6 +270,11 @@ func (s *TopicService) GetDetail(
 
 	if err := g.Wait(); err != nil {
 		return nil, errors.ErrInternal("获取话题详情失败")
+	}
+	// Banned author → hide the whole topic (before counting a view). `author`
+	// is left nil in this case, so this must precede the DTO assembly below.
+	if authorBanned {
+		return nil, errors.ErrNotFound("未找到该话题")
 	}
 
 	// Increment view asynchronously
@@ -345,19 +356,23 @@ func (s *TopicService) GetDetail(
 		reply, replyErr := s.topicRepo.FindReplyByID(*topic.BestAnswerID)
 		if replyErr == nil && reply != nil {
 			ru, _, _ := s.userClient.User(ctx, reply.UserID)
-			baMentionNames := map[int]string{}
-			if ids := markdown.ExtractMentionIDs(reply.Content); len(ids) > 0 {
-				for id, u := range s.userClient.Hydrate(ctx, ids) {
-					baMentionNames[id] = u.Name
+			// Omit the best-answer highlight when its author is banned — the
+			// same reply is already dropped from the paginated reply list.
+			if userclient.IsRenderable(ru) {
+				baMentionNames := map[int]string{}
+				if ids := markdown.ExtractMentionIDs(reply.Content); len(ids) > 0 {
+					for id, u := range s.userClient.Hydrate(ctx, ids) {
+						baMentionNames[id] = u.Name
+					}
 				}
-			}
-			detail.BestAnswer = &dto.TopicBestAnswer{
-				ID:              reply.ID,
-				Floor:           reply.Floor,
-				User:            dto.KunUser{ID: ru.ID, Name: ru.Name, Avatar: ru.Avatar},
-				ContentMarkdown: reply.Content,
-				ContentHtml:     markdown.ResolveMentionNames(markdown.Render(reply.Content), baMentionNames),
-				Created:         reply.CreatedAt,
+				detail.BestAnswer = &dto.TopicBestAnswer{
+					ID:              reply.ID,
+					Floor:           reply.Floor,
+					User:            dto.KunUser{ID: ru.ID, Name: ru.Name, Avatar: ru.Avatar},
+					ContentMarkdown: reply.Content,
+					ContentHtml:     markdown.ResolveMentionNames(markdown.Render(reply.Content), baMentionNames),
+					Created:         reply.CreatedAt,
+				}
 			}
 		}
 	}
