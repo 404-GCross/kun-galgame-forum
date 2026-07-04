@@ -33,11 +33,17 @@ func (h *RSSHandler) GetTopicRSS(c fiber.Ctx) error {
 	rows := h.repo.FindRecentSFWTopics()
 	uids := userclient.CollectIDs(rows, func(r dto.TopicRSSItem) int { return r.UserID })
 	userMap := h.userClient.Hydrate(c.Context(), uids)
+	items := make([]dto.TopicRSSItem, 0, len(rows))
 	for i := range rows {
 		u := userMap[rows[i].UserID]
+		// Drop topics authored by a banned user from the syndicated feed.
+		if !userclient.IsRenderable(u) {
+			continue
+		}
 		rows[i].UserName = u.Name
+		items = append(items, rows[i])
 	}
-	return response.OK(c, rows)
+	return response.OK(c, items)
 }
 
 // GetGalgameRSS returns the 10 most recent galgames as RSS items.

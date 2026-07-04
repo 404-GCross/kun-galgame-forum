@@ -401,7 +401,7 @@ func (s *ActivityService) enrichAndHydrate(ctx context.Context, rows []repositor
 	s.enrichEntityRefItems(items)
 	s.enrichSolutionItems(items)
 	s.renderMarkdownBodies(items)
-	s.hydrateActors(ctx, items)
+	items = s.hydrateActors(ctx, items)
 	return items
 }
 
@@ -1224,15 +1224,27 @@ func (s *ActivityService) enrichGalgameItems(
 // non-zero actor id and writes it back into the items. Runs after
 // enrichGalgameItems so GALGAME_CREATION rows whose actor was injected from
 // the wiki brief are also hydrated.
-func (s *ActivityService) hydrateActors(ctx context.Context, items []dto.ActivityItem) {
+//
+// It also DROPS any item whose actor is banned and returns the surviving
+// slice: the feed is a feed of user actions, so a banned user's actions must
+// not surface (the galgame entity itself stays browsable via the catalogue).
+// serveKeyset's fill-to-limit loop refetches to make up for the drops. Items
+// with no actor (id 0 — system events) are always kept.
+func (s *ActivityService) hydrateActors(ctx context.Context, items []dto.ActivityItem) []dto.ActivityItem {
 	uids := userclient.CollectIDs(items, func(it dto.ActivityItem) int { return it.Actor.ID })
 	if len(uids) == 0 {
-		return
+		return items
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
+	kept := make([]dto.ActivityItem, 0, len(items))
 	for i := range items {
 		u := userMap[items[i].Actor.ID]
+		if items[i].Actor.ID > 0 && !userclient.IsRenderable(u) {
+			continue
+		}
 		items[i].Actor.Name = u.Name
 		items[i].Actor.Avatar = u.Avatar
+		kept = append(kept, items[i])
 	}
+	return kept
 }

@@ -70,6 +70,10 @@ func (s *TopicService) GetTopicUpvotes(ctx context.Context, topicID int) ([]dto.
 	out := make([]dto.TopicUpvoteRecord, 0, len(rows))
 	for _, row := range rows {
 		u := userMap[row.UserID]
+		// Drop push records whose author is banned (each carries a one-liner).
+		if !userclient.IsRenderable(u) {
+			continue
+		}
 		out = append(out, dto.TopicUpvoteRecord{
 			ID:          row.ID,
 			User:        dto.KunUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},

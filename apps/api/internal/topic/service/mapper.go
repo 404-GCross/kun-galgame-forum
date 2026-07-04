@@ -21,7 +21,10 @@ import (
 // any DB writes; callers pass in the logged-in user context via userID plus the
 // caller's moderation capability. Identity for voters/creator is hydrated from
 // OAuth via userclient.
-func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.TopicPoll, userID int, canModerate bool) dto.TopicPollResponse {
+// The bool return is false when the poll's creator is banned, so the caller
+// drops the poll from the list (a placeholder for a merely not-found creator
+// stays renderable).
+func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.TopicPoll, userID int, canModerate bool) (dto.TopicPollResponse, bool) {
 	options, _ := s.pollRepo.FindOptionsByPollID(poll.ID)
 	hasVoted, _ := s.pollRepo.HasUserVoted(poll.ID, userID)
 	canView := canViewResults(poll, userID, canModerate, hasVoted)
@@ -79,6 +82,10 @@ func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.To
 	if creatorU.ID == 0 {
 		creatorU = userclient.Placeholder(poll.UserID)
 	}
+	// A banned creator's poll is hidden entirely (its content is theirs).
+	if !userclient.IsRenderable(creatorU) {
+		return dto.TopicPollResponse{}, false
+	}
 
 	return dto.TopicPollResponse{
 		ID: poll.ID, Title: poll.Title, Description: poll.Description,
@@ -91,7 +98,7 @@ func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.To
 		Options:  optionResponses,
 		HasVoted: hasVoted, Voters: voters,
 		VotersCount: votersCount, VoteCount: totalVoteCount,
-	}
+	}, true
 }
 
 // canViewResults returns true if the caller is allowed to see vote counts /
@@ -227,14 +234,25 @@ func (s *ReplyService) buildReplyResponses(
 				if commentLikeMap != nil {
 					isLiked = commentLikeMap[c.ID]
 				}
+				// Banned comment author: tombstone the node (placeholder
+				// identity + blank content) rather than drop it — comments
+				// nest via ParentCommentID, so removing one with child
+				// comments would orphan them in the FE tree.
+				commentUser := kunUser(c.UserID)
+				content := c.Content
+				if cu, ok := userMap[c.UserID]; ok && !userclient.IsRenderable(cu) {
+					ph := userclient.Placeholder(c.UserID)
+					commentUser = dto.KunUser{ID: ph.ID, Name: ph.Name, Avatar: ph.Avatar}
+					content = ""
+				}
 				comments = append(comments, dto.TopicCommentResponse{
 					ID:              c.ID,
 					ReplyID:         c.TopicReplyID,
 					TopicID:         c.TopicID,
 					ParentCommentID: c.ParentCommentID,
-					User:            kunUser(c.UserID),
+					User:            commentUser,
 					TargetUser:      kunUser(c.TargetUserID),
-					Content:         c.Content,
+					Content:         content,
 					IsLiked:         isLiked,
 					LikeCount:       c.LikeCount,
 					Created:         c.CreatedAt,

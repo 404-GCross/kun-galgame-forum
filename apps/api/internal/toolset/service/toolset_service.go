@@ -98,6 +98,12 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 
 	cards := make([]dto.ToolsetCard, 0, len(toolsets))
 	for _, t := range toolsets {
+		// Hide toolsets authored by a banned user (drop the card). Total is
+		// left as the repo count — a small over-report matching the SFW/ban
+		// filtering trade-off used across the other list mappers.
+		if !userclient.IsRenderable(userMap[t.UserID]) {
+			continue
+		}
 		cards = append(cards, toolsetCardFromRow(t, userMap, avgMap, dlMap, ccMap))
 	}
 
@@ -177,6 +183,11 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 	// is a contributor too — userclient dedups).
 	allUIDs := append([]int{toolset.UserID}, contributorIDs...)
 	userMap := s.userClient.Hydrate(ctx, allUIDs)
+	// A banned owner's toolset is hidden even by direct link — 404 like a
+	// missing row. Contributors are embedded refs (placeholder is fine).
+	if !userclient.IsRenderable(userMap[toolset.UserID]) {
+		return nil, errors.ErrNotFound("未找到该工具")
+	}
 	user := userBriefFromClient(userMap[toolset.UserID])
 	contributors := make([]userModel.UserBrief, 0, len(contributorIDs))
 	for _, userID := range contributorIDs {

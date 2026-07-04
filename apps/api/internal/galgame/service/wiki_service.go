@@ -118,9 +118,14 @@ func (s *WikiService) GetTaxonomyRevisions(
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
 
-	items := make([]dto.GalgameRevision, len(parsed.Items))
-	for i, r := range parsed.Items {
-		items[i] = dto.GalgameRevision{
+	// Drop revisions authored by a banned user. Total is left wiki-sourced —
+	// a small over-report matching the SFW filtering trade-off elsewhere.
+	items := make([]dto.GalgameRevision, 0, len(parsed.Items))
+	for _, r := range parsed.Items {
+		if !userclient.IsRenderable(userMap[r.UserID]) {
+			continue
+		}
+		items = append(items, dto.GalgameRevision{
 			ID:       r.ID,
 			Revision: r.Revision,
 			Action:   r.Action,
@@ -128,7 +133,7 @@ func (s *WikiService) GetTaxonomyRevisions(
 			User:     userBriefToDTO(userMap[r.UserID]),
 			IsMinor:  r.IsMinor,
 			Created:  r.Created,
-		}
+		})
 	}
 	return &dto.GalgameRevisionListPage{Items: items, Total: parsed.Total}, nil
 }
@@ -222,15 +227,19 @@ func (s *WikiService) GetGalgameLinks(
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
 
-	out := make([]dto.GalgameLink, len(rows))
-	for i, r := range rows {
-		out[i] = dto.GalgameLink{
+	// Drop links added by a banned user.
+	out := make([]dto.GalgameLink, 0, len(rows))
+	for _, r := range rows {
+		if !userclient.IsRenderable(userMap[r.UserID]) {
+			continue
+		}
+		out = append(out, dto.GalgameLink{
 			ID:        r.ID,
 			User:      userBriefToDTO(userMap[r.UserID]),
 			GalgameID: r.GalgameID,
 			Name:      r.Name,
 			Link:      r.Link,
-		}
+		})
 	}
 	return out, nil
 }
@@ -277,9 +286,13 @@ func (s *WikiService) GetGalgameHistory(
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
 
-	items := make([]dto.GalgameRevision, len(parsed.Items))
-	for i, r := range parsed.Items {
-		items[i] = dto.GalgameRevision{
+	// Drop revisions authored by a banned user.
+	items := make([]dto.GalgameRevision, 0, len(parsed.Items))
+	for _, r := range parsed.Items {
+		if !userclient.IsRenderable(userMap[r.UserID]) {
+			continue
+		}
+		items = append(items, dto.GalgameRevision{
 			ID:       r.ID,
 			Revision: r.Revision,
 			Action:   r.Action,
@@ -287,7 +300,7 @@ func (s *WikiService) GetGalgameHistory(
 			User:     userBriefToDTO(userMap[r.UserID]),
 			IsMinor:  r.IsMinor,
 			Created:  r.Created,
-		}
+		})
 	}
 	return &dto.GalgameRevisionListPage{Items: items, Total: parsed.Total}, nil
 }
@@ -335,9 +348,13 @@ func (s *WikiService) GetGalgamePRs(
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
 
-	items := make([]dto.GalgamePR, len(parsed.Items))
-	for i, r := range parsed.Items {
-		items[i] = dto.GalgamePR{
+	// Drop PRs submitted by a banned user.
+	items := make([]dto.GalgamePR, 0, len(parsed.Items))
+	for _, r := range parsed.Items {
+		if !userclient.IsRenderable(userMap[r.UserID]) {
+			continue
+		}
+		items = append(items, dto.GalgamePR{
 			ID:            r.ID,
 			GalgameID:     r.GalgameID,
 			Status:        r.Status,
@@ -347,7 +364,7 @@ func (s *WikiService) GetGalgamePRs(
 			User:          userBriefToDTO(userMap[r.UserID]),
 			CompletedTime: r.CompletedTime,
 			Created:       r.Created,
-		}
+		})
 	}
 	return &dto.GalgamePRListPage{Items: items, Total: parsed.Total}, nil
 }

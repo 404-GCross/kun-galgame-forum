@@ -110,16 +110,26 @@ func (s *CommentService) GetComments(
 	userMap := s.userClient.Hydrate(ctx, uids)
 
 	build := func(c model.GalgameToolsetComment) dto.ToolsetCommentItem {
+		// Banned author: keep the node (a root may still have non-banned
+		// replies that would otherwise be orphaned) but tombstone it —
+		// placeholder identity + suppressed content, so nothing the banned
+		// user wrote is shown. Banned replies are dropped by the caller.
+		author := userMap[c.UserID]
+		content := c.Content
+		if !userclient.IsRenderable(author) {
+			author = userclient.Placeholder(c.UserID)
+			content = ""
+		}
 		item := dto.ToolsetCommentItem{
 			ID:        c.ID,
 			ToolsetID: c.ToolsetID,
-			Content:   c.Content,
+			Content:   content,
 			Created:   c.CreatedAt,
 			Edited:    c.Edited,
 			ParentID:  c.ParentID,
 			UserID:    c.UserID,
 			Reply:     []dto.ToolsetCommentItem{},
-			User:      userBriefFromClient(userMap[c.UserID]),
+			User:      userBriefFromClient(author),
 		}
 		if c.ParentID != nil {
 			if p, ok := byID[*c.ParentID]; ok {
@@ -136,9 +146,13 @@ func (s *CommentService) GetComments(
 		reps := repliesByRoot[r.ID]
 		root.Reply = make([]dto.ToolsetCommentItem, 0, len(reps))
 		for _, rep := range reps {
+			// Drop replies authored by a banned user (leaves — no orphans).
+			if !userclient.IsRenderable(userMap[rep.UserID]) {
+				continue
+			}
 			root.Reply = append(root.Reply, build(rep))
 		}
-		root.ReplyCount = len(reps)
+		root.ReplyCount = len(root.Reply)
 		items = append(items, root)
 	}
 
@@ -156,6 +170,10 @@ func (s *CommentService) GetLatestForDetail(ctx context.Context, toolsetID, limi
 	userMap := s.userClient.Hydrate(ctx, uids)
 	items := make([]dto.CommentDetailItem, 0, len(rows))
 	for _, cm := range rows {
+		// Hide detail-preview comments authored by a banned user.
+		if !userclient.IsRenderable(userMap[cm.UserID]) {
+			continue
+		}
 		items = append(items, dto.NewCommentDetailItem(cm, userBriefFromClient(userMap[cm.UserID])))
 	}
 	return items

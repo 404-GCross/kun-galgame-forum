@@ -129,7 +129,11 @@ func (s *PollService) GetPollsByTopic(
 
 	responses := make([]dto.TopicPollResponse, 0, len(polls))
 	for _, poll := range polls {
-		responses = append(responses, s.buildPollResponse(ctx, &poll, userID, canModerate))
+		resp, ok := s.buildPollResponse(ctx, &poll, userID, canModerate)
+		if !ok {
+			continue
+		}
+		responses = append(responses, resp)
 	}
 	return responses, nil
 }

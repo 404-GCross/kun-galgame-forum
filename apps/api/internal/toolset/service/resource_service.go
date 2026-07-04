@@ -56,6 +56,13 @@ func (s *ResourceService) GetResourceDetail(
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
+	// A banned owner's resource is hidden even by direct link — 404 before
+	// counting a download or resolving the artifact URL.
+	uc, _, _ := s.userClient.User(ctx, resource.UserID)
+	if !userclient.IsRenderable(uc) {
+		return nil, errors.ErrNotFound("未找到该资源")
+	}
+
 	// Download +1 (fire-and-forget)
 	go s.resourceRepo.IncrementDownload(resource.ID)
 
@@ -71,7 +78,6 @@ func (s *ResourceService) GetResourceDetail(
 		}
 	}
 
-	uc, _, _ := s.userClient.User(ctx, resource.UserID)
 	user := userModel.UserBrief{ID: uc.ID, Name: uc.Name, Avatar: uc.Avatar}
 
 	return &dto.ResourceDetailResponse{
