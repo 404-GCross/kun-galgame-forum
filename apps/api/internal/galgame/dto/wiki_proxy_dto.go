@@ -38,12 +38,15 @@ type GalgameRevisionListPage struct {
 // Galgame PRs (/galgame/:gid/pr/all)
 // ──────────────────────────────────────────
 
-// GalgamePR is a pending/completed pull request on a galgame.
+// GalgamePR is a pending/completed pull request on a galgame. PRs carry
+// title + message (the old single `note` was retired for PRs; revisions
+// still use note). See docs/galgame_wiki/02-revisions-and-prs.md.
 type GalgamePR struct {
 	ID            int       `json:"id"`
 	GalgameID     int       `json:"galgame_id"`
 	Status        int       `json:"status"`
-	Note          string    `json:"note"`
+	Title         string    `json:"title"`
+	Message       string    `json:"message"`
 	BaseRevision  int       `json:"base_revision"`
 	User          UserBrief `json:"user"`
 	CompletedTime *string   `json:"completed_time"`

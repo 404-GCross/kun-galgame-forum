@@ -300,7 +300,8 @@ type wikiPRRow struct {
 	ID            int     `json:"id"`
 	GalgameID     int     `json:"galgame_id"`
 	Status        int     `json:"status"`
-	Note          string  `json:"note"`
+	Title         string  `json:"title"`
+	Message       string  `json:"message"`
 	BaseRevision  int     `json:"base_revision"`
 	UserID        int     `json:"user_id"`
 	CompletedTime *string `json:"completed_time"`
@@ -340,7 +341,8 @@ func (s *WikiService) GetGalgamePRs(
 			ID:            r.ID,
 			GalgameID:     r.GalgameID,
 			Status:        r.Status,
-			Note:          r.Note,
+			Title:         r.Title,
+			Message:       r.Message,
 			BaseRevision:  r.BaseRevision,
 			User:          userBriefToDTO(userMap[r.UserID]),
 			CompletedTime: r.CompletedTime,
