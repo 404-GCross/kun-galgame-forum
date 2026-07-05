@@ -10,6 +10,10 @@ const props = defineProps<{
   vndbId: string
 }>()
 
+const emit = defineEmits<{
+  'has-resource': [boolean]
+}>()
+
 const resources = ref<KunPatchResourceResponse[]>([])
 const isLoading = ref(false)
 
@@ -34,6 +38,7 @@ const fetchKunPatchResource = async (vndbId: string) => {
 
 onMounted(async () => {
   await fetchKunPatchResource(props.vndbId)
+  emit('has-resource', resources.value.length > 0)
 })
 </script>
 

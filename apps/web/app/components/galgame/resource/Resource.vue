@@ -24,7 +24,6 @@ const { id } = usePersistUserStore()
 const { data, status, refresh } = await useKunFetch<GalgameResource[]>(
   `/galgame/${gid.value}/resource/all`,
   {
-    lazy: true,
     method: 'GET',
     query: { galgame_id: gid.value }
   }

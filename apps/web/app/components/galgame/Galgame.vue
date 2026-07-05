@@ -1,9 +1,23 @@
 <script setup lang="ts">
+import type { KunTabItem } from '@kungal/ui-vue'
+
 const props = defineProps<{
   galgame: GalgameDetail
 }>()
 
 provide<GalgameDetail>('galgame', props.galgame)
+
+const activeTab = ref('intro')
+const hasPatchResource = ref(false)
+
+const contentTabs = computed<KunTabItem[]>(() => [
+  { value: 'intro', textValue: '游戏介绍', icon: 'lucide:book-open' },
+  { value: 'resource', textValue: '本体资源下载', icon: 'lucide:download' },
+  ...(hasPatchResource.value
+    ? [{ value: 'patch', textValue: '补丁资源下载', icon: 'lucide:puzzle' }]
+    : []),
+  { value: 'comment', textValue: '评论区', icon: 'lucide:messages-square' }
+])
 
 // One shared "编辑历史 / 更新请求" modal for the whole detail page. Info.vue's
 // button opens it on 编辑历史; the pending-PR banner (GalgamePrBanner, creator/
@@ -70,52 +84,76 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
     </div>
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div class="md:col-span-2">
+      <div class="order-1 flex flex-col gap-3 md:order-2 md:col-span-2">
+        <KunScrollShadow>
+          <KunTab
+            v-model="activeTab"
+            :items="contentTabs"
+            variant="solid"
+            size="md"
+          />
+        </KunScrollShadow>
+
         <KunCard
           :is-hoverable="false"
           :is-transparent="false"
-          content-class="space-y-12 relative"
+          content-class="relative"
         >
-          <div class="space-y-3">
-            <GalgameIntroduction :introduction="galgame.introduction" />
+          <KunTabPanels v-model="activeTab">
+            <KunTabPanel value="intro" class-name="space-y-12">
+              <div class="space-y-3">
+                <GalgameIntroduction :introduction="galgame.introduction" />
 
-            <div
-              v-if="sortedRatings.length && sortedRatings.length < 3"
-              class="space-y-1"
-            >
-              <GalgameRatingRow
-                v-for="rating in sortedRatings"
-                :key="rating.id"
-                :rating="rating"
+                <div
+                  v-if="sortedRatings.length && sortedRatings.length < 3"
+                  class="space-y-1"
+                >
+                  <GalgameRatingRow
+                    v-for="rating in sortedRatings"
+                    :key="rating.id"
+                    :rating="rating"
+                  />
+                </div>
+
+                <GalgameLink />
+              </div>
+
+              <GalgameGallery :screenshots="galgame.screenshots" />
+
+              <div v-if="galgame.series" class="space-y-3">
+                <KunHeader
+                  name="Galgame 系列"
+                  description="Galgame 全系列所有 Galgame 作品。例如美少女万华镜 1, 2, 3, 4, 5, 雪女, 外传 就是一个 Galgame 系列"
+                  scale="h3"
+                />
+                <GalgameSeriesCard :series="galgame.series" />
+              </div>
+            </KunTabPanel>
+
+            <KunTabPanel value="resource">
+              <GalgameResource />
+            </KunTabPanel>
+
+            <KunTabPanel v-if="galgame.vndb_id" value="patch">
+              <GalgamePatchContainer
+                :vndb-id="galgame.vndb_id"
+                @has-resource="hasPatchResource = $event"
               />
-            </div>
+            </KunTabPanel>
 
-            <GalgameLink />
-          </div>
-
-          <GalgameGallery :screenshots="galgame.screenshots" />
-
-          <GalgameResource />
-
-          <GalgamePatchContainer :vndb-id="galgame.vndb_id" />
-
-          <div v-if="galgame.series" class="space-y-3">
-            <KunHeader
-              name="Galgame 系列"
-              description="Galgame 全系列所有 Galgame 作品。例如美少女万华镜 1, 2, 3, 4, 5, 雪女, 外传 就是一个 Galgame 系列"
-              scale="h3"
-            />
-            <GalgameSeriesCard :series="galgame.series" />
-          </div>
-
-          <GalgameCommentContainer
-            :user-data="galgame.contributor"
-            :target-user="galgame.user"
-          />
+            <KunTabPanel value="comment">
+              <GalgameCommentContainer
+                :user-data="galgame.contributor"
+                :target-user="galgame.user"
+              />
+            </KunTabPanel>
+          </KunTabPanels>
         </KunCard>
       </div>
 
-      <div class="flex flex-col gap-3 md:col-span-1">
+      <div
+        class="order-2 flex flex-col gap-3 md:order-1 md:col-span-1 md:sticky md:top-20 md:self-start"
+      >
         <div class="hidden md:block">
           <GalgameTag :tags="galgame.tag" variant="desktop" />
         </div>
@@ -154,9 +192,9 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
         </KunCard>
 
         <div class="text-default-500 flex items-center justify-center text-sm">
-          部分页面数据由
-          <KunLink size="sm" target="_blank" to="https://vndb.org">
-            VNDB
+          页面数据全部由
+          <KunLink size="sm" target="_blank" to="https://wiki.kungal.com">
+            鲲Galgame百科
           </KunLink>
           提供
         </div>

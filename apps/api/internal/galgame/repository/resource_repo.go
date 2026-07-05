@@ -85,12 +85,13 @@ func (r *ResourceRepository) FindByID(id int) (model.GalgameResourceRow, bool) {
 	return row, true
 }
 
-// FindByGalgameID returns all resources for a galgame, ordered by created DESC.
+// FindByGalgameID returns all resources for a galgame in randomized order so the
+// detail page shuffles each provider bucket instead of showing newest-first.
 func (r *ResourceRepository) FindByGalgameID(galgameID int) []model.GalgameResourceRow {
 	var rows []model.GalgameResourceRow
 	r.db.Table("galgame_resource").
 		Where("galgame_id = ?", galgameID).
-		Order("created DESC").
+		Order("RANDOM()").
 		Scan(&rows)
 	return rows
 }
