@@ -112,27 +112,6 @@ const activeBucket = computed(() =>
           title="一些小提示以及帮助文档"
           description="部分资源链接可能需要网络代理"
         >
-          <div class="my-1 text-sm">
-            <span>如果您找不到想要的资源链接, 可以去看看友站</span>
-            <KunLink
-              class-name="inline whitespace-nowrap"
-              size="sm"
-              to="https://www.touchgal.us/"
-              target="_blank"
-            >
-              TouchGal
-            </KunLink>
-            和
-            <KunLink
-              class-name="inline whitespace-nowrap"
-              size="sm"
-              to="https://zi6.cc/"
-              target="_blank"
-            >
-              zi0
-            </KunLink>
-          </div>
-
           <div class="mb-1 flex items-center gap-1">
             <KunLink class-name="inline" size="sm" to="/topic/2431">
               Galgame萌新入门(待补充)

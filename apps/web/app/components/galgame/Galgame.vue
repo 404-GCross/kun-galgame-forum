@@ -91,6 +91,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
             :items="contentTabs"
             variant="solid"
             size="md"
+            inner-class-name="bg-[oklch(var(--content1))]!"
           />
         </KunScrollShadow>
 
