@@ -85,13 +85,16 @@ func (r *ResourceRepository) FindByID(id int) (model.GalgameResourceRow, bool) {
 	return row, true
 }
 
-// FindByGalgameID returns all resources for a galgame in randomized order so the
-// detail page shuffles each provider bucket instead of showing newest-first.
+// FindByGalgameID returns all resources for a galgame ordered so that valid
+// resources (status 0) come first in RANDOM order and expired ones (status 1)
+// always sink to the bottom. The detail page groups this list into provider
+// buckets while preserving order, so each bucket shows shuffled-valid-then-
+// expired-last.
 func (r *ResourceRepository) FindByGalgameID(galgameID int) []model.GalgameResourceRow {
 	var rows []model.GalgameResourceRow
 	r.db.Table("galgame_resource").
 		Where("galgame_id = ?", galgameID).
-		Order("RANDOM()").
+		Order("status ASC, RANDOM()").
 		Scan(&rows)
 	return rows
 }
