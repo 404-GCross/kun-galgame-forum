@@ -78,8 +78,16 @@
     @apply text-default-500 line-through;
   }
 
+  /* Stickers are inline (was a 128px block that hogged a line), at a readable
+     ~80px rather than emoji-tiny. */
   & img[alt='Sticker'] {
-    @apply m-2 inline w-32;
+    @apply mx-0.5 inline-block h-20 w-auto max-w-full align-middle;
+  }
+  /* A lone sticker lands in its own block <p>, which forced it onto its own
+     line. Let sticker-only paragraphs flow inline, so a sticker sits with
+     adjacent text / packs with other stickers instead of hogging a line. */
+  & p:has(> img[alt='Sticker']:only-child) {
+    @apply my-1 inline-block;
   }
 
   /* ── Code blocks ─────────────────────────────────────────────────────────
