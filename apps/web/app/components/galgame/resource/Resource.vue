@@ -21,6 +21,12 @@ const galgame = inject<GalgameDetail>('galgame')
 const isShowPublish = ref(false)
 const { id } = usePersistUserStore()
 
+const emit = defineEmits<{
+  // Surface the fetch state so the tab panel dims while (re)loading — most
+  // visible when the list revalidates after publishing/editing a resource.
+  'update:loading': [boolean]
+}>()
+
 const { data, status, refresh } = await useKunFetch<GalgameResource[]>(
   `/galgame/${gid.value}/resource/all`,
   {
@@ -28,6 +34,7 @@ const { data, status, refresh } = await useKunFetch<GalgameResource[]>(
     query: { galgame_id: gid.value }
   }
 )
+watchEffect(() => emit('update:loading', status.value === 'pending'))
 
 // Group resources into the 7 user-facing provider buckets; skip empty
 // buckets so the tablist collapses when a galgame only has, say, baidu

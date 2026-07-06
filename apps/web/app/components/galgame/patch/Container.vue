@@ -12,10 +12,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'has-resource': [boolean]
+  // Surface the (slow, external moyu.moe) fetch state so the tab panel can dim
+  // while it loads.
+  'update:loading': [boolean]
 }>()
 
 const resources = ref<KunPatchResourceResponse[]>([])
 const isLoading = ref(false)
+watchEffect(() => emit('update:loading', isLoading.value))
 
 const fetchKunPatchResource = async (vndbId: string) => {
   isLoading.value = true

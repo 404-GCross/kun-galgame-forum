@@ -23,6 +23,47 @@ const userId = computed(() => {
 
 const { data } = await useKunFetch<UserInfo>(`/user/${userId.value}`)
 
+// The left rail / pill sub-nav highlights the instant it's clicked, but each
+// sub-page remounts + blocks on its own `await useKunFetch` — so the OLD tab's
+// content lingers until the new data resolves. Dim the content area during that
+// navigation so the switch reads as loading-then-updating.
+//
+// We drive it off the RAW page:loading hooks, not useLoadingIndicator().isLoading
+// — that one is throttled (~200ms) to avoid flashing the top bar, so it never
+// turns true on a quick tab switch (which is why the dim looked dead).
+//
+// A fast/cached main-rail target fires start→end in the SAME tick, so the dim
+// class is added+removed before it can paint. Hold it for a minimum window from
+// nav start: fast switches still show a brief cue, while a genuinely slow load
+// keeps dimming until page:loading:end (past the minimum) — no early flicker.
+const isNavLoading = ref(false)
+const nuxtApp = useNuxtApp()
+const MIN_VISIBLE_MS = 280
+let navStartedAt = 0
+let clearTimer: ReturnType<typeof setTimeout> | null = null
+const stopNavHooks = [
+  nuxtApp.hook('page:loading:start', () => {
+    if (clearTimer) {
+      clearTimeout(clearTimer)
+      clearTimer = null
+    }
+    navStartedAt = Date.now()
+    isNavLoading.value = true
+  }),
+  nuxtApp.hook('page:loading:end', () => {
+    const wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - navStartedAt))
+    clearTimer = setTimeout(() => {
+      isNavLoading.value = false
+    }, wait)
+  })
+]
+onScopeDispose(() => {
+  stopNavHooks.forEach((stop) => stop())
+  if (clearTimer) {
+    clearTimeout(clearTimer)
+  }
+})
+
 // Owner = the logged-in viewer is on their OWN profile (id match, never a role);
 // gates the owner-only 设置 tab.
 const { id: storeUid } = storeToRefs(usePersistUserStore())
@@ -127,7 +168,12 @@ if (isBanned.value) {
               />
             </div>
 
-            <NuxtPage :user="data" />
+            <!-- delay 0: the whole sub-page is replaced (remount + Suspense) on
+                 every left-rail / sub-tab switch, so dim immediately for a
+                 visible cue rather than the home feed's flicker-guarded delay. -->
+            <KunLoadingDim :loading="isNavLoading" :delay="0">
+              <NuxtPage :user="data" />
+            </KunLoadingDim>
           </div>
         </div>
       </template>

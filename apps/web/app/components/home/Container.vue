@@ -177,7 +177,13 @@ useIntersectionObserver(
       />
     </div>
 
-    <div class="min-w-0">
+    <!-- Dim the (stale) feed while a tab switch / filter refetch is in flight,
+         so the content clearly lags-then-updates instead of silently sitting on
+         the previous tab's items. The tab rails above stay lit. -->
+    <KunLoadingDim
+      class="min-w-0"
+      :loading="status === 'pending' && items.length > 0"
+    >
       <KunNull
         v-if="status !== 'pending' && !items.length"
         description="暂无动态"
@@ -211,7 +217,7 @@ useIntersectionObserver(
           没有更多动态了
         </span>
       </div>
-    </div>
+    </KunLoadingDim>
 
     <!-- Right rail (desktop only, ≥lg): carousel · 使用提示 at the top, footer
          pinned to the bottom. Sticky + viewport-tall so it stays fixed while the

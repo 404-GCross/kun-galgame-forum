@@ -13,6 +13,12 @@ const route = useRoute()
 const activeTab = ref(route.query.comment ? 'comment' : 'intro')
 const hasPatchResource = ref(false)
 
+// Per-tab loading, surfaced by each async child, so KunTabPanel :loading can dim
+// the panel while its data (re)loads (a 2.10.0 feature). intro is static.
+const resourceLoading = ref(false)
+const patchLoading = ref(false)
+const commentLoading = ref(false)
+
 const contentTabs = computed<KunTabItem[]>(() => [
   { value: 'intro', textValue: '游戏介绍', icon: 'lucide:book-open' },
   { value: 'resource', textValue: '本体资源下载', icon: 'lucide:download' },
@@ -134,19 +140,24 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
               </div>
             </KunTabPanel>
 
-            <KunTabPanel value="resource">
-              <GalgameResource />
+            <KunTabPanel value="resource" :loading="resourceLoading">
+              <GalgameResource @update:loading="resourceLoading = $event" />
             </KunTabPanel>
 
-            <KunTabPanel v-if="galgame.vndb_id" value="patch">
+            <KunTabPanel
+              v-if="galgame.vndb_id"
+              value="patch"
+              :loading="patchLoading"
+            >
               <GalgamePatchContainer
                 :vndb-id="galgame.vndb_id"
                 @has-resource="hasPatchResource = $event"
+                @update:loading="patchLoading = $event"
               />
             </KunTabPanel>
 
-            <KunTabPanel value="comment">
-              <GalgameCommentContainer />
+            <KunTabPanel value="comment" :loading="commentLoading">
+              <GalgameCommentContainer @update:loading="commentLoading = $event" />
             </KunTabPanel>
           </KunTabPanels>
         </KunCard>

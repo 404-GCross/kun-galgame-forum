@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { SerializeObject } from 'nitropack'
 
+const emit = defineEmits<{
+  // Surface the (lazy, client-side) comment fetch state so the tab panel dims
+  // while it loads.
+  'update:loading': [boolean]
+}>()
+
 const route = useRoute()
 const gid = parseInt((route.params as { gid: string }).gid)
 
@@ -33,6 +39,7 @@ const { data, status } = await useKunFetch<{
   method: 'GET',
   query: pageData
 })
+watchEffect(() => emit('update:loading', status.value === 'pending'))
 
 type CommentNode = SerializeObject<GalgameComment>
 
