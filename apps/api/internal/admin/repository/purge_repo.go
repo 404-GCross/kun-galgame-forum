@@ -279,9 +279,9 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		// ── G. Back-pointers in OTHER users' surviving comments that named
 		// the purged user ("回复 @user"). NULL them so the mention disappears.
 		// (topic_comment.target_user_id is NOT NULL — left as-is rather than
-		// delete a third party's comment.) ──
+		// delete a third party's comment. galgame_comment.target_user_id was
+		// retired — its mentions live inline in content now.) ──
 		for _, q := range []string{
-			"UPDATE galgame_comment SET target_user_id = NULL WHERE target_user_id = ?",
 			"UPDATE galgame_rating_comment SET target_user_id = NULL WHERE target_user_id = ?",
 		} {
 			if err := del(tx, q, userID); err != nil {

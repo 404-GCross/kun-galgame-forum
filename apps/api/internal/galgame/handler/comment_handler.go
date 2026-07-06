@@ -61,14 +61,13 @@ func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 
 	var req struct {
 		Content         string `json:"content" validate:"required,min=1,max=5000"`
-		TargetUserID    *int   `json:"target_user_id"`
 		ParentCommentID *int   `json:"parent_comment_id"`
 	}
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	resp, appErr := h.commentService.CreateComment(c.Context(), user.ID, gid, req.Content, req.TargetUserID, req.ParentCommentID)
+	resp, appErr := h.commentService.CreateComment(c.Context(), user.ID, gid, req.Content, req.ParentCommentID)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

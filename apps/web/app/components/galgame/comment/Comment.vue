@@ -8,8 +8,8 @@ import type { SerializeObject } from 'nitropack'
 //
 // We never render past depth 1. The DB still tracks the true parent
 // chain via parent_comment_id, but the inline list and the drawer
-// both render replies as one flat group beneath the root. The
-// "回复 @<user>" context survives via comment.target_user ("A => B").
+// both render replies as one flat group beneath the root. To notify the
+// person you're replying to, @-mention them in the comment body.
 //
 // Mutations bubble up as events; Container / ThreadDrawer own the
 // state and apply immutable updates.
@@ -138,16 +138,6 @@ const handleDelete = async () => {
         <span class="text-default-800 text-sm font-medium">
           {{ comment.user.name }}
         </span>
-        <template v-if="comment.target_user">
-          <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
-          <KunLink
-            underline="hover"
-            size="sm"
-            :to="`/user/${comment.target_user.id}`"
-          >
-            {{ comment.target_user.name }}
-          </KunLink>
-        </template>
         <span class="text-default-400 text-xs">
           <KunTime :time="comment.created" />
         </span>
@@ -232,7 +222,6 @@ const handleDelete = async () => {
         <GalgameCommentPanel
           v-if="isShowReply"
           :parent-comment-id="comment.id"
-          :target-user-id="comment.user.id"
           @close="isShowReply = false"
           @submitted="(reply) => emit('replyAdded', reply)"
         />

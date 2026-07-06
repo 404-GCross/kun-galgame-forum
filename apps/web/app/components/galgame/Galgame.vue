@@ -72,7 +72,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
          of the sidebar instead (the stacked single-column layout would otherwise
          push them below all the main content). Two breakpoint-gated instances —
          see GalgameTag's `variant`. -->
-    <div class="md:hidden">
+    <div v-if="galgame.tag?.length" class="md:hidden">
       <GalgameTag :tags="galgame.tag" variant="mobile" />
     </div>
 
@@ -143,10 +143,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
             </KunTabPanel>
 
             <KunTabPanel value="comment">
-              <GalgameCommentContainer
-                :user-data="galgame.contributor"
-                :target-user="galgame.user"
-              />
+              <GalgameCommentContainer />
             </KunTabPanel>
           </KunTabPanels>
         </KunCard>
@@ -155,7 +152,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
       <div
         class="order-2 flex flex-col gap-3 md:order-1 md:col-span-1 md:sticky md:top-20 md:self-start"
       >
-        <div class="hidden md:block">
+        <div v-if="galgame.tag?.length" class="hidden md:block">
           <GalgameTag :tags="galgame.tag" variant="desktop" />
         </div>
 
@@ -169,6 +166,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
         />
 
         <KunCard
+          v-if="galgame.contributor?.length"
           content-class="space-y-3"
           :is-hoverable="false"
           :is-transparent="false"

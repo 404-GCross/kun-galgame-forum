@@ -43,12 +43,6 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
 			Where("galgame_comment.user_id = ?", userID).
 			Group("galgame.id")
-	case "galgame_comment_target":
-		// Comments targeting this user's galgame comments
-		baseQuery = baseQuery.
-			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
-			Where("galgame_comment.target_user_id = ? AND galgame_comment.user_id != ?", userID, userID).
-			Group("galgame.id")
 	case "galgame_comment_like":
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
@@ -103,14 +97,15 @@ type UserGalgameCommentRow struct {
 	CreatedAt string `gorm:"column:created"`
 }
 
-// FindUserGalgameComments returns galgame_comment rows for the three
-// "评论 / 被评论 / 点赞评论" tabs on /user/:id/galgame/. Each branch
-// applies a different join to scope the comment set:
+// FindUserGalgameComments returns galgame_comment rows for the two
+// "评论 / 点赞评论" tabs on /user/:id/galgame/. Each branch applies a
+// different join to scope the comment set:
 //
 //   - galgame_comment        — comments the user themself authored
-//   - galgame_comment_target — comments by OTHER users whose
-//     target_user_id is this user
 //   - galgame_comment_like   — comments this user has liked
+//
+// (The old "被评论" / galgame_comment_target tab was retired with the
+// target_user_id column — notifications now come from @-mentions.)
 //
 // The result is paginated by galgame_comment.created DESC so the
 // freshest activity sits at the top of each tab.
@@ -126,9 +121,6 @@ func (r *UserContentRepository) FindUserGalgameComments(
 	switch queryType {
 	case "galgame_comment":
 		baseQuery = baseQuery.Where("galgame_comment.user_id = ?", userID)
-	case "galgame_comment_target":
-		baseQuery = baseQuery.
-			Where("galgame_comment.target_user_id = ? AND galgame_comment.user_id != ?", userID, userID)
 	case "galgame_comment_like":
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_comment_like ON galgame_comment_like.galgame_comment_id = galgame_comment.id").

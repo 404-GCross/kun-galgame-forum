@@ -2,13 +2,11 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/infrastructure/markdown"
-	msgModel "kun-galgame-api/internal/message/model"
 	"kun-galgame-api/internal/moemoepoint"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
@@ -58,12 +56,11 @@ type CommentItem struct {
 	// MathJax, tables, and KaTeX consistently with the rest of the
 	// site. Keeps Content as the raw source for the edit-mode
 	// textarea to round-trip cleanly.
-	ContentHtml     string   `json:"content_html"`
-	GalgameID       int      `json:"galgame_id"`
-	User            UserObj  `json:"user"`
-	TargetUser      *UserObj `json:"target_user"`
-	ParentCommentID *int     `json:"parent_comment_id"`
-	RootCommentID   *int     `json:"root_comment_id"`
+	ContentHtml     string  `json:"content_html"`
+	GalgameID       int     `json:"galgame_id"`
+	User            UserObj `json:"user"`
+	ParentCommentID *int    `json:"parent_comment_id"`
+	RootCommentID   *int    `json:"root_comment_id"`
 	LikeCount       int      `json:"like_count"`
 	// IsLiked is per-viewer: set by GetComments/GetCommentThread from a
 	// batch query against galgame_comment_like. Anonymous callers see
@@ -216,12 +213,9 @@ func (s *CommentService) GetThread(ctx context.Context, rootID, currentUserID in
 // ──────────────────────────────────────────
 
 func (s *CommentService) hydrateUsers(ctx context.Context, rows []repository.CommentRow) map[int]userclient.User {
-	uidSet := make(map[int]struct{}, len(rows)*2)
+	uidSet := make(map[int]struct{}, len(rows))
 	for _, r := range rows {
 		uidSet[r.UserID] = struct{}{}
-		if r.TargetUserID != nil && *r.TargetUserID > 0 {
-			uidSet[*r.TargetUserID] = struct{}{}
-		}
 	}
 	uids := make([]int, 0, len(uidSet))
 	for id := range uidSet {
@@ -254,11 +248,6 @@ func (s *CommentService) buildSingleItem(r repository.CommentRow, userMap map[in
 		s := r.Edited.Format("2006-01-02T15:04:05Z")
 		item.Edited = &s
 	}
-	if r.TargetUserID != nil {
-		if t, ok := userMap[*r.TargetUserID]; ok {
-			item.TargetUser = &UserObj{ID: t.ID, Name: t.Name, Avatar: t.Avatar}
-		}
-	}
 	return item
 }
 
@@ -276,7 +265,6 @@ func (s *CommentService) CreateComment(
 	ctx context.Context,
 	userID, galgameID int,
 	content string,
-	targetUserID *int,
 	parentCommentID *int,
 ) (*CommentItem, *errors.AppError) {
 	var (
@@ -303,7 +291,6 @@ func (s *CommentService) CreateComment(
 		Content:         content,
 		GalgameID:       galgameID,
 		UserID:          userID,
-		TargetUserID:    targetUserID,
 		ParentCommentID: parentID,
 		RootCommentID:   rootID,
 	}
@@ -325,20 +312,12 @@ func (s *CommentService) CreateComment(
 			return err
 		}
 
-		if targetUserID != nil && *targetUserID != userID {
-			// Award via OAuth (no local +=). Comment engagement → content_approved.
-			moemoepoint.Award(*targetUserID, 1, moemoepoint.ReasonContentApproved,
-				moemoepoint.Ref("galgame_comment", galgameID),
-				moemoepoint.KeyNonce(moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame_comment", galgameID)))
-
-			link := fmt.Sprintf("/galgame/%d", galgameID)
-			if err := tx.Create(&msgModel.Message{
-				SenderID: userID, ReceiverID: *targetUserID,
-				Type: "commented", Content: truncate(content, 233),
-				Link: link, Status: "unread",
-			}).Error; err != nil {
-				return err
-			}
+		// Notify every @-mentioned user (dedup per galgame, skips self/unknown).
+		// Replaces the legacy per-target "commented" notification + reward — the
+		// editor's @-mention is now the only way a comment notifies someone, and
+		// mentions carry no moemoepoint (avoids "@ anyone for points" farming).
+		for _, mid := range markdown.ExtractMentionIDs(content) {
+			s.helpers.CreateGalgameMessageWithContent(tx, userID, mid, "mentioned", truncate(content, 233), galgameID)
 		}
 		return nil
 	})
@@ -358,10 +337,6 @@ func (s *CommentService) CreateComment(
 		LikeCount:       0,
 		Created:         comment.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		Replies:         []*CommentItem{},
-	}
-	if targetUserID != nil {
-		t, _, _ := s.userClient.User(ctx, *targetUserID)
-		resp.TargetUser = &UserObj{ID: t.ID, Name: t.Name, Avatar: t.Avatar}
 	}
 
 	return resp, nil
@@ -458,6 +433,12 @@ func (s *CommentService) UpdateComment(
 		return nil, errors.ErrInternal("更新评论失败")
 	}
 
+	// Notify any @-mentioned users the edit introduced (dedup per galgame stops
+	// re-spamming ones already notified). Best-effort, non-transactional.
+	for _, mid := range markdown.ExtractMentionIDs(content) {
+		s.helpers.CreateGalgameMessageWithContent(s.commentRepo.DB(), userID, mid, "mentioned", truncate(content, 233), updated.GalgameID)
+	}
+
 	creator, _, _ := s.userClient.User(ctx, updated.UserID)
 	editedStr := now.Format("2006-01-02T15:04:05Z")
 	resp := &CommentItem{
@@ -472,10 +453,6 @@ func (s *CommentService) UpdateComment(
 		Created:         updated.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		Edited:          &editedStr,
 		Replies:         []*CommentItem{},
-	}
-	if updated.TargetUserID != nil {
-		t, _, _ := s.userClient.User(ctx, *updated.TargetUserID)
-		resp.TargetUser = &UserObj{ID: t.ID, Name: t.Name, Avatar: t.Avatar}
 	}
 	return resp, nil
 }

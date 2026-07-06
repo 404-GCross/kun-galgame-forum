@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import type { SerializeObject } from 'nitropack'
 
-const props = defineProps<{
-  userData: KunUser[]
-  targetUser: KunUser
-}>()
-
 const route = useRoute()
-const { commentToUserId } = storeToRefs(useTempGalgameCommentStore())
-
-const username = ref(props.targetUser.name)
 const gid = parseInt((route.params as { gid: string }).gid)
 
 // See GalgameResource: for a wiki-catalogue game the forum hasn't ingested, hide
@@ -43,14 +35,6 @@ const { data, status } = await useKunFetch<{
 })
 
 type CommentNode = SerializeObject<GalgameComment>
-
-const handleSetUserInfo = (name: string) => {
-  username.value = name
-  commentToUserId.value =
-    props.userData.find((user) => user.name === name)?.id || props.targetUser.id
-}
-
-onMounted(() => (commentToUserId.value = props.targetUser.id))
 
 // ──────────────────────────────────────────
 // Optimistic update handlers
@@ -157,27 +141,6 @@ const openThreadRootId = ref<number | null>(null)
         </KunLink>
       </template>
     </KunHeader>
-
-    <!-- Only show "评论给" when there's an actual choice. `userData` is
-         galgame.contributor; for a claimed/migrated galgame with no edit
-         history it's empty (or just the owner), so the dropdown had nothing to
-         pick — looked broken. Commenting still works regardless: the target is
-         optional and defaults to the owner (targetUser), set in onMounted. -->
-    <div
-      v-if="targetUser && userData.length > 1"
-      class="flex items-center gap-2"
-    >
-      <div class="whitespace-nowrap">评论给</div>
-      <KunSelect
-        :model-value="username"
-        :options="
-          userData.map((user) => ({ value: user.name, label: user.name }))
-        "
-        @set="(value) => handleSetUserInfo(value.toString())"
-      >
-        {{ username }}
-      </KunSelect>
-    </div>
 
     <div v-if="data" class="space-y-3">
       <GalgameCommentPanel @submitted="handleNewComment">

@@ -10,7 +10,7 @@ import {
 //     → GET /user/:id/galgames returns galgame cards (cover + name +
 //       counts). Same shape the rest of the site uses.
 //
-//   - galgame_comment / galgame_comment_target / galgame_comment_like
+//   - galgame_comment / galgame_comment_like
 //     → GET /user/:id/galgame-comments returns comment rows
 //       (content + author + created + parent galgame id). Rendered
 //       in a minimal comment-card style — same UX as
@@ -22,11 +22,7 @@ const props = defineProps<{
   type: (typeof KUN_USER_PAGE_GALGAME_TYPE)[number]
 }>()
 
-const COMMENT_TYPES = [
-  'galgame_comment',
-  'galgame_comment_target',
-  'galgame_comment_like'
-] as const
+const COMMENT_TYPES = ['galgame_comment', 'galgame_comment_like'] as const
 
 const isCommentMode = computed(() =>
   (COMMENT_TYPES as readonly string[]).includes(props.type)
@@ -117,7 +113,7 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
       />
     </template>
 
-    <!-- Comment-card mode (galgame_comment / galgame_comment_target / galgame_comment_like) -->
+    <!-- Comment-card mode (galgame_comment / galgame_comment_like) -->
     <template v-else>
       <div
         v-if="commentData && commentData.comments.length"

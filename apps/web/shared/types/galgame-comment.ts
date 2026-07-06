@@ -18,7 +18,6 @@ export interface GalgameComment {
   is_liked: boolean
 
   user: KunUser
-  target_user: KunUser | null
 
   // Nesting fields — populated by the threaded /comment/all endpoint.
   //

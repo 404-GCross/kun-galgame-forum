@@ -47,7 +47,6 @@ type CommentRow struct {
 	Content         string
 	GalgameID       int
 	UserID          int
-	TargetUserID    *int
 	ParentCommentID *int
 	RootCommentID   *int
 	LikeCount       int
@@ -56,7 +55,7 @@ type CommentRow struct {
 }
 
 const commentSelect = `gc.id, gc.content, gc.galgame_id, gc.user_id,
-	gc.target_user_id, gc.parent_comment_id, gc.root_comment_id,
+	gc.parent_comment_id, gc.root_comment_id,
 	gc.like_count, gc.created AS created_at, gc.edited`
 
 // CountByGalgame returns total comment count for a galgame (includes
@@ -113,11 +112,11 @@ func (r *CommentRepository) FindLatestDescendantsByRoots(rootIDs []int, perRoot 
 	var rows []CommentRow
 	r.db.Raw(`
 		SELECT id, content, galgame_id, user_id,
-		       target_user_id, parent_comment_id, root_comment_id,
+		       parent_comment_id, root_comment_id,
 		       like_count, created_at, edited
 		FROM (
 			SELECT gc.id, gc.content, gc.galgame_id, gc.user_id,
-			       gc.target_user_id, gc.parent_comment_id, gc.root_comment_id,
+			       gc.parent_comment_id, gc.root_comment_id,
 			       gc.like_count, gc.created AS created_at, gc.edited,
 			       ROW_NUMBER() OVER (
 			           PARTITION BY gc.root_comment_id

@@ -55,9 +55,6 @@ export const kungalgameStoreReset = () => {
   const tempGalgamePRStore = useTempGalgamePRStore()
   tempGalgamePRStore.galgamePR = []
 
-  const { resetGalgameComment } = useTempGalgameCommentStore()
-  resetGalgameComment()
-
   const tempReplyStore = useTempReplyStore()
   tempReplyStore.isEdit = false
   tempReplyStore.isScrollToTop = false

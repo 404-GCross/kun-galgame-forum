@@ -76,7 +76,6 @@ type GalgameComment struct {
 	Content      string `gorm:"type:varchar(5000);not null" json:"content"`
 	GalgameID    int    `gorm:"column:galgame_id;not null" json:"galgame_id"`
 	UserID       int    `gorm:"column:user_id;not null" json:"user_id"`
-	TargetUserID *int   `gorm:"column:target_user_id" json:"target_user_id"`
 	// ParentCommentID: direct reply parent. NULL = top-level (root)
 	// comment. Self-referencing FK with ON DELETE CASCADE; deleting a
 	// parent removes all descendants.

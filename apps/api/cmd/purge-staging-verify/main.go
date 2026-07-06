@@ -46,7 +46,6 @@ var colChecks = []colCheck{
 	{"topic_poll", "user_id", "zero", ""},
 	{"topic_poll_vote", "user_id", "zero", ""},
 	{"galgame_comment", "user_id", "zero", ""},
-	{"galgame_comment", "target_user_id", "zero", "NULLed by purge"},
 	{"galgame_comment_like", "user_id", "zero", ""},
 	{"galgame_favorite", "user_id", "zero", ""},
 	{"galgame_like", "user_id", "zero", ""},

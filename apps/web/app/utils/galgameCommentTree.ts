@@ -3,9 +3,8 @@ import type { SerializeObject } from 'nitropack'
 // Flat-tier mutation helpers for the galgame comment tree.
 //
 // The visual model is intentionally TWO TIERS only: root + a flat list
-// of replies. The DB still tracks the full parent_comment_id chain
-// (so true "回复给某条" semantics survive via target_user), but the
-// frontend always renders root.replies as a single flat group with no
+// of replies. The DB still tracks the full parent_comment_id chain, but
+// the frontend always renders root.replies as a single flat group with no
 // further indent. These helpers therefore treat root.replies as a
 // flat array — never walk inside a reply looking for sub-replies.
 //
