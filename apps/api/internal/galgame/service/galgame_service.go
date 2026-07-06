@@ -322,30 +322,9 @@ func (s *GalgameService) ToggleLike(
 	return nil
 }
 
-// ToggleFavorite flips favorite state and (on +1 direction) rewards the
-// galgame owner by +1 moemoe and sends a `favorite` notification — matching
-// legacy Nitro behavior. Owner id is resolved via wiki; if the lookup fails
-// we still flip the flag but skip moemoe / notification.
-func (s *GalgameService) ToggleFavorite(ctx context.Context, userID, galgameID int) *errors.AppError {
-	ownerID, name := s.fetchOwnerAndName(ctx, galgameID)
-
-	s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
-		favorited := s.interactionRepo.ToggleFavorite(tx, userID, galgameID)
-		if ownerID == 0 || ownerID == userID {
-			return nil
-		}
-		if favorited {
-			s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
-				moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
-			s.helpers.CreateGalgameMessageWithContent(tx, userID, ownerID, "favorite", name, galgameID)
-		} else {
-			s.helpers.AdjustMoemoepoint(tx, ownerID, -1,
-				moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
-		}
-		return nil
-	})
-	return nil
-}
+// NOTE: favorite is no longer a simple per-galgame toggle — it is now membership
+// in one or more collections (收藏夹). The write path + owner moemoe/notification
+// (first-add / last-remove semantics) live in CollectionService.SetMembership.
 
 // GetMyInteractions returns the current user's liked + favorited galgame ids,
 // for hydrating feed-card like/favorite state.
@@ -618,24 +597,42 @@ func (s *GalgameService) hydrateListCards(
 	filter model.GalgameListFilter,
 	isSFW bool,
 ) (*dto.GalgameListPage, *errors.AppError) {
+	// Note: `total` from listRepo is the count of kungal-known galgames (stats
+	// rows) and can over-report when wiki drops NSFW briefs in SFW mode; an exact
+	// total requires the public list to source from wiki's /galgame, not kungal's
+	// local stats — out of scope here.
 	ids, total := s.listRepo.ListIDs(filter)
 	if len(ids) == 0 {
 		return &dto.GalgameListPage{Galgames: []dto.GalgameListCard{}, Total: total}, nil
 	}
+	cards, appErr := s.HydrateCardsByIDs(ctx, ids, isSFW)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return &dto.GalgameListPage{Galgames: cards, Total: total}, nil
+}
 
-	// Wiki batch metadata. SFW gating is delegated to wiki via
-	// content_limit per docs/galgame_wiki/00-handbook §16 — no
-	// service-layer post-filter (would violate "wiki is the only NSFW
-	// SoT" invariant). Note: `total` from listRepo is the count of
-	// kungal-known galgames (stats rows) and can over-report when wiki
-	// drops NSFW briefs in SFW mode; an exact total requires the public
-	// list to source from wiki's /galgame, not kungal's local stats —
-	// out of scope here.
+// HydrateCardsByIDs turns an ORDERED galgame id list into list cards, fusing
+// wiki metadata + OAuth users + local stats/ratings/resource-meta. The output
+// preserves the input order and drops ids the wiki filtered out (NSFW miss /
+// deleted). Shared by the global list, the wiki-entity detail pages, AND the
+// collection detail (收藏夹) so none of them duplicate the hydration.
+//
+// SFW gating is delegated to wiki via content_limit per
+// docs/galgame_wiki/00-handbook §16 — no service-layer post-filter (would
+// violate "wiki is the only NSFW SoT"). A wiki-batch error is surfaced, not
+// silently degraded to a blank list.
+func (s *GalgameService) HydrateCardsByIDs(
+	ctx context.Context,
+	ids []int,
+	isSFW bool,
+) ([]dto.GalgameListCard, *errors.AppError) {
+	if len(ids) == 0 {
+		return []dto.GalgameListCard{}, nil
+	}
+
 	briefMap, appErr := s.wikiClient.GetBatchPublic(ctx, ids, isSFW)
 	if appErr != nil {
-		// Wiki batch unreachable/errored: returning empty cards with a non-zero
-		// total reads as "results exist but none rendered". Surface the error
-		// instead of silently degrading to a blank-but-paginated list.
 		return nil, appErr
 	}
 
@@ -690,5 +687,5 @@ func (s *GalgameService) hydrateListCards(
 			Language:                 emptyStrSliceIfNil(languageMap[id]),
 		})
 	}
-	return &dto.GalgameListPage{Galgames: cards, Total: total}, nil
+	return cards, nil
 }

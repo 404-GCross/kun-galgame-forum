@@ -38,10 +38,19 @@ export const GALGAME_NAV_CONFIG: Record<
   galgame_publish: { text: '已发布', path: 'galgame-publish' },
   galgame_contributed: { text: '贡献的', path: 'galgame-contributed' },
   galgame_like: { text: '已点赞', path: 'galgame-like' },
-  galgame_favorite: { text: '已收藏', path: 'galgame-favorite' },
   galgame_comment: { text: '评论', path: 'galgame-comment' },
   galgame_comment_target: { text: '被评论', path: 'galgame-comment-target' },
   galgame_comment_like: { text: '点赞评论', path: 'galgame-comment-like' }
+}
+
+// The 收藏 top-level tab bundles galgame collections (收藏夹) + topic favorites
+// into one place. Its two sub-tabs live at /user/:id/collection/<type>.
+export const COLLECTION_NAV_CONFIG: Record<
+  (typeof KUN_USER_PAGE_COLLECTION_TYPE)[number],
+  _NavItemData
+> = {
+  galgame: { text: '游戏收藏夹', path: 'galgame' },
+  topic: { text: '话题收藏', path: 'topic' }
 }
 
 export const GALGAME_RESOURCE_NAV_CONFIG: Record<
@@ -67,10 +76,12 @@ const createUserPageNavItems = <T extends string>(
 }
 
 export const kunUserTopicNavItem = (userId: number): KunTabItem[] => {
+  // topic_favorite is still a valid list type (rendered under the 收藏 tab), but
+  // it's dropped from the 话题 group's sub-nav so favorites live in ONE place.
   return createUserPageNavItems(
     userId,
     'topic',
-    KUN_USER_PAGE_TOPIC_TYPE,
+    KUN_USER_PAGE_TOPIC_TYPE.filter((t) => t !== 'topic_favorite'),
     TOPIC_NAV_CONFIG
   )
 }
@@ -99,6 +110,15 @@ export const kunUserGalgameNavItem = (userId: number): KunTabItem[] => {
     'galgame',
     KUN_USER_PAGE_GALGAME_TYPE,
     GALGAME_NAV_CONFIG
+  )
+}
+
+export const kunUserCollectionNavItem = (userId: number): KunTabItem[] => {
+  return createUserPageNavItems(
+    userId,
+    'collection',
+    KUN_USER_PAGE_COLLECTION_TYPE,
+    COLLECTION_NAV_CONFIG
   )
 }
 
@@ -135,11 +155,13 @@ export const KUN_USER_PAGE_GALGAME_TYPE = [
   'galgame_publish',
   'galgame_contributed',
   'galgame_like',
-  'galgame_favorite',
   'galgame_comment',
   'galgame_comment_target',
   'galgame_comment_like'
 ] as const
+
+// Sub-tabs of the 收藏 top-level tab.
+export const KUN_USER_PAGE_COLLECTION_TYPE = ['galgame', 'topic'] as const
 
 export const KUN_USER_PAGE_GALGAME_RESOURCE_TYPE = [
   'valid',
@@ -160,6 +182,7 @@ export const kunUserMainNav = (
   const base = `/user/${userId}`
   const items: KunTabItem[] = [
     { value: 'activity', textValue: '动态', href: `${base}/activity`, icon: 'lucide:activity' },
+    { value: 'collection', textValue: '收藏', href: `${base}/collection/galgame`, icon: 'lucide:heart' },
     { value: 'topic', textValue: '话题', href: `${base}/topic/topic`, icon: 'lucide:square-gantt-chart' },
     { value: 'galgame', textValue: 'Galgame', href: `${base}/galgame/galgame-publish`, icon: 'lucide:gamepad-2' },
     { value: 'info', textValue: '关于', href: `${base}/info`, icon: 'lucide:user-round' }
@@ -194,11 +217,15 @@ export const userSegmentGroup = (segment: string): string => {
   return segment
 }
 
+// 收藏 has its own two sub-tabs rendered inside the page (like the galgame
+// sub-tabs), so it needs no group pill — the segment maps straight to itself.
+
 // A segment → its default landing route (segments with type sub-tabs resolve to
 // their default child). Powers the pill sub-nav's navigation on select.
 export const userSegmentHref = (userId: number, segment: string): string => {
   const base = `/user/${userId}`
   const map: Record<string, string> = {
+    collection: `${base}/collection/galgame`,
     topic: `${base}/topic/topic`,
     reply: `${base}/reply/reply-created`,
     comment: `${base}/comment/comment-created`,

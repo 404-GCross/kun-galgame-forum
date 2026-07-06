@@ -26,9 +26,23 @@ export const useMyGalgameInteractions = () => {
   const likedSet = computed(() => new Set(liked.value))
   const favoritedSet = computed(() => new Set(favorited.value))
 
+  // Keep the shared favorited set in sync after the collection picker commits,
+  // so every feed card (and a later navigation) reflects the change without a
+  // refetch. "favorited" = the game is in >=1 of the user's collections.
+  const setFavorited = (gid: number, isFav: boolean) => {
+    const set = new Set(favorited.value)
+    if (isFav) {
+      set.add(gid)
+    } else {
+      set.delete(gid)
+    }
+    favorited.value = [...set]
+  }
+
   return {
     isLiked: (gid: number) => likedSet.value.has(gid),
     isFavorited: (gid: number) => favoritedSet.value.has(gid),
+    setFavorited,
     ensureLoaded
   }
 }

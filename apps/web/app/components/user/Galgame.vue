@@ -6,7 +6,7 @@ import {
 
 // Single component, two rendering modes:
 //
-//   - galgame_like / galgame_favorite
+//   - galgame_publish / galgame_contributed / galgame_like
 //     → GET /user/:id/galgames returns galgame cards (cover + name +
 //       counts). Same shape the rest of the site uses.
 //
@@ -95,7 +95,7 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
       scrollable
     />
 
-    <!-- Galgame-card mode (galgame_like / galgame_favorite) -->
+    <!-- Galgame-card mode (galgame_publish / galgame_contributed / galgame_like) -->
     <template v-if="!isCommentMode">
       <div
         v-if="galgameData && galgameData.items.length"

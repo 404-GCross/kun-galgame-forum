@@ -192,23 +192,8 @@ func (h *GalgameHandler) ToggleLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// ToggleFavorite — PUT /api/galgame/:gid/favorite
-func (h *GalgameHandler) ToggleFavorite(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-
-	gid, err := strconv.Atoi(c.Params("gid"))
-	if err != nil {
-		return response.Error(c, errors.ErrBadRequest("无效的 Galgame ID"))
-	}
-
-	if appErr := h.galgameService.ToggleFavorite(c.Context(), user.ID, gid); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OKMessage(c, "操作成功")
-}
+// Favorite is now collection membership — see GalgameCollectionHandler
+// (PUT /galgame/:gid/collections). There is no per-galgame favorite toggle.
 
 // MyInteractions — GET /api/galgame/interactions/mine
 // The current user's liked + favorited galgame ids, used to hydrate feed-card

@@ -115,6 +115,7 @@ type App struct {
 	ReportHandler              *reportHandler.ReportHandler
 	RSSHandler                 *rssHandler.RSSHandler
 	GalgameHandler             *galgameHandler.GalgameHandler
+	GalgameCollectionHandler   *galgameHandler.GalgameCollectionHandler
 	GalgameCommentHandler      *galgameHandler.CommentHandler
 	GalgameResourceHandler     *galgameHandler.ResourceHandler
 	GalgameRatingHandler       *galgameHandler.RatingHandler
@@ -312,6 +313,10 @@ func New(cfg *config.Config) *App {
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc,
 	)
+	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
+	// owner-name lookup to galgameCoreSvc so nothing is duplicated.
+	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
+	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameEnricher)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameEnricher)
@@ -374,39 +379,40 @@ func New(cfg *config.Config) *App {
 	// Handlers
 	app := &App{
 		DB: db, Redis: rdb, S3: s3Client, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
-		UserState:              userStateRepo,
-		UserClient:             uc,
-		OAuthHandler:           handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod"),
-		UserHandler:            handler.NewUserHandler(userService, userContentService),
-		UserProfileHandler:     handler.NewProfileHandler(oauthClient, uc),
-		HomeHandler:            homeHandler.NewHomeHandler(homeService.NewHomeService(homeRepo.NewHomeRepository(db), gc, uc, rdb)),
-		TopicHandler:           topicHandler.NewTopicHandler(topicSvc, topicWriteSvc),
-		TopicDraftHandler:      topicHandler.NewTopicDraftHandler(draftSvc),
-		ReplyHandler:           topicHandler.NewReplyHandler(replySvc),
-		TopicCommentHandler:    topicHandler.NewCommentHandler(commentSvc),
-		PollHandler:            topicHandler.NewPollHandler(pollSvc),
-		MessageHandler:         msgHandler.NewMessageHandler(messageSvc),
-		MessageChatHandler:     msgHandler.NewChatHandler(chatSvc),
-		AdminOverviewHandler:   adminHandler.NewOverviewHandler(adminOverviewSvc),
-		AdminPurgeHandler:      adminHandler.NewPurgeHandler(adminPurgeSvc),
-		RankingHandler:         rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
-		SectionHandler:         sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
-		DocArticleHandler:      docHandler.NewArticleHandler(docArticleSvc),
-		DocCategoryHandler:     docHandler.NewCategoryHandler(docCategorySvc),
-		DocTagHandler:          docHandler.NewTagHandler(docTagSvc),
-		WebsiteHandler:         websiteHandler.NewWebsiteHandler(websiteCoreSvc),
-		WebsiteCommentHandler:  websiteHandler.NewCommentHandler(websiteCommentSvc),
-		WebsiteCategoryHandler: websiteHandler.NewCategoryHandler(websiteCategorySvc),
-		WebsiteTagHandler:      websiteHandler.NewTagHandler(websiteTagSvc),
-		UpdateHandler:          updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
-		FriendLinkHandler:      friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
-		ReportHandler:          reportHandler.NewReportHandler(reportRepo.NewReportRepository(db)),
-		RSSHandler:             rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
-		GalgameHandler:         galgameHandler.NewGalgameHandler(galgameCoreSvc),
-		GalgameCommentHandler:  galgameHandler.NewCommentHandler(galgameCommentSvc),
-		GalgameResourceHandler: galgameHandler.NewResourceHandler(galgameResourceSvc),
-		GalgameRatingHandler:   galgameHandler.NewRatingHandler(galgameRatingSvc),
-		CreatorHandler:         galgameHandler.NewCreatorHandler(creatorSvc),
+		UserState:                userStateRepo,
+		UserClient:               uc,
+		OAuthHandler:             handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod"),
+		UserHandler:              handler.NewUserHandler(userService, userContentService),
+		UserProfileHandler:       handler.NewProfileHandler(oauthClient, uc),
+		HomeHandler:              homeHandler.NewHomeHandler(homeService.NewHomeService(homeRepo.NewHomeRepository(db), gc, uc, rdb)),
+		TopicHandler:             topicHandler.NewTopicHandler(topicSvc, topicWriteSvc),
+		TopicDraftHandler:        topicHandler.NewTopicDraftHandler(draftSvc),
+		ReplyHandler:             topicHandler.NewReplyHandler(replySvc),
+		TopicCommentHandler:      topicHandler.NewCommentHandler(commentSvc),
+		PollHandler:              topicHandler.NewPollHandler(pollSvc),
+		MessageHandler:           msgHandler.NewMessageHandler(messageSvc),
+		MessageChatHandler:       msgHandler.NewChatHandler(chatSvc),
+		AdminOverviewHandler:     adminHandler.NewOverviewHandler(adminOverviewSvc),
+		AdminPurgeHandler:        adminHandler.NewPurgeHandler(adminPurgeSvc),
+		RankingHandler:           rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
+		SectionHandler:           sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
+		DocArticleHandler:        docHandler.NewArticleHandler(docArticleSvc),
+		DocCategoryHandler:       docHandler.NewCategoryHandler(docCategorySvc),
+		DocTagHandler:            docHandler.NewTagHandler(docTagSvc),
+		WebsiteHandler:           websiteHandler.NewWebsiteHandler(websiteCoreSvc),
+		WebsiteCommentHandler:    websiteHandler.NewCommentHandler(websiteCommentSvc),
+		WebsiteCategoryHandler:   websiteHandler.NewCategoryHandler(websiteCategorySvc),
+		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
+		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
+		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
+		ReportHandler:            reportHandler.NewReportHandler(reportRepo.NewReportRepository(db)),
+		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
+		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
+		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
+		GalgameCommentHandler:    galgameHandler.NewCommentHandler(galgameCommentSvc),
+		GalgameResourceHandler:   galgameHandler.NewResourceHandler(galgameResourceSvc),
+		GalgameRatingHandler:     galgameHandler.NewRatingHandler(galgameRatingSvc),
+		CreatorHandler:           galgameHandler.NewCreatorHandler(creatorSvc),
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
 			galgameSeriesSvc, galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
 		),

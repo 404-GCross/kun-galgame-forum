@@ -240,6 +240,12 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/galgame/:gid/history/all", a.GalgameWikiHandler.GetGalgameHistory)
 	optAuth.Get("/galgame/:gid", a.GalgameHandler.GetDetail)
 
+	// Galgame collections (收藏夹) — public/restricted visibility resolved with
+	// the optional viewer id. /galgame/collection/:cid is 3-segment so it never
+	// collides with the 2-segment /galgame/:gid above.
+	optAuth.Get("/galgame/collection/:cid", a.GalgameCollectionHandler.GetDetail)
+	optAuth.Get("/user/:id/collections", a.GalgameCollectionHandler.GetUserCollections)
+
 	// Website (optional auth for like/favorite status)
 	optAuth.Get("/website", a.WebsiteHandler.GetWebsites)
 	optAuth.Get("/website/:domain/comment", a.WebsiteCommentHandler.GetComments)
@@ -350,7 +356,14 @@ func (a *App) setupRoutes() {
 	// /galgame/messages/mine, static segments win over :gid).
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
 	authed.Put("/galgame/:gid/like", a.GalgameHandler.ToggleLike)
-	authed.Put("/galgame/:gid/favorite", a.GalgameHandler.ToggleFavorite)
+	// Galgame collections (收藏夹). Favorite is now membership in one or more
+	// collections. /galgame/collection is static and 2-segment; the picker
+	// read/write hang off the /galgame/:gid/collections param path.
+	authed.Post("/galgame/collection", a.GalgameCollectionHandler.Create)
+	authed.Patch("/galgame/collection/:cid", a.GalgameCollectionHandler.Update)
+	authed.Delete("/galgame/collection/:cid", a.GalgameCollectionHandler.Delete)
+	authed.Get("/galgame/:gid/collections/mine", a.GalgameCollectionHandler.MyCollectionsForGalgame)
+	authed.Put("/galgame/:gid/collections", a.GalgameCollectionHandler.SetMembership)
 	authed.Post("/galgame/:gid/comment", a.GalgameCommentHandler.CreateComment)
 	authed.Put("/galgame/:gid/comment", a.GalgameCommentHandler.UpdateComment)
 	authed.Delete("/galgame/:gid/comment", a.GalgameCommentHandler.DeleteComment)
