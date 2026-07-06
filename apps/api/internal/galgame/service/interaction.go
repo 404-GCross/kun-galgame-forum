@@ -64,3 +64,36 @@ func (InteractionHelpers) CreateGalgameMessageWithContent(
 	})
 }
 
+// CreateGalgameCommentMention notifies a user @-mentioned in a galgame comment,
+// deep-linked to that comment so clicking the notification lands on it:
+// ?comment=<id> is the comment to highlight, &thread=<rootID> is the thread's
+// root so the FE can open the thread drawer (which loads the whole thread) and
+// scroll to the comment regardless of pagination. rootID == commentID for a
+// top-level comment. content is the already-stripped preview. Dedups on
+// (sender, receiver, "mentioned", link) — per-comment. No-op on self.
+func (InteractionHelpers) CreateGalgameCommentMention(
+	tx *gorm.DB,
+	senderID, receiverID int,
+	content string,
+	galgameID, commentID, rootID int,
+) {
+	if senderID == receiverID || receiverID <= 0 {
+		return
+	}
+	link := fmt.Sprintf("/galgame/%d?comment=%d&thread=%d", galgameID, commentID, rootID)
+
+	var count int64
+	tx.Model(&msgModel.Message{}).
+		Where("sender_id = ? AND receiver_id = ? AND type = ? AND link = ?",
+			senderID, receiverID, "mentioned", link).
+		Count(&count)
+	if count > 0 {
+		return
+	}
+
+	tx.Create(&msgModel.Message{
+		SenderID: senderID, ReceiverID: receiverID,
+		Type: "mentioned", Content: content, Link: link, Status: "unread",
+	})
+}
+

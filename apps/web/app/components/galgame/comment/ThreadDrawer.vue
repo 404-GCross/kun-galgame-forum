@@ -17,6 +17,10 @@ type Node = SerializeObject<GalgameComment>
 const props = defineProps<{
   galgameId: number
   rootCommentId: number | null
+  // When set (an @-mention deep-link), scroll to + highlight this comment once
+  // the thread has loaded. The whole thread is in the drawer, so any comment id
+  // resolves regardless of pagination.
+  scrollToCommentId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +40,23 @@ const isOpen = computed({
 const thread = ref<Node | null>(null)
 const isLoading = ref(false)
 
+// Scroll to + briefly ring the deep-linked comment once its DOM node exists.
+// Deferred past the drawer's open animation so the target is in place.
+const highlightDeepLink = () => {
+  const id = props.scrollToCommentId
+  if (!id) return
+  nextTick(() => {
+    setTimeout(() => {
+      const el = document.getElementById(`galgame-comment-${id}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const ring = ['outline-2', 'outline-offset-2', 'outline-primary', 'rounded-lg']
+      el.classList.add(...ring)
+      setTimeout(() => el.classList.remove(...ring), 3000)
+    }, 200)
+  })
+}
+
 const loadThread = async (rootId: number) => {
   isLoading.value = true
   thread.value = null
@@ -44,7 +65,10 @@ const loadThread = async (rootId: number) => {
       `/galgame/${props.galgameId}/comment/thread/${rootId}`,
       { method: 'GET' }
     )
-    if (data) thread.value = data
+    if (data) {
+      thread.value = data
+      highlightDeepLink()
+    }
   } finally {
     isLoading.value = false
   }

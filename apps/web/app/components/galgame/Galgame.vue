@@ -7,7 +7,10 @@ const props = defineProps<{
 
 provide<GalgameDetail>('galgame', props.galgame)
 
-const activeTab = ref('intro')
+// A ?comment=<id> deep-link (from an @-mention notification) lands on the
+// comment tab; the comment section then opens the thread + scrolls to it.
+const route = useRoute()
+const activeTab = ref(route.query.comment ? 'comment' : 'intro')
 const hasPatchResource = ref(false)
 
 const contentTabs = computed<KunTabItem[]>(() => [

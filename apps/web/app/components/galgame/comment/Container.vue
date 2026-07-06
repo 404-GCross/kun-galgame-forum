@@ -130,6 +130,18 @@ const handleReplyEdited = (updated: GalgameComment) => {
 // ──────────────────────────────────────────
 
 const openThreadRootId = ref<number | null>(null)
+
+// Deep-link from an @-mention notification (?comment=<id>&thread=<rootId>): open
+// the thread drawer for the root, then let the drawer scroll to + highlight the
+// comment. Using the drawer (which loads the whole thread) means it resolves any
+// comment regardless of which page its root sits on.
+const deepLinkCommentId = ref(Number(route.query.comment) || null)
+onMounted(() => {
+  const threadRoot = Number(route.query.thread) || 0
+  if (deepLinkCommentId.value && threadRoot) {
+    openThreadRootId.value = threadRoot
+  }
+})
 </script>
 
 <template>
@@ -198,6 +210,7 @@ const openThreadRootId = ref<number | null>(null)
     <GalgameCommentThreadDrawer
       v-model:root-comment-id="openThreadRootId"
       :galgame-id="gid"
+      :scroll-to-comment-id="deepLinkCommentId"
       @reply-added="handleNewComment"
       @reply-edited="handleReplyEdited"
       @reply-removed="handleReplyRemoved"

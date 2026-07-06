@@ -312,12 +312,19 @@ func (s *CommentService) CreateComment(
 			return err
 		}
 
-		// Notify every @-mentioned user (dedup per galgame, skips self/unknown).
-		// Replaces the legacy per-target "commented" notification + reward — the
-		// editor's @-mention is now the only way a comment notifies someone, and
-		// mentions carry no moemoepoint (avoids "@ anyone for points" farming).
+		// Notify every @-mentioned user with a "mentioned" message deep-linked to
+		// THIS comment (?comment=<id>), preview = the comment text with @/# tokens
+		// stripped. Replaces the legacy per-target "commented" notification +
+		// reward — @-mention is now the only notify path, and it carries no
+		// moemoepoint (avoids "@ anyone for points" farming). Dedup is per comment
+		// (skips self/unknown).
+		preview := truncate(markdown.StripReferenceTokens(content), 233)
+		rootID := comment.ID
+		if comment.RootCommentID != nil {
+			rootID = *comment.RootCommentID
+		}
 		for _, mid := range markdown.ExtractMentionIDs(content) {
-			s.helpers.CreateGalgameMessageWithContent(tx, userID, mid, "mentioned", truncate(content, 233), galgameID)
+			s.helpers.CreateGalgameCommentMention(tx, userID, mid, preview, galgameID, comment.ID, rootID)
 		}
 		return nil
 	})
@@ -433,10 +440,15 @@ func (s *CommentService) UpdateComment(
 		return nil, errors.ErrInternal("更新评论失败")
 	}
 
-	// Notify any @-mentioned users the edit introduced (dedup per galgame stops
-	// re-spamming ones already notified). Best-effort, non-transactional.
+	// Notify any @-mentioned users the edit introduced, deep-linked to this
+	// comment (dedup per comment stops re-spamming). Best-effort, non-tx.
+	editPreview := truncate(markdown.StripReferenceTokens(content), 233)
+	editRootID := updated.ID
+	if updated.RootCommentID != nil {
+		editRootID = *updated.RootCommentID
+	}
 	for _, mid := range markdown.ExtractMentionIDs(content) {
-		s.helpers.CreateGalgameMessageWithContent(s.commentRepo.DB(), userID, mid, "mentioned", truncate(content, 233), updated.GalgameID)
+		s.helpers.CreateGalgameCommentMention(s.commentRepo.DB(), userID, mid, editPreview, updated.GalgameID, updated.ID, editRootID)
 	}
 
 	creator, _, _ := s.userClient.User(ctx, updated.UserID)

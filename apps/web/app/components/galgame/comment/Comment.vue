@@ -130,7 +130,9 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <div class="flex gap-3">
+  <!-- Anchor for notification deep-links (?comment=<id>); scrolled to +
+       highlighted by the thread drawer. -->
+  <div :id="`galgame-comment-${comment.id}`" class="flex gap-3">
     <KunAvatar :user="comment.user" :size="depth === 0 ? 'md' : 'sm'" />
 
     <div class="min-w-0 flex-1 space-y-1.5">
