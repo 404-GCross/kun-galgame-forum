@@ -73,6 +73,7 @@ const handlePublishComment = async () => {
   <div class="space-y-3">
     <KunMilkdownDualEditorProvider
       :value-markdown="content"
+      placeholder="请温柔的发表你的看法吧～「评论给」已废除，@用户名 即可通知对方"
       @set-markdown="(val) => (content = val)"
     />
 

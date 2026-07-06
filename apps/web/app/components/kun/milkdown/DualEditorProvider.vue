@@ -20,6 +20,8 @@ const props = defineProps<{
   disableImage?: boolean
   // A 「引用」 signal (reply editor only): insert an inline `@author #floor`.
   pendingQuote?: ReplyReference | null
+  // Optional empty-state hint text shown by <KunEditor> when the doc is empty.
+  placeholder?: string
 }>()
 
 const emits = defineEmits<{
@@ -78,6 +80,7 @@ const textCount = computed(() => markdownToText(props.valueMarkdown).length)
       :adapters="adapters"
       :features="features"
       :locale="language ?? 'zh-cn'"
+      :placeholder="placeholder"
       :views="['wysiwyg', 'source']"
     >
       <template #view-switch="api">
