@@ -44,7 +44,7 @@ import { kunSubSites } from '~/constants/layout'
       >
         GitHub
       </KunLink>
-      <span>开源 · v{{ useRuntimeConfig().public.KUN_VISUAL_NOVEL_VERSION }}</span>
+      <span>开源</span>
     </div>
   </footer>
 </template>

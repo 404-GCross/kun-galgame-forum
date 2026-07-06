@@ -1,15 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
-import fs from 'fs'
-import path from 'path'
 import { ICON_COLLECTIONS, ICON_NAMES } from './lib/icon'
 import type { TSConfig } from 'pkg-types'
-
-const packageJson = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf-8')
-)
-const appVersion = packageJson.version
-
-console.log(appVersion)
 
 const sharedTsConfig: TSConfig = {
   exclude: ['**/backup/**', '**/dist/**', '**/node_modules/**']
@@ -76,7 +67,6 @@ export default defineNuxtConfig({
       KUN_GALGAME_URL: process.env.KUN_GALGAME_URL,
       KUN_VISUAL_NOVEL_FORUM_YANDEX_VERIFICATION:
         process.env.KUN_VISUAL_NOVEL_FORUM_YANDEX_VERIFICATION,
-      KUN_VISUAL_NOVEL_VERSION: appVersion,
 
       // Go API base URL (client-side, relative — goes through browser)
       apiBaseUrl: process.env.API_BASE_URL || 'http://127.0.0.1:2334',
