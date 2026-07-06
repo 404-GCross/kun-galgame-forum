@@ -141,9 +141,9 @@ html {
  * overlay changing --kun-surface-opacity can't retroactively recompute it. So we
  * re-declare --color-content1 itself on the overlay roots, which re-runs oklch()
  * locally with the inherited (light/dark) --content1 triple pinned to alpha 1.
- * `bg-content1` reads that; the modal panel keeps its designed `content1/85`
- * (a color-mix over the now-opaque token). The modal backdrop is a separate
- * dark scrim (not content1) and is unaffected.
+ * `bg-content1` reads that, so every overlay surface resolves fully opaque —
+ * including the modal panel, which ships plain `bg-content1` since kun-ui 2.8.3.
+ * The modal backdrop is a separate dark scrim (not content1) and is unaffected.
  *   [data-kun-overlay] → Modal (ancestor of .kun-modal-panel) · Drawer · toasts
  *   .z-kun-modal / .z-kun-alert / .z-kun-message → modal / alert-dialog / toast
  *                        panels, explicit in case a panel carries the z-class but
@@ -169,10 +169,10 @@ html {
 }
 
 /*
- * Even with the token re-declared opaque above, the MODAL PANEL still ships as
- * `bg-content1/85` (a deliberate 15% glass in kun-ui), so the page bleeds through
- * the 15% on a frosted site. Pin the panel to the fully-opaque token. The
- * descendant selector (0,2,0) outranks the `/85` utility (0,1,0) — no !important.
+ * Belt-and-suspenders pin for the modal panel. Redundant since kun-ui 2.8.3 —
+ * the panel now ships plain `bg-content1`, already opaque via the overlay-root
+ * re-declaration above (before 2.8.3 it shipped `bg-content1/85` and needed this
+ * higher-specificity rule to beat the 15% glass). Kept as a cheap backstop.
  */
 [data-kun-overlay] .kun-modal-panel {
   background-color: var(--color-content1);
