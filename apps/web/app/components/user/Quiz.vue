@@ -22,7 +22,7 @@ const tabItems = computed<KunTabItem[]>(() => {
   return items
 })
 
-const params = reactive({ page: 1, limit: 24, user_id: props.userId })
+const params = reactive({ page: 1, limit: 50, user_id: props.userId })
 const requestUrl = computed(() =>
   tab.value === 'answered' ? '/galgame-quiz/mine/answered' : '/galgame-quiz/all'
 )
@@ -49,7 +49,7 @@ const onTab = (v: string) => {
     />
 
     <template v-if="data && data.quiz_data.length">
-      <GalgameQuizCard :quizzes="data.quiz_data" :is-transparent="false" />
+      <GalgameQuizList :quizzes="data.quiz_data" />
       <KunPagination
         v-if="data.total > params.limit"
         v-model:current-page="params.page"

@@ -63,24 +63,24 @@ const onPublished = () => {
             由萌友共同建设的 Galgame 题库, 支持单选、多选、判断、填空、问答等题型。答对可获得萌萌点, 出题合格同样有奖励。
           </p>
         </template>
-        <template #endContent>
-          <KunButton @click="openPublish">
-            <span class="flex items-center gap-1">
-              <KunIcon name="lucide:plus" />
-              出题
-            </span>
-          </KunButton>
-        </template>
       </KunHeader>
 
-      <KunTab
-        v-if="isLoggedIn"
-        :model-value="tab"
-        :items="tabItems"
-        variant="light"
-        color="primary"
-        @update:model-value="onTab"
-      />
+      <div class="flex items-center gap-2">
+        <KunTab
+          v-if="isLoggedIn"
+          :model-value="tab"
+          :items="tabItems"
+          variant="light"
+          color="primary"
+          @update:model-value="onTab"
+        />
+        <KunButton class="ml-auto shrink-0" @click="openPublish">
+          <span class="flex items-center gap-1">
+            <KunIcon name="lucide:plus" />
+            出题
+          </span>
+        </KunButton>
+      </div>
 
       <div
         v-if="tab === 'all'"

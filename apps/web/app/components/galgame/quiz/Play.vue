@@ -163,7 +163,7 @@ const correctRate = computed(() =>
           </KunChip>
           <KunChip
             :color="kunQuizDifficultyColor(state.difficulty)"
-            variant="solid"
+            variant="flat"
           >
             {{ kunQuizDifficultyLabel(state.difficulty) }} · {{ state.difficulty }}
           </KunChip>

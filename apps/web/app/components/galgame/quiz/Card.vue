@@ -56,7 +56,7 @@ const correctRate = (q: GalgameQuizCard) =>
           </div>
           <KunChip
             :color="kunQuizDifficultyColor(quiz.difficulty)"
-            variant="solid"
+            variant="flat"
           >
             {{ kunQuizDifficultyLabel(quiz.difficulty) }} {{ quiz.difficulty }}
           </KunChip>
