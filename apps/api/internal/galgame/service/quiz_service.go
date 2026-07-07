@@ -389,6 +389,110 @@ func (s *QuizService) DeleteQuiz(userID int, canModerate bool, quizID int) *erro
 }
 
 // ──────────────────────────────────────────
+// UpdateQuiz — PUT /galgame-quiz/:id (author or moderator)
+// Editing content does NOT re-grade existing answers (a known MVP limitation).
+// ──────────────────────────────────────────
+
+func (s *QuizService) UpdateQuiz(
+	userID int, canModerate bool, req *dto.UpdateQuizRequest,
+) *errors.AppError {
+	quiz, ok := s.quizRepo.FindByID(req.QuizID)
+	if !ok {
+		return errors.ErrNotFound("题目不存在")
+	}
+	if quiz.UserID != userID && !canModerate {
+		return errors.ErrForbidden("没有编辑该题目的权限")
+	}
+	if appErr := validateQuizContent(req.Type, req.Content); appErr != nil {
+		return appErr
+	}
+	spoiler := req.SpoilerLevel
+	if spoiler == "" {
+		spoiler = "none"
+	}
+	fields := map[string]any{
+		"galgame_id":    req.GalgameID, // nil → NULL (unlink)
+		"category":      req.Category,
+		"spoiler_level": spoiler,
+		"type":          req.Type,
+		"difficulty":    req.Difficulty,
+		"question":      req.Question,
+		"content":       req.Content,
+		"explanation":   req.Explanation,
+	}
+	txErr := s.quizRepo.DB().Transaction(func(tx *gorm.DB) error {
+		return s.quizRepo.UpdateQuizFields(tx, req.QuizID, fields)
+	})
+	if txErr != nil {
+		return errors.ErrInternal("更新题目失败")
+	}
+	return nil
+}
+
+// ──────────────────────────────────────────
+// GetQuizForEdit — GET /galgame-quiz/:id/edit (author or moderator)
+// Returns the FULL quiz incl. the answer key so the edit form can pre-fill.
+// ──────────────────────────────────────────
+
+func (s *QuizService) GetQuizForEdit(
+	ctx context.Context, userID int, canModerate bool, quizID int,
+) (*dto.QuizEditData, *errors.AppError) {
+	quiz, ok := s.quizRepo.FindByID(quizID)
+	if !ok {
+		return nil, errors.ErrNotFound("题目不存在")
+	}
+	if quiz.UserID != userID && !canModerate {
+		return nil, errors.ErrForbidden("没有编辑该题目的权限")
+	}
+	return &dto.QuizEditData{
+		ID:           quiz.ID,
+		GalgameID:    quiz.GalgameID,
+		Category:     quiz.Category,
+		Type:         quiz.Type,
+		Difficulty:   quiz.Difficulty,
+		SpoilerLevel: quiz.SpoilerLevel,
+		Question:     quiz.Question,
+		Content:      quiz.Content,
+		Explanation:  quiz.Explanation,
+		Galgame:      s.briefFor(ctx, quiz.GalgameID),
+	}, nil
+}
+
+// ──────────────────────────────────────────
+// GetQuizAnswers — GET /galgame-quiz/:id/answers
+// The genuine answerers + their grade, for the card 查看详情 panel.
+// ──────────────────────────────────────────
+
+const quizAnswerersLimit = 100
+
+func (s *QuizService) GetQuizAnswers(
+	ctx context.Context, quizID int,
+) []dto.QuizAnswererRecord {
+	rows := s.quizRepo.FindQuizAnswerers(quizID, quizAnswerersLimit)
+	if len(rows) == 0 {
+		return []dto.QuizAnswererRecord{}
+	}
+	userIDs := make([]int, 0, len(rows))
+	for _, r := range rows {
+		userIDs = append(userIDs, r.UserID)
+	}
+	userMap := s.userClient.Hydrate(ctx, userIDs)
+	records := make([]dto.QuizAnswererRecord, 0, len(rows))
+	for _, r := range rows {
+		u := userMap[r.UserID]
+		if !userclient.IsRenderable(u) {
+			continue
+		}
+		records = append(records, dto.QuizAnswererRecord{
+			User:      userBriefToDTO(u),
+			IsCorrect: r.IsCorrect,
+			Created:   r.Created,
+		})
+	}
+	return records
+}
+
+// ──────────────────────────────────────────
 // Internal helpers
 // ──────────────────────────────────────────
 

@@ -142,3 +142,25 @@ export interface QuizGalgameOption {
   banner_thumbhash?: string
   officials: string[]
 }
+
+// GET /galgame-quiz/:id/edit — the FULL quiz (answer key included) for the edit
+// form (author or moderator only).
+export interface QuizEditData {
+  id: number
+  galgame_id: number | null
+  category: QuizCategory
+  type: QuizType
+  difficulty: number
+  spoiler_level: QuizSpoilerLevel
+  question: string
+  content: QuizFullContent
+  explanation: string
+  galgame: QuizGalgameBrief | null
+}
+
+// GET /galgame-quiz/:id/answers — one answerer's outcome (card 查看详情 panel).
+export interface QuizAnswererRecord {
+  user: KunUser
+  is_correct: boolean | null
+  created: string | Date
+}

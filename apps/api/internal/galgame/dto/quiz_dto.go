@@ -34,6 +34,42 @@ type CreateQuizRequest struct {
 	Explanation  string          `json:"explanation" validate:"max=2000"`
 }
 
+// UpdateQuizRequest is the body of PUT /galgame-quiz/:id (author or moderator).
+type UpdateQuizRequest struct {
+	QuizID       int             `json:"quiz_id" validate:"required,min=1"`
+	GalgameID    *int            `json:"galgame_id" validate:"omitempty,min=1"`
+	Category     string          `json:"category" validate:"required,oneof=plot character system music voice company trivia other"`
+	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
+	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
+	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
+	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Content      json.RawMessage `json:"content" validate:"required"`
+	Explanation  string          `json:"explanation" validate:"max=2000"`
+}
+
+// QuizEditData is the response of GET /galgame-quiz/:id/edit — the FULL quiz
+// (incl. the answer key in `content`), returned only to the author or a
+// moderator so the edit form can be pre-filled.
+type QuizEditData struct {
+	ID           int               `json:"id"`
+	GalgameID    *int              `json:"galgame_id"`
+	Category     string            `json:"category"`
+	Type         string            `json:"type"`
+	Difficulty   int               `json:"difficulty"`
+	SpoilerLevel string            `json:"spoiler_level"`
+	Question     string            `json:"question"`
+	Content      json.RawMessage   `json:"content"`
+	Explanation  string            `json:"explanation"`
+	Galgame      *QuizGalgameBrief `json:"galgame"`
+}
+
+// QuizAnswererRecord is one answerer's outcome, for the card's 查看详情 panel.
+type QuizAnswererRecord struct {
+	User      UserBrief `json:"user"`
+	IsCorrect *bool     `json:"is_correct"`
+	Created   string    `json:"created"`
+}
+
 // AnswerQuizRequest is the body of POST /galgame-quiz/:id/answer. `submitted`
 // is the type-specific answer, graded server-side.
 type AnswerQuizRequest struct {

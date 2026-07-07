@@ -118,7 +118,42 @@ const validate = (): string | null => {
   }
 }
 
-defineExpose({ getContent, validate, reset })
+// Hydrate the per-type state from an existing quiz's FULL content (edit mode).
+const load = (content: Record<string, unknown>) => {
+  switch (props.type) {
+    case 'single': {
+      const c = content as { options?: string[]; answer?: number }
+      options.value = c.options?.length ? [...c.options] : ['', '']
+      singleAnswer.value = typeof c.answer === 'number' ? c.answer : 0
+      break
+    }
+    case 'multiple': {
+      const c = content as { options?: string[]; answers?: number[] }
+      options.value = c.options?.length ? [...c.options] : ['', '']
+      multiAnswers.value = Array.isArray(c.answers) ? [...c.answers] : []
+      break
+    }
+    case 'judge': {
+      const c = content as { answer?: boolean }
+      judgeAnswer.value = c.answer ? 'true' : 'false'
+      break
+    }
+    case 'fill': {
+      const c = content as { blanks?: { accepted: string[] }[] }
+      blanks.value = c.blanks?.length
+        ? c.blanks.map((b) => [...(b.accepted ?? [])])
+        : [[]]
+      break
+    }
+    case 'essay': {
+      const c = content as { reference?: string }
+      essayReference.value = c.reference ?? ''
+      break
+    }
+  }
+}
+
+defineExpose({ getContent, validate, reset, load })
 </script>
 
 <template>

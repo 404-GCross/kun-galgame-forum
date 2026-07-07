@@ -153,3 +153,24 @@ func (r *QuizRepository) SetAnswerQuality(tx *gorm.DB, answerID, rating int) err
 func (r *QuizRepository) DeleteByID(tx *gorm.DB, id int) error {
 	return tx.Where("id = ?", id).Delete(&model.GalgameQuiz{}).Error
 }
+
+// UpdateQuizFields patches editable columns on a quiz row.
+func (r *QuizRepository) UpdateQuizFields(tx *gorm.DB, id int, fields map[string]any) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	return tx.Table("galgame_quiz").Where("id = ?", id).Updates(fields).Error
+}
+
+// FindQuizAnswerers returns the genuine answerers (role='answerer') with their
+// grade, newest first, capped at limit.
+func (r *QuizRepository) FindQuizAnswerers(quizID, limit int) []model.GalgameQuizAnswererRow {
+	var rows []model.GalgameQuizAnswererRow
+	r.db.Table("galgame_quiz_answer").
+		Select("user_id, is_correct, created").
+		Where("quiz_id = ? AND role = ?", quizID, "answerer").
+		Order("created DESC").
+		Limit(limit).
+		Scan(&rows)
+	return rows
+}

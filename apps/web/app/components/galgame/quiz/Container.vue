@@ -123,6 +123,7 @@ const onPublished = () => {
     <GalgameQuizCard
       v-if="data && data.quiz_data.length"
       :quizzes="data.quiz_data"
+      :is-transparent="false"
     />
     <KunNull
       v-else-if="status !== 'pending'"

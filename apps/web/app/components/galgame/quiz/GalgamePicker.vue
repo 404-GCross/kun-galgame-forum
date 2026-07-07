@@ -16,7 +16,11 @@ type AutoOption = {
   officials?: string[]
 }
 
-const props = defineProps<{ modelValue: number | null }>()
+const props = defineProps<{
+  modelValue: number | null
+  // Pre-seed the selected chip (edit mode).
+  initialSelected?: RecentQuizGalgame | null
+}>()
 const emits = defineEmits<{ 'update:modelValue': [value: number | null] }>()
 
 const store = usePersistQuizGalgameStore()
@@ -80,6 +84,14 @@ watch(
   (v) => {
     if (v === null) selected.value = null
   }
+)
+// Edit mode: seed the selected chip from the pre-linked game.
+watch(
+  () => props.initialSelected,
+  (v) => {
+    if (v) selected.value = { ...v }
+  },
+  { immediate: true }
 )
 </script>
 

@@ -60,7 +60,27 @@ const onRated = (r: QuizQualityResult) => {
 }
 
 const isDeleting = ref(false)
-const canDelete = computed(() => state.value.is_author || canModerate.value)
+const canManage = computed(() => state.value.is_author || canModerate.value)
+
+const showEdit = ref(false)
+const editData = ref<QuizEditData | null>(null)
+const openEdit = async () => {
+  const data = await kunFetch<QuizEditData>(
+    `/galgame-quiz/${state.value.id}/edit`
+  )
+  if (data) {
+    editData.value = data
+    showEdit.value = true
+  }
+}
+// After an edit, refetch the play detail so the view reflects the changes.
+const reloadQuiz = async () => {
+  const fresh = await kunFetch<GalgameQuizPlay>(
+    `/galgame-quiz/${state.value.id}`
+  )
+  if (fresh) state.value = fresh
+}
+
 const remove = async () => {
   const ok = await useComponentMessageStore().alert(
     '确认删除',
@@ -95,18 +115,34 @@ const correctRate = computed(() =>
         </span>
       </KunButton>
 
-      <KunButton
-        v-if="canDelete"
-        variant="light"
-        color="danger"
-        size="sm"
-        :loading="isDeleting"
-        @click="remove"
-      >
-        <span class="flex items-center gap-1">
-          <KunIcon name="lucide:trash-2" />删除
-        </span>
-      </KunButton>
+      <KunPopover v-if="canManage" position="bottom-end">
+        <template #trigger>
+          <KunButton :is-icon-only="true" variant="light" size="sm">
+            <KunIcon name="lucide:ellipsis" />
+          </KunButton>
+        </template>
+        <div class="flex w-32 flex-col gap-1 p-2">
+          <KunButton
+            variant="light"
+            color="default"
+            size="sm"
+            class-name="w-full justify-start gap-2"
+            @click="openEdit"
+          >
+            <KunIcon name="lucide:pencil" />编辑
+          </KunButton>
+          <KunButton
+            variant="light"
+            color="danger"
+            size="sm"
+            class-name="w-full justify-start gap-2"
+            :loading="isDeleting"
+            @click="remove"
+          >
+            <KunIcon name="lucide:trash-2" />删除
+          </KunButton>
+        </div>
+      </KunPopover>
     </div>
 
     <KunCard :is-transparent="false">
@@ -193,5 +229,26 @@ const correctRate = computed(() =>
         />
       </div>
     </KunCard>
+
+    <!-- Attribution -->
+    <div
+      class="text-default-400 flex items-center justify-center gap-1.5 text-sm"
+    >
+      本题出自
+      <img
+        src="/kungalgame-trans.webp"
+        alt="鲲 Galgame 论坛"
+        class="h-4 w-4 rounded"
+      />
+      <KunLink to="/galgame-quiz" class="text-sm">
+        鲲 Galgame 论坛 Galgame 题库
+      </KunLink>
+    </div>
+
+    <GalgameQuizPublish
+      v-model="showEdit"
+      :edit-data="editData"
+      @on-updated="reloadQuiz"
+    />
   </div>
 </template>

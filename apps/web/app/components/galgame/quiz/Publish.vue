@@ -18,11 +18,14 @@ const props = defineProps<{
   modelValue: boolean
   // Optional: bind the quiz to a specific game (passed from a galgame page).
   galgameId?: number
+  // When present, the modal is in EDIT mode (pre-fill + PUT).
+  editData?: QuizEditData | null
 }>()
 
 const emits = defineEmits<{
   'update:modelValue': [value: boolean]
   onPublished: [quiz: GalgameQuizCard]
+  onUpdated: []
 }>()
 
 const category = ref<QuizCategory>('trivia')
@@ -42,7 +45,37 @@ const editorRef = ref<{
   getContent: () => Record<string, unknown>
   validate: () => string | null
   reset: () => void
+  load: (content: Record<string, unknown>) => void
 } | null>(null)
+
+const initialSelected = ref<{ id: number; name: string } | null>(null)
+const isEditing = computed(() => !!props.editData)
+
+// Edit mode: pre-fill the whole form + editor when the modal opens.
+watch(
+  () => props.modelValue,
+  async (open) => {
+    if (!open || !props.editData) return
+    const d = props.editData
+    category.value = d.category
+    type.value = d.type
+    difficulty.value = d.difficulty
+    spoilerLevel.value = d.spoiler_level
+    question.value = d.question
+    explanation.value = d.explanation
+    showExplanation.value = !!d.explanation
+    pickedGalgameId.value = d.galgame_id
+    initialSelected.value = d.galgame
+      ? {
+          id: d.galgame.id,
+          name: getPreferredLanguageText(d.galgame.name) || `#${d.galgame.id}`
+        }
+      : null
+    await nextTick()
+    if (!editorRef.value) await nextTick()
+    editorRef.value?.load(d.content as unknown as Record<string, unknown>)
+  }
+)
 
 // 题型 as a pill KunCheckBoxGroup (like the topic 分区 selector). Type is
 // single-select, so the group's array v-model is adapted to a single value:
@@ -93,6 +126,7 @@ const resetForm = () => {
   question.value = ''
   explanation.value = ''
   pickedGalgameId.value = null
+  initialSelected.value = null
   showExplanation.value = false
   editorRef.value?.reset()
 }
@@ -125,6 +159,23 @@ const submit = async () => {
     return
   }
 
+  // Edit mode → PUT; otherwise create → POST.
+  if (isEditing.value && props.editData) {
+    body.quiz_id = props.editData.id
+    isSubmitting.value = true
+    const ok = await kunFetch(`/galgame-quiz/${props.editData.id}`, {
+      method: 'PUT',
+      body
+    })
+    isSubmitting.value = false
+    if (ok) {
+      useMessage('已保存修改', 'success')
+      emits('onUpdated')
+      close()
+    }
+    return
+  }
+
   isSubmitting.value = true
   const res = await kunFetch<GalgameQuizCard>('/galgame-quiz', {
     method: 'POST',
@@ -149,8 +200,11 @@ const submit = async () => {
   >
     <div class="space-y-5">
       <div class="space-y-1">
-        <KunHeader name="出题" scale="h3" />
-        <p class="text-default-400 flex items-center gap-1 text-xs">
+        <KunHeader :name="isEditing ? '编辑题目' : '出题'" scale="h3" />
+        <p
+          v-if="!isEditing"
+          class="text-default-400 flex items-center gap-1 text-xs"
+        >
           <KunIcon name="lucide:lollipop" />出题即得 2 萌萌点 · 题目被删除时扣除
         </p>
       </div>
@@ -163,7 +217,11 @@ const submit = async () => {
         title="已关联当前 Galgame"
         description="本题将关联到你当前所在的 Galgame"
       />
-      <GalgameQuizGalgamePicker v-else v-model="pickedGalgameId" />
+      <GalgameQuizGalgamePicker
+        v-else
+        v-model="pickedGalgameId"
+        :initial-selected="initialSelected"
+      />
 
       <!-- 题型 (pill KunCheckBoxGroup, single-select) -->
       <div class="space-y-2">
@@ -267,7 +325,9 @@ const submit = async () => {
 
       <div class="flex items-center justify-end gap-2 pt-1">
         <KunButton variant="light" color="default" @click="close">取消</KunButton>
-        <KunButton :loading="isSubmitting" @click="submit">发布题目</KunButton>
+        <KunButton :loading="isSubmitting" @click="submit">
+          {{ isEditing ? '保存修改' : '发布题目' }}
+        </KunButton>
       </div>
     </div>
   </KunModal>

@@ -199,6 +199,9 @@ func (a *App) setupRoutes() {
 	// the public group (before the optAuth `/galgame-quiz/:id`) so it isn't
 	// captured by the `:id` param route.
 	api.Get("/galgame-quiz/galgame-search", a.GalgameQuizHandler.SearchGalgames)
+	// Answerer records for the card 查看详情 panel (public — no per-viewer state).
+	// 3-segment, so it never collides with the 2-segment /galgame-quiz/:id.
+	api.Get("/galgame-quiz/:id/answers", a.GalgameQuizHandler.GetQuizAnswers)
 
 	// ════════════════════════════════════════════
 	// OPTIONAL AUTH routes (public but attach user if logged in)
@@ -406,6 +409,9 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame-quiz/:id", a.GalgameQuizHandler.DeleteQuiz)
 	authed.Post("/galgame-quiz/:id/answer", a.GalgameQuizHandler.AnswerQuiz)
 	authed.Put("/galgame-quiz/:id/quality", a.GalgameQuizHandler.RateQuizQuality)
+	// Edit (author or moderator): fetch the full quiz, then update it.
+	authed.Get("/galgame-quiz/:id/edit", a.GalgameQuizHandler.GetQuizForEdit)
+	authed.Put("/galgame-quiz/:id", a.GalgameQuizHandler.UpdateQuiz)
 
 	// Galgame wiki writes (authenticated + token forwarding).
 	//

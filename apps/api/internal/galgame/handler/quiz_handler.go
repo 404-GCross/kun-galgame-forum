@@ -147,3 +147,47 @@ func (h *QuizHandler) DeleteQuiz(c fiber.Ctx) error {
 	}
 	return response.OKMessage(c, "题目已删除")
 }
+
+// UpdateQuiz — PUT /api/galgame-quiz/:id (author or moderator)
+func (h *QuizHandler) UpdateQuiz(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	var req dto.UpdateQuizRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	if appErr := h.quizService.UpdateQuiz(user.ID, role.CanModerate(user.Roles), &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OKMessage(c, "题目已更新")
+}
+
+// GetQuizForEdit — GET /api/galgame-quiz/:id/edit (author or moderator)
+func (h *QuizHandler) GetQuizForEdit(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的题目 ID"))
+	}
+	data, appErr := h.quizService.GetQuizForEdit(
+		c.Context(), user.ID, role.CanModerate(user.Roles), id,
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, data)
+}
+
+// GetQuizAnswers — GET /api/galgame-quiz/:id/answers
+func (h *QuizHandler) GetQuizAnswers(c fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的题目 ID"))
+	}
+	return response.OK(c, h.quizService.GetQuizAnswers(c.Context(), id))
+}

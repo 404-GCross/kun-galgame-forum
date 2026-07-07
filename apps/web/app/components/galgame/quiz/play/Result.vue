@@ -193,7 +193,7 @@ const submitQuality = async () => {
           平均 {{ quiz.quality_average }} 分 · {{ quiz.quality_count }} 人评分
         </span>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex flex-wrap items-center gap-4">
         <KunRating v-model="quality" :max="10" aria-label="quiz-quality" />
         <span class="text-warning-500 text-2xl font-bold">{{ quality }}</span>
         <KunButton
