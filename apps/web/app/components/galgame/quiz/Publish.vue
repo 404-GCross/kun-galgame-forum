@@ -3,6 +3,7 @@ import {
   KUN_QUIZ_TYPE_CONST,
   KUN_QUIZ_ENABLED_TYPE_CONST,
   KUN_QUIZ_TYPE_MAP,
+  KUN_QUIZ_TYPE_ICON_MAP,
   KUN_QUIZ_TYPE_DESCRIPTION_MAP,
   KUN_QUIZ_CATEGORY_CONST,
   KUN_QUIZ_CATEGORY_MAP,
@@ -29,6 +30,9 @@ const question = ref('')
 const explanation = ref('')
 // The galgame chosen via the picker (only when not pre-bound by the galgameId prop).
 const pickedGalgameId = ref<number | null>(null)
+// Progressive disclosure: the optional link + explanation stay hidden until asked for.
+const showLink = ref(false)
+const showExplanation = ref(false)
 const isSubmitting = ref(false)
 
 const editorRef = ref<{
@@ -37,18 +41,18 @@ const editorRef = ref<{
   reset: () => void
 } | null>(null)
 
-// All five types are listed; the not-yet-implemented ones (fill/essay) are
-// shown DISABLED with a hint rather than removed.
-const typeOptions = KUN_QUIZ_TYPE_CONST.map((t) => {
-  const enabled = (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
-  return {
-    value: t,
-    label: enabled
-      ? (KUN_QUIZ_TYPE_MAP[t] ?? t)
-      : `${KUN_QUIZ_TYPE_MAP[t] ?? t}（即将实装）`,
-    disabled: !enabled
-  }
-})
+// 题型 as a segmented tile row — all five shown; not-yet-implemented ones
+// (fill/essay) rendered disabled with a hint rather than removed.
+const typeTiles = KUN_QUIZ_TYPE_CONST.map((t) => ({
+  value: t,
+  label: KUN_QUIZ_TYPE_MAP[t] ?? t,
+  icon: KUN_QUIZ_TYPE_ICON_MAP[t] ?? 'lucide:circle',
+  enabled: (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
+}))
+const selectType = (tile: { value: QuizType; enabled: boolean }) => {
+  if (tile.enabled) type.value = tile.value
+}
+
 const categoryOptions = KUN_QUIZ_CATEGORY_CONST.map((c) => ({
   value: c,
   label: KUN_QUIZ_CATEGORY_MAP[c] ?? c
@@ -63,6 +67,8 @@ const resetForm = () => {
   question.value = ''
   explanation.value = ''
   pickedGalgameId.value = null
+  showLink.value = false
+  showExplanation.value = false
   editorRef.value?.reset()
 }
 
@@ -111,33 +117,88 @@ const submit = async () => {
 <template>
   <KunModal
     :model-value="modelValue"
-    inner-class-name="max-w-[780px] w-[90vw]"
+    inner-class-name="max-w-[720px] w-[90vw]"
     :is-dismissable="false"
     @update:model-value="(v) => emits('update:modelValue', v)"
   >
-    <div class="space-y-4">
-      <KunHeader
-        name="出题"
-        description="出一道优质的 Galgame 题目, 合格出题将获得萌萌点; 题目被删除时萌萌点会被扣除"
-        scale="h3"
-      />
-
-      <KunInfo
-        title="萌萌点奖励"
-        color="secondary"
-        icon="lucide:lollipop"
-        description="出题即获得 2 萌萌点, 题目被删除时会扣除对应萌萌点"
-      />
-
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <KunSelect v-model="category" :options="categoryOptions" label="分类" />
-        <KunSelect v-model="type" :options="typeOptions" label="题型" />
+    <div class="space-y-5">
+      <div class="space-y-1">
+        <KunHeader name="出题" scale="h3" />
+        <p class="text-default-400 flex items-center gap-1 text-xs">
+          <KunIcon name="lucide:lollipop" />出题即得 2 萌萌点 · 题目被删除时扣除
+        </p>
       </div>
-      <p class="text-default-500 text-sm">
-        {{ KUN_QUIZ_TYPE_DESCRIPTION_MAP[type] }}
-      </p>
 
-      <!-- Pre-bound from a galgame page → a locked note; otherwise the picker. -->
+      <!-- 1) 题型 (segmented tiles) -->
+      <div class="space-y-2">
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <button
+            v-for="tile in typeTiles"
+            :key="tile.value"
+            type="button"
+            :disabled="!tile.enabled"
+            class="flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-3 text-sm transition-colors"
+            :class="[
+              type === tile.value
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-default-200 text-default-600 hover:border-default-300',
+              !tile.enabled && 'cursor-not-allowed opacity-40 hover:border-default-200'
+            ]"
+            @click="selectType(tile)"
+          >
+            <KunIcon :name="tile.icon" class="size-5" />
+            <span>{{ tile.label }}</span>
+            <span v-if="!tile.enabled" class="text-[10px] leading-none">
+              即将实装
+            </span>
+          </button>
+        </div>
+        <p class="text-default-500 text-sm">
+          {{ KUN_QUIZ_TYPE_DESCRIPTION_MAP[type] }}
+        </p>
+      </div>
+
+      <!-- 2) 题干 -->
+      <KunTextarea
+        v-model="question"
+        label="题目"
+        :rows="2"
+        placeholder="例如: 《永不枯萎的世界与终结之花》中莲什么时候来过月经"
+        :maxlength="2000"
+        :show-char-count="true"
+        auto-grow
+      />
+
+      <!-- 3) 选项 / 答案 (correctness inline) -->
+      <GalgameQuizContentEditor ref="editorRef" :type="type" />
+
+      <KunDivider />
+
+      <!-- 4) 属性: 分类 + 难度 -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <KunSelect v-model="category" :options="categoryOptions" label="分类" />
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label class="text-sm">难度</label>
+            <KunChip
+              :color="kunQuizDifficultyColor(difficulty)"
+              variant="flat"
+              size="sm"
+            >
+              {{ kunQuizDifficultyLabel(difficulty) }} · {{ difficulty }}
+            </KunChip>
+          </div>
+          <KunSlider
+            v-model="difficulty"
+            :min="1"
+            :max="10"
+            :step="1"
+            :color="kunQuizDifficultyColor(difficulty)"
+          />
+        </div>
+      </div>
+
+      <!-- 5) 关联 Galgame (progressive) -->
       <KunInfo
         v-if="galgameId"
         color="primary"
@@ -145,47 +206,39 @@ const submit = async () => {
         title="已关联当前 Galgame"
         description="本题将关联到你当前所在的 Galgame"
       />
-      <GalgameQuizGalgamePicker v-else v-model="pickedGalgameId" />
-
-      <div class="space-y-1">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium">难度 (1-10)</label>
-          <KunChip :color="kunQuizDifficultyColor(difficulty)" variant="flat">
-            {{ kunQuizDifficultyLabel(difficulty) }} · {{ difficulty }}
-          </KunChip>
-        </div>
-        <KunSlider
-          v-model="difficulty"
-          :min="1"
-          :max="10"
-          :step="1"
-          :color="kunQuizDifficultyColor(difficulty)"
-        />
-      </div>
-
-      <KunTextarea
-        v-model="question"
-        label="题干"
-        :rows="3"
-        placeholder="例如: 《永不枯萎的世界与终结之花》中莲什么时候来过月经"
-        :maxlength="2000"
-        :show-char-count="true"
-        auto-grow
+      <GalgameQuizGalgamePicker
+        v-else-if="showLink || pickedGalgameId !== null"
+        v-model="pickedGalgameId"
       />
+      <KunButton v-else variant="light" size="sm" @click="showLink = true">
+        <span class="flex items-center gap-1">
+          <KunIcon name="lucide:link" />关联 Galgame（可选）
+        </span>
+      </KunButton>
 
-      <GalgameQuizContentEditor ref="editorRef" :type="type" />
-
+      <!-- 6) 解析 (progressive) -->
       <KunTextarea
+        v-if="showExplanation || explanation"
         v-model="explanation"
-        label="解析 (可选, 作答后展示)"
+        label="解析（可选, 作答后展示）"
         :rows="2"
         placeholder="可以补充答案的解析、出处或冷知识"
         :maxlength="2000"
         :show-char-count="true"
         auto-grow
       />
+      <KunButton
+        v-else
+        variant="light"
+        size="sm"
+        @click="showExplanation = true"
+      >
+        <span class="flex items-center gap-1">
+          <KunIcon name="lucide:plus" />添加解析（可选）
+        </span>
+      </KunButton>
 
-      <div class="flex items-center justify-end gap-2">
+      <div class="flex items-center justify-end gap-2 pt-1">
         <KunButton variant="light" color="default" @click="close">取消</KunButton>
         <KunButton :loading="isSubmitting" @click="submit">发布题目</KunButton>
       </div>

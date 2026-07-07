@@ -2,11 +2,10 @@
 // Per-type authoring of the quiz `content` payload. The parent (Publish) holds
 // a ref to this component and calls getContent() / validate() on submit — the
 // server validates the same shape again, so this is UX-only.
-import type {
-  KunRadioOption,
-  KunCheckBoxGroupOption
-} from '@kungal/ui-vue'
-
+//
+// Correctness is marked INLINE on each option row (one action per row) rather
+// than in a separate "correct answer" picker — the pattern used by Google
+// Forms / Typeform / Kahoot.
 const props = defineProps<{ type: QuizType }>()
 
 // single / multiple
@@ -41,21 +40,26 @@ const removeOption = (i: number) => {
   if (singleAnswer.value >= options.value.length) singleAnswer.value = 0
 }
 
+// Inline correct-answer marking.
+const isCorrect = (i: number) =>
+  props.type === 'single'
+    ? singleAnswer.value === i
+    : multiAnswers.value.includes(i)
+const toggleCorrect = (i: number) => {
+  if (props.type === 'single') {
+    singleAnswer.value = i
+  } else {
+    multiAnswers.value = multiAnswers.value.includes(i)
+      ? multiAnswers.value.filter((x) => x !== i)
+      : [...multiAnswers.value, i]
+  }
+}
+
 const addBlank = () => blanks.value.push([])
 const removeBlank = (i: number) => {
   if (blanks.value.length <= 1) return
   blanks.value.splice(i, 1)
 }
-
-const choiceOptions = computed<KunRadioOption<number>[]>(() =>
-  options.value.map((o, i) => ({
-    value: i,
-    label: o.trim() || `选项 ${i + 1}`
-  }))
-)
-const checkChoiceOptions = computed<KunCheckBoxGroupOption<number>[]>(
-  () => choiceOptions.value
-)
 
 const getContent = (): Record<string, unknown> => {
   switch (props.type) {
@@ -89,8 +93,10 @@ const validate = (): string | null => {
       const opts = options.value.map((o) => o.trim())
       if (opts.length < 2) return '至少需要 2 个选项'
       if (opts.some((o) => !o)) return '选项内容不能为空'
+      if (props.type === 'single' && singleAnswer.value >= opts.length)
+        return '请标记正确答案'
       if (props.type === 'multiple' && multiAnswers.value.length === 0)
-        return '请至少勾选一个正确答案'
+        return '请至少标记一个正确答案'
       return null
     }
     case 'judge':
@@ -115,69 +121,92 @@ defineExpose({ getContent, validate, reset })
 
 <template>
   <div class="space-y-3">
-    <!-- single / multiple -->
+    <!-- single / multiple — correctness marked inline on each row -->
     <template v-if="type === 'single' || type === 'multiple'">
-      <div class="space-y-2">
+      <div class="flex items-center justify-between">
         <label class="text-sm font-medium">选项</label>
+        <span class="text-default-400 text-xs">
+          点亮左侧{{ type === 'single' ? '圆点' : '方块' }}标记正确答案{{
+            type === 'multiple' ? '（可多选）' : ''
+          }}
+        </span>
+      </div>
+
+      <div class="space-y-2">
         <div
           v-for="(_, i) in options"
           :key="i"
           class="flex items-center gap-2"
         >
+          <button
+            type="button"
+            class="flex size-9 shrink-0 items-center justify-center border-2 transition-colors"
+            :class="[
+              type === 'single' ? 'rounded-full' : 'rounded-md',
+              isCorrect(i)
+                ? 'border-success bg-success text-white'
+                : 'border-default-300 text-transparent hover:border-success'
+            ]"
+            :aria-label="`标记选项 ${i + 1} 为正确答案`"
+            @click="toggleCorrect(i)"
+          >
+            <KunIcon name="lucide:check" class="size-4" />
+          </button>
+
           <KunInput
             v-model="options[i]"
             :placeholder="`选项 ${i + 1}`"
             class-name="grow"
           />
+
           <KunButton
             :is-icon-only="true"
             variant="light"
             color="danger"
+            size="sm"
             :disabled="options.length <= 2"
             @click="removeOption(i)"
           >
             <KunIcon name="lucide:trash-2" />
           </KunButton>
         </div>
-        <KunButton variant="flat" size="sm" @click="addOption">
-          <span class="flex items-center gap-1">
-            <KunIcon name="lucide:plus" />添加选项
-          </span>
-        </KunButton>
       </div>
 
-      <div class="space-y-2">
-        <label class="text-sm font-medium">
-          {{ type === 'single' ? '正确答案 (单选)' : '正确答案 (可多选)' }}
-        </label>
-        <KunRadioGroup
-          v-if="type === 'single'"
-          v-model="singleAnswer"
-          :options="choiceOptions"
-          variant="card"
-        />
-        <KunCheckBoxGroup
-          v-else
-          v-model="multiAnswers"
-          :options="checkChoiceOptions"
-          variant="card"
-        />
-      </div>
+      <KunButton variant="light" size="sm" @click="addOption">
+        <span class="flex items-center gap-1">
+          <KunIcon name="lucide:plus" />添加选项
+        </span>
+      </KunButton>
     </template>
 
-    <!-- judge -->
+    <!-- judge — two big choice cards -->
     <template v-else-if="type === 'judge'">
-      <div class="space-y-2">
-        <label class="text-sm font-medium">正确答案</label>
-        <KunRadioGroup
-          v-model="judgeAnswer"
-          :options="[
-            { value: 'true', label: '正确' },
-            { value: 'false', label: '错误' }
-          ]"
-          orientation="horizontal"
-          variant="card"
-        />
+      <label class="text-sm font-medium">正确答案</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          class="flex items-center justify-center gap-2 rounded-xl border-2 py-5 text-lg font-medium transition-colors"
+          :class="
+            judgeAnswer === 'true'
+              ? 'border-success bg-success/10 text-success'
+              : 'border-default-200 text-default-500 hover:border-default-300'
+          "
+          @click="judgeAnswer = 'true'"
+        >
+          <KunIcon name="lucide:circle-check" />正确
+        </button>
+        <button
+          type="button"
+          class="flex items-center justify-center gap-2 rounded-xl border-2 py-5 text-lg font-medium transition-colors"
+          :class="
+            judgeAnswer === 'false'
+              ? 'border-danger bg-danger/10 text-danger'
+              : 'border-default-200 text-default-500 hover:border-default-300'
+          "
+          @click="judgeAnswer = 'false'"
+        >
+          <KunIcon name="lucide:circle-x" />错误
+        </button>
       </div>
     </template>
 
@@ -198,8 +227,8 @@ defineExpose({ getContent, validate, reset })
             :is-icon-only="true"
             variant="light"
             color="danger"
-            :disabled="blanks.length <= 1"
             class-name="mt-6"
+            :disabled="blanks.length <= 1"
             @click="removeBlank(i)"
           >
             <KunIcon name="lucide:trash-2" />
