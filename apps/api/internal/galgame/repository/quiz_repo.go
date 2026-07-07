@@ -162,6 +162,32 @@ func (r *QuizRepository) UpdateQuizFields(tx *gorm.DB, id int, fields map[string
 	return tx.Table("galgame_quiz").Where("id = ?", id).Updates(fields).Error
 }
 
+// QuizViewerAnswer is the viewer's row (role + grade) for a quiz — used to
+// stamp each list card with the viewer's own status.
+type QuizViewerAnswer struct {
+	QuizID    int    `gorm:"column:quiz_id"`
+	Role      string `gorm:"column:role"`
+	IsCorrect *bool  `gorm:"column:is_correct"`
+}
+
+// FindViewerAnswers returns the viewer's answer rows for the given quizzes,
+// keyed by quiz_id. Empty when the viewer is anonymous.
+func (r *QuizRepository) FindViewerAnswers(quizIDs []int, userID int) map[int]QuizViewerAnswer {
+	if len(quizIDs) == 0 || userID == 0 {
+		return map[int]QuizViewerAnswer{}
+	}
+	var rows []QuizViewerAnswer
+	r.db.Table("galgame_quiz_answer").
+		Select("quiz_id, role, is_correct").
+		Where("user_id = ? AND quiz_id IN ?", userID, quizIDs).
+		Scan(&rows)
+	m := make(map[int]QuizViewerAnswer, len(rows))
+	for _, row := range rows {
+		m[row.QuizID] = row
+	}
+	return m
+}
+
 // FindQuizAnswerers returns the genuine answerers (role='answerer') with their
 // grade, newest first, capped at limit.
 func (r *QuizRepository) FindQuizAnswerers(quizID, limit int) []model.GalgameQuizAnswererRow {

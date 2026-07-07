@@ -227,6 +227,11 @@ const correctRate = computed(() =>
           :result="state.my_answer"
           @rated="onRated"
         />
+
+        <KunDivider />
+
+        <!-- 查看题目详情: stats + answerer records (peek → expand) -->
+        <GalgameQuizDetailPanel :quiz="state" />
       </div>
     </KunCard>
 

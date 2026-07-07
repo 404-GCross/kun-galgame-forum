@@ -100,6 +100,19 @@ type QuizGalgameBrief struct {
 	Name         KunLanguage `json:"name"`
 }
 
+// QuizGalgameDetail is the richer linked-game panel on the answer page's
+// 查看详情 (banner + 会社 + age), beyond the lightweight card brief.
+type QuizGalgameDetail struct {
+	ID               int         `json:"id"`
+	Name             KunLanguage `json:"name"`
+	ContentLimit     string      `json:"content_limit"`
+	AgeLimit         string      `json:"age_limit"`
+	OriginalLanguage string      `json:"original_language"`
+	Banner           string      `json:"banner"`
+	BannerThumbhash  string      `json:"banner_thumbhash,omitempty"`
+	Officials        []string    `json:"officials"`
+}
+
 // QuizStats is the aggregate answer/quality block embedded in card + play.
 type QuizStats struct {
 	View           int     `json:"view"`
@@ -127,6 +140,9 @@ type QuizCard struct {
 	Created      string            `json:"created"`
 	Updated      string            `json:"updated"`
 	Galgame      *QuizGalgameBrief `json:"galgame"`
+	// The viewer's own status on this quiz:
+	// author | correct | incorrect | answered | unanswered.
+	MyStatus string `json:"my_status"`
 }
 
 type QuizListPage struct {
@@ -143,20 +159,20 @@ type QuizListPage struct {
 // the viewer has answered (or is the author), and only then reveals the full
 // answer key + explanation.
 type QuizPlay struct {
-	ID           int               `json:"id"`
-	User         UserBrief         `json:"user"`
-	Category     string            `json:"category"`
-	Type         string            `json:"type"`
-	Difficulty   int               `json:"difficulty"`
-	SpoilerLevel string            `json:"spoiler_level"`
-	Question     string            `json:"question"`
-	Content      json.RawMessage   `json:"content"`
-	QuizStats                      // embedded view/answer/correct/quality
-	Created      string            `json:"created"`
-	Updated      string            `json:"updated"`
-	Galgame      *QuizGalgameBrief `json:"galgame"`
-	IsAuthor     bool              `json:"is_author"`
-	MyAnswer     *QuizAnswerResult `json:"my_answer"`
+	ID           int                `json:"id"`
+	User         UserBrief          `json:"user"`
+	Category     string             `json:"category"`
+	Type         string             `json:"type"`
+	Difficulty   int                `json:"difficulty"`
+	SpoilerLevel string             `json:"spoiler_level"`
+	Question     string             `json:"question"`
+	Content      json.RawMessage    `json:"content"`
+	QuizStats                       // embedded view/answer/correct/quality
+	Created      string             `json:"created"`
+	Updated      string             `json:"updated"`
+	Galgame      *QuizGalgameDetail `json:"galgame"`
+	IsAuthor     bool               `json:"is_author"`
+	MyAnswer     *QuizAnswerResult  `json:"my_answer"`
 }
 
 // QuizAnswerResult reveals the graded outcome + the full answer key. It is the

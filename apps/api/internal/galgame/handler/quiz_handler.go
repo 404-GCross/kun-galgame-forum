@@ -31,7 +31,9 @@ func (h *QuizHandler) GetAllQuizzes(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	page, appErr := h.quizService.GetAllQuizzes(c.Context(), &req, utils.IsSFW(c))
+	page, appErr := h.quizService.GetAllQuizzes(
+		c.Context(), &req, utils.IsSFW(c), optionalUID(c),
+	)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

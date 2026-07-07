@@ -57,6 +57,7 @@ func (s *QuizService) GetAllQuizzes(
 	ctx context.Context,
 	req *dto.QuizListRequest,
 	isSFW bool,
+	viewerID int,
 ) (*dto.QuizListPage, *errors.AppError) {
 	sortOrder := req.SortOrder
 	if sortOrder == "" {
@@ -73,7 +74,7 @@ func (s *QuizService) GetAllQuizzes(
 		Page:       req.Page,
 		Limit:      req.Limit,
 	})
-	return s.hydrateCards(ctx, rows, total, isSFW), nil
+	return s.hydrateCards(ctx, rows, total, isSFW, viewerID), nil
 }
 
 // GetMyAnswered — GET /galgame-quiz/mine/answered (self only).
@@ -83,7 +84,7 @@ func (s *QuizService) GetMyAnswered(
 ) (*dto.QuizListPage, *errors.AppError) {
 	rows, total := s.quizRepo.ListAnsweredByUser(userID, page, limit)
 	// A self list is not SFW-gated (the viewer is logged in and answered these).
-	return s.hydrateCards(ctx, rows, total, false), nil
+	return s.hydrateCards(ctx, rows, total, false, userID), nil
 }
 
 // hydrateCards resolves authors + linked-game briefs and drops rows whose
@@ -94,17 +95,21 @@ func (s *QuizService) hydrateCards(
 	rows []model.GalgameQuizRow,
 	total int64,
 	isSFW bool,
+	viewerID int,
 ) *dto.QuizListPage {
 	userIDs := make([]int, 0, len(rows))
 	galgameIDs := make([]int, 0, len(rows))
+	quizIDs := make([]int, 0, len(rows))
 	for _, r := range rows {
 		userIDs = append(userIDs, r.UserID)
+		quizIDs = append(quizIDs, r.ID)
 		if r.GalgameID != nil {
 			galgameIDs = append(galgameIDs, *r.GalgameID)
 		}
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 	briefMap := s.fetchBriefsPublic(ctx, galgameIDs, isSFW)
+	viewerAnswers := s.quizRepo.FindViewerAnswers(quizIDs, viewerID)
 
 	cards := make([]dto.QuizCard, 0, len(rows))
 	for _, r := range rows {
@@ -120,9 +125,28 @@ func (s *QuizService) hydrateCards(
 			}
 			brief = &b
 		}
-		cards = append(cards, quizRowToCard(r, u, brief))
+		card := quizRowToCard(r, u, brief)
+		va, answered := viewerAnswers[r.ID]
+		card.MyStatus = quizViewerStatus(va, answered)
+		cards = append(cards, card)
 	}
 	return &dto.QuizListPage{QuizData: cards, Total: total}
+}
+
+// quizViewerStatus maps the viewer's row to a status label for the list card.
+func quizViewerStatus(va repository.QuizViewerAnswer, answered bool) string {
+	switch {
+	case !answered:
+		return "unanswered"
+	case va.Role == "author":
+		return "author"
+	case va.IsCorrect == nil:
+		return "answered" // essay / ungraded
+	case *va.IsCorrect:
+		return "correct"
+	default:
+		return "incorrect"
+	}
 }
 
 // ──────────────────────────────────────────
@@ -175,7 +199,7 @@ func (s *QuizService) GetQuizPlay(
 		QuizStats:    quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
 		Created:      quiz.CreatedAt.Format(time.RFC3339),
 		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
-		Galgame:      s.briefFor(ctx, quiz.GalgameID),
+		Galgame:      s.galgameDetailFor(ctx, quiz.GalgameID),
 		IsAuthor:     isAuthor,
 		MyAnswer:     myAnswer,
 	}
@@ -508,6 +532,40 @@ func (s *QuizService) briefFor(ctx context.Context, galgameID *int) *dto.QuizGal
 		return nil
 	}
 	return quizGalgameBrief(b)
+}
+
+// galgameDetailFor builds the richer linked-game panel for the answer page's
+// 查看详情 (banner + 会社). isSFW=false — the detail page doesn't SFW-gate.
+func (s *QuizService) galgameDetailFor(ctx context.Context, galgameID *int) *dto.QuizGalgameDetail {
+	if galgameID == nil {
+		return nil
+	}
+	m := s.fetchDetailBriefs(ctx, []int{*galgameID}, false)
+	b, ok := m[*galgameID]
+	if !ok {
+		return nil
+	}
+	banner := b.EffectiveBannerURL
+	if banner == "" {
+		banner = b.Banner
+	}
+	officials := b.Officials
+	if officials == nil {
+		officials = []string{}
+	}
+	return &dto.QuizGalgameDetail{
+		ID: b.ID,
+		Name: dto.KunLanguage{
+			EnUs: b.NameEnUs, JaJp: b.NameJaJp,
+			ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
+		},
+		ContentLimit:     b.ContentLimit,
+		AgeLimit:         b.AgeLimit,
+		OriginalLanguage: b.OriginalLanguage,
+		Banner:           banner,
+		BannerThumbhash:  b.EffectiveBannerThumbhash,
+		Officials:        officials,
+	}
 }
 
 func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int]client.GalgameBrief {

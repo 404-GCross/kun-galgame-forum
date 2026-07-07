@@ -13,7 +13,7 @@ const isLoggedIn = computed(() => !!userStore.id)
 const tab = ref<'all' | 'mine'>('all')
 const params = reactive({
   page: 1,
-  limit: 24,
+  limit: 50,
   sort_field: 'time',
   sort_order: 'desc',
   category: 'all',
@@ -103,7 +103,7 @@ const onPublished = () => {
           <KunButton
             :is-icon-only="true"
             :variant="params.sort_order === 'desc' ? 'flat' : 'light'"
-            size="lg"
+            size="md"
             @click="params.sort_order = 'desc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-down" />
@@ -111,7 +111,7 @@ const onPublished = () => {
           <KunButton
             :is-icon-only="true"
             :variant="params.sort_order === 'asc' ? 'flat' : 'light'"
-            size="lg"
+            size="md"
             @click="params.sort_order = 'asc'"
           >
             <KunIcon class="text-inherit" name="lucide:arrow-up" />
@@ -120,10 +120,9 @@ const onPublished = () => {
       </div>
     </div>
 
-    <GalgameQuizCard
+    <GalgameQuizList
       v-if="data && data.quiz_data.length"
       :quizzes="data.quiz_data"
-      :is-transparent="false"
     />
     <KunNull
       v-else-if="status !== 'pending'"

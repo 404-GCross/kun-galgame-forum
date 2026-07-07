@@ -14,10 +14,30 @@ export type QuizCategory =
 
 export type QuizSpoilerLevel = 'none' | 'portion' | 'serious'
 
+// The viewer's own status on a quiz (drives the list's left indicator).
+export type QuizMyStatus =
+  | 'author'
+  | 'correct'
+  | 'incorrect'
+  | 'answered'
+  | 'unanswered'
+
 export interface QuizGalgameBrief {
   id: number
   content_limit: string
   name: KunLanguage
+}
+
+// Richer linked-game panel on the answer page's 查看详情.
+export interface QuizGalgameDetail {
+  id: number
+  name: KunLanguage
+  content_limit: string
+  age_limit: string
+  original_language: string
+  banner: string
+  banner_thumbhash?: string
+  officials: string[]
 }
 
 export interface QuizStats {
@@ -40,6 +60,7 @@ export interface GalgameQuizCard extends QuizStats {
   updated: string | Date
   // null when the quiz is general trivia (not bound to a specific game).
   galgame: QuizGalgameBrief | null
+  my_status: QuizMyStatus
 }
 
 export interface QuizListPage {
@@ -121,7 +142,7 @@ export interface GalgameQuizPlay extends QuizStats {
   content: QuizPublicContent
   created: string | Date
   updated: string | Date
-  galgame: QuizGalgameBrief | null
+  galgame: QuizGalgameDetail | null
   is_author: boolean
   // Present once the viewer has answered (or is the author) — reveals the key.
   my_answer: QuizAnswerResult | null

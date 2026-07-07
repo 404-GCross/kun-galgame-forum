@@ -192,9 +192,6 @@ func (a *App) setupRoutes() {
 	// Card.vue doesn't render a like toggle, so optAuth would just be
 	// dead-weight middleware on a high-traffic list endpoint.
 	api.Get("/galgame-rating/all", a.GalgameRatingHandler.GetAllRatings)
-	// `/galgame-quiz/all` list — the card shows no per-viewer state, so it
-	// stays public (SFW-gated inside the service against the linked game).
-	api.Get("/galgame-quiz/all", a.GalgameQuizHandler.GetAllQuizzes)
 	// Galgame picker search for the 出题 modal. Static path registered here in
 	// the public group (before the optAuth `/galgame-quiz/:id`) so it isn't
 	// captured by the `:id` param route.
@@ -224,6 +221,11 @@ func (a *App) setupRoutes() {
 	// already answered gets the revealed answer key + their result in
 	// `my_answer`. (/galgame-quiz/mine/answered is 3-segment, so it never
 	// collides with this 2-segment :id route.)
+	//
+	// `/galgame-quiz/all` is optional-auth too — a logged-in viewer's list cards
+	// carry their own status (答对/答错/未答). Registered BEFORE `:id` so the
+	// static path wins over the param route.
+	optAuth.Get("/galgame-quiz/all", a.GalgameQuizHandler.GetAllQuizzes)
 	optAuth.Get("/galgame-quiz/:id", a.GalgameQuizHandler.GetQuizPlay)
 
 	// Topic (optional auth for interaction status)
