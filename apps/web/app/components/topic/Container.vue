@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { useRouteQuery } from '@vueuse/router'
+import {
+  topicListSortFieldOptions,
+  type TopicListSortField
+} from '~/constants/topic'
 
 // /topic list — page-based (URL ?page=), 50 per page, jump to top on page change.
 const route = useRoute()
 
-// Page lives in the URL so the view is shareable + survives back/forward; the
-// default 1 is omitted from the URL. Number transform keeps the ref numeric.
+// Page + sort live in the URL so the view is shareable + survives back/forward;
+// the defaults are omitted from the URL. Number transform keeps the page numeric.
 const page = useRouteQuery('page', 1, { mode: 'replace', transform: Number })
+const sortField = useRouteQuery<TopicListSortField>(
+  'sort_field',
+  'status_update_time',
+  { mode: 'replace' }
+)
+const sortOrder = useRouteQuery<'asc' | 'desc'>('sort_order', 'desc', {
+  mode: 'replace'
+})
 const limit = 50
 
 const { data, status, refresh } = await useKunFetch<{
@@ -17,8 +29,8 @@ const { data, status, refresh } = await useKunFetch<{
   query: {
     page,
     limit,
-    sort_field: 'status_update_time',
-    sort_order: 'desc',
+    sort_field: sortField,
+    sort_order: sortOrder,
     category: 'all'
   },
   // Don't auto-refetch on every query-ref change: opening a topic navigates to
@@ -27,13 +39,30 @@ const { data, status, refresh } = await useKunFetch<{
   watch: false
 })
 
+// Changing the sort always returns to the first page; the fullPath watcher
+// below is what actually refetches (page + sort all live in the query string).
+// KunCheckBoxGroup is multi-select, but sort is one field: take the value the
+// user just added (the one that isn't current) and ignore a bare deselect, so
+// exactly one chip stays active — single-select semantics on a checkbox group.
+const setSortField = (values: TopicListSortField[]) => {
+  const next = values.find((value) => value !== sortField.value)
+  if (!next) return
+  page.value = 1
+  sortField.value = next
+}
+const setSortOrder = (value: 'asc' | 'desc') => {
+  if (value === sortOrder.value) return
+  page.value = 1
+  sortOrder.value = value
+}
+
 const listPath = route.path
 watch(
   () => route.fullPath,
   () => {
     if (route.path !== listPath) return
     refresh()
-    // 翻页后回到顶部
+    // 翻页 / 换排序后回到顶部
     if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 )
@@ -45,6 +74,44 @@ watch(
       name="话题列表"
       description="鲲 Galgame 论坛的全部话题，涵盖 Galgame 讨论、技术交流、资源求助与日常闲聊，在这里和大家一起畅所欲言。"
     />
+
+    <!-- Sort toolbar: field chips on the left, asc/desc arrows on the right, one
+         row. KunCheckBoxGroup renders w-full, so it must sit in a flex-1 wrapper
+         (min-w-0 to allow shrink), otherwise it eats the row and wraps. -->
+    <div class="flex items-center gap-3">
+      <!-- Controlled to a single-element array so it behaves as single-select. -->
+      <KunCheckBoxGroup
+        class="min-w-0 flex-1"
+        :model-value="[sortField]"
+        :options="topicListSortFieldOptions"
+        variant="pill"
+        orientation="horizontal"
+        color="primary"
+        size="sm"
+        @change="setSortField"
+      />
+
+      <div class="flex shrink-0 items-center gap-1">
+        <KunButton
+          :is-icon-only="true"
+          :variant="sortOrder === 'desc' ? 'flat' : 'light'"
+          color="primary"
+          size="sm"
+          @click="setSortOrder('desc')"
+        >
+          <KunIcon class="text-inherit" name="lucide:arrow-down" />
+        </KunButton>
+        <KunButton
+          :is-icon-only="true"
+          :variant="sortOrder === 'asc' ? 'flat' : 'light'"
+          color="primary"
+          size="sm"
+          @click="setSortOrder('asc')"
+        >
+          <KunIcon class="text-inherit" name="lucide:arrow-up" />
+        </KunButton>
+      </div>
+    </div>
 
     <template v-if="data">
       <!-- List layout: each topic separated by a faint divider, no card chrome. -->

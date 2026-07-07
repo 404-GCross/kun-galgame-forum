@@ -1,4 +1,4 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
+import type { KunCheckBoxGroupOption, KunSelectOption } from '@kungal/ui-vue'
 
 export const KUN_TOPIC_CATEGORY: Record<string, string> = {
   galgame: 'Galgame',
@@ -97,6 +97,15 @@ export const topicSortFieldOptions: KunSelectOption[] = [
   { value: 'created', label: '创建时间' },
   { value: 'view', label: '浏览量' }
 ]
+
+// /topic list — the two fields users can sort by, rendered as pill choice-chips.
+export type TopicListSortField = 'status_update_time' | 'created'
+
+export const topicListSortFieldOptions: KunCheckBoxGroupOption<TopicListSortField>[] =
+  [
+    { value: 'status_update_time', label: '更新时间', icon: 'lucide:history' },
+    { value: 'created', label: '创建时间', icon: 'lucide:calendar-plus' }
+  ]
 
 export const TOPIC_SORT_FIELD_CONST = [
   'created',
