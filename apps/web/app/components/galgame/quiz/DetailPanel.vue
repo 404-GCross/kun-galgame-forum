@@ -90,10 +90,10 @@ onMounted(async () => {
               />
               <div class="space-y-1 text-sm">
                 <p class="text-success flex items-center gap-1">
-                  <KunIcon name="lucide:check" />对 {{ quiz.correct_count }}
+                  <KunIcon name="lucide:check" />正确 {{ quiz.correct_count }}
                 </p>
                 <p class="text-danger flex items-center gap-1">
-                  <KunIcon name="lucide:x" />错 {{ wrong }}
+                  <KunIcon name="lucide:x" />错误 {{ wrong }}
                 </p>
                 <p class="text-default-500">共 {{ quiz.answer_count }} 人作答</p>
                 <p v-if="quiz.quality_count > 0" class="text-default-500">
@@ -133,7 +133,7 @@ onMounted(async () => {
                   variant="flat"
                   size="sm"
                 >
-                  对
+                  正确
                 </KunChip>
                 <KunChip
                   v-else-if="rec.is_correct === false"
@@ -141,7 +141,7 @@ onMounted(async () => {
                   variant="flat"
                   size="sm"
                 >
-                  错
+                  错误
                 </KunChip>
               </div>
             </div>

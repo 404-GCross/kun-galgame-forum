@@ -206,6 +206,5 @@ const submitQuality = async () => {
         </KunButton>
       </div>
     </div>
-    <p v-else class="text-default-500 text-sm">这是你出的题目</p>
   </div>
 </template>
