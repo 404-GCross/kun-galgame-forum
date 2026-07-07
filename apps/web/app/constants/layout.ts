@@ -64,6 +64,14 @@ export const kunLayoutItem: KunLayoutItem[] = [
         hint: '最强!'
       },
       {
+        name: 'galgame-quiz',
+        icon: 'lucide:brain',
+        router: '/galgame-quiz',
+        label: 'Galgame 题库',
+        hint: '新',
+        hintColor: 'danger'
+      },
+      {
         name: 'galgame-calendar',
         icon: 'lucide:calendar-days',
         router: '/galgame-calendar',
@@ -398,6 +406,11 @@ export const kunSidebarRail: KunRailGroup[] = [
             label: 'Galgame 评分',
             router: '/galgame-rating',
             icon: 'lucide:lollipop'
+          },
+          {
+            label: 'Galgame 题库',
+            router: '/galgame-quiz',
+            icon: 'lucide:brain'
           },
           {
             label: 'Galgame 发售月历',

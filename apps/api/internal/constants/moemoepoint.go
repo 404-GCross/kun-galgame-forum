@@ -22,5 +22,12 @@ const (
 	RatingLenThresholdHigh   = 666
 	RatingLenThresholdMedium = 233
 
+	// Quiz: authoring grants a FLAT reward regardless of difficulty (granted at
+	// create time, refunded on delete). A correct answer currently grants
+	// nothing — QuizCorrectReward is kept as a knob to re-enable a
+	// difficulty-scaled answer reward later.
+	QuizCreateReward  = 2
+	QuizCorrectReward = 0
+
 	TextPreviewLength = 233
 )

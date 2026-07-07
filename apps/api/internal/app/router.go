@@ -192,6 +192,9 @@ func (a *App) setupRoutes() {
 	// Card.vue doesn't render a like toggle, so optAuth would just be
 	// dead-weight middleware on a high-traffic list endpoint.
 	api.Get("/galgame-rating/all", a.GalgameRatingHandler.GetAllRatings)
+	// `/galgame-quiz/all` list — the card shows no per-viewer state, so it
+	// stays public (SFW-gated inside the service against the linked game).
+	api.Get("/galgame-quiz/all", a.GalgameQuizHandler.GetAllQuizzes)
 
 	// ════════════════════════════════════════════
 	// OPTIONAL AUTH routes (public but attach user if logged in)
@@ -209,6 +212,12 @@ func (a *App) setupRoutes() {
 	// likerIDs to populate the per-viewer `isLiked` flag the Like.vue
 	// component renders.
 	optAuth.Get("/galgame-rating/:id", a.GalgameRatingHandler.GetRatingDetail)
+
+	// Galgame quiz play/detail — optional auth so a logged-in viewer who has
+	// already answered gets the revealed answer key + their result in
+	// `my_answer`. (/galgame-quiz/mine/answered is 3-segment, so it never
+	// collides with this 2-segment :id route.)
+	optAuth.Get("/galgame-quiz/:id", a.GalgameQuizHandler.GetQuizPlay)
 
 	// Topic (optional auth for interaction status)
 	// Private per-user topic drafts. Registered here (on `api`, with an explicit
@@ -385,6 +394,14 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame-rating/:id/comment", a.GalgameRatingHandler.CreateComment)
 	authed.Put("/galgame-rating/:id/comment", a.GalgameRatingHandler.UpdateComment)
 	authed.Delete("/galgame-rating/:id/comment", a.GalgameRatingHandler.DeleteComment)
+
+	// Galgame quiz (答题): author / answer / rate-quality / delete + a self
+	// "answered" history. Publishing is open to anyone in MVP (no review gate).
+	authed.Get("/galgame-quiz/mine/answered", a.GalgameQuizHandler.GetMyAnswered)
+	authed.Post("/galgame-quiz", a.GalgameQuizHandler.CreateQuiz)
+	authed.Delete("/galgame-quiz/:id", a.GalgameQuizHandler.DeleteQuiz)
+	authed.Post("/galgame-quiz/:id/answer", a.GalgameQuizHandler.AnswerQuiz)
+	authed.Put("/galgame-quiz/:id/quality", a.GalgameQuizHandler.RateQuizQuality)
 
 	// Galgame wiki writes (authenticated + token forwarding).
 	//
