@@ -202,6 +202,7 @@ export const userTopicGroupOptions = [
 export const userGalgameGroupOptions = [
   { value: 'galgame', label: 'Galgame', icon: 'lucide:gamepad-2' },
   { value: 'rating', label: '评分', icon: 'lucide:star' },
+  { value: 'quiz', label: '题库', icon: 'lucide:brain' },
   { value: 'resource', label: '资源', icon: 'lucide:package' },
   { value: 'toolset', label: '工具', icon: 'lucide:wrench' }
 ]
@@ -211,7 +212,8 @@ export const userGalgameGroupOptions = [
 // resource(/toolset). Everything else maps to itself.
 export const userSegmentGroup = (segment: string): string => {
   if (['topic', 'reply', 'comment'].includes(segment)) return 'topic'
-  if (['galgame', 'rating', 'resource', 'toolset'].includes(segment)) return 'galgame'
+  if (['galgame', 'rating', 'quiz', 'resource', 'toolset'].includes(segment))
+    return 'galgame'
   return segment
 }
 
@@ -229,6 +231,7 @@ export const userSegmentHref = (userId: number, segment: string): string => {
     comment: `${base}/comment/comment-created`,
     galgame: `${base}/galgame/galgame-publish`,
     rating: `${base}/rating`,
+    quiz: `${base}/quiz`,
     resource: `${base}/resource/valid`,
     toolset: `${base}/toolset`
   }

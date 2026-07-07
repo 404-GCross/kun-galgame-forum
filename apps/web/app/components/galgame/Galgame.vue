@@ -18,6 +18,7 @@ const hasPatchResource = ref(false)
 const resourceLoading = ref(false)
 const patchLoading = ref(false)
 const commentLoading = ref(false)
+const quizLoading = ref(false)
 
 const contentTabs = computed<KunTabItem[]>(() => [
   { value: 'intro', textValue: '游戏介绍', icon: 'lucide:book-open' },
@@ -25,7 +26,8 @@ const contentTabs = computed<KunTabItem[]>(() => [
   ...(hasPatchResource.value
     ? [{ value: 'patch', textValue: '补丁资源下载', icon: 'lucide:puzzle' }]
     : []),
-  { value: 'comment', textValue: '评论区', icon: 'lucide:messages-square' }
+  { value: 'comment', textValue: '评论区', icon: 'lucide:messages-square' },
+  { value: 'quiz', textValue: '题库', icon: 'lucide:brain' }
 ])
 
 // One shared "编辑历史 / 更新请求" modal for the whole detail page. Info.vue's
@@ -158,6 +160,10 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
 
             <KunTabPanel value="comment" :loading="commentLoading">
               <GalgameCommentContainer @update:loading="commentLoading = $event" />
+            </KunTabPanel>
+
+            <KunTabPanel value="quiz" :loading="quizLoading">
+              <GalgameQuizGalgamePanel @update:loading="quizLoading = $event" />
             </KunTabPanel>
           </KunTabPanels>
         </KunCard>
