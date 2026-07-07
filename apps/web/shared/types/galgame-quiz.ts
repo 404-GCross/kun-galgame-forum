@@ -58,8 +58,6 @@ export interface GalgameQuizCard extends QuizStats {
   question: string
   created: string | Date
   updated: string | Date
-  // null when the quiz is general trivia (not bound to a specific game).
-  galgame: QuizGalgameBrief | null
   my_status: QuizMyStatus
 }
 
@@ -140,9 +138,13 @@ export interface GalgameQuizPlay extends QuizStats {
   difficulty: number
   question: string
   content: QuizPublicContent
+  // Server-rendered markdown (may embed image hints for "guess the game").
+  description_html: string
   created: string | Date
   updated: string | Date
-  galgame: QuizGalgameDetail | null
+  hide_galgame: boolean
+  // Empty while hide_galgame is on and the viewer hasn't answered yet.
+  galgames: QuizGalgameDetail[]
   is_author: boolean
   // Present once the viewer has answered (or is the author) — reveals the key.
   my_answer: QuizAnswerResult | null
@@ -168,15 +170,17 @@ export interface QuizGalgameOption {
 // form (author or moderator only).
 export interface QuizEditData {
   id: number
-  galgame_id: number | null
+  galgame_ids: number[]
+  hide_galgame: boolean
   category: QuizCategory
   type: QuizType
   difficulty: number
   spoiler_level: QuizSpoilerLevel
   question: string
+  description: string
   content: QuizFullContent
   explanation: string
-  galgame: QuizGalgameBrief | null
+  galgames: QuizGalgameBrief[]
 }
 
 // GET /galgame-quiz/:id/answers — one answerer's outcome (card 查看详情 panel).

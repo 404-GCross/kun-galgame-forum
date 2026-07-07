@@ -3,7 +3,6 @@ package service
 import (
 	"math"
 
-	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/pkg/userclient"
@@ -29,25 +28,10 @@ func quizStats(view, answerCount, correctCount, qualitySum, qualityCount int) dt
 	}
 }
 
-// quizGalgameBrief maps a wiki brief into the linked-game DTO.
-func quizGalgameBrief(b client.GalgameBrief) *dto.QuizGalgameBrief {
-	return &dto.QuizGalgameBrief{
-		ID:           b.ID,
-		ContentLimit: b.ContentLimit,
-		Name: dto.KunLanguage{
-			EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-			ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-		},
-	}
-}
-
-// quizRowToCard maps a quiz row + author + optional linked-game brief to a card.
-func quizRowToCard(
-	r model.GalgameQuizRow,
-	user userclient.User,
-	brief *client.GalgameBrief,
-) dto.QuizCard {
-	card := dto.QuizCard{
+// quizRowToCard maps a quiz row + author to a list card (category only — linked
+// games are not shown on cards, and may be hidden until answered anyway).
+func quizRowToCard(r model.GalgameQuizRow, user userclient.User) dto.QuizCard {
+	return dto.QuizCard{
 		ID:           r.ID,
 		User:         userBriefToDTO(user),
 		Category:     r.Category,
@@ -59,8 +43,4 @@ func quizRowToCard(
 		Created:      r.Created,
 		Updated:      r.Updated,
 	}
-	if brief != nil {
-		card.Galgame = quizGalgameBrief(*brief)
-	}
-	return card
 }

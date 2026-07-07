@@ -29,18 +29,19 @@ onMounted(async () => {
         :style="{ maxHeight: expanded ? '48rem' : '6rem' }"
       >
         <div class="space-y-4">
-          <!-- linked galgame -->
+          <!-- linked galgames (or a "revealed after answering" hint) -->
           <div
-            v-if="quiz.galgame"
+            v-for="g in quiz.galgames"
+            :key="g.id"
             class="border-default-200 flex gap-3 rounded-lg border p-2"
           >
             <div
               class="bg-default-100 h-20 w-32 shrink-0 overflow-hidden rounded-lg"
             >
               <KunImage
-                v-if="quiz.galgame.banner"
-                :src="quiz.galgame.banner"
-                :thumbhash="quiz.galgame.banner_thumbhash"
+                v-if="g.banner"
+                :src="g.banner"
+                :thumbhash="g.banner_thumbhash"
                 width="128"
                 height="80"
                 object-fit="cover"
@@ -48,28 +49,31 @@ onMounted(async () => {
               />
             </div>
             <div class="min-w-0 flex-1">
-              <KunLink :to="`/galgame/${quiz.galgame.id}`" class="font-medium">
-                {{ getPreferredLanguageText(quiz.galgame.name) }}
+              <KunLink :to="`/galgame/${g.id}`" class="font-medium">
+                {{ getPreferredLanguageText(g.name) }}
               </KunLink>
               <div class="mt-1 flex flex-wrap items-center gap-1">
-                <KunChip v-if="quiz.galgame.age_limit" size="sm" variant="flat">
-                  {{ quiz.galgame.age_limit }}
+                <KunChip v-if="g.age_limit" size="sm" variant="flat">
+                  {{ g.age_limit }}
                 </KunChip>
-                <KunChip
-                  v-if="quiz.galgame.original_language"
-                  size="sm"
-                  variant="light"
-                >
-                  {{ quiz.galgame.original_language }}
+                <KunChip v-if="g.original_language" size="sm" variant="light">
+                  {{ g.original_language }}
                 </KunChip>
               </div>
               <p
-                v-if="quiz.galgame.officials.length"
+                v-if="g.officials.length"
                 class="text-default-500 mt-1 line-clamp-2 text-xs"
               >
-                {{ quiz.galgame.officials.join('、') }}
+                {{ g.officials.join('、') }}
               </p>
             </div>
+          </div>
+          <div
+            v-if="!quiz.galgames.length && quiz.hide_galgame && !quiz.my_answer"
+            class="text-default-500 border-default-200 flex items-center gap-2 rounded-lg border border-dashed p-3 text-sm"
+          >
+            <KunIcon name="lucide:lock" />
+            关联作品已隐藏, 作答后揭晓
           </div>
 
           <!-- correct / wrong chart -->

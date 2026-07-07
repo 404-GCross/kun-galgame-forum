@@ -48,6 +48,13 @@ const submitAnswer = async () => {
     if (res.reward_delta > 0) {
       useMessage(`回答正确, +${res.reward_delta} 萌萌点`, 'success')
     }
+    // Hidden linked games are revealed once answered — refetch to populate them.
+    if (state.value.hide_galgame && !state.value.galgames.length) {
+      const fresh = await kunFetch<GalgameQuizPlay>(
+        `/galgame-quiz/${state.value.id}`
+      )
+      if (fresh) state.value.galgames = fresh.galgames
+    }
   }
 }
 
@@ -171,17 +178,33 @@ const correctRate = computed(() =>
             {{ KUN_QUIZ_SPOILER_MAP[state.spoiler_level] }}
           </KunChip>
           <KunLink
-            v-if="state.galgame"
-            :to="`/galgame/${state.galgame.id}`"
+            v-for="g in state.galgames"
+            :key="g.id"
+            :to="`/galgame/${g.id}`"
             class="text-sm"
           >
-            {{ getPreferredLanguageText(state.galgame.name) }}
+            {{ getPreferredLanguageText(g.name) }}
           </KunLink>
+          <KunChip
+            v-if="!state.galgames.length && state.hide_galgame && !state.my_answer"
+            variant="flat"
+            size="sm"
+          >
+            <span class="flex items-center gap-1">
+              <KunIcon name="lucide:lock" />关联作品作答后揭晓
+            </span>
+          </KunChip>
         </div>
 
         <h1 class="text-xl font-bold break-words whitespace-pre-wrap">
           {{ state.question }}
         </h1>
+
+        <!-- author's markdown description / image hints -->
+        <KunContent
+          v-if="state.description_html"
+          :content="renderKatex(state.description_html)"
+        />
 
         <div
           class="text-default-500 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"

@@ -98,11 +98,7 @@ const correctRate = (q: GalgameQuizCard) =>
               </span>
             </div>
             <KunChip size="sm" variant="light">
-              {{
-                quiz.galgame
-                  ? getPreferredLanguageText(quiz.galgame.name)
-                  : KUN_QUIZ_CATEGORY_MAP[quiz.category]
-              }}
+              {{ KUN_QUIZ_CATEGORY_MAP[quiz.category] }}
             </KunChip>
           </div>
         </div>

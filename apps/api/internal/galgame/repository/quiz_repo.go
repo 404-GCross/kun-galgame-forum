@@ -19,7 +19,7 @@ func (r *QuizRepository) DB() *gorm.DB { return r.db }
 
 // quizCardColumns is the explicit column list for list projections — omits the
 // heavy `content` JSONB (cards never expose the payload).
-const quizCardColumns = `q.id, q.user_id, q.galgame_id, q.category, q.spoiler_level,
+const quizCardColumns = `q.id, q.user_id, q.category, q.spoiler_level,
 	q.type, q.difficulty, q.question, q.view, q.answer_count, q.correct_count,
 	q.quality_sum, q.quality_count, q.created, q.updated`
 
@@ -59,7 +59,10 @@ func (r *QuizRepository) ListPaginated(f model.QuizFilter) ([]model.GalgameQuizR
 		query = query.Where("q.difficulty = ?", f.Difficulty)
 	}
 	if f.GalgameID > 0 {
-		query = query.Where("q.galgame_id = ?", f.GalgameID)
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM galgame_quiz_galgame gg WHERE gg.quiz_id = q.id AND gg.galgame_id = ?)",
+			f.GalgameID,
+		)
 	}
 	if f.UserID > 0 {
 		query = query.Where("q.user_id = ?", f.UserID)
@@ -160,6 +163,41 @@ func (r *QuizRepository) UpdateQuizFields(tx *gorm.DB, id int, fields map[string
 		return nil
 	}
 	return tx.Table("galgame_quiz").Where("id = ?", id).Updates(fields).Error
+}
+
+// FindQuizGalgameIDs returns the galgame ids linked to a quiz.
+func (r *QuizRepository) FindQuizGalgameIDs(quizID int) []int {
+	var ids []int
+	r.db.Table("galgame_quiz_galgame").
+		Where("quiz_id = ?", quizID).
+		Order("galgame_id").
+		Pluck("galgame_id", &ids)
+	return ids
+}
+
+// SetQuizGalgames replaces a quiz's galgame links with the given ids (deduped,
+// positives only). Works for both create (nothing to delete) and update.
+func (r *QuizRepository) SetQuizGalgames(tx *gorm.DB, quizID int, galgameIDs []int) error {
+	if err := tx.Where("quiz_id = ?", quizID).
+		Delete(&model.GalgameQuizGalgame{}).Error; err != nil {
+		return err
+	}
+	seen := make(map[int]struct{}, len(galgameIDs))
+	rows := make([]model.GalgameQuizGalgame, 0, len(galgameIDs))
+	for _, id := range galgameIDs {
+		if id <= 0 {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		rows = append(rows, model.GalgameQuizGalgame{QuizID: quizID, GalgameID: id})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	return tx.Create(&rows).Error
 }
 
 // QuizViewerAnswer is the viewer's row (role + grade) for a quiz — used to

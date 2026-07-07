@@ -11,6 +11,7 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
+	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
@@ -74,7 +75,7 @@ func (s *QuizService) GetAllQuizzes(
 		Page:       req.Page,
 		Limit:      req.Limit,
 	})
-	return s.hydrateCards(ctx, rows, total, isSFW, viewerID), nil
+	return s.hydrateCards(ctx, rows, total, viewerID), nil
 }
 
 // GetMyAnswered — GET /galgame-quiz/mine/answered (self only).
@@ -83,32 +84,25 @@ func (s *QuizService) GetMyAnswered(
 	userID, page, limit int,
 ) (*dto.QuizListPage, *errors.AppError) {
 	rows, total := s.quizRepo.ListAnsweredByUser(userID, page, limit)
-	// A self list is not SFW-gated (the viewer is logged in and answered these).
-	return s.hydrateCards(ctx, rows, total, false, userID), nil
+	return s.hydrateCards(ctx, rows, total, userID), nil
 }
 
-// hydrateCards resolves authors + linked-game briefs and drops rows whose
-// author is banned or whose linked game is SFW-filtered. General-trivia rows
-// (galgame_id NULL) are always kept.
+// hydrateCards resolves authors + stamps the viewer's own status, dropping rows
+// whose author is banned. Cards show the category, not the linked games (which
+// may be hidden until answered), so no galgame briefs are fetched here.
 func (s *QuizService) hydrateCards(
 	ctx context.Context,
 	rows []model.GalgameQuizRow,
 	total int64,
-	isSFW bool,
 	viewerID int,
 ) *dto.QuizListPage {
 	userIDs := make([]int, 0, len(rows))
-	galgameIDs := make([]int, 0, len(rows))
 	quizIDs := make([]int, 0, len(rows))
 	for _, r := range rows {
 		userIDs = append(userIDs, r.UserID)
 		quizIDs = append(quizIDs, r.ID)
-		if r.GalgameID != nil {
-			galgameIDs = append(galgameIDs, *r.GalgameID)
-		}
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
-	briefMap := s.fetchBriefsPublic(ctx, galgameIDs, isSFW)
 	viewerAnswers := s.quizRepo.FindViewerAnswers(quizIDs, viewerID)
 
 	cards := make([]dto.QuizCard, 0, len(rows))
@@ -117,15 +111,7 @@ func (s *QuizService) hydrateCards(
 		if !userclient.IsRenderable(u) {
 			continue
 		}
-		var brief *client.GalgameBrief
-		if r.GalgameID != nil {
-			b, ok := briefMap[*r.GalgameID]
-			if !ok {
-				continue // linked game SFW-filtered → drop
-			}
-			brief = &b
-		}
-		card := quizRowToCard(r, u, brief)
+		card := quizRowToCard(r, u)
 		va, answered := viewerAnswers[r.ID]
 		card.MyStatus = quizViewerStatus(va, answered)
 		cards = append(cards, card)
@@ -187,21 +173,30 @@ func (s *QuizService) GetQuizPlay(
 		}
 	}
 
+	// Linked games are revealed only if not hidden, or once the viewer has a
+	// row (answered / is the author) — otherwise sent empty.
+	galgames := []dto.QuizGalgameDetail{}
+	if !quiz.HideGalgame || myAnswer != nil {
+		galgames = s.galgamesDetailFor(ctx, s.quizRepo.FindQuizGalgameIDs(quizID))
+	}
+
 	play := &dto.QuizPlay{
-		ID:           quiz.ID,
-		User:         userBriefToDTO(author),
-		Category:     quiz.Category,
-		SpoilerLevel: quiz.SpoilerLevel,
-		Type:         quiz.Type,
-		Difficulty:   quiz.Difficulty,
-		Question:     quiz.Question,
-		Content:      stripQuizContent(quiz.Type, quiz.Content),
-		QuizStats:    quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
-		Created:      quiz.CreatedAt.Format(time.RFC3339),
-		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
-		Galgame:      s.galgameDetailFor(ctx, quiz.GalgameID),
-		IsAuthor:     isAuthor,
-		MyAnswer:     myAnswer,
+		ID:              quiz.ID,
+		User:            userBriefToDTO(author),
+		Category:        quiz.Category,
+		SpoilerLevel:    quiz.SpoilerLevel,
+		Type:            quiz.Type,
+		Difficulty:      quiz.Difficulty,
+		Question:        quiz.Question,
+		DescriptionHtml: markdown.Render(quiz.Description),
+		Content:         stripQuizContent(quiz.Type, quiz.Content),
+		QuizStats:       quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
+		Created:         quiz.CreatedAt.Format(time.RFC3339),
+		Updated:         quiz.UpdatedAt.Format(time.RFC3339),
+		HideGalgame:     quiz.HideGalgame,
+		Galgames:        galgames,
+		IsAuthor:        isAuthor,
+		MyAnswer:        myAnswer,
 	}
 	return play, nil
 }
@@ -227,19 +222,23 @@ func (s *QuizService) CreateQuiz(
 	}
 	quiz := &model.GalgameQuiz{
 		UserID:       userID,
-		GalgameID:    req.GalgameID,
 		Category:     req.Category,
 		SpoilerLevel: spoiler,
 		Type:         req.Type,
 		Difficulty:   req.Difficulty,
 		Question:     req.Question,
+		Description:  req.Description,
 		Content:      req.Content,
 		Explanation:  req.Explanation,
+		HideGalgame:  req.HideGalgame,
 	}
 	reward := quizCreateReward(req.Difficulty)
 
 	txErr := s.quizRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.quizRepo.Create(tx, quiz); err != nil {
+			return err
+		}
+		if err := s.quizRepo.SetQuizGalgames(tx, quiz.ID, req.GalgameIDs); err != nil {
 			return err
 		}
 		// Author roster row: marks them a participant so they can't answer
@@ -269,7 +268,6 @@ func (s *QuizService) CreateQuiz(
 		QuizStats:    quizStats(0, 0, 0, 0, 0),
 		Created:      quiz.CreatedAt.Format(time.RFC3339),
 		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
-		Galgame:      s.briefFor(ctx, quiz.GalgameID),
 	}, nil
 }
 
@@ -435,17 +433,21 @@ func (s *QuizService) UpdateQuiz(
 		spoiler = "none"
 	}
 	fields := map[string]any{
-		"galgame_id":    req.GalgameID, // nil → NULL (unlink)
 		"category":      req.Category,
 		"spoiler_level": spoiler,
 		"type":          req.Type,
 		"difficulty":    req.Difficulty,
 		"question":      req.Question,
+		"description":   req.Description,
 		"content":       req.Content,
 		"explanation":   req.Explanation,
+		"hide_galgame":  req.HideGalgame,
 	}
 	txErr := s.quizRepo.DB().Transaction(func(tx *gorm.DB) error {
-		return s.quizRepo.UpdateQuizFields(tx, req.QuizID, fields)
+		if err := s.quizRepo.UpdateQuizFields(tx, req.QuizID, fields); err != nil {
+			return err
+		}
+		return s.quizRepo.SetQuizGalgames(tx, req.QuizID, req.GalgameIDs)
 	})
 	if txErr != nil {
 		return errors.ErrInternal("更新题目失败")
@@ -468,17 +470,20 @@ func (s *QuizService) GetQuizForEdit(
 	if quiz.UserID != userID && !canModerate {
 		return nil, errors.ErrForbidden("没有编辑该题目的权限")
 	}
+	galgameIDs := s.quizRepo.FindQuizGalgameIDs(quizID)
 	return &dto.QuizEditData{
 		ID:           quiz.ID,
-		GalgameID:    quiz.GalgameID,
+		GalgameIDs:   galgameIDs,
+		HideGalgame:  quiz.HideGalgame,
 		Category:     quiz.Category,
 		Type:         quiz.Type,
 		Difficulty:   quiz.Difficulty,
 		SpoilerLevel: quiz.SpoilerLevel,
 		Question:     quiz.Question,
+		Description:  quiz.Description,
 		Content:      quiz.Content,
 		Explanation:  quiz.Explanation,
-		Galgame:      s.briefFor(ctx, quiz.GalgameID),
+		Galgames:     s.galgameBriefsFor(ctx, galgameIDs),
 	}, nil
 }
 
@@ -520,52 +525,67 @@ func (s *QuizService) GetQuizAnswers(
 // Internal helpers
 // ──────────────────────────────────────────
 
-// briefFor returns the linked-game brief for detail paths (no SFW gate —
-// mirrors the rating/galgame detail policy), or nil for general trivia.
-func (s *QuizService) briefFor(ctx context.Context, galgameID *int) *dto.QuizGalgameBrief {
-	if galgameID == nil {
-		return nil
+// galgameBriefsFor returns id+name briefs (order-preserving) for the edit
+// form's picker chips. No SFW gate — mirrors the rating/detail policy.
+func (s *QuizService) galgameBriefsFor(ctx context.Context, ids []int) []dto.QuizGalgameBrief {
+	out := []dto.QuizGalgameBrief{}
+	if len(ids) == 0 {
+		return out
 	}
-	m := s.fetchBriefs(ctx, []int{*galgameID})
-	b, ok := m[*galgameID]
-	if !ok {
-		return nil
+	m := s.fetchBriefs(ctx, ids)
+	for _, id := range ids {
+		b, ok := m[id]
+		if !ok {
+			continue
+		}
+		out = append(out, dto.QuizGalgameBrief{
+			ID:           b.ID,
+			ContentLimit: b.ContentLimit,
+			Name: dto.KunLanguage{
+				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
+				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
+			},
+		})
 	}
-	return quizGalgameBrief(b)
+	return out
 }
 
-// galgameDetailFor builds the richer linked-game panel for the answer page's
-// 查看详情 (banner + 会社). isSFW=false — the detail page doesn't SFW-gate.
-func (s *QuizService) galgameDetailFor(ctx context.Context, galgameID *int) *dto.QuizGalgameDetail {
-	if galgameID == nil {
-		return nil
+// galgamesDetailFor builds the richer linked-game panels (banner + 会社) for the
+// answer page's 查看详情. isSFW=false — the detail page doesn't SFW-gate.
+func (s *QuizService) galgamesDetailFor(ctx context.Context, ids []int) []dto.QuizGalgameDetail {
+	out := []dto.QuizGalgameDetail{}
+	if len(ids) == 0 {
+		return out
 	}
-	m := s.fetchDetailBriefs(ctx, []int{*galgameID}, false)
-	b, ok := m[*galgameID]
-	if !ok {
-		return nil
+	m := s.fetchDetailBriefs(ctx, ids, false)
+	for _, id := range ids {
+		b, ok := m[id]
+		if !ok {
+			continue
+		}
+		banner := b.EffectiveBannerURL
+		if banner == "" {
+			banner = b.Banner
+		}
+		officials := b.Officials
+		if officials == nil {
+			officials = []string{}
+		}
+		out = append(out, dto.QuizGalgameDetail{
+			ID: b.ID,
+			Name: dto.KunLanguage{
+				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
+				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
+			},
+			ContentLimit:     b.ContentLimit,
+			AgeLimit:         b.AgeLimit,
+			OriginalLanguage: b.OriginalLanguage,
+			Banner:           banner,
+			BannerThumbhash:  b.EffectiveBannerThumbhash,
+			Officials:        officials,
+		})
 	}
-	banner := b.EffectiveBannerURL
-	if banner == "" {
-		banner = b.Banner
-	}
-	officials := b.Officials
-	if officials == nil {
-		officials = []string{}
-	}
-	return &dto.QuizGalgameDetail{
-		ID: b.ID,
-		Name: dto.KunLanguage{
-			EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-			ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-		},
-		ContentLimit:     b.ContentLimit,
-		AgeLimit:         b.AgeLimit,
-		OriginalLanguage: b.OriginalLanguage,
-		Banner:           banner,
-		BannerThumbhash:  b.EffectiveBannerThumbhash,
-		Officials:        officials,
-	}
+	return out
 }
 
 func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int]client.GalgameBrief {

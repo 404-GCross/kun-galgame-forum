@@ -77,13 +77,7 @@ const correctRate = (q: GalgameQuizCard) =>
             <KunIcon :name="KUN_QUIZ_TYPE_ICON_MAP[quiz.type]" />
             {{ KUN_QUIZ_TYPE_MAP[quiz.type] }}
           </span>
-          <span>
-            {{
-              quiz.galgame
-                ? getPreferredLanguageText(quiz.galgame.name)
-                : KUN_QUIZ_CATEGORY_MAP[quiz.category]
-            }}
-          </span>
+          <span>{{ KUN_QUIZ_CATEGORY_MAP[quiz.category] }}</span>
           <KunChip
             v-if="quiz.spoiler_level !== 'none'"
             :color="KUN_QUIZ_SPOILER_COLOR_MAP[quiz.spoiler_level]"

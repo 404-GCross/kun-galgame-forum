@@ -24,12 +24,14 @@ type QuizListRequest struct {
 // type-specific payload (options + answer key); it is shape-validated in the
 // service against `type` before insert.
 type CreateQuizRequest struct {
-	GalgameID    *int            `json:"galgame_id" validate:"omitempty,min=1"`
+	GalgameIDs   []int           `json:"galgame_ids" validate:"omitempty,dive,min=1"`
+	HideGalgame  bool            `json:"hide_galgame"`
 	Category     string          `json:"category" validate:"required,oneof=plot character system music voice company trivia other"`
 	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
 	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
 	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
 	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Description  string          `json:"description" validate:"max=20000"`
 	Content      json.RawMessage `json:"content" validate:"required"`
 	Explanation  string          `json:"explanation" validate:"max=2000"`
 }
@@ -37,12 +39,14 @@ type CreateQuizRequest struct {
 // UpdateQuizRequest is the body of PUT /galgame-quiz/:id (author or moderator).
 type UpdateQuizRequest struct {
 	QuizID       int             `json:"quiz_id" validate:"required,min=1"`
-	GalgameID    *int            `json:"galgame_id" validate:"omitempty,min=1"`
+	GalgameIDs   []int           `json:"galgame_ids" validate:"omitempty,dive,min=1"`
+	HideGalgame  bool            `json:"hide_galgame"`
 	Category     string          `json:"category" validate:"required,oneof=plot character system music voice company trivia other"`
 	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
 	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
 	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
 	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Description  string          `json:"description" validate:"max=20000"`
 	Content      json.RawMessage `json:"content" validate:"required"`
 	Explanation  string          `json:"explanation" validate:"max=2000"`
 }
@@ -51,16 +55,19 @@ type UpdateQuizRequest struct {
 // (incl. the answer key in `content`), returned only to the author or a
 // moderator so the edit form can be pre-filled.
 type QuizEditData struct {
-	ID           int               `json:"id"`
-	GalgameID    *int              `json:"galgame_id"`
-	Category     string            `json:"category"`
-	Type         string            `json:"type"`
-	Difficulty   int               `json:"difficulty"`
-	SpoilerLevel string            `json:"spoiler_level"`
-	Question     string            `json:"question"`
-	Content      json.RawMessage   `json:"content"`
-	Explanation  string            `json:"explanation"`
-	Galgame      *QuizGalgameBrief `json:"galgame"`
+	ID           int                `json:"id"`
+	GalgameIDs   []int              `json:"galgame_ids"`
+	HideGalgame  bool               `json:"hide_galgame"`
+	Category     string             `json:"category"`
+	Type         string             `json:"type"`
+	Difficulty   int                `json:"difficulty"`
+	SpoilerLevel string             `json:"spoiler_level"`
+	Question     string             `json:"question"`
+	Description  string             `json:"description"`
+	Content      json.RawMessage    `json:"content"`
+	Explanation  string             `json:"explanation"`
+	// Briefs (id + name) of the linked games, to pre-fill the picker chips.
+	Galgames []QuizGalgameBrief `json:"galgames"`
 }
 
 // QuizAnswererRecord is one answerer's outcome, for the card's 查看详情 panel.
@@ -139,7 +146,6 @@ type QuizCard struct {
 	QuizStats                      // embedded view/answer/correct/quality
 	Created      string            `json:"created"`
 	Updated      string            `json:"updated"`
-	Galgame      *QuizGalgameBrief `json:"galgame"`
 	// The viewer's own status on this quiz:
 	// author | correct | incorrect | answered | unanswered.
 	MyStatus string `json:"my_status"`
@@ -165,14 +171,17 @@ type QuizPlay struct {
 	Type         string             `json:"type"`
 	Difficulty   int                `json:"difficulty"`
 	SpoilerLevel string             `json:"spoiler_level"`
-	Question     string             `json:"question"`
-	Content      json.RawMessage    `json:"content"`
+	Question        string          `json:"question"`
+	DescriptionHtml string          `json:"description_html"`
+	Content         json.RawMessage `json:"content"`
 	QuizStats                       // embedded view/answer/correct/quality
-	Created      string             `json:"created"`
-	Updated      string             `json:"updated"`
-	Galgame      *QuizGalgameDetail `json:"galgame"`
-	IsAuthor     bool               `json:"is_author"`
-	MyAnswer     *QuizAnswerResult  `json:"my_answer"`
+	Created         string          `json:"created"`
+	Updated         string          `json:"updated"`
+	HideGalgame     bool            `json:"hide_galgame"`
+	// Empty when hide_galgame && the viewer hasn't answered yet.
+	Galgames []QuizGalgameDetail `json:"galgames"`
+	IsAuthor bool                `json:"is_author"`
+	MyAnswer *QuizAnswerResult   `json:"my_answer"`
 }
 
 // QuizAnswerResult reveals the graded outcome + the full answer key. It is the
@@ -199,7 +208,6 @@ type CreatedQuiz struct {
 	QuizStats                      // zeroed stats on a fresh quiz
 	Created      string            `json:"created"`
 	Updated      string            `json:"updated"`
-	Galgame      *QuizGalgameBrief `json:"galgame"`
 }
 
 // QuizQualityResult is the response of PUT /galgame-quiz/:id/quality.

@@ -11,7 +11,10 @@ const SORT_ORDER_CONST = ['asc', 'desc'] as const
 // Common fields only. The type-specific `content` payload is shape-checked in
 // the content editor (and again server-side); here it just passes through.
 export const createGalgameQuizSchema = z.object({
-  galgame_id: z.coerce.number<number>().int().min(1).max(9999999).optional(),
+  galgame_ids: z
+    .array(z.coerce.number<number>().int().min(1).max(9999999))
+    .default([]),
+  hide_galgame: z.boolean().default(false),
   category: z.enum(KUN_QUIZ_CATEGORY_CONST),
   type: z.enum(KUN_QUIZ_TYPE_CONST),
   difficulty: z.coerce.number<number>().int().min(1).max(10),
@@ -20,6 +23,10 @@ export const createGalgameQuizSchema = z.object({
     .string()
     .min(1, { message: '请填写题干' })
     .max(2000, { message: '题干长度不能超过 2000 字' }),
+  description: z
+    .string()
+    .max(20000, { message: '描述长度不能超过 20000 字' })
+    .default(''),
   content: z.any(),
   explanation: z
     .string()

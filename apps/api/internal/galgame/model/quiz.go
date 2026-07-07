@@ -9,20 +9,22 @@ import (
 //
 // `Content` is JSONB and holds the type-specific payload INCLUDING the correct
 // answer key — it is never serialized verbatim to a client that has not
-// answered (the service strips it via stripQuizContent). `GalgameID` is a
-// pointer because a quiz may be general trivia (NULL) rather than about one
-// specific game.
+// answered (the service strips it via stripQuizContent). Linked galgames live
+// in the galgame_quiz_galgame join table (many-to-many), not on this row.
+// `Description` is markdown (rendered server-side); `HideGalgame` hides the
+// linked games until the viewer answers.
 type GalgameQuiz struct {
 	ID           int             `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID       int             `gorm:"column:user_id;not null" json:"user_id"`
-	GalgameID    *int            `gorm:"column:galgame_id" json:"galgame_id"`
 	Category     string          `gorm:"type:varchar(16)" json:"category"`
 	SpoilerLevel string          `gorm:"column:spoiler_level;type:varchar(16)" json:"spoiler_level"`
 	Type         string          `gorm:"type:varchar(16)" json:"type"`
 	Difficulty   int             `gorm:"type:smallint" json:"difficulty"`
 	Question     string          `gorm:"type:text" json:"question"`
+	Description  string          `gorm:"type:text" json:"description"`
 	Content      json.RawMessage `gorm:"type:jsonb" json:"content"`
 	Explanation  string          `gorm:"type:text" json:"explanation"`
+	HideGalgame  bool            `gorm:"column:hide_galgame;default:false" json:"hide_galgame"`
 	View         int             `gorm:"default:0" json:"view"`
 
 	AnswerCount  int `gorm:"column:answer_count;default:0" json:"answer_count"`
@@ -55,13 +57,20 @@ type GalgameQuizAnswer struct {
 
 func (GalgameQuizAnswer) TableName() string { return "galgame_quiz_answer" }
 
+// GalgameQuizGalgame is a row of the quiz↔galgame join table (many-to-many).
+type GalgameQuizGalgame struct {
+	QuizID    int `gorm:"column:quiz_id;primaryKey"`
+	GalgameID int `gorm:"column:galgame_id;primaryKey"`
+}
+
+func (GalgameQuizGalgame) TableName() string { return "galgame_quiz_galgame" }
+
 // GalgameQuizRow is a flat projection of galgame_quiz for list reads (no
 // `content` — cards never expose the payload). Identity + linked-game briefs
 // are hydrated at the service layer.
 type GalgameQuizRow struct {
 	ID           int    `gorm:"column:id"`
 	UserID       int    `gorm:"column:user_id"`
-	GalgameID    *int   `gorm:"column:galgame_id"`
 	Category     string `gorm:"column:category"`
 	SpoilerLevel string `gorm:"column:spoiler_level"`
 	Type         string `gorm:"column:type"`

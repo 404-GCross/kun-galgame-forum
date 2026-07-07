@@ -33,9 +33,12 @@ const type = ref<QuizType>('single')
 const difficulty = ref(3)
 const spoilerLevel = ref<QuizSpoilerLevel>('none')
 const question = ref('')
+const description = ref('')
 const explanation = ref('')
-// The galgame chosen via the picker (only when not pre-bound by the galgameId prop).
-const pickedGalgameId = ref<number | null>(null)
+// The galgames chosen via the picker (only when not pre-bound by the galgameId prop).
+const pickedGalgameIds = ref<number[]>([])
+// Hide the linked games until the viewer answers ("guess the game").
+const hideGalgame = ref(false)
 // Progressive disclosure: the optional explanation stays hidden until asked for.
 // (关联 Galgame is important, so it's shown up-front, not collapsed.)
 const showExplanation = ref(false)
@@ -48,7 +51,7 @@ const editorRef = ref<{
   load: (content: Record<string, unknown>) => void
 } | null>(null)
 
-const initialSelected = ref<{ id: number; name: string } | null>(null)
+const initialSelected = ref<{ id: number; name: string }[]>([])
 const isEditing = computed(() => !!props.editData)
 
 // Edit mode: pre-fill the whole form + editor when the modal opens.
@@ -62,15 +65,15 @@ watch(
     difficulty.value = d.difficulty
     spoilerLevel.value = d.spoiler_level
     question.value = d.question
+    description.value = d.description
     explanation.value = d.explanation
     showExplanation.value = !!d.explanation
-    pickedGalgameId.value = d.galgame_id
-    initialSelected.value = d.galgame
-      ? {
-          id: d.galgame.id,
-          name: getPreferredLanguageText(d.galgame.name) || `#${d.galgame.id}`
-        }
-      : null
+    hideGalgame.value = d.hide_galgame
+    pickedGalgameIds.value = [...d.galgame_ids]
+    initialSelected.value = d.galgames.map((g) => ({
+      id: g.id,
+      name: getPreferredLanguageText(g.name) || `#${g.id}`
+    }))
     await nextTick()
     if (!editorRef.value) await nextTick()
     editorRef.value?.load(d.content as unknown as Record<string, unknown>)
@@ -124,9 +127,11 @@ const resetForm = () => {
   difficulty.value = 3
   spoilerLevel.value = 'none'
   question.value = ''
+  description.value = ''
   explanation.value = ''
-  pickedGalgameId.value = null
-  initialSelected.value = null
+  pickedGalgameIds.value = []
+  hideGalgame.value = false
+  initialSelected.value = []
   showExplanation.value = false
   editorRef.value?.reset()
 }
@@ -145,13 +150,12 @@ const submit = async () => {
     difficulty: difficulty.value,
     spoiler_level: spoilerLevel.value,
     question: question.value,
+    description: description.value,
     content,
-    explanation: explanation.value
-  }
-  // Pre-bound (opened from a galgame page) wins; otherwise use the picker.
-  const linkedGalgameId = props.galgameId ?? pickedGalgameId.value
-  if (linkedGalgameId) {
-    body.galgame_id = linkedGalgameId
+    explanation: explanation.value,
+    hide_galgame: hideGalgame.value,
+    // Pre-bound (opened from a galgame page) wins; otherwise use the picker.
+    galgame_ids: props.galgameId ? [props.galgameId] : pickedGalgameIds.value
   }
 
   const valid = useKunSchemaValidator(createGalgameQuizSchema, body)
@@ -219,9 +223,23 @@ const submit = async () => {
       />
       <GalgameQuizGalgamePicker
         v-else
-        v-model="pickedGalgameId"
+        v-model="pickedGalgameIds"
         :initial-selected="initialSelected"
       />
+
+      <!-- hide the linked games until the viewer answers (guess-the-game) -->
+      <div
+        v-if="galgameId || pickedGalgameIds.length"
+        class="flex items-center justify-between gap-3"
+      >
+        <div>
+          <label class="text-sm font-medium">隐藏关联作品</label>
+          <p class="text-default-400 text-xs">
+            开启后关联的 Galgame 会在用户作答后才揭晓, 适合「看图猜游戏」
+          </p>
+        </div>
+        <KunSwitch v-model="hideGalgame" />
+      </div>
 
       <!-- 题型 (pill KunCheckBoxGroup, single-select) -->
       <div class="space-y-2">
@@ -252,6 +270,21 @@ const submit = async () => {
         :show-char-count="true"
         auto-grow
       />
+
+      <!-- 题目描述 (optional markdown + image hints) -->
+      <div class="space-y-2">
+        <div>
+          <label class="text-sm font-medium">题目描述（可选）</label>
+          <p class="text-default-400 text-xs">
+            支持 Markdown, 可上传图片作为线索（例如让玩家根据 CG 猜游戏）
+          </p>
+        </div>
+        <KunMilkdownDualEditorProvider
+          :value-markdown="description"
+          placeholder="补充题目背景、线索图片等（可选）"
+          @set-markdown="(val) => (description = val)"
+        />
+      </div>
 
       <!-- 3) 选项 / 答案 (correctness inline) -->
       <GalgameQuizContentEditor ref="editorRef" :type="type" />
