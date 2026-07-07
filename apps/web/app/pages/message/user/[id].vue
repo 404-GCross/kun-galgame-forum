@@ -7,9 +7,7 @@ const route = useRoute()
 
 const userId = parseInt((route.params as { id: string }).id)
 
-useKunSeoMeta({
-  title: '私信'
-})
+useKunDisableSeo('私信')
 </script>
 
 <template>

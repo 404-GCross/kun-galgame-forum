@@ -3,7 +3,8 @@ import type {
   VideoGame,
   WithContext,
   Person,
-  CreativeWorkSeries
+  CreativeWorkSeries,
+  BreadcrumbList
 } from 'schema-dts'
 
 const userId = storeToRefs(usePersistUserStore()).id.value
@@ -57,11 +58,28 @@ if (galgame) {
     const title =
       jaTitle && titleBase !== jaTitle ? `${titleBase} | ${jaTitle}` : titleBase
     const pageUrl = `${kungal.domain.main}${route.path}`
-    const description = markdownToText(
-      getPreferredLanguageText(galgame.markdown)
-    )
+
+    // Encyclopedia-style fallback so the meta description is never thin when the
+    // wiki intro is empty.
+    const developer = galgame.official[0]?.name
+    const releaseYear = galgame.release_date
+      ? new Date(galgame.release_date).getFullYear()
+      : undefined
+    const platformText = galgame.platform.slice(0, 3).join('、')
+    const contentGenres = galgame.tag
+      .filter((t) => t.category === 'content')
+      .map((t) => t.name)
+    const fallbackDescription =
+      `《${titleBase}》是一款${developer ? `由 ${developer} 开发的 ` : ''}Galgame（视觉小说）` +
+      `${releaseYear ? `，${releaseYear} 年发售` : ''}` +
+      `${platformText ? `，登陆 ${platformText}` : ''}` +
+      `${contentGenres.length ? `，题材包括${contentGenres.slice(0, 3).join('、')}` : ''}` +
+      `。本页收录其基本资料、制作 Staff、登场角色与声优, 以及玩家评分与评价。`
+
+    const introText = markdownToText(getPreferredLanguageText(galgame.markdown))
       .slice(0, 175)
       .replace(/\\|\n/g, '')
+    const description = introText || fallbackDescription
 
     const jsonLd: WithContext<VideoGame> = {
       '@context': 'https://schema.org',
@@ -72,7 +90,7 @@ if (galgame) {
       image: getEffectiveBanner(galgame),
       description: description,
       inLanguage: galgame.original_language,
-      datePublished: new Date(galgame.created).toISOString(),
+      datePublished: galgame.release_date || new Date(galgame.created).toISOString(),
       dateModified: new Date(galgame.updated).toISOString(),
       publisher: galgame.official.map((o) => ({
         '@type': 'Organization',
@@ -86,6 +104,24 @@ if (galgame) {
         .filter((t) => t.category === 'technical')
         .map((t) => t.name)
         .join(', '),
+
+      ...(galgame.platform.length && { gamePlatform: galgame.platform }),
+
+      // Star rich-result: averaged over all local player ratings (overall 1-10).
+      ...(galgame.ratings.length && {
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: Number(
+            (
+              galgame.ratings.reduce((sum, r) => sum + r.overall, 0) /
+              galgame.ratings.length
+            ).toFixed(1)
+          ),
+          ratingCount: galgame.ratings.length,
+          bestRating: 10,
+          worstRating: 1
+        }
+      }),
 
       ...(galgame.series && {
         isPartOf: {
@@ -122,12 +158,32 @@ if (galgame) {
       })) satisfies Person[]
     }
 
+    const breadcrumbLd: WithContext<BreadcrumbList> = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '首页', item: kungal.domain.main },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Galgame',
+          item: `${kungal.domain.main}/galgame`
+        },
+        { '@type': 'ListItem', position: 3, name: titleBase, item: pageUrl }
+      ]
+    }
+
     useHead({
       script: [
         {
           id: 'schema-org-video-game',
           type: 'application/ld+json',
           innerHTML: jsonLd
+        },
+        {
+          id: 'schema-org-breadcrumb',
+          type: 'application/ld+json',
+          innerHTML: breadcrumbLd
         }
       ]
     })

@@ -3,9 +3,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-useKunSeoMeta({
-  title: '通知消息'
-})
+useKunDisableSeo('通知消息')
 
 const pageData = reactive({
   page: 1,

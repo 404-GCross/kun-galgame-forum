@@ -3,9 +3,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-useKunSeoMeta({
-  title: '系统消息'
-})
+useKunDisableSeo('系统消息')
 
 // NOTE: /message/admin (GetSystemMessages) returns a fixed order and accepts
 // no sort param, so none is sent here. (The sibling /message endpoint DOES

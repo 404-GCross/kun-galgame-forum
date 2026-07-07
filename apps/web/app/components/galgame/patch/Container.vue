@@ -21,6 +21,22 @@ const resources = ref<KunPatchResourceResponse[]>([])
 const isLoading = ref(false)
 watchEffect(() => emit('update:loading', isLoading.value))
 
+const expandedNotes = ref<Set<number>>(new Set())
+const isNoteExpanded = (id: number) => expandedNotes.value.has(id)
+const toggleNote = (id: number) => {
+  if (expandedNotes.value.has(id)) {
+    expandedNotes.value.delete(id)
+  } else {
+    expandedNotes.value.add(id)
+  }
+}
+const isNoteLong = (note: string) => note.length > 80 || note.includes('\n')
+
+const STORAGE_MAP: Record<string, string> = {
+  s3: 'S3 对象存储',
+  user: '网盘下载'
+}
+
 const fetchKunPatchResource = async (vndbId: string) => {
   isLoading.value = true
   try {
@@ -61,6 +77,9 @@ onMounted(async () => {
     </KunHeader>
 
     <div class="space-y-2" v-for="resource in resources" :key="resource.id">
+      <p v-if="resource.name" class="font-medium break-words">
+        {{ resource.name }}
+      </p>
       <div class="flex flex-wrap items-center justify-between">
         <div class="flex flex-wrap items-center gap-1 rounded-lg">
           <KunChip
@@ -88,6 +107,14 @@ onMounted(async () => {
           >
             {{ SUPPORTED_LANGUAGE_MAP[l] }}
           </KunChip>
+          <KunChip v-if="resource.model_name" color="danger">
+            <KunIcon name="lucide:bot" />
+            {{ resource.model_name }}
+          </KunChip>
+          <KunChip color="default">
+            <KunIcon name="lucide:hard-drive" />
+            {{ STORAGE_MAP[resource.storage] ?? resource.storage }}
+          </KunChip>
         </div>
 
         <div class="ml-auto flex items-center gap-1">
@@ -104,6 +131,37 @@ onMounted(async () => {
           </KunTooltip>
         </div>
       </div>
+
+      <KunInfo
+        v-if="resource.note"
+        color="info"
+        variant="flat"
+        title="发布者备注 — 请先阅读"
+      >
+        <div class="space-y-1.5">
+          <p
+            class="text-sm break-words whitespace-pre-wrap"
+            :class="{ 'line-clamp-3': !isNoteExpanded(resource.id) }"
+          >
+            {{ resource.note }}
+          </p>
+          <button
+            v-if="isNoteLong(resource.note)"
+            type="button"
+            class="text-default-500 hover:text-primary flex items-center gap-1 px-1 text-xs transition-colors"
+            @click="toggleNote(resource.id)"
+          >
+            <KunIcon
+              :name="
+                isNoteExpanded(resource.id)
+                  ? 'lucide:chevron-up'
+                  : 'lucide:chevron-down'
+              "
+            />
+            {{ isNoteExpanded(resource.id) ? '收起' : '展开全部' }}
+          </button>
+        </div>
+      </KunInfo>
 
       <div class="flex justify-between">
         <div class="flex gap-2">

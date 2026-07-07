@@ -17,7 +17,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-useKunSeoMeta({ title: 'Wiki 通知' })
+useKunDisableSeo('Wiki 通知')
 
 interface WikiMessagesEnvelope {
   items: WikiMessageItem[]

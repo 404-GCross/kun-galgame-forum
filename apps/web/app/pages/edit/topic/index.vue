@@ -3,7 +3,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-useKunSeoMeta({ title: '发布话题' })
+useKunDisableSeo('发布话题')
 </script>
 
 <template>

@@ -60,11 +60,7 @@ const totalStats = computed(() => {
   }))
 })
 
-useKunSeoMeta({
-  title: '数据总览',
-  description:
-    '查看过去一段时间内话题, Galgame, Galgame 资源, Galgame 网站, Galgame 评论, Galgame 网站评论的增长趋势'
-})
+useKunDisableSeo('数据总览')
 </script>
 
 <template>

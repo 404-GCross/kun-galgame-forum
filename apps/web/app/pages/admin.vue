@@ -4,10 +4,7 @@ import {
   type KUN_ADMIN_PAGE_ROUTE_TYPE
 } from '~/constants/admin'
 
-useKunSeoMeta({
-  title: '管理系统',
-  description: '世界上最强大美观的 Galgame 网站管理系统, 专为 Galgame 网站定制'
-})
+useKunDisableSeo('管理系统')
 
 const route = useRoute()
 const pageType = computed(() => {

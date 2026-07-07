@@ -70,9 +70,15 @@ if (data.value) {
   if (data.value.category !== 'sexual') {
     useKunSeoMeta({
       title: `标签 ${data.value.name} 的 Galgame`,
-      description: data.value.galgame
-        .map((g) => getPreferredLanguageText(g.name))
-        .toString()
+      description:
+        data.value.description ||
+        `含有标签「${data.value.name}」的 Galgame 作品合集, 例如 ${data.value.galgame
+          .slice(0, 5)
+          .map((g) => getPreferredLanguageText(g.name))
+          .join('、')} 等。`,
+      ...(data.value.galgame[0]?.banner
+        ? { ogImage: data.value.galgame[0].banner }
+        : {})
     })
   } else {
     useKunDisableSeo(`标签 ${data.value.name} 的 Galgame`)

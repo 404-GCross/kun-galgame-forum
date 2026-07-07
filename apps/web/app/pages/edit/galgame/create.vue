@@ -3,7 +3,7 @@ definePageMeta({
   middleware: ['auth', 'prevent']
 })
 
-useKunSeoMeta({ title: '发布 Galgame' })
+useKunDisableSeo('发布 Galgame')
 </script>
 
 <template>

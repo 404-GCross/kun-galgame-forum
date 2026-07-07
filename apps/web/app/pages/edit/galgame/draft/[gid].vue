@@ -3,7 +3,7 @@ definePageMeta({
   middleware: ['auth']
 })
 
-useKunSeoMeta({ title: '编辑草稿' })
+useKunDisableSeo('编辑草稿')
 </script>
 
 <template>

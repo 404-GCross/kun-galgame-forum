@@ -60,7 +60,7 @@ const onPublished = () => {
       <KunHeader name="Galgame 题库">
         <template #description>
           <p class="text-default-500">
-            由萌友共同建设的 Galgame 题库, 支持单选、多选、判断、填空、问答等题型。答对可获得萌萌点, 出题合格同样有奖励。
+            由 Galgame 爱好者共同建设的题库, 支持单选、多选、判断、填空、问答等题型。答对可获得萌萌点, 出题合格同样有奖励。
           </p>
         </template>
       </KunHeader>

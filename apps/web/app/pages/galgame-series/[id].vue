@@ -18,9 +18,15 @@ if (data.value) {
   if (data.value.is_nsfw) {
     useKunDisableSeo(data.value.name)
   } else {
+    const seriesBanner =
+      data.value.sample_galgame[0]?.effective_banner_url ??
+      data.value.sample_galgame[0]?.banner
     useKunSeoMeta({
       title: `${data.value.name} 系列下载资源`,
-      description: data.value.description
+      description:
+        data.value.description ||
+        `${data.value.name} 系列收录的全部 Galgame 作品、剧情脉络与下载资源。`,
+      ...(seriesBanner ? { ogImage: seriesBanner } : {})
     })
   }
 } else {
