@@ -55,17 +55,17 @@ type UpdateQuizRequest struct {
 // (incl. the answer key in `content`), returned only to the author or a
 // moderator so the edit form can be pre-filled.
 type QuizEditData struct {
-	ID           int                `json:"id"`
-	GalgameIDs   []int              `json:"galgame_ids"`
-	HideGalgame  bool               `json:"hide_galgame"`
-	Category     string             `json:"category"`
-	Type         string             `json:"type"`
-	Difficulty   int                `json:"difficulty"`
-	SpoilerLevel string             `json:"spoiler_level"`
-	Question     string             `json:"question"`
-	Description  string             `json:"description"`
-	Content      json.RawMessage    `json:"content"`
-	Explanation  string             `json:"explanation"`
+	ID           int             `json:"id"`
+	GalgameIDs   []int           `json:"galgame_ids"`
+	HideGalgame  bool            `json:"hide_galgame"`
+	Category     string          `json:"category"`
+	Type         string          `json:"type"`
+	Difficulty   int             `json:"difficulty"`
+	SpoilerLevel string          `json:"spoiler_level"`
+	Question     string          `json:"question"`
+	Description  string          `json:"description"`
+	Content      json.RawMessage `json:"content"`
+	Explanation  string          `json:"explanation"`
 	// Briefs (id + name) of the linked games, to pre-fill the picker chips.
 	Galgames []QuizGalgameBrief `json:"galgames"`
 }
@@ -125,6 +125,7 @@ type QuizStats struct {
 	View           int     `json:"view"`
 	AnswerCount    int     `json:"answer_count"`
 	CorrectCount   int     `json:"correct_count"`
+	FavoriteCount  int     `json:"favorite_count"`
 	QualityAverage float64 `json:"quality_average"`
 	QualityCount   int     `json:"quality_count"`
 }
@@ -136,16 +137,16 @@ type QuizStats struct {
 // QuizCard is a single entry in the quiz list response. It never carries the
 // `content` payload — cards only show the prompt + meta + stats.
 type QuizCard struct {
-	ID           int               `json:"id"`
-	User         UserBrief         `json:"user"`
-	Category     string            `json:"category"`
-	Type         string            `json:"type"`
-	Difficulty   int               `json:"difficulty"`
-	SpoilerLevel string            `json:"spoiler_level"`
-	Question     string            `json:"question"`
-	QuizStats                      // embedded view/answer/correct/quality
-	Created      string            `json:"created"`
-	Updated      string            `json:"updated"`
+	ID           int       `json:"id"`
+	User         UserBrief `json:"user"`
+	Category     string    `json:"category"`
+	Type         string    `json:"type"`
+	Difficulty   int       `json:"difficulty"`
+	SpoilerLevel string    `json:"spoiler_level"`
+	Question     string    `json:"question"`
+	QuizStats              // embedded view/answer/correct/quality
+	Created      string    `json:"created"`
+	Updated      string    `json:"updated"`
 	// The viewer's own status on this quiz:
 	// author | correct | incorrect | answered | unanswered.
 	MyStatus string `json:"my_status"`
@@ -165,12 +166,12 @@ type QuizListPage struct {
 // the viewer has answered (or is the author), and only then reveals the full
 // answer key + explanation.
 type QuizPlay struct {
-	ID           int                `json:"id"`
-	User         UserBrief          `json:"user"`
-	Category     string             `json:"category"`
-	Type         string             `json:"type"`
-	Difficulty   int                `json:"difficulty"`
-	SpoilerLevel string             `json:"spoiler_level"`
+	ID              int             `json:"id"`
+	User            UserBrief       `json:"user"`
+	Category        string          `json:"category"`
+	Type            string          `json:"type"`
+	Difficulty      int             `json:"difficulty"`
+	SpoilerLevel    string          `json:"spoiler_level"`
 	Question        string          `json:"question"`
 	DescriptionHtml string          `json:"description_html"`
 	Content         json.RawMessage `json:"content"`
@@ -179,9 +180,10 @@ type QuizPlay struct {
 	Updated         string          `json:"updated"`
 	HideGalgame     bool            `json:"hide_galgame"`
 	// Empty when hide_galgame && the viewer hasn't answered yet.
-	Galgames []QuizGalgameDetail `json:"galgames"`
-	IsAuthor bool                `json:"is_author"`
-	MyAnswer *QuizAnswerResult   `json:"my_answer"`
+	Galgames    []QuizGalgameDetail `json:"galgames"`
+	IsAuthor    bool                `json:"is_author"`
+	IsFavorited bool                `json:"is_favorited"`
+	MyAnswer    *QuizAnswerResult   `json:"my_answer"`
 }
 
 // QuizAnswerResult reveals the graded outcome + the full answer key. It is the
@@ -198,16 +200,16 @@ type QuizAnswerResult struct {
 
 // CreatedQuiz is the response of POST /galgame-quiz — the freshly authored card.
 type CreatedQuiz struct {
-	ID           int               `json:"id"`
-	User         UserBrief         `json:"user"`
-	Category     string            `json:"category"`
-	Type         string            `json:"type"`
-	Difficulty   int               `json:"difficulty"`
-	SpoilerLevel string            `json:"spoiler_level"`
-	Question     string            `json:"question"`
-	QuizStats                      // zeroed stats on a fresh quiz
-	Created      string            `json:"created"`
-	Updated      string            `json:"updated"`
+	ID           int       `json:"id"`
+	User         UserBrief `json:"user"`
+	Category     string    `json:"category"`
+	Type         string    `json:"type"`
+	Difficulty   int       `json:"difficulty"`
+	SpoilerLevel string    `json:"spoiler_level"`
+	Question     string    `json:"question"`
+	QuizStats              // zeroed stats on a fresh quiz
+	Created      string    `json:"created"`
+	Updated      string    `json:"updated"`
 }
 
 // QuizQualityResult is the response of PUT /galgame-quiz/:id/quality.

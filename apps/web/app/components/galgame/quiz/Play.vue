@@ -122,34 +122,43 @@ const correctRate = computed(() =>
         </span>
       </KunButton>
 
-      <KunPopover v-if="canManage" position="bottom-end">
-        <template #trigger>
-          <KunButton :is-icon-only="true" variant="light" size="sm">
-            <KunIcon name="lucide:ellipsis" />
-          </KunButton>
-        </template>
-        <div class="flex w-32 flex-col gap-1 p-2">
-          <KunButton
-            variant="light"
-            color="default"
-            size="sm"
-            class-name="w-full justify-start gap-2"
-            @click="openEdit"
-          >
-            <KunIcon name="lucide:pencil" />编辑
-          </KunButton>
-          <KunButton
-            variant="light"
-            color="danger"
-            size="sm"
-            class-name="w-full justify-start gap-2"
-            :loading="isDeleting"
-            @click="remove"
-          >
-            <KunIcon name="lucide:trash-2" />删除
-          </KunButton>
-        </div>
-      </KunPopover>
+      <div class="flex items-center gap-1">
+        <FavoriteToggle
+          :favorited="state.is_favorited"
+          :count="state.favorite_count"
+          :endpoint="`/galgame-quiz/${state.id}/favorite`"
+          :messages="['已收藏', '已取消收藏']"
+        />
+
+        <KunPopover v-if="canManage" position="bottom-end">
+          <template #trigger>
+            <KunButton :is-icon-only="true" variant="light" size="sm">
+              <KunIcon name="lucide:ellipsis" />
+            </KunButton>
+          </template>
+          <div class="flex w-32 flex-col gap-1 p-2">
+            <KunButton
+              variant="light"
+              color="default"
+              size="sm"
+              class-name="w-full justify-start gap-2"
+              @click="openEdit"
+            >
+              <KunIcon name="lucide:pencil" />编辑
+            </KunButton>
+            <KunButton
+              variant="light"
+              color="danger"
+              size="sm"
+              class-name="w-full justify-start gap-2"
+              :loading="isDeleting"
+              @click="remove"
+            >
+              <KunIcon name="lucide:trash-2" />删除
+            </KunButton>
+          </div>
+        </KunPopover>
+      </div>
     </div>
 
     <KunCard :is-transparent="false">
@@ -224,6 +233,9 @@ const correctRate = computed(() =>
           </span>
           <span v-if="correctRate !== null" class="flex items-center gap-1">
             <KunIcon name="lucide:target" />正确率 {{ correctRate }}%
+          </span>
+          <span class="flex items-center gap-1">
+            <KunIcon name="lucide:eye" />{{ state.view }} 浏览
           </span>
         </div>
 

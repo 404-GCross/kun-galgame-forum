@@ -44,6 +44,7 @@ export interface QuizStats {
   view: number
   answer_count: number
   correct_count: number
+  favorite_count: number
   quality_average: number
   quality_count: number
 }
@@ -146,6 +147,7 @@ export interface GalgameQuizPlay extends QuizStats {
   // Empty while hide_galgame is on and the viewer hasn't answered yet.
   galgames: QuizGalgameDetail[]
   is_author: boolean
+  is_favorited: boolean
   // Present once the viewer has answered (or is the author) — reveals the key.
   my_answer: QuizAnswerResult | null
 }

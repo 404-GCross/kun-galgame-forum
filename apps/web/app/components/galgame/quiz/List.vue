@@ -86,6 +86,15 @@ const correctRate = (q: GalgameQuizCard) =>
           >
             {{ KUN_QUIZ_SPOILER_MAP[quiz.spoiler_level] }}
           </KunChip>
+          <span class="flex items-center gap-1">
+            <KunIcon name="lucide:eye" />{{ quiz.view }}
+          </span>
+          <span class="flex items-center gap-1">
+            <KunIcon name="lucide:users" />{{ quiz.answer_count }}
+          </span>
+          <span v-if="quiz.favorite_count" class="flex items-center gap-1">
+            <KunIcon name="lucide:heart" />{{ quiz.favorite_count }}
+          </span>
         </div>
       </div>
 

@@ -18,11 +18,12 @@ func quizQualityAverage(sum, count int) float64 {
 }
 
 // quizStats builds the embedded stats block from raw counters.
-func quizStats(view, answerCount, correctCount, qualitySum, qualityCount int) dto.QuizStats {
+func quizStats(view, answerCount, correctCount, favoriteCount, qualitySum, qualityCount int) dto.QuizStats {
 	return dto.QuizStats{
 		View:           view,
 		AnswerCount:    answerCount,
 		CorrectCount:   correctCount,
+		FavoriteCount:  favoriteCount,
 		QualityAverage: quizQualityAverage(qualitySum, qualityCount),
 		QualityCount:   qualityCount,
 	}
@@ -39,7 +40,7 @@ func quizRowToCard(r model.GalgameQuizRow, user userclient.User) dto.QuizCard {
 		Type:         r.Type,
 		Difficulty:   r.Difficulty,
 		Question:     r.Question,
-		QuizStats:    quizStats(r.View, r.AnswerCount, r.CorrectCount, r.QualitySum, r.QualityCount),
+		QuizStats:    quizStats(r.View, r.AnswerCount, r.CorrectCount, r.FavoriteCount, r.QualitySum, r.QualityCount),
 		Created:      r.Created,
 		Updated:      r.Updated,
 	}

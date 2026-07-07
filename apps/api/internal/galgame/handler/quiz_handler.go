@@ -150,6 +150,22 @@ func (h *QuizHandler) DeleteQuiz(c fiber.Ctx) error {
 	return response.OKMessage(c, "题目已删除")
 }
 
+// ToggleQuizFavorite — PUT /api/galgame-quiz/:id/favorite
+func (h *QuizHandler) ToggleQuizFavorite(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的题目 ID"))
+	}
+	if appErr := h.quizService.ToggleQuizFavorite(user.ID, id); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OKMessage(c, "操作成功")
+}
+
 // UpdateQuiz — PUT /api/galgame-quiz/:id (author or moderator)
 func (h *QuizHandler) UpdateQuiz(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)

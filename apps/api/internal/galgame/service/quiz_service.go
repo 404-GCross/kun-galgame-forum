@@ -190,12 +190,13 @@ func (s *QuizService) GetQuizPlay(
 		Question:        quiz.Question,
 		DescriptionHtml: markdown.Render(quiz.Description),
 		Content:         stripQuizContent(quiz.Type, quiz.Content),
-		QuizStats:       quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
+		QuizStats:       quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.FavoriteCount, quiz.QualitySum, quiz.QualityCount),
 		Created:         quiz.CreatedAt.Format(time.RFC3339),
 		Updated:         quiz.UpdatedAt.Format(time.RFC3339),
 		HideGalgame:     quiz.HideGalgame,
 		Galgames:        galgames,
 		IsAuthor:        isAuthor,
+		IsFavorited:     s.quizRepo.FindQuizFavorite(quizID, currentUserID),
 		MyAnswer:        myAnswer,
 	}
 	return play, nil
@@ -265,7 +266,7 @@ func (s *QuizService) CreateQuiz(
 		Type:         quiz.Type,
 		Difficulty:   quiz.Difficulty,
 		Question:     quiz.Question,
-		QuizStats:    quizStats(0, 0, 0, 0, 0),
+		QuizStats:    quizStats(0, 0, 0, 0, 0, 0),
 		Created:      quiz.CreatedAt.Format(time.RFC3339),
 		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
 	}, nil
@@ -406,6 +407,44 @@ func (s *QuizService) DeleteQuiz(userID int, canModerate bool, quizID int) *erro
 	})
 	if txErr != nil {
 		return errors.ErrInternal("删除题目失败")
+	}
+	return nil
+}
+
+// ──────────────────────────────────────────
+// ToggleQuizFavorite — PUT /galgame-quiz/:id/favorite
+// Mirrors topic favorites: toggle the (quiz, user) row, bump favorite_count,
+// and grant the author ±1 moemoepoint (ReasonLiked). Self-favorites earn nothing.
+// ──────────────────────────────────────────
+
+func (s *QuizService) ToggleQuizFavorite(userID, quizID int) *errors.AppError {
+	quiz, ok := s.quizRepo.FindByID(quizID)
+	if !ok {
+		return errors.ErrNotFound("题目不存在")
+	}
+	delta := 1
+	if s.quizRepo.FindQuizFavorite(quizID, userID) {
+		delta = -1
+	}
+	txErr := s.quizRepo.DB().Transaction(func(tx *gorm.DB) error {
+		if delta < 0 {
+			if err := s.quizRepo.DeleteQuizFavorite(tx, quizID, userID); err != nil {
+				return err
+			}
+		} else if err := s.quizRepo.CreateQuizFavorite(tx, quizID, userID); err != nil {
+			return err
+		}
+		if err := s.quizRepo.AdjustQuizFavoriteCount(tx, quizID, delta); err != nil {
+			return err
+		}
+		if userID != quiz.UserID {
+			s.helpers.AdjustMoemoepoint(tx, quiz.UserID, delta,
+				moemoepoint.ReasonLiked, moemoepoint.Ref("galgame_quiz", quizID))
+		}
+		return nil
+	})
+	if txErr != nil {
+		return errors.ErrInternal("操作失败")
 	}
 	return nil
 }

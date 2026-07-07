@@ -411,6 +411,7 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame-quiz/:id", a.GalgameQuizHandler.DeleteQuiz)
 	authed.Post("/galgame-quiz/:id/answer", a.GalgameQuizHandler.AnswerQuiz)
 	authed.Put("/galgame-quiz/:id/quality", a.GalgameQuizHandler.RateQuizQuality)
+	authed.Put("/galgame-quiz/:id/favorite", a.GalgameQuizHandler.ToggleQuizFavorite)
 	// Edit (author or moderator): fetch the full quiz, then update it.
 	authed.Get("/galgame-quiz/:id/edit", a.GalgameQuizHandler.GetQuizForEdit)
 	authed.Put("/galgame-quiz/:id", a.GalgameQuizHandler.UpdateQuiz)

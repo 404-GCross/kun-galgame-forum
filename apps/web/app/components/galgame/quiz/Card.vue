@@ -80,9 +80,15 @@ const correctRate = (q: GalgameQuizCard) =>
           </div>
 
           <div class="flex items-center justify-between text-sm">
-            <div class="text-default-500 flex gap-3">
+            <div class="text-default-500 flex flex-wrap gap-3">
+              <span class="flex items-center gap-1">
+                <KunIcon name="lucide:eye" />{{ quiz.view }}
+              </span>
               <span class="flex items-center gap-1">
                 <KunIcon name="lucide:users" />{{ quiz.answer_count }}
+              </span>
+              <span v-if="quiz.favorite_count" class="flex items-center gap-1">
+                <KunIcon name="lucide:heart" />{{ quiz.favorite_count }}
               </span>
               <span
                 v-if="correctRate(quiz) !== null"

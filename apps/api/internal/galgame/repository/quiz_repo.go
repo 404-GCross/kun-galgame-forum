@@ -21,7 +21,7 @@ func (r *QuizRepository) DB() *gorm.DB { return r.db }
 // heavy `content` JSONB (cards never expose the payload).
 const quizCardColumns = `q.id, q.user_id, q.category, q.spoiler_level,
 	q.type, q.difficulty, q.question, q.view, q.answer_count, q.correct_count,
-	q.quality_sum, q.quality_count, q.created, q.updated`
+	q.favorite_count, q.quality_sum, q.quality_count, q.created, q.updated`
 
 // ──────────────────────────────────────────
 // Reads
@@ -163,6 +163,35 @@ func (r *QuizRepository) UpdateQuizFields(tx *gorm.DB, id int, fields map[string
 		return nil
 	}
 	return tx.Table("galgame_quiz").Where("id = ?", id).Updates(fields).Error
+}
+
+// FindQuizFavorite reports whether the user has favorited the quiz.
+func (r *QuizRepository) FindQuizFavorite(quizID, userID int) bool {
+	if userID == 0 {
+		return false
+	}
+	var count int64
+	r.db.Table("galgame_quiz_favorite").
+		Where("quiz_id = ? AND user_id = ?", quizID, userID).
+		Count(&count)
+	return count > 0
+}
+
+// CreateQuizFavorite inserts a favorite row (created filled by the DB default).
+func (r *QuizRepository) CreateQuizFavorite(tx *gorm.DB, quizID, userID int) error {
+	return tx.Create(&model.GalgameQuizFavorite{QuizID: quizID, UserID: userID}).Error
+}
+
+// DeleteQuizFavorite removes a favorite row.
+func (r *QuizRepository) DeleteQuizFavorite(tx *gorm.DB, quizID, userID int) error {
+	return tx.Where("quiz_id = ? AND user_id = ?", quizID, userID).
+		Delete(&model.GalgameQuizFavorite{}).Error
+}
+
+// AdjustQuizFavoriteCount bumps galgame_quiz.favorite_count by delta.
+func (r *QuizRepository) AdjustQuizFavoriteCount(tx *gorm.DB, quizID, delta int) error {
+	return tx.Model(&model.GalgameQuiz{}).Where("id = ?", quizID).
+		UpdateColumn("favorite_count", gorm.Expr("favorite_count + ?", delta)).Error
 }
 
 // FindQuizGalgameIDs returns the galgame ids linked to a quiz.
