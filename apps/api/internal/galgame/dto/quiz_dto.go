@@ -24,13 +24,14 @@ type QuizListRequest struct {
 // type-specific payload (options + answer key); it is shape-validated in the
 // service against `type` before insert.
 type CreateQuizRequest struct {
-	GalgameID   *int            `json:"galgame_id" validate:"omitempty,min=1"`
-	Category    string          `json:"category" validate:"required,oneof=plot character system music voice company trivia other"`
-	Type        string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
-	Difficulty  int             `json:"difficulty" validate:"required,min=1,max=10"`
-	Question    string          `json:"question" validate:"required,min=1,max=2000"`
-	Content     json.RawMessage `json:"content" validate:"required"`
-	Explanation string          `json:"explanation" validate:"max=2000"`
+	GalgameID    *int            `json:"galgame_id" validate:"omitempty,min=1"`
+	Category     string          `json:"category" validate:"required,oneof=plot character system music voice company trivia other"`
+	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
+	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
+	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
+	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Content      json.RawMessage `json:"content" validate:"required"`
+	Explanation  string          `json:"explanation" validate:"max=2000"`
 }
 
 // AnswerQuizRequest is the body of POST /galgame-quiz/:id/answer. `submitted`
@@ -79,16 +80,17 @@ type QuizStats struct {
 // QuizCard is a single entry in the quiz list response. It never carries the
 // `content` payload — cards only show the prompt + meta + stats.
 type QuizCard struct {
-	ID         int               `json:"id"`
-	User       UserBrief         `json:"user"`
-	Category   string            `json:"category"`
-	Type       string            `json:"type"`
-	Difficulty int               `json:"difficulty"`
-	Question   string            `json:"question"`
-	QuizStats                    // embedded view/answer/correct/quality
-	Created    string            `json:"created"`
-	Updated    string            `json:"updated"`
-	Galgame    *QuizGalgameBrief `json:"galgame"`
+	ID           int               `json:"id"`
+	User         UserBrief         `json:"user"`
+	Category     string            `json:"category"`
+	Type         string            `json:"type"`
+	Difficulty   int               `json:"difficulty"`
+	SpoilerLevel string            `json:"spoiler_level"`
+	Question     string            `json:"question"`
+	QuizStats                      // embedded view/answer/correct/quality
+	Created      string            `json:"created"`
+	Updated      string            `json:"updated"`
+	Galgame      *QuizGalgameBrief `json:"galgame"`
 }
 
 type QuizListPage struct {
@@ -105,19 +107,20 @@ type QuizListPage struct {
 // the viewer has answered (or is the author), and only then reveals the full
 // answer key + explanation.
 type QuizPlay struct {
-	ID         int               `json:"id"`
-	User       UserBrief         `json:"user"`
-	Category   string            `json:"category"`
-	Type       string            `json:"type"`
-	Difficulty int               `json:"difficulty"`
-	Question   string            `json:"question"`
-	Content    json.RawMessage   `json:"content"`
-	QuizStats                    // embedded view/answer/correct/quality
-	Created    string            `json:"created"`
-	Updated    string            `json:"updated"`
-	Galgame    *QuizGalgameBrief `json:"galgame"`
-	IsAuthor   bool              `json:"is_author"`
-	MyAnswer   *QuizAnswerResult `json:"my_answer"`
+	ID           int               `json:"id"`
+	User         UserBrief         `json:"user"`
+	Category     string            `json:"category"`
+	Type         string            `json:"type"`
+	Difficulty   int               `json:"difficulty"`
+	SpoilerLevel string            `json:"spoiler_level"`
+	Question     string            `json:"question"`
+	Content      json.RawMessage   `json:"content"`
+	QuizStats                      // embedded view/answer/correct/quality
+	Created      string            `json:"created"`
+	Updated      string            `json:"updated"`
+	Galgame      *QuizGalgameBrief `json:"galgame"`
+	IsAuthor     bool              `json:"is_author"`
+	MyAnswer     *QuizAnswerResult `json:"my_answer"`
 }
 
 // QuizAnswerResult reveals the graded outcome + the full answer key. It is the
@@ -134,16 +137,17 @@ type QuizAnswerResult struct {
 
 // CreatedQuiz is the response of POST /galgame-quiz — the freshly authored card.
 type CreatedQuiz struct {
-	ID         int               `json:"id"`
-	User       UserBrief         `json:"user"`
-	Category   string            `json:"category"`
-	Type       string            `json:"type"`
-	Difficulty int               `json:"difficulty"`
-	Question   string            `json:"question"`
-	QuizStats                    // zeroed stats on a fresh quiz
-	Created    string            `json:"created"`
-	Updated    string            `json:"updated"`
-	Galgame    *QuizGalgameBrief `json:"galgame"`
+	ID           int               `json:"id"`
+	User         UserBrief         `json:"user"`
+	Category     string            `json:"category"`
+	Type         string            `json:"type"`
+	Difficulty   int               `json:"difficulty"`
+	SpoilerLevel string            `json:"spoiler_level"`
+	Question     string            `json:"question"`
+	QuizStats                      // zeroed stats on a fresh quiz
+	Created      string            `json:"created"`
+	Updated      string            `json:"updated"`
+	Galgame      *QuizGalgameBrief `json:"galgame"`
 }
 
 // QuizQualityResult is the response of PUT /galgame-quiz/:id/quality.

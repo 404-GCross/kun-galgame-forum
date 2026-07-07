@@ -13,16 +13,17 @@ import (
 // pointer because a quiz may be general trivia (NULL) rather than about one
 // specific game.
 type GalgameQuiz struct {
-	ID          int             `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID      int             `gorm:"column:user_id;not null" json:"user_id"`
-	GalgameID   *int            `gorm:"column:galgame_id" json:"galgame_id"`
-	Category    string          `gorm:"type:varchar(16)" json:"category"`
-	Type        string          `gorm:"type:varchar(16)" json:"type"`
-	Difficulty  int             `gorm:"type:smallint" json:"difficulty"`
-	Question    string          `gorm:"type:text" json:"question"`
-	Content     json.RawMessage `gorm:"type:jsonb" json:"content"`
-	Explanation string          `gorm:"type:text" json:"explanation"`
-	View        int             `gorm:"default:0" json:"view"`
+	ID           int             `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID       int             `gorm:"column:user_id;not null" json:"user_id"`
+	GalgameID    *int            `gorm:"column:galgame_id" json:"galgame_id"`
+	Category     string          `gorm:"type:varchar(16)" json:"category"`
+	SpoilerLevel string          `gorm:"column:spoiler_level;type:varchar(16)" json:"spoiler_level"`
+	Type         string          `gorm:"type:varchar(16)" json:"type"`
+	Difficulty   int             `gorm:"type:smallint" json:"difficulty"`
+	Question     string          `gorm:"type:text" json:"question"`
+	Content      json.RawMessage `gorm:"type:jsonb" json:"content"`
+	Explanation  string          `gorm:"type:text" json:"explanation"`
+	View         int             `gorm:"default:0" json:"view"`
 
 	AnswerCount  int `gorm:"column:answer_count;default:0" json:"answer_count"`
 	CorrectCount int `gorm:"column:correct_count;default:0" json:"correct_count"`
@@ -62,6 +63,7 @@ type GalgameQuizRow struct {
 	UserID       int    `gorm:"column:user_id"`
 	GalgameID    *int   `gorm:"column:galgame_id"`
 	Category     string `gorm:"column:category"`
+	SpoilerLevel string `gorm:"column:spoiler_level"`
 	Type         string `gorm:"column:type"`
 	Difficulty   int    `gorm:"column:difficulty"`
 	Question     string `gorm:"column:question"`

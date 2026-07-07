@@ -157,22 +157,22 @@ importers:
         version: 0.29.0(@codemirror/commands@6.10.3)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(@lezer/highlight@1.2.3)(@milkdown/kit@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(typescript@5.9.3))(@milkdown/prose@7.21.2)(codemirror@6.0.2)(katex@0.16.40)
       '@kungal/editor-nuxt':
         specifier: 0.29.0
-        version: 0.29.0(ac9c8cf661d3fec0982dceddbad992e1)
+        version: 0.29.0(3c27052b71f7fccfd58a309132782068)
       '@kungal/editor-vue':
         specifier: 0.29.0
         version: 0.29.0(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(@lezer/highlight@1.2.3)(@milkdown/kit@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(typescript@5.9.3))(@milkdown/prose@7.21.2)(@milkdown/vue@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(prosemirror-model@1.25.3)(prosemirror-state@1.4.4)(prosemirror-view@1.41.7)(typescript@5.9.3)(vue@3.5.35(typescript@5.9.3)))(codemirror@6.0.2)(katex@0.16.40)(vue@3.5.35(typescript@5.9.3))
       '@kungal/ui-core':
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.12.0
+        version: 2.12.0
       '@kungal/ui-nuxt':
-        specifier: 2.10.0
-        version: 2.10.0(81015acf35160c0d483fda45966fa8ea)
+        specifier: 2.12.0
+        version: 2.12.0(81015acf35160c0d483fda45966fa8ea)
       '@kungal/ui-tokens':
-        specifier: 2.10.0
-        version: 2.10.0(tailwindcss@4.2.2)
+        specifier: 2.12.0
+        version: 2.12.0(tailwindcss@4.2.2)
       '@kungal/ui-vue':
-        specifier: 2.10.0
-        version: 2.10.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
+        specifier: 2.12.0
+        version: 2.12.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
       '@lezer/highlight':
         specifier: ^1.2.3
         version: 1.2.3
@@ -1678,22 +1678,22 @@ packages:
       codemirror:
         optional: true
 
-  '@kungal/ui-core@2.10.0':
-    resolution: {integrity: sha512-J7JIXDotc4jTTbuuZ0+h5NM9Gze7aJeWuZBqveCb0O6xgakdoRdrVOq/T3LgOji6gU25tHwrOqSFZb68kups3w==}
+  '@kungal/ui-core@2.12.0':
+    resolution: {integrity: sha512-uH7Tk67DJ3iG49ScMPZLbbOWJDC8iot9L6BPWGpZIWpNKSx/SoqPnrDXD2RgfRWM0P3C84R3+9R+4E6mfW6XkA==}
 
-  '@kungal/ui-nuxt@2.10.0':
-    resolution: {integrity: sha512-OhsoBb/pdOCO+TPGKaJZWnXRXaMm4lMeaVoocMOq3vvfnGE79usogUu7g2z3O+KBp01DbmF+ZCQMEIbebKoasg==}
+  '@kungal/ui-nuxt@2.12.0':
+    resolution: {integrity: sha512-7k6aXovcvV3UGeSojxn46rBTHHWEQqrpI6KjF6Nqt78gwrWBThD1mu0C0NBAoG7BdoZnnPcc63QMfJEkB6oNQA==}
     peerDependencies:
       nuxt: ^4.0.0
       vue: ^3.5.0
 
-  '@kungal/ui-tokens@2.10.0':
-    resolution: {integrity: sha512-M+r0Uxi4qWETM0BqC7nucYpLrZxN/8fVvNs1pohrXZijI3EMNFPnGp+8VByxQZdW9DAGWb8jdzazHYNjNEH8OA==}
+  '@kungal/ui-tokens@2.12.0':
+    resolution: {integrity: sha512-t1YkA2H9mrAtRKdEKfb/aIPHmIbQamBItHn+wc3qzpGX6z0WOeoO3KTXFDPIMc88FFA8ZfrR47+U8x+thx3kJw==}
     peerDependencies:
       tailwindcss: ^4.0.0
 
-  '@kungal/ui-vue@2.10.0':
-    resolution: {integrity: sha512-LwIawLoDJF1HZNQDxFcRsFXvsG10Lg1vjM7HR1M+7wDy5dvB1TnjDEAJ2m8bBtKjowmV2fGjKu252a1Pw7IcPg==}
+  '@kungal/ui-vue@2.12.0':
+    resolution: {integrity: sha512-0MgMDqZIXUTk4Cc14lgrT0YxyXGTqqGJQYywqVgGbCbXwFFUdZ6DkycZHdj/ppFJ4MrDwW9fORP9cm7bCQBRxg==}
     peerDependencies:
       vue: ^3.5.0
 
@@ -9314,11 +9314,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@kungal/editor-nuxt@0.29.0(ac9c8cf661d3fec0982dceddbad992e1)':
+  '@kungal/editor-nuxt@0.29.0(3c27052b71f7fccfd58a309132782068)':
     dependencies:
       '@kungal/editor-core': 0.29.0(@codemirror/commands@6.10.3)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(@lezer/highlight@1.2.3)(@milkdown/kit@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(typescript@5.9.3))(@milkdown/prose@7.21.2)(codemirror@6.0.2)(katex@0.16.40)
       '@kungal/editor-vue': 0.29.0(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(@lezer/highlight@1.2.3)(@milkdown/kit@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(typescript@5.9.3))(@milkdown/prose@7.21.2)(@milkdown/vue@7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(prosemirror-model@1.25.3)(prosemirror-state@1.4.4)(prosemirror-view@1.41.7)(typescript@5.9.3)(vue@3.5.35(typescript@5.9.3)))(codemirror@6.0.2)(katex@0.16.40)(vue@3.5.35(typescript@5.9.3))
-      '@kungal/ui-vue': 2.10.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
+      '@kungal/ui-vue': 2.12.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
       '@milkdown/kit': 7.21.2(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)(typescript@5.9.3)
       nuxt: 4.4.7(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@babel/plugin-syntax-typescript@7.28.6(@babel/core@7.29.0))(@electric-sql/pglite@0.3.15)(@parcel/watcher@2.5.6)(@types/node@25.5.0)(@vue/compiler-sfc@3.5.35)(cac@6.7.14)(db0@0.3.4(@electric-sql/pglite@0.3.15)(mysql2@3.15.3))(eslint@9.39.4(jiti@2.7.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(mysql2@3.15.3)(optionator@0.9.4)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.35(typescript@5.9.3)))(rollup-plugin-visualizer@7.0.1(rollup@4.61.1))(rollup@4.61.1)(sass@1.99.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.5(@types/node@25.5.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue-tsc@3.3.1(typescript@5.9.3))(xml2js@0.6.2)(yaml@2.8.3)
       vue: 3.5.35(typescript@5.9.3)
@@ -9357,15 +9357,15 @@ snapshots:
       - katex
       - supports-color
 
-  '@kungal/ui-core@2.10.0':
+  '@kungal/ui-core@2.12.0':
     dependencies:
       clsx: 2.1.1
       tailwind-merge: 3.5.0
 
-  '@kungal/ui-nuxt@2.10.0(81015acf35160c0d483fda45966fa8ea)':
+  '@kungal/ui-nuxt@2.12.0(81015acf35160c0d483fda45966fa8ea)':
     dependencies:
-      '@kungal/ui-tokens': 2.10.0(tailwindcss@4.2.2)
-      '@kungal/ui-vue': 2.10.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
+      '@kungal/ui-tokens': 2.12.0(tailwindcss@4.2.2)
+      '@kungal/ui-vue': 2.12.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
       '@nuxt/icon': 2.2.3(magicast@0.5.2)(vite@7.3.5(@types/node@25.5.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.35(typescript@5.9.3))
       '@nuxt/image': 2.0.0(db0@0.3.4(@electric-sql/pglite@0.3.15)(mysql2@3.15.3))(ioredis@5.10.1)(magicast@0.5.2)
       '@nuxt/kit': 4.4.8(magicast@0.5.2)
@@ -9406,14 +9406,14 @@ snapshots:
       - uploadthing
       - vite
 
-  '@kungal/ui-tokens@2.10.0(tailwindcss@4.2.2)':
+  '@kungal/ui-tokens@2.12.0(tailwindcss@4.2.2)':
     dependencies:
       tailwindcss: 4.2.2
 
-  '@kungal/ui-vue@2.10.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))':
+  '@kungal/ui-vue@2.12.0(change-case@5.4.4)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))':
     dependencies:
       '@floating-ui/vue': 1.1.11(vue@3.5.35(typescript@5.9.3))
-      '@kungal/ui-core': 2.10.0
+      '@kungal/ui-core': 2.12.0
       '@vueuse/core': 14.3.0(vue@3.5.35(typescript@5.9.3))
       '@vueuse/integrations': 14.3.0(change-case@5.4.4)(focus-trap@8.2.1)(fuse.js@7.4.1)(sortablejs@1.15.7)(vue@3.5.35(typescript@5.9.3))
       date-fns: 4.1.0

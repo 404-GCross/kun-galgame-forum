@@ -48,15 +48,16 @@ func quizRowToCard(
 	brief *client.GalgameBrief,
 ) dto.QuizCard {
 	card := dto.QuizCard{
-		ID:         r.ID,
-		User:       userBriefToDTO(user),
-		Category:   r.Category,
-		Type:       r.Type,
-		Difficulty: r.Difficulty,
-		Question:   r.Question,
-		QuizStats:  quizStats(r.View, r.AnswerCount, r.CorrectCount, r.QualitySum, r.QualityCount),
-		Created:    r.Created,
-		Updated:    r.Updated,
+		ID:           r.ID,
+		User:         userBriefToDTO(user),
+		Category:     r.Category,
+		SpoilerLevel: r.SpoilerLevel,
+		Type:         r.Type,
+		Difficulty:   r.Difficulty,
+		Question:     r.Question,
+		QuizStats:    quizStats(r.View, r.AnswerCount, r.CorrectCount, r.QualitySum, r.QualityCount),
+		Created:      r.Created,
+		Updated:      r.Updated,
 	}
 	if brief != nil {
 		card.Galgame = quizGalgameBrief(*brief)

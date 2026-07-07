@@ -12,6 +12,8 @@ export type QuizCategory =
   | 'trivia'
   | 'other'
 
+export type QuizSpoilerLevel = 'none' | 'portion' | 'serious'
+
 export interface QuizGalgameBrief {
   id: number
   content_limit: string
@@ -30,6 +32,7 @@ export interface GalgameQuizCard extends QuizStats {
   id: number
   user: KunUser
   category: QuizCategory
+  spoiler_level: QuizSpoilerLevel
   type: QuizType
   difficulty: number
   question: string
@@ -111,6 +114,7 @@ export interface GalgameQuizPlay extends QuizStats {
   id: number
   user: KunUser
   category: QuizCategory
+  spoiler_level: QuizSpoilerLevel
   type: QuizType
   difficulty: number
   question: string

@@ -164,19 +164,20 @@ func (s *QuizService) GetQuizPlay(
 	}
 
 	play := &dto.QuizPlay{
-		ID:         quiz.ID,
-		User:       userBriefToDTO(author),
-		Category:   quiz.Category,
-		Type:       quiz.Type,
-		Difficulty: quiz.Difficulty,
-		Question:   quiz.Question,
-		Content:    stripQuizContent(quiz.Type, quiz.Content),
-		QuizStats:  quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
-		Created:    quiz.CreatedAt.Format(time.RFC3339),
-		Updated:    quiz.UpdatedAt.Format(time.RFC3339),
-		Galgame:    s.briefFor(ctx, quiz.GalgameID),
-		IsAuthor:   isAuthor,
-		MyAnswer:   myAnswer,
+		ID:           quiz.ID,
+		User:         userBriefToDTO(author),
+		Category:     quiz.Category,
+		SpoilerLevel: quiz.SpoilerLevel,
+		Type:         quiz.Type,
+		Difficulty:   quiz.Difficulty,
+		Question:     quiz.Question,
+		Content:      stripQuizContent(quiz.Type, quiz.Content),
+		QuizStats:    quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.QualitySum, quiz.QualityCount),
+		Created:      quiz.CreatedAt.Format(time.RFC3339),
+		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
+		Galgame:      s.briefFor(ctx, quiz.GalgameID),
+		IsAuthor:     isAuthor,
+		MyAnswer:     myAnswer,
 	}
 	return play, nil
 }
@@ -196,15 +197,20 @@ func (s *QuizService) CreateQuiz(
 		return nil, appErr
 	}
 
+	spoiler := req.SpoilerLevel
+	if spoiler == "" {
+		spoiler = "none"
+	}
 	quiz := &model.GalgameQuiz{
-		UserID:      userID,
-		GalgameID:   req.GalgameID,
-		Category:    req.Category,
-		Type:        req.Type,
-		Difficulty:  req.Difficulty,
-		Question:    req.Question,
-		Content:     req.Content,
-		Explanation: req.Explanation,
+		UserID:       userID,
+		GalgameID:    req.GalgameID,
+		Category:     req.Category,
+		SpoilerLevel: spoiler,
+		Type:         req.Type,
+		Difficulty:   req.Difficulty,
+		Question:     req.Question,
+		Content:      req.Content,
+		Explanation:  req.Explanation,
 	}
 	reward := quizCreateReward(req.Difficulty)
 
@@ -229,16 +235,17 @@ func (s *QuizService) CreateQuiz(
 
 	author, _, _ := s.userClient.User(ctx, userID)
 	return &dto.CreatedQuiz{
-		ID:         quiz.ID,
-		User:       userBriefToDTO(author),
-		Category:   quiz.Category,
-		Type:       quiz.Type,
-		Difficulty: quiz.Difficulty,
-		Question:   quiz.Question,
-		QuizStats:  quizStats(0, 0, 0, 0, 0),
-		Created:    quiz.CreatedAt.Format(time.RFC3339),
-		Updated:    quiz.UpdatedAt.Format(time.RFC3339),
-		Galgame:    s.briefFor(ctx, quiz.GalgameID),
+		ID:           quiz.ID,
+		User:         userBriefToDTO(author),
+		Category:     quiz.Category,
+		SpoilerLevel: quiz.SpoilerLevel,
+		Type:         quiz.Type,
+		Difficulty:   quiz.Difficulty,
+		Question:     quiz.Question,
+		QuizStats:    quizStats(0, 0, 0, 0, 0),
+		Created:      quiz.CreatedAt.Format(time.RFC3339),
+		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
+		Galgame:      s.briefFor(ctx, quiz.GalgameID),
 	}, nil
 }
 

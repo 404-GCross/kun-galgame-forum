@@ -4,6 +4,8 @@ import {
   KUN_QUIZ_TYPE_ICON_MAP,
   KUN_QUIZ_TYPE_COLOR_MAP,
   KUN_QUIZ_CATEGORY_MAP,
+  KUN_QUIZ_SPOILER_MAP,
+  KUN_QUIZ_SPOILER_COLOR_MAP,
   kunQuizDifficultyLabel,
   kunQuizDifficultyColor
 } from '~/constants/galgame-quiz'
@@ -124,6 +126,13 @@ const correctRate = computed(() =>
           </KunChip>
           <KunChip variant="light">
             {{ KUN_QUIZ_CATEGORY_MAP[state.category] }}
+          </KunChip>
+          <KunChip
+            v-if="state.spoiler_level !== 'none'"
+            :color="KUN_QUIZ_SPOILER_COLOR_MAP[state.spoiler_level]"
+            variant="flat"
+          >
+            {{ KUN_QUIZ_SPOILER_MAP[state.spoiler_level] }}
           </KunChip>
           <KunLink
             v-if="state.galgame"

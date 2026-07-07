@@ -7,6 +7,8 @@ import {
   KUN_QUIZ_TYPE_DESCRIPTION_MAP,
   KUN_QUIZ_CATEGORY_CONST,
   KUN_QUIZ_CATEGORY_MAP,
+  KUN_QUIZ_SPOILER_CONST,
+  KUN_QUIZ_SPOILER_MAP,
   kunQuizDifficultyLabel,
   kunQuizDifficultyColor
 } from '~/constants/galgame-quiz'
@@ -26,12 +28,13 @@ const emits = defineEmits<{
 const category = ref<QuizCategory>('trivia')
 const type = ref<QuizType>('single')
 const difficulty = ref(3)
+const spoilerLevel = ref<QuizSpoilerLevel>('none')
 const question = ref('')
 const explanation = ref('')
 // The galgame chosen via the picker (only when not pre-bound by the galgameId prop).
 const pickedGalgameId = ref<number | null>(null)
-// Progressive disclosure: the optional link + explanation stay hidden until asked for.
-const showLink = ref(false)
+// Progressive disclosure: the optional explanation stays hidden until asked for.
+// (关联 Galgame is important, so it's shown up-front, not collapsed.)
 const showExplanation = ref(false)
 const isSubmitting = ref(false)
 
@@ -41,21 +44,43 @@ const editorRef = ref<{
   reset: () => void
 } | null>(null)
 
-// 题型 as a segmented tile row — all five shown; not-yet-implemented ones
-// (fill/essay) rendered disabled with a hint rather than removed.
-const typeTiles = KUN_QUIZ_TYPE_CONST.map((t) => ({
-  value: t,
-  label: KUN_QUIZ_TYPE_MAP[t] ?? t,
-  icon: KUN_QUIZ_TYPE_ICON_MAP[t] ?? 'lucide:circle',
-  enabled: (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
-}))
-const selectType = (tile: { value: QuizType; enabled: boolean }) => {
-  if (tile.enabled) type.value = tile.value
-}
+// 题型 as a pill KunCheckBoxGroup (like the topic 分区 selector). Type is
+// single-select, so the group's array v-model is adapted to a single value:
+// picking a new pill keeps only the latest, and the selected pill can't be
+// unchecked (a type is always required). fill/essay are shown disabled.
+const typeGroupOptions = KUN_QUIZ_TYPE_CONST.map((t) => {
+  const enabled = (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
+  return {
+    value: t,
+    label: KUN_QUIZ_TYPE_MAP[t] ?? t,
+    icon: KUN_QUIZ_TYPE_ICON_MAP[t] ?? 'lucide:circle',
+    disabled: !enabled
+  }
+})
+const typeSelection = computed<QuizType[]>({
+  get: () => [type.value],
+  set: (arr) => {
+    const last = arr[arr.length - 1]
+    if (last) type.value = last
+  }
+})
 
 const categoryOptions = KUN_QUIZ_CATEGORY_CONST.map((c) => ({
   value: c,
   label: KUN_QUIZ_CATEGORY_MAP[c] ?? c
+}))
+// 分类 as a single-select pill KunCheckBoxGroup (same array adapter as 题型).
+const categorySelection = computed<QuizCategory[]>({
+  get: () => [category.value],
+  set: (arr) => {
+    const last = arr[arr.length - 1]
+    if (last) category.value = last
+  }
+})
+
+const spoilerOptions = KUN_QUIZ_SPOILER_CONST.map((s) => ({
+  value: s,
+  label: KUN_QUIZ_SPOILER_MAP[s] ?? s
 }))
 
 const close = () => emits('update:modelValue', false)
@@ -64,10 +89,10 @@ const resetForm = () => {
   category.value = 'trivia'
   type.value = 'single'
   difficulty.value = 3
+  spoilerLevel.value = 'none'
   question.value = ''
   explanation.value = ''
   pickedGalgameId.value = null
-  showLink.value = false
   showExplanation.value = false
   editorRef.value?.reset()
 }
@@ -84,6 +109,7 @@ const submit = async () => {
     category: category.value,
     type: type.value,
     difficulty: difficulty.value,
+    spoiler_level: spoilerLevel.value,
     question: question.value,
     content,
     explanation: explanation.value
@@ -129,30 +155,30 @@ const submit = async () => {
         </p>
       </div>
 
-      <!-- 1) 题型 (segmented tiles) -->
+      <!-- 关联 Galgame — important, so it sits up top and stays visible -->
+      <KunInfo
+        v-if="galgameId"
+        color="primary"
+        icon="lucide:link"
+        title="已关联当前 Galgame"
+        description="本题将关联到你当前所在的 Galgame"
+      />
+      <GalgameQuizGalgamePicker v-else v-model="pickedGalgameId" />
+
+      <!-- 题型 (pill KunCheckBoxGroup, single-select) -->
       <div class="space-y-2">
-        <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          <button
-            v-for="tile in typeTiles"
-            :key="tile.value"
-            type="button"
-            :disabled="!tile.enabled"
-            class="flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-3 text-sm transition-colors"
-            :class="[
-              type === tile.value
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-default-200 text-default-600 hover:border-default-300',
-              !tile.enabled && 'cursor-not-allowed opacity-40 hover:border-default-200'
-            ]"
-            @click="selectType(tile)"
-          >
-            <KunIcon :name="tile.icon" class="size-5" />
-            <span>{{ tile.label }}</span>
-            <span v-if="!tile.enabled" class="text-[10px] leading-none">
-              即将实装
-            </span>
-          </button>
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium">题型</label>
+          <span class="text-default-400 text-xs">填空、问答即将实装</span>
         </div>
+        <KunCheckBoxGroup
+          v-model="typeSelection"
+          :options="typeGroupOptions"
+          variant="pill"
+          color="primary"
+          size="sm"
+          orientation="horizontal"
+        />
         <p class="text-default-500 text-sm">
           {{ KUN_QUIZ_TYPE_DESCRIPTION_MAP[type] }}
         </p>
@@ -174,49 +200,50 @@ const submit = async () => {
 
       <KunDivider />
 
-      <!-- 4) 属性: 分类 + 难度 -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <KunSelect v-model="category" :options="categoryOptions" label="分类" />
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <label class="text-sm">难度</label>
-            <KunChip
+      <!-- 4) 属性: 分类 (pill) + 难度 / 剧透等级 -->
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <label class="text-sm font-medium">分类</label>
+          <KunCheckBoxGroup
+            v-model="categorySelection"
+            :options="categoryOptions"
+            variant="pill"
+            color="primary"
+            size="sm"
+            orientation="horizontal"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label class="text-sm">难度</label>
+              <KunChip
+                :color="kunQuizDifficultyColor(difficulty)"
+                variant="flat"
+                size="sm"
+              >
+                {{ kunQuizDifficultyLabel(difficulty) }} · {{ difficulty }}
+              </KunChip>
+            </div>
+            <KunSlider
+              v-model="difficulty"
+              :min="1"
+              :max="10"
+              :step="1"
               :color="kunQuizDifficultyColor(difficulty)"
-              variant="flat"
-              size="sm"
-            >
-              {{ kunQuizDifficultyLabel(difficulty) }} · {{ difficulty }}
-            </KunChip>
+            />
           </div>
-          <KunSlider
-            v-model="difficulty"
-            :min="1"
-            :max="10"
-            :step="1"
-            :color="kunQuizDifficultyColor(difficulty)"
+
+          <KunSelect
+            v-model="spoilerLevel"
+            :options="spoilerOptions"
+            label="剧透等级"
           />
         </div>
       </div>
 
-      <!-- 5) 关联 Galgame (progressive) -->
-      <KunInfo
-        v-if="galgameId"
-        color="primary"
-        icon="lucide:link"
-        title="已关联当前 Galgame"
-        description="本题将关联到你当前所在的 Galgame"
-      />
-      <GalgameQuizGalgamePicker
-        v-else-if="showLink || pickedGalgameId !== null"
-        v-model="pickedGalgameId"
-      />
-      <KunButton v-else variant="light" size="sm" @click="showLink = true">
-        <span class="flex items-center gap-1">
-          <KunIcon name="lucide:link" />关联 Galgame（可选）
-        </span>
-      </KunButton>
-
-      <!-- 6) 解析 (progressive) -->
+      <!-- 解析 (progressive) -->
       <KunTextarea
         v-if="showExplanation || explanation"
         v-model="explanation"

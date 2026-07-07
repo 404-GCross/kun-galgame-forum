@@ -4,6 +4,8 @@ import {
   KUN_QUIZ_TYPE_ICON_MAP,
   KUN_QUIZ_TYPE_COLOR_MAP,
   KUN_QUIZ_CATEGORY_MAP,
+  KUN_QUIZ_SPOILER_MAP,
+  KUN_QUIZ_SPOILER_COLOR_MAP,
   kunQuizDifficultyLabel,
   kunQuizDifficultyColor
 } from '~/constants/galgame-quiz'
@@ -36,12 +38,22 @@ const correctRate = (q: GalgameQuizCard) =>
     >
       <div class="flex h-full flex-col gap-3">
         <div class="flex items-center justify-between gap-2">
-          <KunChip :color="KUN_QUIZ_TYPE_COLOR_MAP[quiz.type]" variant="flat">
-            <span class="flex items-center gap-1">
-              <KunIcon :name="KUN_QUIZ_TYPE_ICON_MAP[quiz.type]" />
-              {{ KUN_QUIZ_TYPE_MAP[quiz.type] }}
-            </span>
-          </KunChip>
+          <div class="flex items-center gap-1">
+            <KunChip :color="KUN_QUIZ_TYPE_COLOR_MAP[quiz.type]" variant="flat">
+              <span class="flex items-center gap-1">
+                <KunIcon :name="KUN_QUIZ_TYPE_ICON_MAP[quiz.type]" />
+                {{ KUN_QUIZ_TYPE_MAP[quiz.type] }}
+              </span>
+            </KunChip>
+            <KunChip
+              v-if="quiz.spoiler_level !== 'none'"
+              :color="KUN_QUIZ_SPOILER_COLOR_MAP[quiz.spoiler_level]"
+              variant="flat"
+              size="sm"
+            >
+              {{ KUN_QUIZ_SPOILER_MAP[quiz.spoiler_level] }}
+            </KunChip>
+          </div>
           <KunChip
             :color="kunQuizDifficultyColor(quiz.difficulty)"
             variant="solid"

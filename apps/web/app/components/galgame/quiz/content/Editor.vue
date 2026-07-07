@@ -40,18 +40,20 @@ const removeOption = (i: number) => {
   if (singleAnswer.value >= options.value.length) singleAnswer.value = 0
 }
 
-// Inline correct-answer marking.
+// Inline correct-answer marking, driven by a per-row KunCheckBox
+// (type="single" renders a radio, "multiple" a checkbox).
 const isCorrect = (i: number) =>
   props.type === 'single'
     ? singleAnswer.value === i
     : multiAnswers.value.includes(i)
-const toggleCorrect = (i: number) => {
+const setCorrect = (i: number, checked: boolean) => {
   if (props.type === 'single') {
+    // radio semantics — this option becomes the sole answer
     singleAnswer.value = i
+  } else if (checked) {
+    if (!multiAnswers.value.includes(i)) multiAnswers.value.push(i)
   } else {
-    multiAnswers.value = multiAnswers.value.includes(i)
-      ? multiAnswers.value.filter((x) => x !== i)
-      : [...multiAnswers.value, i]
+    multiAnswers.value = multiAnswers.value.filter((x) => x !== i)
   }
 }
 
@@ -126,9 +128,7 @@ defineExpose({ getContent, validate, reset })
       <div class="flex items-center justify-between">
         <label class="text-sm font-medium">选项</label>
         <span class="text-default-400 text-xs">
-          点亮左侧{{ type === 'single' ? '圆点' : '方块' }}标记正确答案{{
-            type === 'multiple' ? '（可多选）' : ''
-          }}
+          在左侧勾选正确答案（{{ type === 'single' ? '单选题唯一' : '多选题可多个' }}）
         </span>
       </div>
 
@@ -138,20 +138,13 @@ defineExpose({ getContent, validate, reset })
           :key="i"
           class="flex items-center gap-2"
         >
-          <button
-            type="button"
-            class="flex size-9 shrink-0 items-center justify-center border-2 transition-colors"
-            :class="[
-              type === 'single' ? 'rounded-full' : 'rounded-md',
-              isCorrect(i)
-                ? 'border-success bg-success text-white'
-                : 'border-default-300 text-transparent hover:border-success'
-            ]"
-            :aria-label="`标记选项 ${i + 1} 为正确答案`"
-            @click="toggleCorrect(i)"
-          >
-            <KunIcon name="lucide:check" class="size-4" />
-          </button>
+          <KunCheckBox
+            :type="type === 'single' ? 'single' : 'multiple'"
+            :model-value="isCorrect(i)"
+            size="lg"
+            color="success"
+            @update:model-value="(v) => setCorrect(i, v)"
+          />
 
           <KunInput
             v-model="options[i]"

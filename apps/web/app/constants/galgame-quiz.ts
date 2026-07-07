@@ -1,5 +1,20 @@
 import type { KunUIColor } from '@kungal/ui-core'
 
+// Spoiler scale, mirroring galgame-rating (none / portion / serious).
+export const KUN_QUIZ_SPOILER_CONST = ['none', 'portion', 'serious'] as const
+
+export const KUN_QUIZ_SPOILER_MAP: Record<string, string> = {
+  none: '无剧透',
+  portion: '部分剧透',
+  serious: '严重剧透'
+}
+
+export const KUN_QUIZ_SPOILER_COLOR_MAP: Record<string, KunUIColor> = {
+  none: 'success',
+  portion: 'warning',
+  serious: 'danger'
+}
+
 export const KUN_QUIZ_TYPE_CONST = [
   'single',
   'multiple',

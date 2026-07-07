@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   KUN_QUIZ_TYPE_CONST,
   KUN_QUIZ_CATEGORY_CONST,
+  KUN_QUIZ_SPOILER_CONST,
   KUN_QUIZ_SORT_FIELD_CONST
 } from '~/constants/galgame-quiz'
 
@@ -14,6 +15,7 @@ export const createGalgameQuizSchema = z.object({
   category: z.enum(KUN_QUIZ_CATEGORY_CONST),
   type: z.enum(KUN_QUIZ_TYPE_CONST),
   difficulty: z.coerce.number<number>().int().min(1).max(10),
+  spoiler_level: z.enum(KUN_QUIZ_SPOILER_CONST).default('none'),
   question: z
     .string()
     .min(1, { message: '请填写题干' })
