@@ -26,6 +26,8 @@ const type = ref<QuizType>('single')
 const difficulty = ref(3)
 const question = ref('')
 const explanation = ref('')
+// The galgame chosen via the picker (only when not pre-bound by the galgameId prop).
+const pickedGalgameId = ref<number | null>(null)
 const isSubmitting = ref(false)
 
 const editorRef = ref<{
@@ -51,6 +53,7 @@ const resetForm = () => {
   difficulty.value = 3
   question.value = ''
   explanation.value = ''
+  pickedGalgameId.value = null
   editorRef.value?.reset()
 }
 
@@ -70,8 +73,10 @@ const submit = async () => {
     content,
     explanation: explanation.value
   }
-  if (props.galgameId) {
-    body.galgame_id = props.galgameId
+  // Pre-bound (opened from a galgame page) wins; otherwise use the picker.
+  const linkedGalgameId = props.galgameId ?? pickedGalgameId.value
+  if (linkedGalgameId) {
+    body.galgame_id = linkedGalgameId
   }
 
   const valid = useKunSchemaValidator(createGalgameQuizSchema, body)
@@ -122,6 +127,16 @@ const submit = async () => {
       <p class="text-default-500 text-sm">
         {{ KUN_QUIZ_TYPE_DESCRIPTION_MAP[type] }}
       </p>
+
+      <!-- Pre-bound from a galgame page → a locked note; otherwise the picker. -->
+      <KunInfo
+        v-if="galgameId"
+        color="primary"
+        icon="lucide:link"
+        title="已关联当前 Galgame"
+        description="本题将关联到你当前所在的 Galgame"
+      />
+      <GalgameQuizGalgamePicker v-else v-model="pickedGalgameId" />
 
       <div class="space-y-1">
         <div class="flex items-center justify-between">
