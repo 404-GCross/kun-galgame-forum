@@ -195,6 +195,10 @@ func (a *App) setupRoutes() {
 	// `/galgame-quiz/all` list — the card shows no per-viewer state, so it
 	// stays public (SFW-gated inside the service against the linked game).
 	api.Get("/galgame-quiz/all", a.GalgameQuizHandler.GetAllQuizzes)
+	// Galgame picker search for the 出题 modal. Static path registered here in
+	// the public group (before the optAuth `/galgame-quiz/:id`) so it isn't
+	// captured by the `:id` param route.
+	api.Get("/galgame-quiz/galgame-search", a.GalgameQuizHandler.SearchGalgames)
 
 	// ════════════════════════════════════════════
 	// OPTIONAL AUTH routes (public but attach user if logged in)

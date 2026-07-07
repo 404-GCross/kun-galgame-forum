@@ -128,3 +128,13 @@ export interface QuizQualityResult {
   quality_count: number
   quality_rating: number
 }
+
+// A galgame candidate returned by the 出题 picker search — enriched with a
+// banner thumbnail + 会社 (maker) names.
+export interface QuizGalgameOption {
+  id: number
+  name: KunLanguage
+  banner: string
+  banner_thumbhash?: string
+  officials: string[]
+}

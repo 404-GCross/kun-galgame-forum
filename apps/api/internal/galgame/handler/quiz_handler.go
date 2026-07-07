@@ -55,6 +55,19 @@ func (h *QuizHandler) GetMyAnswered(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
+// SearchGalgames — GET /api/galgame-quiz/galgame-search
+// Name search for the 出题 picker, enriched with banner + 会社.
+func (h *QuizHandler) SearchGalgames(c fiber.Ctx) error {
+	var req dto.QuizGalgameSearchRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	options := h.quizService.SearchGalgameOptions(
+		c.Context(), req.Keywords, utils.IsSFW(c),
+	)
+	return response.OK(c, options)
+}
+
 // GetQuizPlay — GET /api/galgame-quiz/:id
 func (h *QuizHandler) GetQuizPlay(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))

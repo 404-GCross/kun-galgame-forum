@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-// A recently-associated galgame remembered for the quiz 出题 picker. We store
-// just id + a display name (enough for the LRU quick-pick chips) rather than the
-// full wiki row.
+// A recently-associated galgame remembered for the quiz 出题 picker. We keep the
+// resolved display name + banner + 会社 so the LRU quick-picks render the same
+// rich row as live search results.
 export interface RecentQuizGalgame {
   id: number
   name: string
+  banner?: string
+  thumbhash?: string
+  officials?: string[]
 }
 
 const MAX_RECENT = 8

@@ -152,3 +152,18 @@ type QuizQualityResult struct {
 	QualityCount   int     `json:"quality_count"`
 	QualityRating  int     `json:"quality_rating"`
 }
+
+// QuizGalgameSearchRequest is the query for GET /galgame-quiz/galgame-search.
+type QuizGalgameSearchRequest struct {
+	Keywords string `query:"keywords" validate:"required,min=1"`
+}
+
+// QuizGalgameOption is a galgame candidate for the 出题 picker — name + banner
+// thumbnail + 会社 (maker names), so the picker can show a rich result row.
+type QuizGalgameOption struct {
+	ID              int         `json:"id"`
+	Name            KunLanguage `json:"name"`
+	Banner          string      `json:"banner"`
+	BannerThumbhash string      `json:"banner_thumbhash,omitempty"`
+	Officials       []string    `json:"officials"`
+}

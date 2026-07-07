@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"net/url"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -415,6 +417,88 @@ func (s *QuizService) fetchBriefsPublic(ctx context.Context, galgameIDs []int, i
 	m, _ := s.wikiClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	if m == nil {
 		return map[int]client.GalgameBrief{}
+	}
+	return m
+}
+
+// ──────────────────────────────────────────
+// SearchGalgameOptions — GET /galgame-quiz/galgame-search
+// Powers the 出题 modal's galgame picker: a name search enriched with each
+// hit's banner + maker (会社) names. Soft-fails to an empty list.
+// ──────────────────────────────────────────
+
+// quizGalgameSearchLimit caps how many hits we enrich (one batch-detail call),
+// keeping the picker snappy.
+const quizGalgameSearchLimit = 12
+
+type wikiGalgameSearchRow struct {
+	ID int `json:"id"`
+}
+
+func (s *QuizService) SearchGalgameOptions(
+	ctx context.Context, keywords string, isSFW bool,
+) []dto.QuizGalgameOption {
+	empty := []dto.QuizGalgameOption{}
+	// Wiki's /series/search is the general galgame name search (returns any
+	// matching galgame row) — the same one the FE series picker uses via
+	// /galgame-series/search. We only need the ids here.
+	data, appErr := s.wikiClient.Get(ctx, "/series/search", url.Values{"keywords": {keywords}})
+	if appErr != nil {
+		return empty
+	}
+	var rows []wikiGalgameSearchRow
+	if err := json.Unmarshal(data, &rows); err != nil {
+		return empty
+	}
+	ids := make([]int, 0, quizGalgameSearchLimit)
+	for _, r := range rows {
+		if r.ID > 0 {
+			ids = append(ids, r.ID)
+		}
+		if len(ids) >= quizGalgameSearchLimit {
+			break
+		}
+	}
+	if len(ids) == 0 {
+		return empty
+	}
+
+	briefs := s.fetchDetailBriefs(ctx, ids, isSFW)
+	options := make([]dto.QuizGalgameOption, 0, len(ids))
+	for _, id := range ids {
+		b, ok := briefs[id]
+		if !ok {
+			continue // SFW-filtered or missing
+		}
+		banner := b.EffectiveBannerURL
+		if banner == "" {
+			banner = b.Banner
+		}
+		officials := b.Officials
+		if officials == nil {
+			officials = []string{}
+		}
+		options = append(options, dto.QuizGalgameOption{
+			ID: b.ID,
+			Name: dto.KunLanguage{
+				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
+				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
+			},
+			Banner:          banner,
+			BannerThumbhash: b.EffectiveBannerThumbhash,
+			Officials:       officials,
+		})
+	}
+	return options
+}
+
+func (s *QuizService) fetchDetailBriefs(ctx context.Context, ids []int, isSFW bool) map[int]client.GalgameDetailBrief {
+	if len(ids) == 0 {
+		return map[int]client.GalgameDetailBrief{}
+	}
+	m, _ := s.wikiClient.GetBatchDetailPublic(ctx, ids, isSFW)
+	if m == nil {
+		return map[int]client.GalgameDetailBrief{}
 	}
 	return m
 }

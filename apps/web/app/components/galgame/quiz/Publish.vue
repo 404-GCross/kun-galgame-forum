@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  KUN_QUIZ_TYPE_CONST,
   KUN_QUIZ_ENABLED_TYPE_CONST,
   KUN_QUIZ_TYPE_MAP,
   KUN_QUIZ_TYPE_DESCRIPTION_MAP,
@@ -36,10 +37,18 @@ const editorRef = ref<{
   reset: () => void
 } | null>(null)
 
-const typeOptions = KUN_QUIZ_ENABLED_TYPE_CONST.map((t) => ({
-  value: t,
-  label: KUN_QUIZ_TYPE_MAP[t] ?? t
-}))
+// All five types are listed; the not-yet-implemented ones (fill/essay) are
+// shown DISABLED with a hint rather than removed.
+const typeOptions = KUN_QUIZ_TYPE_CONST.map((t) => {
+  const enabled = (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
+  return {
+    value: t,
+    label: enabled
+      ? (KUN_QUIZ_TYPE_MAP[t] ?? t)
+      : `${KUN_QUIZ_TYPE_MAP[t] ?? t}（即将实装）`,
+    disabled: !enabled
+  }
+})
 const categoryOptions = KUN_QUIZ_CATEGORY_CONST.map((c) => ({
   value: c,
   label: KUN_QUIZ_CATEGORY_MAP[c] ?? c

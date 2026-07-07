@@ -1,6 +1,7 @@
 import {
   KUN_QUIZ_CATEGORY_CONST,
   KUN_QUIZ_CATEGORY_MAP,
+  KUN_QUIZ_TYPE_CONST,
   KUN_QUIZ_ENABLED_TYPE_CONST,
   KUN_QUIZ_TYPE_MAP,
   kunQuizDifficultyLabel
@@ -15,11 +16,19 @@ export const quizCategoryOptions = [
 ]
 
 export const quizTypeOptions = [
-  { value: 'all', label: '全部题型' },
-  ...KUN_QUIZ_ENABLED_TYPE_CONST.map((t) => ({
-    value: t,
-    label: KUN_QUIZ_TYPE_MAP[t] || ''
-  }))
+  { value: 'all', label: '全部题型', disabled: false },
+  ...KUN_QUIZ_TYPE_CONST.map((t) => {
+    const enabled = (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(
+      t
+    )
+    return {
+      value: t,
+      label: enabled
+        ? KUN_QUIZ_TYPE_MAP[t] || ''
+        : `${KUN_QUIZ_TYPE_MAP[t] || ''}（即将实装）`,
+      disabled: !enabled
+    }
+  })
 ]
 
 // value 0 = "all" (the Go DTO drops difficulty=0 via omitempty → no filter).
