@@ -22,13 +22,6 @@ export const useTopicEditorStore = () => {
     }
   })
 
-  const tags = computed<string[]>({
-    get: () => activeStore.value.tags,
-    set: (value) => {
-      activeStore.value.tags = value
-    }
-  })
-
   const title = computed<string>({
     get: () => activeStore.value.title,
     set: (value) => {
@@ -60,7 +53,6 @@ export const useTopicEditorStore = () => {
   return {
     category,
     section,
-    tags,
     title,
     content,
     isNSFW,

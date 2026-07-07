@@ -159,8 +159,7 @@ if (data.value) {
       commentCount: topic.reply_count,
       ...(acceptedAnswerSchema && { acceptedAnswer: acceptedAnswerSchema }),
       keywords: [
-        ...topic.section.map((s) => KUN_TOPIC_SECTION[s]).filter(Boolean),
-        ...topic.tag
+        ...topic.section.map((s) => KUN_TOPIC_SECTION[s]).filter(Boolean)
       ].join(', ')
     }
   })

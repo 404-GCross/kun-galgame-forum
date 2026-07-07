@@ -13,7 +13,6 @@ interface TopicDraftDetail {
   id: number
   title: string
   content: string
-  tag: string[]
   category: string
   section: string[]
   is_nsfw: boolean
@@ -25,7 +24,7 @@ interface TopicDraftDetail {
 // state is read from / written back to the shared editor store, so saving a draft
 // snapshots exactly what would be published, and loading one restores it fully.
 export const useTopicDraft = () => {
-  const { title, content, category, section, tags, isNSFW, coverImages } =
+  const { title, content, category, section, isNSFW, coverImages } =
     useTopicEditorStore()
 
   const listDrafts = () =>
@@ -37,7 +36,6 @@ export const useTopicDraft = () => {
       body: {
         title: title.value,
         content: content.value,
-        tag: tags.value,
         category: category.value,
         section: section.value,
         is_nsfw: isNSFW.value,
@@ -56,7 +54,6 @@ export const useTopicDraft = () => {
     content.value = d.content
     category.value = (d.category as TopicCategoryKey | '') ?? ''
     section.value = d.section ?? []
-    tags.value = d.tag ?? []
     isNSFW.value = d.is_nsfw
     coverImages.value = d.cover_images ?? []
     return true

@@ -128,7 +128,6 @@ provide(
         <TopicTagGroup
           v-if="hasBadge"
           :section="[]"
-          :tags="[]"
           :upvote-time="data?.upvote_time"
           :has-best-answer="data?.has_best_answer"
           :is-poll-topic="data?.is_poll"

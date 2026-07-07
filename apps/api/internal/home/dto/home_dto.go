@@ -49,7 +49,6 @@ type HomeTopic struct {
 	IsPollTopic      bool       `json:"is_poll_topic"`
 	IsNSFWTopic      bool       `json:"is_nsfw_topic"`
 	Section          []string   `json:"section"`
-	Tag              []string   `json:"tag"`
 	User             UserBrief  `json:"user"`
 	Status           int        `json:"status"`
 	UpvoteTime       *time.Time `json:"upvote_time"`

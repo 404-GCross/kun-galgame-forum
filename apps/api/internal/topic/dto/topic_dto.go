@@ -56,7 +56,6 @@ type TopicCard struct {
 	ID          int      `json:"id"`
 	Title       string   `json:"title"`
 	View        int      `json:"view"`
-	Tags        []string `json:"tag"`
 	Sections    []string `json:"section"`
 	CoverImages []string `json:"cover_images"`
 	// Per-cover-token image metadata (dims + ThumbHash), keyed by the
@@ -116,7 +115,6 @@ type TopicDetail struct {
 	IsNSFW      bool     `json:"is_nsfw"`
 	Category    string   `json:"category"`
 	Sections    []string `json:"section"`
-	Tags        []string `json:"tag"`
 	CoverImages []string `json:"cover_images"`
 	// See TopicCard.CoverImageMeta — keyed by the /image/<hash> cover token.
 	CoverImageMeta   map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
@@ -161,7 +159,6 @@ type TopicBestAnswer struct {
 type CreateTopicRequest struct {
 	Title       string   `json:"title" validate:"required,min=1,max=233"`
 	Content     string   `json:"content" validate:"required,min=1,max=100007"`
-	Tags        []string `json:"tag" validate:"omitempty,max=7"`
 	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
 	Sections    []string `json:"section" validate:"required,min=1,max=3"`
 	IsNSFW      bool     `json:"is_nsfw"`
@@ -171,7 +168,6 @@ type CreateTopicRequest struct {
 type UpdateTopicRequest struct {
 	Title       string   `json:"title" validate:"required,min=1,max=233"`
 	Content     string   `json:"content" validate:"required,min=1,max=100007"`
-	Tags        []string `json:"tag" validate:"omitempty,max=7"`
 	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
 	Sections    []string `json:"section" validate:"required,min=1,max=3"`
 	IsNSFW      bool     `json:"is_nsfw"`

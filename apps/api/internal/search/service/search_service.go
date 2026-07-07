@@ -63,10 +63,6 @@ func (s *SearchService) SearchTopics(ctx context.Context, raw string, page, limi
 	for _, sct := range s.repo.FindTopicSections(topicIDs) {
 		sectionMap[sct.TopicID] = append(sectionMap[sct.TopicID], sct.SectionName)
 	}
-	tagMap := map[int][]string{}
-	for _, t := range s.repo.FindTopicTags(topicIDs) {
-		tagMap[t.TopicID] = append(tagMap[t.TopicID], t.TagName)
-	}
 	pollSet := s.repo.FindTopicIDsWithPoll(topicIDs)
 
 	items := make([]dto.TopicItem, 0, len(rows))
@@ -79,10 +75,6 @@ func (s *SearchService) SearchTopics(ctx context.Context, raw string, page, limi
 		if sections == nil {
 			sections = []string{}
 		}
-		tags := tagMap[r.ID]
-		if tags == nil {
-			tags = []string{}
-		}
 		items = append(items, dto.TopicItem{
 			ID: r.ID, Title: r.Title, View: r.View, Status: r.Status,
 			LikeCount: r.LikeCount, ReplyCount: r.ReplyCount,
@@ -91,7 +83,6 @@ func (s *SearchService) SearchTopics(ctx context.Context, raw string, page, limi
 			IsPollTopic:      pollSet[r.ID],
 			IsNSFWTopic:      r.IsNSFW,
 			Section:          sections,
-			Tag:              tags,
 			UpvoteTime:       r.UpvoteTime,
 			StatusUpdateTime: r.StatusUpdateTime,
 			User:             dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},

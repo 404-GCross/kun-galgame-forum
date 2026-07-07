@@ -157,16 +157,6 @@ func (s *TopicWriteService) Create(
 		}
 		newTopicID = topic.ID
 
-		tags, err := s.taxonomyRepo.FindOrCreateTags(req.Tags)
-		if err != nil {
-			return err
-		}
-		for _, tag := range tags {
-			if err := s.taxonomyRepo.CreateTopicTagRelation(tx, topic.ID, tag.ID); err != nil {
-				return err
-			}
-		}
-
 		sections, err := s.taxonomyRepo.FindSectionsByNamesTx(tx, req.Sections)
 		if err != nil {
 			return err
@@ -253,18 +243,6 @@ func (s *TopicWriteService) Update(
 			"edited":             &now,
 			"status_update_time": now,
 		}); err != nil {
-			return err
-		}
-
-		tags, err := s.taxonomyRepo.FindOrCreateTags(req.Tags)
-		if err != nil {
-			return err
-		}
-		tagIDs := make([]int, len(tags))
-		for i, t := range tags {
-			tagIDs[i] = t.ID
-		}
-		if err := s.taxonomyRepo.ReplaceTopicTags(tx, topicID, tagIDs); err != nil {
 			return err
 		}
 

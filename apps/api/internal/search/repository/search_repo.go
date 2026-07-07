@@ -36,18 +36,13 @@ type TopicRow struct {
 	UpvoteTime       *time.Time
 }
 
-// TopicSectionRow + TopicTagRow share the shape used by home_repo:
-// {topic_id, name}. Duplicated here rather than imported so the search
-// module stays free of inter-module repo dependencies — the queries are
-// trivially small and the data shapes won't drift independently.
+// TopicSectionRow shares the shape used by home_repo: {topic_id, name}.
+// Duplicated here rather than imported so the search module stays free of
+// inter-module repo dependencies — the query is trivially small and the data
+// shape won't drift independently.
 type TopicSectionRow struct {
 	TopicID     int    `gorm:"column:topic_id"`
 	SectionName string `gorm:"column:name"`
-}
-
-type TopicTagRow struct {
-	TopicID int    `gorm:"column:topic_id"`
-	TagName string `gorm:"column:name"`
 }
 
 type ReplyRow struct {
@@ -112,20 +107,6 @@ func (r *SearchRepository) FindTopicSections(topicIDs []int) []TopicSectionRow {
 		Select("tsr.topic_id, ts.name").
 		Joins("JOIN topic_section ts ON ts.id = tsr.topic_section_id").
 		Where("tsr.topic_id IN ?", topicIDs).
-		Find(&rows)
-	return rows
-}
-
-// FindTopicTags groups tag names by topic id.
-func (r *SearchRepository) FindTopicTags(topicIDs []int) []TopicTagRow {
-	if len(topicIDs) == 0 {
-		return nil
-	}
-	var rows []TopicTagRow
-	r.db.Table("topic_tag_relation ttr").
-		Select("ttr.topic_id, tt.name").
-		Joins("JOIN topic_tag tt ON tt.id = ttr.tag_id").
-		Where("ttr.topic_id IN ?", topicIDs).
 		Find(&rows)
 	return rows
 }

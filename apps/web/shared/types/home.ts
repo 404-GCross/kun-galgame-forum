@@ -12,7 +12,6 @@ export interface HomeTopic {
   view: number
 
   section: string[]
-  tag: string[]
   // Optional 1..9 feed-card cover images, as /image/<hash> content tokens
   // (usable directly as an <img src>). Empty array = no covers.
   cover_images: string[]

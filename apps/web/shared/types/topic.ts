@@ -2,7 +2,6 @@ export interface TopicCard {
   id: number
   title: string
   view: number
-  tag: string[]
   section: string[]
   cover_images: string[]
   // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
@@ -49,7 +48,6 @@ export interface TopicDetail {
   is_nsfw: boolean
   category: string
   section: string[]
-  tag: string[]
   // Optional 1..9 cover images as /image/<hash> tokens; used to prefill the
   // cover picker when editing, and (empty = none) for the feed card.
   cover_images: string[]

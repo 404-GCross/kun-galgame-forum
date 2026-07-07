@@ -35,7 +35,6 @@ provide(
 
         <TopicTagGroup
           :section="topic.section"
-          :tags="topic.tag"
           :upvote-time="topic.upvote_time"
           :has-best-answer="false"
           :is-poll-topic="topic.is_poll_topic"

@@ -11,7 +11,6 @@ const {
   id,
   title,
   content,
-  tags,
   category,
   section,
   isNSFW,
@@ -28,7 +27,6 @@ const rewriteTopic = async () => {
   id.value = props.topic.id
   title.value = props.topic.title
   content.value = props.topic.content_markdown
-  tags.value = props.topic.tag
   category.value = props.topic.category
   section.value = props.topic.section ?? []
   isNSFW.value = !!props.topic.is_nsfw

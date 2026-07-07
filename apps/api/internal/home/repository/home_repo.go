@@ -51,11 +51,6 @@ type SectionRelationRow struct {
 	SectionName string `gorm:"column:name"`
 }
 
-type TagRelationRow struct {
-	TopicID int    `gorm:"column:topic_id"`
-	TagName string `gorm:"column:name"`
-}
-
 // ──────────────────────────────────────────
 // Queries
 // ──────────────────────────────────────────
@@ -129,20 +124,6 @@ func (r *HomeRepository) FindTopicSections(topicIDs []int) []SectionRelationRow 
 		Where("tsr.topic_id IN ?", topicIDs).
 		Find(&sections)
 	return sections
-}
-
-// FindTopicTags returns tag names grouped by topic ID.
-func (r *HomeRepository) FindTopicTags(topicIDs []int) []TagRelationRow {
-	if len(topicIDs) == 0 {
-		return nil
-	}
-	var tags []TagRelationRow
-	r.db.Table("topic_tag_relation ttr").
-		Select("ttr.topic_id, tt.name").
-		Joins("JOIN topic_tag tt ON tt.id = ttr.tag_id").
-		Where("ttr.topic_id IN ?", topicIDs).
-		Find(&tags)
-	return tags
 }
 
 // FindTopicIDsWithPoll returns the subset of topicIDs that have at

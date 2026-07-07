@@ -51,32 +51,6 @@ type Topic struct {
 func (Topic) TableName() string { return "topic" }
 
 // ──────────────────────────────────────────
-// Tag (replaces topic.tag text[])
-// ──────────────────────────────────────────
-
-type TopicTag struct {
-	ID   int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name string `gorm:"uniqueIndex;not null" json:"name"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (TopicTag) TableName() string { return "topic_tag" }
-
-type TopicTagRelation struct {
-	TopicID int `gorm:"column:topic_id;primaryKey" json:"topic_id"`
-	TagID   int `gorm:"column:tag_id;primaryKey" json:"tag_id"`
-
-	Tag TopicTag `gorm:"foreignKey:TagID;constraint:OnDelete:CASCADE" json:"tag,omitzero"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (TopicTagRelation) TableName() string { return "topic_tag_relation" }
-
-// ──────────────────────────────────────────
 // Section
 // ──────────────────────────────────────────
 

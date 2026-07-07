@@ -81,7 +81,6 @@ watch(
 
         <TopicTagGroup
           :section="[]"
-          :tags="[]"
           :has-best-answer="topic.has_best_answer"
           :is-poll-topic="false"
           :is-n-s-f-w-topic="topic.is_nsfw_topic"

@@ -5,7 +5,6 @@ import type { KunUIColor, KunUISize } from '@kungal/ui-core'
 const props = withDefaults(
   defineProps<{
     section: string[]
-    tags: string[]
     upvoteTime?: Date | string | null
     hasBestAnswer?: boolean
     isPollTopic?: boolean
@@ -97,11 +96,5 @@ const handleClickSection = async (section: string) => {
         {{ KUN_TOPIC_SECTION[sec] }}
       </KunChip>
     </span>
-
-    <template v-if="props.tags">
-      <KunChip v-for="(tag, index) in props.tags" :key="index">
-        {{ tag }}
-      </KunChip>
-    </template>
   </div>
 </template>

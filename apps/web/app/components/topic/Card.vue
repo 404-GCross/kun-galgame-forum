@@ -21,7 +21,6 @@ const actionsCount = computed(
 
     <TopicTagGroup
       :section="props.topic.section"
-      :tags="props.topic.tag"
       :has-best-answer="topic.has_best_answer"
       :is-poll-topic="topic.is_poll_topic"
       :is-n-s-f-w-topic="topic.is_nsfw_topic"

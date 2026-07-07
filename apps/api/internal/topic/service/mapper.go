@@ -299,12 +299,9 @@ func (s *ReplyService) buildReplyResponses(
 // Topic mappers
 // ──────────────────────────────────────────
 
-// toTopicCard maps a TopicCardRow with its tag/section slices to a TopicCard DTO.
+// toTopicCard maps a TopicCardRow with its section slice to a TopicCard DTO.
 // Shared by GetList and GetResourceList.
-func toTopicCard(r repository.TopicCardRow, tags, sections []string, isPollTopic bool) dto.TopicCard {
-	if tags == nil {
-		tags = []string{}
-	}
+func toTopicCard(r repository.TopicCardRow, sections []string, isPollTopic bool) dto.TopicCard {
 	if sections == nil {
 		sections = []string{}
 	}
@@ -316,7 +313,6 @@ func toTopicCard(r repository.TopicCardRow, tags, sections []string, isPollTopic
 		ID:          r.ID,
 		Title:       r.Title,
 		View:        r.View,
-		Tags:        tags,
 		Sections:    sections,
 		CoverImages: covers,
 		// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.

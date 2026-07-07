@@ -61,7 +61,6 @@ type TopicDraft struct {
 	Content     string      `gorm:"type:text;not null;default:''" json:"content"`
 	Category    string      `gorm:"not null;default:''" json:"category"`
 	Sections    StringSlice `gorm:"column:sections;type:text;not null;default:''" json:"sections"`
-	Tags        StringSlice `gorm:"column:tags;type:text;not null;default:''" json:"tags"`
 	CoverImages ImageTokens `gorm:"column:cover_images;type:text;not null;default:''" json:"cover_images"`
 	IsNSFW      bool        `gorm:"column:is_nsfw;default:false" json:"is_nsfw"`
 

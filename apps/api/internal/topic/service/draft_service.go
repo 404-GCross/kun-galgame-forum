@@ -43,7 +43,6 @@ func (s *DraftService) Save(userID int, req *dto.SaveTopicDraftRequest) (int, *e
 		Content:     req.Content,
 		Category:    req.Category,
 		Sections:    model.StringSlice(req.Sections),
-		Tags:        model.StringSlice(req.Tags),
 		CoverImages: model.ImageTokens(req.CoverImages),
 		IsNSFW:      req.IsNSFW,
 	}
@@ -82,7 +81,6 @@ func (s *DraftService) Get(userID, id int) (*dto.TopicDraftDetail, *errors.AppEr
 		ID:          d.ID,
 		Title:       d.Title,
 		Content:     d.Content,
-		Tags:        []string(d.Tags),
 		Category:    d.Category,
 		Sections:    []string(d.Sections),
 		IsNSFW:      d.IsNSFW,

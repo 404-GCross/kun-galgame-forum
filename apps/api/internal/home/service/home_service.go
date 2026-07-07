@@ -206,12 +206,6 @@ func (s *HomeService) getHomeTopics(ctx context.Context, isSFW bool) ([]dto.Home
 		sectionMap[sct.TopicID] = append(sectionMap[sct.TopicID], sct.SectionName)
 	}
 
-	tags := s.repo.FindTopicTags(topicIDs)
-	tagMap := map[int][]string{}
-	for _, t := range tags {
-		tagMap[t.TopicID] = append(tagMap[t.TopicID], t.TagName)
-	}
-
 	pollSet := s.repo.FindTopicIDsWithPoll(topicIDs)
 
 	uids := userclient.CollectIDs(rows, func(r repository.TopicRow) int { return r.UserID })
@@ -222,10 +216,6 @@ func (s *HomeService) getHomeTopics(ctx context.Context, isSFW bool) ([]dto.Home
 		u := userMap[r.UserID]
 		if !userclient.IsRenderable(u) {
 			continue
-		}
-		topicTags := tagMap[r.ID]
-		if topicTags == nil {
-			topicTags = []string{}
 		}
 		topicSections := sectionMap[r.ID]
 		if topicSections == nil {
@@ -243,7 +233,6 @@ func (s *HomeService) getHomeTopics(ctx context.Context, isSFW bool) ([]dto.Home
 			IsPollTopic:      pollSet[r.ID],
 			IsNSFWTopic:      r.IsNSFW,
 			Section:          topicSections,
-			Tag:              topicTags,
 			User:             dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			Status:           r.Status,
 			UpvoteTime:       r.UpvoteTime,

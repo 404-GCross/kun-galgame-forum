@@ -33,7 +33,6 @@ defineProps<{
     <div class="flex w-full flex-wrap items-center justify-between gap-2">
       <TopicTagGroup
         :section="topic.section"
-        :tags="topic.tag"
         :upvote-time="topic.upvote_time"
         :has-best-answer="topic.has_best_answer"
         :is-poll-topic="topic.is_poll_topic"

@@ -151,7 +151,7 @@ func (s *TopicService) GetResourceList(
 	return s.mapListRows(ctx, rows, total)
 }
 
-// mapListRows enriches topic card rows with tags+sections and maps to DTOs.
+// mapListRows enriches topic card rows with sections and maps to DTOs.
 // Identity (UserName/UserAvatar) is hydrated from OAuth via userclient since
 // kungal no longer keeps a local users table; rows authored by a banned user
 // are dropped from the listing (see the IsRenderable skip below).
@@ -161,7 +161,6 @@ func (s *TopicService) mapListRows(ctx context.Context, rows []repository.TopicC
 		topicIDs[i] = r.ID
 	}
 
-	tagMap, _ := s.taxonomyRepo.FindTagNamesByTopicIDs(topicIDs)
 	sectionMap, _ := s.taxonomyRepo.FindSectionNamesByTopicIDs(topicIDs)
 	// Batch-check which of these topics actually have a poll attached.
 	// Without this the cards' `isPollTopic` was always `false`, so the
@@ -182,7 +181,7 @@ func (s *TopicService) mapListRows(ctx context.Context, rows []repository.TopicC
 		if u, ok := userMap[r.UserID]; ok && !userclient.IsRenderable(u) {
 			continue
 		}
-		cards = append(cards, toTopicCard(r, tagMap[r.ID], sectionMap[r.ID], pollSet[r.ID]))
+		cards = append(cards, toTopicCard(r, sectionMap[r.ID], pollSet[r.ID]))
 		_ = i
 	}
 	return cards, total, nil
@@ -206,7 +205,6 @@ func (s *TopicService) GetDetail(
 
 	var author *repository.TopicAuthorUser
 	var authorBanned bool
-	var tags []string
 	var sections []string
 	var hasPoll bool
 	var isLiked, isDisliked, isFavorited, isUpvoted bool
@@ -230,11 +228,6 @@ func (s *TopicService) GetDetail(
 			ID: u.ID, Name: u.Name, Avatar: u.Avatar, Moemoepoint: moe,
 		}
 		return nil
-	})
-	g.Go(func() error {
-		var e error
-		tags, e = s.taxonomyRepo.FindTagNamesByTopicID(topicID)
-		return e
 	})
 	g.Go(func() error {
 		var e error
@@ -279,9 +272,6 @@ func (s *TopicService) GetDetail(
 	// Increment view asynchronously
 	go s.topicRepo.IncrementView(topicID)
 
-	if tags == nil {
-		tags = []string{}
-	}
 	if sections == nil {
 		sections = []string{}
 	}
@@ -310,7 +300,6 @@ func (s *TopicService) GetDetail(
 		IsNSFW:      topic.IsNSFW,
 		Category:    topic.Category,
 		Sections:    sections,
-		Tags:        tags,
 		CoverImages: covers,
 		// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.
 		CoverImageMeta: markdown.ResolveContentImageMeta(covers),
