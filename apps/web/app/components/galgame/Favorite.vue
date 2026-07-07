@@ -48,27 +48,20 @@ const onSaved = (payload: { favorited: boolean }) => {
 
 <template>
   <KunTooltip text="收藏">
-    <!-- Sized to match KunReaction's default `md` (used by the like button):
-         gap-1.5 px-2 py-1 text-sm, icon 1.15rem. -->
-    <button
-      type="button"
-      aria-label="收藏"
-      :class="
-        cn(
-          'relative inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full px-2 py-1 text-sm transition-colors',
-          isFavorited
-            ? 'text-danger hover:bg-default-100/60'
-            : 'text-default-500 hover:bg-default-100'
-        )
-      "
-      @click="onClick"
-    >
-      <KunIcon
-        name="lucide:heart"
-        :class="cn('text-[1.15rem] transition-colors', isFavorited && 'fill-current')"
+    <!-- Favorite = collection membership, so this is a controlled action-mode
+         KunReaction (:toggle="false"): the filled state reflects "in >=1 收藏夹"
+         and the click opens the picker instead of self-toggling. -->
+    <span class="flex">
+      <KunReaction
+        :model-value="isFavorited"
+        :count="favoriteCount"
+        :toggle="false"
+        icon="lucide:heart"
+        color="danger"
+        label="收藏"
+        @click="onClick"
       />
-      <span v-if="favoriteCount">{{ favoriteCount }}</span>
-    </button>
+    </span>
   </KunTooltip>
 
   <GalgameCollectionPickerModal

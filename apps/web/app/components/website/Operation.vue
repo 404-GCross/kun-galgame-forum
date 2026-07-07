@@ -19,49 +19,40 @@ const utmLink = useUtmLink()
 
 const isLiked = ref(props.website.is_liked)
 const likeCount = ref(props.website.like_count)
-const isFavorited = ref(props.website.is_favorited)
-const favoriteCount = ref(props.website.favorite_count)
-type ActionType = 'like' | 'favorite' | 'update' | 'delete'
+type ActionType = 'update' | 'delete'
 const loadingStates = reactive<Record<ActionType, boolean>>({
-  like: false,
-  favorite: false,
   update: false,
   delete: false
 })
 
+// Like is an optimistic toggle (KunReaction flips the model + count before
+// @change fires); undo on failure / when signed out.
+const likePending = ref(false)
+const revertLike = (next: boolean) => {
+  isLiked.value = !next
+  likeCount.value += next ? -1 : 1
+}
+const onLike = async (next: boolean) => {
+  if (!id) {
+    useAuthModal().open()
+    revertLike(next)
+    return
+  }
+  likePending.value = true
+  const result = await kunFetch(`/website/${props.website.id}/like`, {
+    method: 'PUT',
+    body: { website_id: props.website.id }
+  })
+  likePending.value = false
+  if (!result) {
+    revertLike(next)
+    return
+  }
+  useMessage(next ? '点赞网站成功!' : '取消点赞成功!', 'success')
+}
+
 const showWebsiteModal = ref(false)
 const editingWebsite = ref<WebsiteData>(undefined)
-
-const toggleLike = () =>
-  handleAction('like', async () => {
-    const result = await kunFetch(`/website/${props.website.id}/like`, {
-      method: 'PUT',
-      body: { website_id: props.website.id }
-    })
-
-    if (result) {
-      likeCount.value += isLiked.value ? -1 : 1
-      useMessage(isLiked.value ? '取消点赞成功!' : '点赞网站成功!', 'success')
-      isLiked.value = !isLiked.value
-    }
-  })
-
-const toggleFavorite = () =>
-  handleAction('favorite', async () => {
-    const result = await kunFetch(`/website/${props.website.id}/favorite`, {
-      method: 'PUT',
-      body: { website_id: props.website.id }
-    })
-
-    if (result) {
-      favoriteCount.value += isFavorited.value ? -1 : 1
-      useMessage(
-        isFavorited.value ? '取消收藏成功!' : '收藏网站成功!',
-        'success'
-      )
-      isFavorited.value = !isFavorited.value
-    }
-  })
 
 const handleOpenUpdateModal = () => {
   const { age_limit, category, tags, create_time, language, ...rest } =
@@ -134,30 +125,28 @@ const handleAction = async (
 <template>
   <div class="flex flex-wrap gap-3">
     <KunTooltip text="点赞">
-      <KunButton
-        :color="isLiked ? 'secondary' : 'default'"
-        :size="likeCount ? 'md' : 'lg'"
-        :variant="isLiked ? 'flat' : 'light'"
-        class-name="gap-1"
-        @click="toggleLike"
-      >
-        <KunIcon name="lucide:thumbs-up" />
-        <span v-if="likeCount">{{ likeCount }}</span>
-      </KunButton>
+      <span class="flex">
+        <KunReaction
+          v-model="isLiked"
+          v-model:count="likeCount"
+          :disabled="likePending"
+          size="lg"
+          icon="lucide:thumbs-up"
+          color="secondary"
+          label="点赞"
+          @change="onLike"
+        />
+      </span>
     </KunTooltip>
 
-    <KunTooltip text="收藏">
-      <KunButton
-        :color="isFavorited ? 'secondary' : 'default'"
-        :size="favoriteCount ? 'md' : 'lg'"
-        :variant="isFavorited ? 'flat' : 'light'"
-        class-name="gap-1"
-        @click="toggleFavorite"
-      >
-        <KunIcon name="lucide:heart" />
-        <span v-if="favoriteCount">{{ favoriteCount }}</span>
-      </KunButton>
-    </KunTooltip>
+    <FavoriteToggle
+      :favorited="website.is_favorited"
+      :count="website.favorite_count"
+      :endpoint="`/website/${website.id}/favorite`"
+      :body="{ website_id: website.id }"
+      :messages="['收藏网站成功!', '取消收藏成功!']"
+      size="lg"
+    />
 
     <KunTooltip v-if="canModerate" text="编辑">
       <KunButton
