@@ -26,26 +26,9 @@ const actionsCount = computed(
       :is-n-s-f-w-topic="topic.is_nsfw_topic"
     />
 
-    <div class="text-default-700 flex items-center gap-4 text-sm">
-      <span class="flex items-center gap-1">
-        <KunIcon class="size-4" name="lucide:eye" />
-        {{ formatNumber(props.topic.view) }}
-      </span>
-
-      <span v-if="props.topic.like_count" class="flex items-center gap-1">
-        <KunIcon class="size-4" name="lucide:thumbs-up" />
-        {{ props.topic.like_count }}
-      </span>
-
-      <span v-if="actionsCount" class="flex items-center gap-1">
-        <KunIcon class="size-4" name="carbon:reply" />
-        {{ actionsCount }}
-      </span>
-    </div>
-
-    <!-- Footer (left → right): avatar · name · publish time (relative within a
-         day, otherwise a precise date). -->
-    <div class="text-default-600 flex items-center gap-2 text-sm">
+    <!-- Footer: avatar · name · relative publish time, then the view / like /
+         reply counts just to the right of the time (a small gap apart). -->
+    <div class="text-default-600 flex flex-wrap items-center gap-2 text-sm">
       <KunAvatar
         :disable-floating="true"
         :user="topic.user"
@@ -53,7 +36,22 @@ const actionsCount = computed(
         :is-navigation="false"
       />
       <span>{{ topic.user.name }}</span>
-      <KunTime :time="topic.created" type="auto" />
+      <KunTime :time="topic.created" type="relative" />
+
+      <div class="text-default-500 ml-2 flex items-center gap-3">
+        <span class="flex items-center gap-1">
+          <KunIcon class="size-4" name="lucide:eye" />
+          {{ formatNumber(props.topic.view) }}
+        </span>
+        <span v-if="props.topic.like_count" class="flex items-center gap-1">
+          <KunIcon class="size-4" name="lucide:thumbs-up" />
+          {{ props.topic.like_count }}
+        </span>
+        <span v-if="actionsCount" class="flex items-center gap-1">
+          <KunIcon class="size-4" name="carbon:reply" />
+          {{ actionsCount }}
+        </span>
+      </div>
     </div>
   </NuxtLink>
 </template>

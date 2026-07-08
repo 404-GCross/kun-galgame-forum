@@ -154,8 +154,10 @@ const countColorByCategory = (category: string): string => {
       />
     </KunScrollShadow>
 
-    <!-- Desktop: compact popover filter (fits the narrow sidebar column). -->
-    <KunPopover v-if="!isMobile" position="top-start">
+    <!-- Desktop: compact popover filter (fits the narrow sidebar column).
+         full-width makes the trigger anchor span the card (KunPopover 2.13),
+         matching the 查看编辑历史与更新请求 button. -->
+    <KunPopover v-if="!isMobile" position="top-start" full-width>
       <template #trigger>
         <KunButton variant="flat" color="primary" size="sm" full-width>
           <KunIcon name="lucide:filter" />

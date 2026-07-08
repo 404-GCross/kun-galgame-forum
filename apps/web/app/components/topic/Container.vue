@@ -77,7 +77,7 @@ watch(
     <!-- Sort toolbar: sort-field select on the left, asc/desc arrows on the right. -->
     <div class="flex items-center justify-between gap-3">
       <KunSelect
-        class="w-44"
+        class-name="w-44"
         :model-value="sortField"
         :options="topicListSortFieldOptions"
         @update:model-value="setSortField"
