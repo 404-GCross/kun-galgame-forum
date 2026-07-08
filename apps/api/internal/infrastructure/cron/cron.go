@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"kun-galgame-api/internal/infrastructure/viewstats"
 	"kun-galgame-api/pkg/imageclient"
 
 	"github.com/redis/go-redis/v9"
@@ -37,6 +38,17 @@ func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, wikiMessa
 	// Daily reset at midnight: clear daily check-in, image count, toolset upload count
 	c.AddFunc("0 0 * * *", func() {
 		resetDaily(db)
+	})
+
+	// Daily at midnight (same beat as the reset above): roll up the windowed view
+	// stats (view_7d / view_30d) from the per-day buckets, then prune old buckets.
+	// cmd/view-rollup stays as a manual one-off trigger (mirrors reference-ping).
+	c.AddFunc("0 0 * * *", func() {
+		if err := viewstats.RunRollup(db); err != nil {
+			slog.Error("浏览量滚动统计失败", "error", err)
+			return
+		}
+		slog.Info("浏览量滚动统计完成")
 	})
 
 	// Hourly: clean up abandoned toolset upload caches
