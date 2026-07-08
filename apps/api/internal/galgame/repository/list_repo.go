@@ -50,6 +50,11 @@ var allProviders = []string{
 // (the "显示没有下载资源的 Galgame" toggle, default off).
 func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, total int64) {
 	sortCol := "g.resource_update_time"
+	// view_1d has no column — it's a live sum of today's view bucket (COALESCE→0
+	// when none). Functionally dependent on the PK g.id, so it needs no GROUP BY
+	// entry (see groupBy below).
+	viewOneDay := "COALESCE((SELECT SUM(d.count) FROM galgame_view_daily d " +
+		"WHERE d.entity_id = g.id AND d.day = CURRENT_DATE), 0)"
 	switch f.SortField {
 	case "time":
 		sortCol = "g.resource_update_time"
@@ -57,9 +62,16 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		sortCol = "g.created"
 	case "view":
 		sortCol = "g.view"
+	case "view_1d":
+		sortCol = viewOneDay
+	case "view_7d":
+		sortCol = "g.view_7d"
+	case "view_30d":
+		sortCol = "g.view_30d"
 	case "release_date":
 		sortCol = "g.release_date"
 	}
+	isSubquerySort := f.SortField == "view_1d"
 
 	ratingSort := f.SortField == "rating"
 	ratingFilter := f.MinRatingCount > 0 || f.MinRating > 0
@@ -175,6 +187,9 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		Select("g.id").
 		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id")
 	groupBy := "g.id, " + sortCol
+	if isSubquerySort {
+		groupBy = "g.id"
+	}
 	if ratingSort {
 		main = main.Joins(ratingAggJoin)
 		groupBy = "g.id, rt.rsum, rt.rcnt"

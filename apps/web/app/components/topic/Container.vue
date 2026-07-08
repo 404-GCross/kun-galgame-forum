@@ -41,14 +41,13 @@ const { data, status, refresh } = await useKunFetch<{
 
 // Changing the sort always returns to the first page; the fullPath watcher
 // below is what actually refetches (page + sort all live in the query string).
-// KunCheckBoxGroup is multi-select, but sort is one field: take the value the
-// user just added (the one that isn't current) and ignore a bare deselect, so
-// exactly one chip stays active — single-select semantics on a checkbox group.
-const setSortField = (values: TopicListSortField[]) => {
-  const next = values.find((value) => value !== sortField.value)
-  if (!next) return
+const setSortField = (
+  value: TopicListSortField | TopicListSortField[] | null
+) => {
+  if (!value || Array.isArray(value)) return
+  if (value === sortField.value) return
   page.value = 1
-  sortField.value = next
+  sortField.value = value
 }
 const setSortOrder = (value: 'asc' | 'desc') => {
   if (value === sortOrder.value) return
@@ -75,20 +74,13 @@ watch(
       description="鲲 Galgame 论坛的全部话题，涵盖 Galgame 讨论、技术交流、资源求助与日常闲聊，在这里和大家一起畅所欲言。"
     />
 
-    <!-- Sort toolbar: field chips on the left, asc/desc arrows on the right, one
-         row. KunCheckBoxGroup renders w-full, so it must sit in a flex-1 wrapper
-         (min-w-0 to allow shrink), otherwise it eats the row and wraps. -->
-    <div class="flex items-center gap-3">
-      <!-- Controlled to a single-element array so it behaves as single-select. -->
-      <KunCheckBoxGroup
-        class="min-w-0 flex-1"
-        :model-value="[sortField]"
+    <!-- Sort toolbar: sort-field select on the left, asc/desc arrows on the right. -->
+    <div class="flex items-center justify-between gap-3">
+      <KunSelect
+        class="w-44"
+        :model-value="sortField"
         :options="topicListSortFieldOptions"
-        variant="pill"
-        orientation="horizontal"
-        color="primary"
-        size="sm"
-        @change="setSortField"
+        @update:model-value="setSortField"
       />
 
       <div class="flex shrink-0 items-center gap-1">

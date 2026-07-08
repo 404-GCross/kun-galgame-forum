@@ -14,6 +14,8 @@ var ValidTopicCategories = []string{"galgame", "technique", "others"}
 var ValidTopicSortFields = map[string]string{
 	"created":            "created",
 	"view":               "view",
+	"view_7d":            "view_7d",
+	"view_30d":           "view_30d",
 	"status_update_time": "status_update_time",
 }
 

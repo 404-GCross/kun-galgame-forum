@@ -76,6 +76,9 @@ func (r *QuizRepository) ListPaginated(f model.QuizFilter) ([]model.GalgameQuizR
 	switch f.SortField {
 	case "view":
 		orderCol = "q.view"
+	case "view_1d":
+		orderCol = "COALESCE((SELECT SUM(d.count) FROM galgame_quiz_view_daily d " +
+			"WHERE d.entity_id = q.id AND d.day = CURRENT_DATE), 0)"
 	case "view_7d":
 		orderCol = "q.view_7d"
 	case "view_30d":

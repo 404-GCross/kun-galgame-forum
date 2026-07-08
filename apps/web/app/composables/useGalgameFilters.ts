@@ -5,7 +5,15 @@ import type {
   KunGalgameResourcePlatformOptions
 } from '~/constants/galgame'
 
-type SortField = 'time' | 'created' | 'view' | 'release_date' | 'rating'
+type SortField =
+  | 'time'
+  | 'created'
+  | 'view'
+  | 'view_1d'
+  | 'view_7d'
+  | 'view_30d'
+  | 'release_date'
+  | 'rating'
 
 // Single source of truth for the galgame browse filters, backed by the
 // URL query rather than a Pinia store. Every component that calls this

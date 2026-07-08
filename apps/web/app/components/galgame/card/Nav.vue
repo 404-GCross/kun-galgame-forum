@@ -346,7 +346,7 @@ const resetFilters = () => {
         "
         @click="
           sortField =
-            opt.value as 'time' | 'view' | 'created' | 'release_date' | 'rating'
+            opt.value as 'time' | 'view' | 'created' | 'view_1d' | 'view_7d' | 'view_30d' | 'release_date' | 'rating'
         "
       >
         {{ opt.label }}

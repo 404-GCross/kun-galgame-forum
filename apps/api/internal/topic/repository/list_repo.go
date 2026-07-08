@@ -67,19 +67,29 @@ func (r *TopicListRepository) FindList(
 
 	query.Count(&total)
 
-	// Determine sort column
-	orderCol := "topic.created"
-	if col, ok := constants.ValidTopicSortFields[sortField]; ok {
-		orderCol = "topic." + col
-	} else if col, ok := constants.ValidTopicCountSortFields[sortField]; ok {
-		orderCol = "topic." + col
-	}
-	query = query.Order(orderCol + " " + sortOrder).
+	query = query.Order(topicOrderCol(sortField) + " " + sortOrder).
 		Offset((page - 1) * limit).
 		Limit(limit)
 
 	err := query.Find(&rows).Error
 	return rows, total, err
+}
+
+// topicOrderCol resolves a sort field to its ORDER BY expression. view_1d has no
+// column — it's a live sum of today's view bucket (COALESCE→0 when none), which
+// is functionally dependent on the PK topic.id so it composes with GROUP BY.
+func topicOrderCol(sortField string) string {
+	if sortField == "view_1d" {
+		return "COALESCE((SELECT SUM(d.count) FROM topic_view_daily d " +
+			"WHERE d.entity_id = topic.id AND d.day = CURRENT_DATE), 0)"
+	}
+	if col, ok := constants.ValidTopicSortFields[sortField]; ok {
+		return "topic." + col
+	}
+	if col, ok := constants.ValidTopicCountSortFields[sortField]; ok {
+		return "topic." + col
+	}
+	return "topic.created"
 }
 
 // FindResourceList returns topics that belong to resource sections
@@ -113,13 +123,7 @@ func (r *TopicListRepository) FindResourceList(
 
 	query.Count(&total)
 
-	orderCol := "topic.created"
-	if col, ok := constants.ValidTopicSortFields[sortField]; ok {
-		orderCol = "topic." + col
-	} else if col, ok := constants.ValidTopicCountSortFields[sortField]; ok {
-		orderCol = "topic." + col
-	}
-	query = query.Order(orderCol + " " + sortOrder).
+	query = query.Order(topicOrderCol(sortField) + " " + sortOrder).
 		Offset((page - 1) * limit).
 		Limit(limit)
 

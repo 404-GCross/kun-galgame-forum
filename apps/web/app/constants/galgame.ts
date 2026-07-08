@@ -1,5 +1,4 @@
-import type { KunTabItem } from '@kungal/ui-vue'
-import type { KunSelectOption } from '@kungal/ui-vue'
+import type { KunTabItem, KunSelectOption } from '@kungal/ui-vue'
 
 export type KunGalgameResourceTypeOptions =
   | 'all'
@@ -162,9 +161,12 @@ export const KUN_RESOURCE_PLATFORM_CONST = [
 ] as const
 
 export const KUN_GALGAME_RESOURCE_SORT_FIELD_MAP: Record<string, string> = {
-  views: '浏览顺序',
+  views: '总浏览数',
   time: '更新顺序',
   created: '创建顺序',
+  view_1d: '日浏览数',
+  view_7d: '周浏览数',
+  view_30d: '月浏览数',
   release_date: '发售日期',
   rating: '评分'
 }

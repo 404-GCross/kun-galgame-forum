@@ -44,7 +44,16 @@ export const getGalgameSchema = z.object({
   type: z.enum([...KUN_RESOURCE_TYPE_CONST, 'all']),
   language: z.enum([...KUN_RESOURCE_LANGUAGE_CONST, 'all']),
   platform: z.enum([...KUN_RESOURCE_PLATFORM_CONST, 'all']),
-  sort_field: z.enum(['time', 'created', 'view']),
+  sort_field: z.enum([
+    'time',
+    'created',
+    'view',
+    'view_1d',
+    'view_7d',
+    'view_30d',
+    'release_date',
+    'rating'
+  ]),
   sort_order: z.enum(SORT_ORDER_CONST),
   include_providers: providerQueryArray,
   exclude_only_providers: providerQueryArray
