@@ -52,3 +52,23 @@ func CanAdminister(roles []string) bool {
 func IsCreator(roles []string) bool {
 	return Has(roles, Creator)
 }
+
+// Union returns roles ∪ siteRoles as the deduplicated EFFECTIVE role set the
+// capability functions operate on (contract docs/oauth/12-site-roles.md §5.1:
+// "effective = roles ∪ site_roles, feed your EXISTING capability functions —
+// no new decision path"). site_roles is an additive, same-site extension;
+// because the IdP forbids admin/ren in it (§3/§5.3), unioning can only ADD
+// moderator/creator/custom names — it can never reach an admin-only capability.
+// Inputs are left untouched (roles is cloned before extending).
+func Union(roles, siteRoles []string) []string {
+	if len(siteRoles) == 0 {
+		return roles
+	}
+	out := slices.Clone(roles)
+	for _, r := range siteRoles {
+		if !slices.Contains(out, r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}

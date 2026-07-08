@@ -9,6 +9,7 @@ import (
 	"kun-galgame-api/internal/user/oauth"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/role"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
@@ -72,11 +73,13 @@ type UserInfo struct {
 	Sub   string `json:"sub"` // OAuth UUID
 	Name  string `json:"name"`
 	Email string `json:"email"`
-	// Roles is the raw OAuth `roles` claim — an UNORDERED SET of name strings
-	// (contract docs/oauth/11-roles.md). The implicit `user` default never
-	// appears, so a plain logged-in user has an empty slice. Authorization is
-	// expressed as a capability over this set via pkg/role (CanModerate /
-	// CanAdminister / IsCreator) — never a number, never an ordered rank.
+	// Roles is the EFFECTIVE role set: the OAuth `roles` claim UNIONed with this
+	// site's `site_roles` claim (contracts 11-roles.md + 12-site-roles.md),
+	// merged at session ingestion via pkg/role.Union. An UNORDERED SET of name
+	// strings; the implicit `user` default never appears, so a plain logged-in
+	// user has an empty slice. Authorization is a capability over this set via
+	// pkg/role (CanModerate / CanAdminister / IsCreator) — never a number/rank.
+	// site_roles can never carry admin/ren, so the merge only adds mod/creator.
 	Roles []string `json:"roles"`
 }
 
@@ -302,13 +305,14 @@ func refreshSession(
 	session.OAuthRefreshToken = refreshed.RefreshToken
 	session.OAuthExpiresAt = time.Now().Unix() + int64(refreshed.ExpiresIn)
 
-	// Re-read the roles claim from fresh userinfo so an upstream role change (a
-	// demoted admin / promoted mod) takes effect at the next token refresh
-	// instead of being frozen at login for the whole session. A ban surfaced
-	// here is enforced immediately; a transient userinfo failure is non-fatal —
-	// the tokens already refreshed, so we keep the previously cached roles.
+	// Re-read roles from fresh userinfo so an upstream change — a demoted admin /
+	// promoted mod, OR a site-role grant/revoke — takes effect at the next token
+	// refresh instead of being frozen at login for the whole session. Roles ∪
+	// site_roles = the effective set (contract 12-site-roles §4/§5.1). A ban
+	// surfaced here is enforced immediately; a transient userinfo failure is
+	// non-fatal — the tokens already refreshed, so we keep the cached roles.
 	if info, uErr := oauthClient.FetchUserInfo(refreshed.AccessToken); uErr == nil {
-		session.Roles = info.Roles
+		session.Roles = role.Union(info.Roles, info.SiteRoles)
 	} else if oauth.IsBanned(uErr) {
 		slog.Warn("刷新后 userinfo 返回账号封禁, 清除 session", "error", uErr)
 		rdb.Del(ctx, SessionKey(token))

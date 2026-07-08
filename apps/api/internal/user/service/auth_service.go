@@ -13,6 +13,7 @@ import (
 	"kun-galgame-api/internal/user/oauth"
 	"kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -115,7 +116,8 @@ func (s *AuthService) OAuthCallback(
 			Sub:   oauthUser.Sub,
 			Name:  oauthUser.Name,
 			Email: oauthUser.Email,
-			Roles: oauthUser.Roles,
+			// Effective = global roles ∪ this-site's site_roles (12-site-roles §5.1).
+			Roles: role.Union(oauthUser.Roles, oauthUser.SiteRoles),
 		},
 		OAuthAccessToken:  tokenResp.AccessToken,
 		OAuthRefreshToken: tokenResp.RefreshToken,

@@ -2,8 +2,8 @@ package oauth
 
 import (
 	"bytes"
-	stderrors "errors"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,11 +23,11 @@ const oauthHTTPTimeout = 10 * time.Second
 // kungal branches on (banned vs. refresh-token-expired vs. invalid-grant vs.
 // everything-else-treated-as-transient).
 const (
-	CodeAccountBanned        = 10014 // HTTP 403
-	CodeRefreshTokenExpired  = 10003 // HTTP 401 — needs user to fully re-login
-	CodeInvalidToken         = 10002 // HTTP 401 — bad token / client_id mismatch
-	CodeInvalidGrant         = 15005 // HTTP 400 — client missing `refresh_token` grant
-	CodeInvalidClientSecret  = 15008 // HTTP 400 — confidential client misconfigured
+	CodeAccountBanned       = 10014 // HTTP 403
+	CodeRefreshTokenExpired = 10003 // HTTP 401 — needs user to fully re-login
+	CodeInvalidToken        = 10002 // HTTP 401 — bad token / client_id mismatch
+	CodeInvalidGrant        = 15005 // HTTP 400 — client missing `refresh_token` grant
+	CodeInvalidClientSecret = 15008 // HTTP 400 — confidential client misconfigured
 )
 
 // Error is a structured OAuth-server error. It captures the envelope code
@@ -209,12 +209,18 @@ type TokenResponse struct {
 // include `id` and `roles` so kungal can derive its userID + admin role
 // without a second round-trip.
 type UserInfo struct {
-	ID        int      `json:"id"`
-	Sub       string   `json:"sub"`
-	Name      string   `json:"name"`
-	Email     string   `json:"email"`
-	Picture   string   `json:"picture"`
-	Roles     []string `json:"roles"`
+	ID      int      `json:"id"`
+	Sub     string   `json:"sub"`
+	Name    string   `json:"name"`
+	Email   string   `json:"email"`
+	Picture string   `json:"picture"`
+	Roles   []string `json:"roles"`
+	// SiteRoles is the OAuth `site_roles` claim — site-scoped role names for THIS
+	// client's site (contract docs/oauth/12-site-roles.md). Same shape as Roles;
+	// omitted when the user has no grant on this site. It is merged into the
+	// effective role set (pkg/role.Union) and can never contain admin/ren
+	// (contract §3/§5.3), so the union only ever adds moderator/creator/custom.
+	SiteRoles []string `json:"site_roles"`
 	UpdatedAt int64    `json:"updated_at"`
 }
 
