@@ -30,7 +30,7 @@ type CreateQuizRequest struct {
 	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
 	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
 	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
-	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Question     string          `json:"question" validate:"required,min=1,max=200"`
 	Description  string          `json:"description" validate:"max=20000"`
 	Content      json.RawMessage `json:"content" validate:"required"`
 	Explanation  string          `json:"explanation" validate:"max=2000"`
@@ -45,7 +45,7 @@ type UpdateQuizRequest struct {
 	Type         string          `json:"type" validate:"required,oneof=single multiple judge fill essay"`
 	Difficulty   int             `json:"difficulty" validate:"required,min=1,max=10"`
 	SpoilerLevel string          `json:"spoiler_level" validate:"omitempty,oneof=none portion serious"`
-	Question     string          `json:"question" validate:"required,min=1,max=2000"`
+	Question     string          `json:"question" validate:"required,min=1,max=200"`
 	Description  string          `json:"description" validate:"max=20000"`
 	Content      json.RawMessage `json:"content" validate:"required"`
 	Explanation  string          `json:"explanation" validate:"max=2000"`

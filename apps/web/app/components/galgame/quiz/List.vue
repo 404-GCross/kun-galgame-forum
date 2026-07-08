@@ -59,7 +59,7 @@ const correctRate = (q: GalgameQuizCard) =>
 
       <!-- middle: title + meta -->
       <div class="min-w-0 flex-1">
-        <p class="truncate font-medium">{{ quiz.question }}</p>
+        <p class="font-medium break-words">{{ quiz.question }}</p>
         <div
           class="text-default-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
         >

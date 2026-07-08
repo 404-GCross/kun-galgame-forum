@@ -22,7 +22,7 @@ export const createGalgameQuizSchema = z.object({
   question: z
     .string()
     .min(1, { message: '请填写题干' })
-    .max(2000, { message: '题干长度不能超过 2000 字' }),
+    .max(200, { message: '题干长度不能超过 200 字' }),
   description: z
     .string()
     .max(20000, { message: '描述长度不能超过 20000 字' })
