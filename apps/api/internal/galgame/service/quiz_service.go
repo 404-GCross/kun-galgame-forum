@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -667,19 +668,30 @@ func (s *QuizService) SearchGalgameOptions(
 	ctx context.Context, keywords string, isSFW bool,
 ) []dto.QuizGalgameOption {
 	empty := []dto.QuizGalgameOption{}
-	// Wiki's /series/search is the general galgame name search (returns any
-	// matching galgame row) — the same one the FE series picker uses via
-	// /galgame-series/search. We only need the ids here.
-	data, appErr := s.wikiClient.Get(ctx, "/series/search", url.Values{"keywords": {keywords}})
+	// Use the wiki Meilisearch galgame index (`/galgame/search`) — the SAME
+	// accurate, ranked, typo-tolerant search the /search page uses. The old
+	// /series/search is a plain name match (borrowed from the series picker) and
+	// ranked poorly here, so the picker "couldn't find" obvious titles. We only
+	// need ids + the SFW gate; fields=id keeps the response tiny.
+	q := url.Values{}
+	q.Set("q", keywords)
+	q.Set("limit", strconv.Itoa(quizGalgameSearchLimit))
+	q.Set("fields", "id")
+	if isSFW {
+		q.Set("content_limit", "sfw")
+	}
+	data, appErr := s.wikiClient.Get(ctx, "/galgame/search", q)
 	if appErr != nil {
 		return empty
 	}
-	var rows []wikiGalgameSearchRow
-	if err := json.Unmarshal(data, &rows); err != nil {
+	var resp struct {
+		Items []wikiGalgameSearchRow `json:"items"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
 		return empty
 	}
 	ids := make([]int, 0, quizGalgameSearchLimit)
-	for _, r := range rows {
+	for _, r := range resp.Items {
 		if r.ID > 0 {
 			ids = append(ids, r.ID)
 		}
