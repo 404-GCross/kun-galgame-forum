@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"kun-galgame-api/pkg/imageclient"
+	"kun-galgame-api/pkg/role"
 
 	"golang.org/x/sync/singleflight"
 )
@@ -56,6 +57,12 @@ type User struct {
 	Bio             string   `json:"bio"`
 	Status          int      `json:"status"`
 	Roles           []string `json:"roles"`
+	// SiteRoles is this user's site-scoped roles for OUR client's site (contract
+	// docs/oauth/12-site-roles.md; the /users/batch brief is scoped by the
+	// requesting client's site). Folded into Roles in fetchBatch so consumers
+	// read ONE effective set — kept here so a future site-vs-global distinction
+	// (e.g. a 「本站版主」 badge) can recover it (global = Roles \ SiteRoles).
+	SiteRoles []string `json:"site_roles"`
 	// CreatedAt is the user's OAuth registration time (UTC RFC3339). This is
 	// the authoritative "join date" — render it from here, NOT from a local
 	// kungal_user_state.created (which marks first-seen-on-kungal: blank for
@@ -290,6 +297,13 @@ func (c *Client) fetchBatch(ctx context.Context, ids []int) (batchData, error) {
 	// gets cached and handed to every consumer (top bar, comment lists, …).
 	for i := range bd.Users {
 		bd.Users[i].Avatar = c.resolveAvatarURL(bd.Users[i])
+		// Fold this-site's site_roles into Roles so every consumer reads ONE
+		// EFFECTIVE set (global ∪ site, 12-site-roles §5.1) — a site moderator is
+		// recognised here (purge protection, badge, isCreator). The batch is
+		// site-scoped (§2.3), so this is identity resolution, not capability
+		// policy; site_roles never carries admin/ren (§5.3), so it can't
+		// over-privilege.
+		bd.Users[i].Roles = role.Union(bd.Users[i].Roles, bd.Users[i].SiteRoles)
 	}
 	return bd, nil
 }
