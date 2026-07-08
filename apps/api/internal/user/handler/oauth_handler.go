@@ -83,9 +83,19 @@ func (h *OAuthHandler) Me(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	// Sub isn't in the userclient brief; fill it from the session identity so
-	// /auth/me carries the account's OAuth UUID (needed for account switching).
-	profile.Sub = user.Sub
+	// Overlay session-only identity (Sub + the EFFECTIVE role set) onto the
+	// brief-derived profile — see enrichProfileFromSession.
+	enrichProfileFromSession(profile, user)
 
 	return response.OK(c, profile)
+}
+
+// enrichProfileFromSession overlays the session's identity onto a profile built
+// from the userclient brief: Sub (absent from the brief) and the EFFECTIVE role
+// set. The brief carries only GLOBAL roles; the session's Roles is
+// global ∪ site_roles (re-read on token refresh, contract 12-site-roles §5.1),
+// so without this a site moderator's canModerate would stay false in the FE.
+func enrichProfileFromSession(p *dto.UserProfile, u *middleware.UserInfo) {
+	p.Sub = u.Sub
+	p.Roles = u.Roles
 }

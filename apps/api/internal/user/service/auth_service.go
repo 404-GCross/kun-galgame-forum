@@ -110,14 +110,21 @@ func (s *AuthService) OAuthCallback(
 		return nil, errors.ErrInternal("生成会话令牌失败")
 	}
 
+	// The login-response user the FE writes into its store. Roles is the
+	// EFFECTIVE set (global ∪ this-site's site_roles, 12-site-roles §5.1); the
+	// persisted session reuses the SAME slice so server enforcement and the FE
+	// store can't diverge — else a site moderator is enforced server-side yet
+	// never sees the moderator UI. Pure builder → the merge is unit-tested
+	// (newLoginUserProfile) without a Login round-trip.
+	respUser := newLoginUserProfile(oauthUser, avatar, moe)
+
 	sessionData := middleware.SessionData{
 		UserInfo: middleware.UserInfo{
 			ID:    oauthUser.ID,
 			Sub:   oauthUser.Sub,
 			Name:  oauthUser.Name,
 			Email: oauthUser.Email,
-			// Effective = global roles ∪ this-site's site_roles (12-site-roles §5.1).
-			Roles: role.Union(oauthUser.Roles, oauthUser.SiteRoles),
+			Roles: respUser.Roles,
 		},
 		OAuthAccessToken:  tokenResp.AccessToken,
 		OAuthRefreshToken: tokenResp.RefreshToken,
@@ -132,16 +139,26 @@ func (s *AuthService) OAuthCallback(
 
 	return &dto.SessionResponse{
 		Token: sessionToken,
-		User: &dto.UserProfile{
-			ID:          oauthUser.ID,
-			Sub:         oauthUser.Sub,
-			Name:        oauthUser.Name,
-			Avatar:      avatar,
-			Roles:       oauthUser.Roles,
-			Moemoepoint: moe,
-			Bio:         "", // bio is OAuth-owned, available via /auth/me
-		},
+		User:  respUser,
 	}, nil
+}
+
+// newLoginUserProfile builds the login-response user the FE writes into its
+// store. Roles is the EFFECTIVE set = the user's global roles UNIONed with this
+// site's site_roles (contract docs/oauth/12-site-roles.md §5.1) — the same set
+// persisted on the session — so a site moderator/creator gets BOTH server
+// enforcement and the matching UI. Pure so the merge is unit-tested without the
+// OAuth / Redis / DB round-trips the full Login needs.
+func newLoginUserProfile(u *oauth.UserInfo, avatar string, moe int) *dto.UserProfile {
+	return &dto.UserProfile{
+		ID:          u.ID,
+		Sub:         u.Sub,
+		Name:        u.Name,
+		Avatar:      avatar,
+		Roles:       role.Union(u.Roles, u.SiteRoles),
+		Moemoepoint: moe,
+		Bio:         "", // bio is OAuth-owned, available via /auth/me
+	}
 }
 
 // Logout deletes the session from Redis and revokes the OAuth token.
