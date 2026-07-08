@@ -41,6 +41,12 @@ export const kunLayoutItem: KunLayoutItem[] = [
         icon: 'lucide:wrench',
         router: '/edit/toolset/create',
         label: '发布 Gal 工具'
+      },
+      {
+        name: 'createQuiz',
+        icon: 'lucide:library-big',
+        router: '/edit/galgame/quiz',
+        label: '发布 Galgame 习题'
       }
     ]
   },
@@ -360,6 +366,11 @@ export const kunSidebarRail: KunRailGroup[] = [
             label: '发布 Galgame',
             router: '/edit/galgame/publish',
             icon: 'lucide:gamepad-2'
+          },
+          {
+            label: '发布 Galgame 习题',
+            router: '/edit/galgame/quiz',
+            icon: 'lucide:library-big'
           }
         ]
       }

@@ -7,6 +7,7 @@
 // than in a separate "correct answer" picker — the pattern used by Google
 // Forms / Typeform / Kahoot.
 const props = defineProps<{ type: QuizType }>()
+const emits = defineEmits<{ change: [content: Record<string, unknown>] }>()
 
 // single / multiple
 const options = ref<string[]>(['', ''])
@@ -86,6 +87,21 @@ const getContent = (): Record<string, unknown> => {
       return {}
   }
 }
+
+// Emit the built content on any change so the create draft can be persisted.
+watch(
+  [
+    options,
+    singleAnswer,
+    multiAnswers,
+    judgeAnswer,
+    blanks,
+    essayReference,
+    () => props.type
+  ],
+  () => emits('change', getContent()),
+  { deep: true }
+)
 
 // Returns an error message, or null when the payload is valid.
 const validate = (): string | null => {

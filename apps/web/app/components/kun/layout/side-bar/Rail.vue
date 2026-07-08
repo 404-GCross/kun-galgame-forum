@@ -35,5 +35,16 @@ const { hasReleaseToday } = useGalgameReleaseToday()
         {{ hasReleaseToday ? '有新作发售' : '发售月历' }}
       </span>
     </KunButton>
+
+    <KunButton
+      variant="light"
+      color="secondary"
+      href="/galgame-quiz"
+      aria-label="Galgame 题库"
+      class-name="text-secondary-600 h-auto w-full flex-col gap-1 py-2"
+    >
+      <KunIcon name="lucide:library-big" class="text-xl" />
+      <span class="text-[11px] leading-none">题库</span>
+    </KunButton>
   </nav>
 </template>

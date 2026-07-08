@@ -46,7 +46,7 @@ const scrolled = computed(() => y.value > 8)
           'mx-auto flex h-16 w-full max-w-7xl transform-gpu items-center justify-between rounded-b-lg border transition-[background-color,border-color,box-shadow,padding] duration-200',
           scrolled
             ? 'bg-content1 border-kun px-3 shadow-kun-sm backdrop-blur-md'
-            : 'border-transparent bg-transparent px-0 shadow-none'
+            : 'border-transparent bg-transparent px-3 shadow-none desktop-nav:px-0'
         )
       "
     >

@@ -128,6 +128,23 @@ const openLogout = () => {
       </span>
     </button>
 
+    <KunButton
+      v-if="!isCheckIn"
+      variant="light"
+      color="secondary"
+      size="sm"
+      :full-width="true"
+      rounded="md"
+      class-name="justify-between"
+      @click="handleCheckIn"
+    >
+      <span class="flex items-center gap-2">
+        <KunIcon class="size-4" name="lucide:calendar-check" />
+        每日签到
+      </span>
+      <KunIcon class="text-secondary-500 size-5" name="lucide:sparkles" />
+    </KunButton>
+
     <NuxtLink
       :to="`/user/${id}`"
       class="hover:bg-default-100 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors"
@@ -177,23 +194,6 @@ const openLogout = () => {
         name="lucide:chevron-right"
       />
     </button>
-
-    <KunButton
-      v-if="!isCheckIn"
-      variant="light"
-      color="secondary"
-      size="sm"
-      :full-width="true"
-      rounded="md"
-      class-name="justify-between"
-      @click="handleCheckIn"
-    >
-      <span class="flex items-center gap-2">
-        <KunIcon class="size-4" name="lucide:calendar-check" />
-        每日签到
-      </span>
-      <KunIcon class="text-secondary-500 size-5" name="lucide:sparkles" />
-    </KunButton>
 
     <!-- 账号切换 — this device's other accounts + 添加新账号. Each switch is a
          top-level authorize redirect (forum is a BFF; the OP bag is the source of

@@ -52,6 +52,14 @@ const links = [
     <div class="space-y-3 p-3">
       <template v-if="!isCollapsed">
         <KunBrand :name="kungal.titleShort" />
+        <NuxtLink to="/galgame-quiz">
+          <div
+            class="bg-secondary/10 text-secondary-600 hover:bg-secondary/20 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
+          >
+            <KunIcon name="lucide:party-popper" class="shrink-0 text-base" />
+            <span>Galgame 题库上线啦, 快来出题和回答问题吧</span>
+          </div>
+        </NuxtLink>
       </template>
       <template v-else>
         <KunLink
