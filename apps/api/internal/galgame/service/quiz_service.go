@@ -457,21 +457,24 @@ func (s *QuizService) ToggleQuizFavorite(userID, quizID int) *errors.AppError {
 
 func (s *QuizService) UpdateQuiz(
 	userID int, canModerate bool, req *dto.UpdateQuizRequest,
-) *errors.AppError {
+) (int, *errors.AppError) {
 	quiz, ok := s.quizRepo.FindByID(req.QuizID)
 	if !ok {
-		return errors.ErrNotFound("题目不存在")
+		return 0, errors.ErrNotFound("题目不存在")
 	}
 	if quiz.UserID != userID && !canModerate {
-		return errors.ErrForbidden("没有编辑该题目的权限")
+		return 0, errors.ErrForbidden("没有编辑该题目的权限")
 	}
 	if appErr := validateQuizContent(req.Type, req.Content); appErr != nil {
-		return appErr
+		return 0, appErr
 	}
 	spoiler := req.SpoilerLevel
 	if spoiler == "" {
 		spoiler = "none"
 	}
+	// Existing answers can be re-scored against the edited key only when the type
+	// is unchanged — a type change is a different question, not a key correction.
+	regradable := req.Type == quiz.Type
 	fields := map[string]any{
 		"category":      req.Category,
 		"spoiler_level": spoiler,
@@ -483,16 +486,76 @@ func (s *QuizService) UpdateQuiz(
 		"explanation":   req.Explanation,
 		"hide_galgame":  req.HideGalgame,
 	}
+	// Point the local model at the NEW key/difficulty so the regrade grades and
+	// rewards against what was just saved (UpdateQuizFields writes from `fields`).
+	quiz.Type = req.Type
+	quiz.Content = req.Content
+	quiz.Difficulty = req.Difficulty
+
+	regraded := 0
 	txErr := s.quizRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.quizRepo.UpdateQuizFields(tx, req.QuizID, fields); err != nil {
 			return err
 		}
-		return s.quizRepo.SetQuizGalgames(tx, req.QuizID, req.GalgameIDs)
+		if err := s.quizRepo.SetQuizGalgames(tx, req.QuizID, req.GalgameIDs); err != nil {
+			return err
+		}
+		if regradable {
+			n, err := s.regradeAnswers(tx, quiz)
+			if err != nil {
+				return err
+			}
+			regraded = n
+		}
+		return nil
 	})
 	if txErr != nil {
-		return errors.ErrInternal("更新题目失败")
+		return 0, errors.ErrInternal("更新题目失败")
 	}
-	return nil
+	return regraded, nil
+}
+
+// regradeAnswers re-scores every existing answer against the (possibly just
+// corrected) answer key. ADDITIVE-ONLY: it only flips wrong→correct and back-pays
+// the answer-correct reward that was missed — idempotent via the original
+// galgame_quiz_answer:<id> ref — and NEVER flips correct→wrong nor claws
+// moemoepoint back, so the author's key fix can't cost anyone points. Auto-graded
+// types only (essay is never machine-graded). Returns how many were newly
+// marked correct.
+func (s *QuizService) regradeAnswers(tx *gorm.DB, quiz *model.GalgameQuiz) (int, error) {
+	if quiz.Type == "essay" {
+		return 0, nil
+	}
+	reward := quizCorrectReward(quiz.Difficulty)
+	flipped := 0
+	for _, a := range s.quizRepo.FindAnswerersForRegrade(quiz.ID) {
+		grade, appErr := gradeQuiz(quiz.Type, quiz.Content, a.Submitted)
+		if appErr != nil {
+			continue // a submission that no longer fits the key shape — leave it
+		}
+		newCorrect := grade != nil && *grade
+		wasCorrect := a.IsCorrect != nil && *a.IsCorrect
+		if !newCorrect || wasCorrect {
+			continue // additive-only: act on wrong→correct, nothing else
+		}
+		fields := map[string]any{"is_correct": true}
+		if reward > 0 && !a.Rewarded {
+			fields["rewarded"] = true
+			s.helpers.AdjustMoemoepoint(tx, a.UserID, reward,
+				moemoepoint.ReasonContentApproved,
+				moemoepoint.Ref("galgame_quiz_answer", a.ID))
+		}
+		if err := s.quizRepo.UpdateAnswerFields(tx, a.ID, fields); err != nil {
+			return 0, err
+		}
+		flipped++
+	}
+	if flipped > 0 {
+		if err := s.quizRepo.AdjustCorrectCount(tx, quiz.ID, flipped); err != nil {
+			return 0, err
+		}
+	}
+	return flipped, nil
 }
 
 // ──────────────────────────────────────────

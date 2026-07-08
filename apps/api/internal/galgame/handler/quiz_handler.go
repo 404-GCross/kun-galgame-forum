@@ -176,10 +176,13 @@ func (h *QuizHandler) UpdateQuiz(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.quizService.UpdateQuiz(user.ID, role.CanModerate(user.Roles), &req); appErr != nil {
+	regraded, appErr := h.quizService.UpdateQuiz(user.ID, role.CanModerate(user.Roles), &req)
+	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	return response.OKMessage(c, "题目已更新")
+	// `regraded` = answers an answer-key correction just flipped wrong→correct
+	// (0 normally). The FE composes the toast from it (see Form.vue).
+	return response.OK(c, fiber.Map{"regraded": regraded})
 }
 
 // GetQuizForEdit — GET /api/galgame-quiz/:id/edit (author or moderator)

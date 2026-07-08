@@ -149,6 +149,21 @@ func (r *QuizRepository) BumpAnswerStats(tx *gorm.DB, quizID int, correct bool) 
 	return tx.Table("galgame_quiz").Where("id = ?", quizID).Updates(fields).Error
 }
 
+// AdjustCorrectCount moves galgame_quiz.correct_count by delta (used by the
+// regrade pass — answer_count is unchanged, only correct_count shifts).
+func (r *QuizRepository) AdjustCorrectCount(tx *gorm.DB, quizID, delta int) error {
+	return tx.Table("galgame_quiz").Where("id = ?", quizID).
+		UpdateColumn("correct_count", gorm.Expr("correct_count + ?", delta)).Error
+}
+
+// UpdateAnswerFields patches columns on a single answer row (regrade pass).
+func (r *QuizRepository) UpdateAnswerFields(tx *gorm.DB, answerID int, fields map[string]any) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	return tx.Table("galgame_quiz_answer").Where("id = ?", answerID).Updates(fields).Error
+}
+
 // AdjustQuality moves quality_sum by sumDelta and quality_count by countDelta.
 func (r *QuizRepository) AdjustQuality(tx *gorm.DB, quizID, sumDelta, countDelta int) error {
 	return tx.Table("galgame_quiz").Where("id = ?", quizID).Updates(map[string]any{
@@ -276,5 +291,14 @@ func (r *QuizRepository) FindQuizAnswerers(quizID, limit int) []model.GalgameQui
 		Order("created DESC").
 		Limit(limit).
 		Scan(&rows)
+	return rows
+}
+
+// FindAnswerersForRegrade returns the FULL answer rows of a quiz's genuine
+// answerers (role='answerer'). The regrade pass needs each row's id / submitted /
+// grade / rewarded flag, which the lightweight FindQuizAnswerers projection omits.
+func (r *QuizRepository) FindAnswerersForRegrade(quizID int) []model.GalgameQuizAnswer {
+	var rows []model.GalgameQuizAnswer
+	r.db.Where("quiz_id = ? AND role = ?", quizID, "answerer").Find(&rows)
 	return rows
 }

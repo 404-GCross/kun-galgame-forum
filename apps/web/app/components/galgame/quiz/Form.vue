@@ -234,13 +234,20 @@ const submit = async () => {
   if (isEditing.value && props.editData) {
     body.quiz_id = props.editData.id
     isSubmitting.value = true
-    const ok = await kunFetch(`/galgame-quiz/${props.editData.id}`, {
-      method: 'PUT',
-      body
-    })
+    const ok = await kunFetch<{ regraded: number }>(
+      `/galgame-quiz/${props.editData.id}`,
+      { method: 'PUT', body }
+    )
     isSubmitting.value = false
     if (ok) {
-      useMessage('已保存修改', 'success')
+      // If an answer-key fix re-graded existing answers, tell the author.
+      const regraded = ok.regraded ?? 0
+      useMessage(
+        regraded > 0
+          ? `已保存修改，${regraded} 条作答已更正为正确并补发萌萌点`
+          : '已保存修改',
+        'success'
+      )
       emits('updated')
     }
     return
