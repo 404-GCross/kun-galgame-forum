@@ -42,7 +42,8 @@ export const quizDifficultyOptions = [
 
 export const quizSortFieldOptions = [
   { value: 'time', label: '最新' },
-  { value: 'view', label: '热度' },
+  { value: 'view_7d', label: '本周热度' },
+  { value: 'view_30d', label: '本月热度' },
   { value: 'difficulty', label: '难度' },
   { value: 'answer_count', label: '作答数' }
 ]

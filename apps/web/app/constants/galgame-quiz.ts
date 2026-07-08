@@ -90,6 +90,8 @@ export const KUN_QUIZ_CATEGORY_MAP: Record<string, string> = {
 export const KUN_QUIZ_SORT_FIELD_CONST = [
   'time',
   'view',
+  'view_7d',
+  'view_30d',
   'difficulty',
   'answer_count'
 ] as const

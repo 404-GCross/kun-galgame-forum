@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"kun-galgame-api/internal/galgame/model"
+	"kun-galgame-api/internal/infrastructure/viewstats"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -70,6 +71,7 @@ func (r *GalgameRepository) FindLocalBatch(ids []int) map[int]GalgameLocalRow {
 func (r *GalgameRepository) IncrementView(id int) {
 	r.db.Table("galgame").Where("id = ?", id).
 		Update("view", gorm.Expr("view + 1"))
+	_ = viewstats.BumpDaily(r.db, viewstats.GalgameDaily, id)
 }
 
 // ──────────────────────────────────────────

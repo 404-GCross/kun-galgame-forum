@@ -2,6 +2,7 @@ package repository
 
 import (
 	"kun-galgame-api/internal/galgame/model"
+	"kun-galgame-api/internal/infrastructure/viewstats"
 
 	"gorm.io/gorm"
 )
@@ -75,6 +76,10 @@ func (r *QuizRepository) ListPaginated(f model.QuizFilter) ([]model.GalgameQuizR
 	switch f.SortField {
 	case "view":
 		orderCol = "q.view"
+	case "view_7d":
+		orderCol = "q.view_7d"
+	case "view_30d":
+		orderCol = "q.view_30d"
 	case "difficulty":
 		orderCol = "q.difficulty"
 	case "answer_count":
@@ -109,8 +114,11 @@ func (r *QuizRepository) ListAnsweredByUser(userID, page, limit int) ([]model.Ga
 
 // IncrementView atomically bumps the view counter (best-effort).
 func (r *QuizRepository) IncrementView(id int) {
-	go r.db.Table("galgame_quiz").Where("id = ?", id).
-		Update("view", gorm.Expr("view + 1"))
+	go func() {
+		r.db.Table("galgame_quiz").Where("id = ?", id).
+			Update("view", gorm.Expr("view + 1"))
+		_ = viewstats.BumpDaily(r.db, viewstats.QuizDaily, id)
+	}()
 }
 
 // ──────────────────────────────────────────

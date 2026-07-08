@@ -3,6 +3,7 @@ package repository
 import (
 	"time"
 
+	"kun-galgame-api/internal/infrastructure/viewstats"
 	"kun-galgame-api/internal/topic/model"
 
 	"gorm.io/gorm"
@@ -57,8 +58,10 @@ func (r *TopicRepository) UpdateFields(id int, fields map[string]any) error {
 }
 
 func (r *TopicRepository) IncrementView(id int) error {
-	return r.db.Model(&model.Topic{}).Where("id = ?", id).
+	err := r.db.Model(&model.Topic{}).Where("id = ?", id).
 		Update("view", gorm.Expr("view + 1")).Error
+	_ = viewstats.BumpDaily(r.db, viewstats.TopicDaily, id)
+	return err
 }
 
 // ──────────────────────────────────────────
