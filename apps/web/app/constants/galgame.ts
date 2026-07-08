@@ -40,7 +40,7 @@ export const KUN_GALGAME_RESOURCE_TYPE_MAP: Record<string, string> = {
   video: '视频相关',
   others: '其它'
 }
-export const kunGalgameResourceTypeOptions: KunSelectOption[] = [
+export const kunGalgameResourceTypeOptions = [
   { value: 'all', label: '全部类型' },
   { value: 'game', label: '游戏本体' },
   { value: 'patch', label: '补丁' },
@@ -50,7 +50,7 @@ export const kunGalgameResourceTypeOptions: KunSelectOption[] = [
   { value: 'ai', label: 'AI 相关' },
   { value: 'video', label: '视频相关' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_RESOURCE_TYPE_CONST = [
   'game',
   'patch',
@@ -70,14 +70,14 @@ export const KUN_GALGAME_RESOURCE_LANGUAGE_MAP: Record<string, string> = {
   'zh-tw': '繁体中文',
   others: '其它'
 }
-export const kunGalgameResourceLanguageOptions: KunSelectOption[] = [
+export const kunGalgameResourceLanguageOptions = [
   { value: 'all', label: '全部语言' },
   { value: 'ja-jp', label: '日语' },
   { value: 'en-us', label: '英语' },
   { value: 'zh-cn', label: '简体中文' },
   { value: 'zh-tw', label: '繁体中文' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_RESOURCE_LANGUAGE_CONST = [
   'ja-jp',
   'en-us',
@@ -123,7 +123,7 @@ export const KUN_GALGAME_ORIGINAL_LANGUAGE_MAP: Record<string, string> = {
 // Edit-form dropdown options, derived from the display map (insertion order =
 // roughly by prevalence). KunSelect needs the current value to be present or it
 // renders blank, which is what forced the manual re-pick before.
-export const kunGalgameOriginalLanguageOptions: KunSelectOption[] = Object.entries(
+export const kunGalgameOriginalLanguageOptions = Object.entries(
   KUN_GALGAME_ORIGINAL_LANGUAGE_MAP
 ).map(([value, label]) => ({ value, label }))
 
@@ -142,7 +142,7 @@ export const KUN_GALGAME_RESOURCE_PLATFORM_MAP: Record<string, string> = {
   app: '应用直装',
   others: '其它'
 }
-export const kunGalgameResourcePlatformOptions: KunSelectOption[] = [
+export const kunGalgameResourcePlatformOptions = [
   { value: 'all', label: '全部平台' },
   { value: 'windows', label: 'Windows' },
   { value: 'mac', label: 'macOS' },
@@ -150,7 +150,7 @@ export const kunGalgameResourcePlatformOptions: KunSelectOption[] = [
   { value: 'emulator', label: '模拟器' },
   { value: 'app', label: '应用直装' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_RESOURCE_PLATFORM_CONST = [
   'windows',
   'mac',

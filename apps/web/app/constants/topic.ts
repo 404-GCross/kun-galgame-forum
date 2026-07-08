@@ -92,11 +92,11 @@ export const KUN_TOPIC_REPLY_PANEL_POSITION_MAP: Record<string, string> = {
   reply: '杂鱼~♡'
 }
 
-export const topicSortFieldOptions: KunSelectOption[] = [
+export const topicSortFieldOptions = [
   { value: 'status_update_time', label: '更新时间' },
   { value: 'created', label: '创建时间' },
   { value: 'view', label: '浏览量' }
-]
+] as const
 
 // /topic list sort fields (rendered as a KunSelect). The four view metrics
 // (日/周/月/总浏览数) go at the end.
@@ -129,12 +129,12 @@ export const TOPIC_SORT_FIELD_CONST = [
   'upvote'
 ] as const
 
-export const topicSortCategoryOptions: KunSelectOption[] = [
+export const topicSortCategoryOptions = [
   { value: 'all', label: '全部类型' },
   { value: 'galgame', label: 'Galgame' },
   { value: 'technique', label: '技术交流' },
   { value: 'others', label: '其它' }
-]
+] as const
 
 export const TOPIC_CATEGORIES = {
   galgame: {
@@ -195,11 +195,11 @@ export const TOPIC_SECTIONS: Record<
   }
 }
 
-export const TOPIC_POLL_VISIBILITY_OPTIONS: KunSelectOption[] = [
+export const TOPIC_POLL_VISIBILITY_OPTIONS = [
   { value: 'always', label: '任何人可见结果' },
   { value: 'after_vote', label: '投票后可见结果' },
   { value: 'after_deadline', label: '结束后可见结果' }
-]
+] as const
 
 export const TOPIC_POLL_VISIBILITY_MAP: Record<string, string> = {
   always: '任何人可见结果',

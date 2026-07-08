@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { createCollectionSchema } from '~/validations/collection'
-import type { KunSelectOption } from '@kungal/ui-vue'
 
 // Create OR edit a collection. Does its own kunFetch and emits `saved` so the
 // caller (picker / grid / detail page) just refetches.
@@ -26,11 +25,11 @@ const isOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const visibilityOptions: KunSelectOption[] = [
+const visibilityOptions = [
   { value: 'public', label: '公开 · 所有人可见' },
   { value: 'private', label: '私密 · 仅自己可见' },
   { value: 'restricted', label: '指定用户可见' }
-]
+] as const
 
 const form = reactive<{
   name: string

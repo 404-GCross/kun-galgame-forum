@@ -8,7 +8,7 @@ import type { GalgameResourceStoreTemp } from '~/store/types/galgame/resource'
 export const checkGalgameResourcePublish = (link: GalgameResourceStoreTemp) => {
   if (
     !kunGalgameResourceTypeOptions
-      .map((type) => type.value)
+      .map((type) => type.value as string)
       .filter((item) => item !== 'all')
       .includes(link.type)
   ) {
@@ -35,7 +35,7 @@ export const checkGalgameResourcePublish = (link: GalgameResourceStoreTemp) => {
 
   if (
     !kunGalgameResourceLanguageOptions
-      .map((lang) => lang.value)
+      .map((lang) => lang.value as string)
       .filter((item) => item !== 'all')
       .includes(link.language)
   ) {
@@ -45,7 +45,7 @@ export const checkGalgameResourcePublish = (link: GalgameResourceStoreTemp) => {
 
   if (
     !kunGalgameResourcePlatformOptions
-      .map((platform) => platform.value)
+      .map((platform) => platform.value as string)
       .filter((item) => item !== 'all')
       .includes(link.platform)
   ) {

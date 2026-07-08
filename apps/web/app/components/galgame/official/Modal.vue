@@ -17,13 +17,13 @@ const emits = defineEmits<{
   submit: [data: UpdateGalgameOfficialPayload]
 }>()
 
-const categoryOptions: KunSelectOption[] = Object.entries(
-  KUN_GALGAME_OFFICIAL_CATEGORY_MAP
-).map(([value, label]) => ({ value, label }))
+const categoryOptions = Object.entries(KUN_GALGAME_OFFICIAL_CATEGORY_MAP).map(
+  ([value, label]) => ({ value, label })
+) as KunSelectOption<UpdateGalgameOfficialPayload['category']>[]
 
-const languageOptions: KunSelectOption[] = Object.entries(
-  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
-).map(([value, label]) => ({ value, label }))
+const languageOptions = Object.entries(KUN_GALGAME_OFFICIAL_LANGUAGE_MAP).map(
+  ([value, label]) => ({ value, label })
+)
 
 const isModalOpen = computed({
   get: () => props.modelValue,

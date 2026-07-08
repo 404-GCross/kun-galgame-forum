@@ -15,7 +15,6 @@ import {
 import {
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP
 } from '~/constants/galgameOfficial'
-import type { KunSelectOption } from '@kungal/ui-vue'
 
 interface CreatedEntity {
   id: number
@@ -32,11 +31,11 @@ const open = defineModel<boolean>({ required: true })
 
 const emit = defineEmits<{ created: [entity: CreatedEntity] }>()
 
-const tagCategoryOptions: KunSelectOption[] = Object.entries(
-  KUN_GALGAME_TAG_CATEGORY_MAP
-).map(([value, label]) => ({ value, label }))
+const tagCategoryOptions = Object.entries(KUN_GALGAME_TAG_CATEGORY_MAP).map(
+  ([value, label]) => ({ value, label })
+)
 
-const officialCategoryOptions: KunSelectOption[] = Object.entries(
+const officialCategoryOptions = Object.entries(
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP
 ).map(([value, label]) => ({ value, label }))
 

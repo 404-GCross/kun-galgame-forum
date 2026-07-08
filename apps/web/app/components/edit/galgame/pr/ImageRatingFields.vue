@@ -4,17 +4,15 @@
 // Exposed as two v-models so the parent binds the row's fields directly
 // (v-model:sexual / v-model:violence); lives inside each tile's ⚙ popover so
 // ratings are edited on demand, not as an always-expanded form per image.
-import type { KunSelectOption } from '@kungal/ui-vue'
-
 const sexual = defineModel<number>('sexual', { default: 0 })
 const violence = defineModel<number>('violence', { default: 0 })
 
-const ratingOptions: KunSelectOption[] = [
+const ratingOptions = [
   { value: 0, label: '未评定' },
   { value: 1, label: '轻' },
   { value: 2, label: '中' },
   { value: 3, label: '高' }
-]
+] as const
 </script>
 
 <template>

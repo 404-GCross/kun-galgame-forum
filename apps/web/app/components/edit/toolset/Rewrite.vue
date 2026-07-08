@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { KunTagInputInvalidReason } from '@kungal/ui-vue'
+import type { KunSelectOption, KunTagInputInvalidReason } from '@kungal/ui-vue'
 import {
   kunGalgameToolsetTypeOptions,
   kunGalgameToolsetLanguageOptions,
@@ -66,12 +66,27 @@ const handleUpdatePageLink = (value: string | number) => {
       <KunSelect
         v-model="toolsetUpdateForm.type"
         label="工具类型"
-        :options="kunGalgameToolsetTypeOptions.filter((o) => o.value !== 'all')"
+        :options="
+          kunGalgameToolsetTypeOptions.filter(
+            (o) => o.value !== 'all'
+          ) as KunSelectOption<
+            Exclude<(typeof kunGalgameToolsetTypeOptions)[number]['value'], 'all'>
+          >[]
+        "
       />
       <KunSelect
         v-model="toolsetUpdateForm.version"
         label="版本"
-        :options="kunGalgameToolsetVersionOptions"
+        :options="
+          kunGalgameToolsetVersionOptions.filter(
+            (o) => o.value !== 'all'
+          ) as KunSelectOption<
+            Exclude<
+              (typeof kunGalgameToolsetVersionOptions)[number]['value'],
+              'all'
+            >
+          >[]
+        "
       />
     </div>
 
@@ -96,14 +111,28 @@ const handleUpdatePageLink = (value: string | number) => {
         v-model="toolsetUpdateForm.platform"
         label="平台"
         :options="
-          kunGalgameToolsetPlatformOptions.filter((o) => o.value !== 'all')
+          kunGalgameToolsetPlatformOptions.filter(
+            (o) => o.value !== 'all'
+          ) as KunSelectOption<
+            Exclude<
+              (typeof kunGalgameToolsetPlatformOptions)[number]['value'],
+              'all'
+            >
+          >[]
         "
       />
       <KunSelect
         v-model="toolsetUpdateForm.language"
         label="语言"
         :options="
-          kunGalgameToolsetLanguageOptions.filter((o) => o.value !== 'all')
+          kunGalgameToolsetLanguageOptions.filter(
+            (o) => o.value !== 'all'
+          ) as KunSelectOption<
+            Exclude<
+              (typeof kunGalgameToolsetLanguageOptions)[number]['value'],
+              'all'
+            >
+          >[]
         "
       />
     </div>

@@ -1,4 +1,3 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
 import type { KunTabItem } from '@kungal/ui-vue'
 
 export const kunUpdateLogTabItem: KunTabItem[] = [
@@ -44,10 +43,10 @@ export const KUN_TODO_TYPE_MAP: Record<string, string> = {
   forum: '论坛',
   patch: '补丁站'
 }
-export const kunTodoTypeOptions: KunSelectOption[] = [
+export const kunTodoTypeOptions = [
   { value: 'forum', label: '论坛' },
   { value: 'patch', label: '补丁站' }
-]
+] as const
 export const KUN_TODO_TYPE_CONST = ['forum', 'patch'] as const
 
 export const KUN_UPDATE_LOG_STATUS_MAP: Record<string, string> = {

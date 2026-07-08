@@ -14,7 +14,6 @@
 // Single root is <div class="contents"> (page renders us bare). The
 // galgamePR[0] guard handles the persist:false edge; ?type=pr arms the
 // `prevent` middleware against hard refreshes (see Rewrite.vue).
-import type { KunSelectOption } from '@kungal/ui-vue'
 import type { KunTabItem } from '@kungal/ui-vue'
 import { languageItems } from '~/constants/edit'
 
@@ -33,20 +32,18 @@ const activeSection = ref('basic')
 
 const introductionLanguage = ref<Language>('zh-cn')
 
-// Typed as KunSelectOption[] (not `as const`): KunSelect.options is a
-// mutable KunSelectOption[]; a readonly tuple is not assignable.
-const ageLimitOptions: KunSelectOption[] = [
+const ageLimitOptions = [
   { value: 'all', label: '全年龄' },
   { value: 'r18', label: 'R18' }
-]
+] as const
 
-const originalLanguageOptions: KunSelectOption[] = [
+const originalLanguageOptions = [
   { value: 'ja-jp', label: '日语' },
   { value: 'en-us', label: '英语' },
   { value: 'zh-cn', label: '简体中文' },
   { value: 'zh-tw', label: '繁体中文' },
   { value: 'others', label: '其它' }
-]
+] as const
 </script>
 
 <template>

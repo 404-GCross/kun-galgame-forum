@@ -14,9 +14,9 @@ const emits = defineEmits<{
   submit: [data: UpdateGalgameTagPayload]
 }>()
 
-const categoryOptions: KunSelectOption[] = Object.entries(
-  KUN_GALGAME_TAG_CATEGORY_MAP
-).map(([value, label]) => ({ value, label }))
+const categoryOptions = Object.entries(KUN_GALGAME_TAG_CATEGORY_MAP).map(
+  ([value, label]) => ({ value, label })
+) as KunSelectOption<UpdateGalgameTagPayload['category']>[]
 
 const isModalOpen = computed({
   get: () => props.modelValue,

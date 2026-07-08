@@ -11,6 +11,7 @@ import {
   galgameRankingPageData,
   userRankingPageData
 } from '~/components/ranking/pageData'
+import type { KunSelectOption } from '@kungal/ui-vue'
 
 const activeTab = computed(() => useRoute().fullPath.split('/').pop() ?? 'user')
 
@@ -55,17 +56,29 @@ const sortOptions = computed(() => {
           <KunSelect
             v-if="activeTab === 'topic'"
             v-model="topicRankingPageData.sort_field"
-            :options="sortOptions"
+            :options="
+              sortOptions as KunSelectOption<
+                typeof topicRankingPageData.sort_field
+              >[]
+            "
           />
           <KunSelect
             v-if="activeTab === 'galgame'"
             v-model="galgameRankingPageData.sort_field"
-            :options="sortOptions"
+            :options="
+              sortOptions as KunSelectOption<
+                typeof galgameRankingPageData.sort_field
+              >[]
+            "
           />
           <KunSelect
             v-if="activeTab === 'user'"
             v-model="userRankingPageData.sort_field"
-            :options="sortOptions"
+            :options="
+              sortOptions as KunSelectOption<
+                typeof userRankingPageData.sort_field
+              >[]
+            "
           />
         </div>
       </div>

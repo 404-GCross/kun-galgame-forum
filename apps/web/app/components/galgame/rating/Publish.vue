@@ -111,19 +111,19 @@ watch(
 const isSubmitting = ref(false)
 
 const recommendOptions = computed(() =>
-  (KUN_GALGAME_RATING_RECOMMEND_CONST as readonly string[]).map((v) => ({
+  KUN_GALGAME_RATING_RECOMMEND_CONST.map((v) => ({
     value: v,
     label: KUN_GALGAME_RATING_RECOMMEND_MAP[v] || v
   }))
 )
 const playStatusOptions = computed(() =>
-  (KUN_GALGAME_RATING_PLAY_STATUS_CONST as readonly string[]).map((v) => ({
+  KUN_GALGAME_RATING_PLAY_STATUS_CONST.map((v) => ({
     value: v,
     label: KUN_GALGAME_RATING_PLAY_STATUS_MAP[v] || v
   }))
 )
 const spoilerOptions = computed(() =>
-  (KUN_GALGAME_RATING_SPOILER_CONST as readonly string[]).map((v) => ({
+  KUN_GALGAME_RATING_SPOILER_CONST.map((v) => ({
     value: v,
     label: KUN_GALGAME_RATING_SPOILER_MAP[v] || v
   }))

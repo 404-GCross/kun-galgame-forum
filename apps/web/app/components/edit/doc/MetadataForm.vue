@@ -2,12 +2,11 @@
 import { KUN_DOC_CATEGORY_MAP, KUN_DOC_STATUS_OPTIONS } from '~/constants/doc'
 import { useDocEditorContext } from './context'
 import { normalizeDocSlug } from '~/utils/doc'
-import type { KunSelectOption } from '@kungal/ui-vue'
 
 const { form, categories, tags, refreshTags, readingMinute, initialBannerUrl } =
   useDocEditorContext()
 
-const categoryOptions = computed<KunSelectOption[]>(() =>
+const categoryOptions = computed(() =>
   categories.value.map((category) => ({
     label:
       KUN_DOC_CATEGORY_MAP[category.slug] ||
@@ -16,7 +15,7 @@ const categoryOptions = computed<KunSelectOption[]>(() =>
   }))
 )
 
-const statusOptions = computed<KunSelectOption[]>(() =>
+const statusOptions = computed(() =>
   KUN_DOC_STATUS_OPTIONS.map((option) => ({
     label: option.label,
     value: option.value

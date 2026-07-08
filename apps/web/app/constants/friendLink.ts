@@ -1,4 +1,3 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
 import type {
   FriendLinkCategory,
   FriendLinkStatus
@@ -14,14 +13,16 @@ export const FRIEND_LINK_CATEGORIES: {
   { key: 'others', label: '其它网站' }
 ]
 
-export const FRIEND_LINK_CATEGORY_OPTIONS: KunSelectOption[] =
-  FRIEND_LINK_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))
+export const FRIEND_LINK_CATEGORY_OPTIONS = FRIEND_LINK_CATEGORIES.map((c) => ({
+  value: c.key,
+  label: c.label
+}))
 
-export const FRIEND_LINK_STATUS_OPTIONS: KunSelectOption[] = [
+export const FRIEND_LINK_STATUS_OPTIONS = [
   { value: 'normal', label: '正常' },
   { value: 'essential', label: '精选' },
   { value: 'down', label: '已下线' }
-]
+] as const
 
 // Chip rendering for a non-normal status (normal → no chip).
 export const FRIEND_LINK_STATUS_CHIP: Record<

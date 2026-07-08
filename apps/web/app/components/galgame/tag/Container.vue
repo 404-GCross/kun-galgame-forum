@@ -22,7 +22,7 @@ const searchMode = ref<'single' | 'multi'>('single')
 const searchModeOptions = [
   { label: '单标签搜索', value: 'single' },
   { label: '多标签搜索', value: 'multi' }
-]
+] as const
 
 const displayTags = computed(() => {
   if (searchMode.value === 'single') {

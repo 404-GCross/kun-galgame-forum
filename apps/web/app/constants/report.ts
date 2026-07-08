@@ -1,13 +1,11 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
-
-export const kunReportOptions: KunSelectOption[] = [
+export const kunReportOptions = [
   { value: 'topic', label: '话题' },
   { value: 'reply', label: '回复' },
   { value: 'comment', label: '评论' },
   { value: 'user', label: '用户' },
   { value: 'galgame', label: 'Galgame' },
   { value: 'galgameComment', label: 'Galgame 评论' }
-]
+] as const
 
 export const KUN_REPORT_SECTION_MAP: Record<string, string> = {
   topic: '话题',

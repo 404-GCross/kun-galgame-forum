@@ -24,17 +24,17 @@ const emits = defineEmits<{
   submit: [data: CreateWebsitePayload | UpdateWebsitePayload]
 }>()
 
-const categoryOptions: KunSelectOption[] = Object.entries(
-  KUN_WEBSITE_CATEGORY_MAP
-).map(([value, label], index) => ({ value: index + 1, label }))
+const categoryOptions = Object.entries(KUN_WEBSITE_CATEGORY_MAP).map(
+  ([value, label], index) => ({ value: index + 1, label })
+)
 
-const languageOptions: KunSelectOption[] = Object.entries(
-  KUN_WEBSITE_LANGUAGE_MAP
-).map(([value, label]) => ({ value, label }))
+const languageOptions = Object.entries(KUN_WEBSITE_LANGUAGE_MAP).map(
+  ([value, label]) => ({ value, label })
+) as KunSelectOption<CreateWebsitePayload['language']>[]
 
-const ageLimitOptions: KunSelectOption[] = Object.entries(
-  KUN_WEBSITE_ACG_LIMIT_MAP
-).map(([value, label]) => ({ value, label }))
+const ageLimitOptions = Object.entries(KUN_WEBSITE_ACG_LIMIT_MAP).map(
+  ([value, label]) => ({ value, label })
+) as KunSelectOption<CreateWebsitePayload['age_limit']>[]
 
 const isModalOpen = computed({
   get: () => props.modelValue,

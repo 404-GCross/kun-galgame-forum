@@ -1,5 +1,3 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
-
 export const KUN_GALGAME_TOOLSET_TYPE_MAP: Record<string, string> = {
   all: '全部类型',
   emulator: '模拟器相关',
@@ -12,7 +10,7 @@ export const KUN_GALGAME_TOOLSET_TYPE_MAP: Record<string, string> = {
   docs: '文档相关',
   others: '其它'
 }
-export const kunGalgameToolsetTypeOptions: KunSelectOption[] = [
+export const kunGalgameToolsetTypeOptions = [
   { value: 'all', label: '全部类型' },
   { value: 'emulator', label: '模拟器相关' },
   { value: 'translator', label: '翻译相关' },
@@ -23,7 +21,7 @@ export const kunGalgameToolsetTypeOptions: KunSelectOption[] = [
   { value: 'script', label: '自动化脚本' },
   { value: 'docs', label: '文档相关' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_TOOLSET_TYPE_CONST = [
   'emulator',
   'translator',
@@ -45,14 +43,14 @@ export const KUN_GALGAME_TOOLSET_LANGUAGE_MAP: Record<string, string> = {
   'zh-tw': '繁体中文',
   others: '其它'
 }
-export const kunGalgameToolsetLanguageOptions: KunSelectOption[] = [
+export const kunGalgameToolsetLanguageOptions = [
   { value: 'all', label: '全部语言' },
   { value: 'ja-jp', label: '日语' },
   { value: 'en-us', label: '英语' },
   { value: 'zh-cn', label: '简体中文' },
   { value: 'zh-tw', label: '繁体中文' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_TOOLSET_LANGUAGE_CONST = [
   'ja-jp',
   'en-us',
@@ -69,14 +67,14 @@ export const KUN_GALGAME_TOOLSET_PLATFORM_MAP: Record<string, string> = {
   emulator: '模拟器',
   others: '其它'
 }
-export const kunGalgameToolsetPlatformOptions: KunSelectOption[] = [
+export const kunGalgameToolsetPlatformOptions = [
   { value: 'all', label: '全部平台' },
   { value: 'windows', label: 'Windows' },
   { value: 'mac', label: 'macOS' },
   { value: 'linux', label: 'Linux' },
   { value: 'emulator', label: '模拟器' },
   { value: 'others', label: '其它' }
-]
+] as const
 export const KUN_TOOLSET_PLATFORM_CONST = [
   'windows',
   'mac',
@@ -92,13 +90,13 @@ export const KUN_GALGAME_TOOLSET_VERSION_MAP: Record<string, string> = {
   rc: '候选版本',
   stable: '稳定版本'
 }
-export const kunGalgameToolsetVersionOptions: KunSelectOption[] = [
+export const kunGalgameToolsetVersionOptions = [
   { value: 'all', label: '全部版本' },
   { value: 'alpha', label: '内测版本' },
   { value: 'beta', label: '公测版本' },
   { value: 'rc', label: '候选版本' },
   { value: 'stable', label: '稳定版本' }
-]
+] as const
 export const KUN_TOOLSET_VERSION_CONST = [
   'alpha',
   'beta',
@@ -140,8 +138,8 @@ export const KUN_GALGAME_TOOLSET_SORT_FIELD_MAP: Record<string, string> = {
   view: '浏览数'
 }
 
-export const kunGalgameToolsetSortFieldOptions: KunSelectOption[] = [
+export const kunGalgameToolsetSortFieldOptions = [
   { value: 'resource_update_time', label: '资源更新时间' },
   { value: 'created', label: '发布时间' },
   { value: 'view', label: '浏览数' }
-]
+] as const
