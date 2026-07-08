@@ -5,9 +5,9 @@
 // uses — and renders banner + 会社 rows. Emits the picked galgame; the PARENT
 // owns the selected-list / chips UI (quiz picker, series picker).
 //
-// NOTE the endpoint currently lives under the galgame-quiz route for historical
-// reasons but is a generic lightweight galgame search (id + name + banner + 会社).
-// The @select payload shape is { id, name, banner?, thumbhash?, officials? }.
+// Backed by GET /galgame/search/picker (a generic lightweight galgame search:
+// id + name + banner + 会社). The @select payload shape is
+// { id, name, banner?, thumbhash?, officials? }.
 type GalgameSearchHit = {
   id: number
   name: string
@@ -45,10 +45,10 @@ const onSearch = async (raw: string) => {
     return
   }
   isLoading.value = true
-  const data = await kunFetch<QuizGalgameOption[]>(
-    '/galgame-quiz/galgame-search',
-    { method: 'GET', query: { keywords: kw } }
-  )
+  const data = await kunFetch<QuizGalgameOption[]>('/galgame/search/picker', {
+    method: 'GET',
+    query: { keywords: kw }
+  })
   if (seq !== searchSeq) return // superseded by a newer search — drop stale hits
   const exclude = new Set(props.excludeIds ?? [])
   options.value = (data ?? [])

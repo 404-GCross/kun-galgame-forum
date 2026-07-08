@@ -151,6 +151,11 @@ func (a *App) setupRoutes() {
 		userAuth,
 		a.GalgameSubmissionHandler.SearchWithPending,
 	)
+	// Lightweight galgame search shared by the associate-galgame pickers (出题
+	// modal + series editor) via GalgameSearchAutocomplete. Public wiki
+	// Meilisearch search; the handler lives on the quiz handler for historical
+	// reasons. Literal 3-segment path, registered before /galgame/:gid.
+	api.Get("/galgame/search/picker", a.GalgameQuizHandler.SearchGalgames)
 	// Galgame 发售月历 — proxies wiki /galgame/calendar(+pending/tba), enriched
 	// with forum-local card data. Public + SFW-default. Same registration-order
 	// rule as /galgame/mine above: the literal "calendar" segment must come
@@ -184,7 +189,6 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:name", a.GalgameEntityHandler.GetEngineDetail)
 	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
-	api.Get("/galgame-series/search", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
 	// `/galgame-resource` list — moved to optAuth below (FE list cards
 	// show the heart icon and need the viewer's per-row like state).
@@ -192,13 +196,15 @@ func (a *App) setupRoutes() {
 	// Card.vue doesn't render a like toggle, so optAuth would just be
 	// dead-weight middleware on a high-traffic list endpoint.
 	api.Get("/galgame-rating/all", a.GalgameRatingHandler.GetAllRatings)
-	// Galgame picker search for the 出题 modal. Static path registered here in
-	// the public group (before the optAuth `/galgame-quiz/:id`) so it isn't
-	// captured by the `:id` param route.
-	api.Get("/galgame-quiz/galgame-search", a.GalgameQuizHandler.SearchGalgames)
-	// Answerer records for the card 查看详情 panel (public — no per-viewer state).
+	// Answerer records for the 查看详情 panel. OptionalAuth: a viewer who has
+	// answered (or authored) this quiz also gets each answerer's submitted answer;
+	// a non-answerer gets who answered + grade only (submitted leaks the answer).
 	// 3-segment, so it never collides with the 2-segment /galgame-quiz/:id.
-	api.Get("/galgame-quiz/:id/answers", a.GalgameQuizHandler.GetQuizAnswers)
+	api.Get(
+		"/galgame-quiz/:id/answers",
+		middleware.OptionalAuth(a.Redis, a.OAuthClient),
+		a.GalgameQuizHandler.GetQuizAnswers,
+	)
 
 	// ════════════════════════════════════════════
 	// OPTIONAL AUTH routes (public but attach user if logged in)

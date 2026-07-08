@@ -11,6 +11,35 @@ const loading = ref(false)
 
 const wrong = computed(() => props.quiz.answer_count - props.quiz.correct_count)
 
+// Compact one-line rendering of an answerer's own submission. Only ever shown
+// when `rec.submitted` is present — the server omits it for viewers who haven't
+// answered, so it can't leak the correct answer. Single/multiple show the chosen
+// option letter(s) (the viewer saw the options, so A/B/C is meaningful); judge /
+// fill / essay are self-contained.
+const letter = (i: number) => String.fromCharCode(65 + i)
+const formatSubmitted = (s: QuizSubmitted): string => {
+  switch (props.quiz.type) {
+    case 'single': {
+      const v = (s as { value: number }).value
+      return typeof v === 'number' ? `选 ${letter(v)}` : ''
+    }
+    case 'multiple': {
+      const vals = (s as { values: number[] }).values ?? []
+      return vals.length ? `选 ${vals.map(letter).join('、')}` : '未选'
+    }
+    case 'judge':
+      return (s as { value: boolean }).value ? '答: 正确' : '答: 错误'
+    case 'fill': {
+      const vals = (s as { values: string[] }).values ?? []
+      return `填: ${vals.map((v) => v || '(空)').join(' / ')}`
+    }
+    case 'essay':
+      return `答: ${(s as { text: string }).text || '(空)'}`
+    default:
+      return ''
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   const data = await kunFetch<QuizAnswererRecord[]>(
@@ -115,34 +144,48 @@ onMounted(async () => {
               <div
                 v-for="(rec, i) in recordsData"
                 :key="i"
-                class="hover:bg-default-100 flex items-center gap-2 rounded-md px-1 py-1 text-sm"
+                class="hover:bg-default-100 rounded-md px-1 py-1"
               >
-                <KunAvatar
-                  :disable-floating="true"
-                  :user="rec.user"
-                  size="xs"
-                  :is-navigation="false"
-                />
-                <span class="text-default-700 min-w-0 flex-1 truncate">
-                  {{ rec.user.name }}
-                </span>
-                <KunTime :time="rec.created" class="text-default-400 text-xs" />
-                <KunChip
-                  v-if="rec.is_correct === true"
-                  color="success"
-                  variant="flat"
-                  size="sm"
+                <div class="flex items-center gap-2 text-sm">
+                  <KunAvatar
+                    :disable-floating="true"
+                    :user="rec.user"
+                    size="xs"
+                    :is-navigation="false"
+                  />
+                  <span class="text-default-700 min-w-0 flex-1 truncate">
+                    {{ rec.user.name }}
+                  </span>
+                  <KunTime
+                    :time="rec.created"
+                    class="text-default-400 text-xs"
+                  />
+                  <KunChip
+                    v-if="rec.is_correct === true"
+                    color="success"
+                    variant="flat"
+                    size="sm"
+                  >
+                    正确
+                  </KunChip>
+                  <KunChip
+                    v-else-if="rec.is_correct === false"
+                    color="danger"
+                    variant="flat"
+                    size="sm"
+                  >
+                    错误
+                  </KunChip>
+                </div>
+                <!-- Answer result, its own line — only present for a viewer who
+                     has answered (the server omits `submitted` for non-answerers,
+                     so it can never leak the correct answer). -->
+                <p
+                  v-if="rec.submitted"
+                  class="text-default-500 mt-0.5 pl-7 text-xs break-words whitespace-pre-wrap"
                 >
-                  正确
-                </KunChip>
-                <KunChip
-                  v-else-if="rec.is_correct === false"
-                  color="danger"
-                  variant="flat"
-                  size="sm"
-                >
-                  错误
-                </KunChip>
+                  {{ formatSubmitted(rec.submitted) }}
+                </p>
               </div>
             </div>
           </div>

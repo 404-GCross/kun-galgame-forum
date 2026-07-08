@@ -99,9 +99,10 @@ type GalgameQuizRow struct {
 // GalgameQuizAnswererRow is a flat projection of an answerer's outcome, for the
 // card 查看详情 panel. Identity is hydrated at the service layer.
 type GalgameQuizAnswererRow struct {
-	UserID    int    `gorm:"column:user_id"`
-	IsCorrect *bool  `gorm:"column:is_correct"`
-	Created   string `gorm:"column:created"`
+	UserID    int             `gorm:"column:user_id"`
+	Submitted json.RawMessage `gorm:"column:submitted"`
+	IsCorrect *bool           `gorm:"column:is_correct"`
+	Created   string          `gorm:"column:created"`
 }
 
 // QuizFilter carries the list-query filters to the repository. Zero-valued

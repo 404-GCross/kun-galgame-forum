@@ -72,9 +72,13 @@ type QuizEditData struct {
 
 // QuizAnswererRecord is one answerer's outcome, for the card's 查看详情 panel.
 type QuizAnswererRecord struct {
-	User      UserBrief `json:"user"`
-	IsCorrect *bool     `json:"is_correct"`
-	Created   string    `json:"created"`
+	User UserBrief `json:"user"`
+	// Submitted is the answerer's own submission — surfaced ONLY to a viewer who
+	// has themselves answered (or authored) this quiz (see GetQuizAnswers), since
+	// it would otherwise leak the correct answer. Omitted for non-engaged viewers.
+	Submitted json.RawMessage `json:"submitted,omitempty"`
+	IsCorrect *bool           `json:"is_correct"`
+	Created   string          `json:"created"`
 }
 
 // AnswerQuizRequest is the body of POST /galgame-quiz/:id/answer. `submitted`
@@ -219,7 +223,7 @@ type QuizQualityResult struct {
 	QualityRating  int     `json:"quality_rating"`
 }
 
-// QuizGalgameSearchRequest is the query for GET /galgame-quiz/galgame-search.
+// QuizGalgameSearchRequest is the query for GET /galgame/search/picker.
 type QuizGalgameSearchRequest struct {
 	Keywords string `query:"keywords" validate:"required,min=1"`
 }

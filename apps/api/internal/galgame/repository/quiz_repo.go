@@ -271,7 +271,7 @@ func (r *QuizRepository) FindViewerAnswers(quizIDs []int, userID int) map[int]Qu
 func (r *QuizRepository) FindQuizAnswerers(quizID, limit int) []model.GalgameQuizAnswererRow {
 	var rows []model.GalgameQuizAnswererRow
 	r.db.Table("galgame_quiz_answer").
-		Select("user_id, is_correct, created").
+		Select("user_id, submitted, is_correct, created").
 		Where("quiz_id = ? AND role = ?", quizID, "answerer").
 		Order("created DESC").
 		Limit(limit).

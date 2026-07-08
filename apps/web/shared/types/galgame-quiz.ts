@@ -189,5 +189,8 @@ export interface QuizEditData {
 export interface QuizAnswererRecord {
   user: KunUser
   is_correct: boolean | null
+  // The answerer's own submission — present ONLY when the viewer has answered
+  // (or authored) this quiz; the server gates it, since it reveals the answer.
+  submitted?: QuizSubmitted
   created: string | Date
 }

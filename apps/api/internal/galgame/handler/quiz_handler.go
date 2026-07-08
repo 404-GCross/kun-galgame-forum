@@ -57,7 +57,7 @@ func (h *QuizHandler) GetMyAnswered(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// SearchGalgames — GET /api/galgame-quiz/galgame-search
+// SearchGalgames — GET /api/galgame/search/picker
 // Name search for the 出题 picker, enriched with banner + 会社.
 func (h *QuizHandler) SearchGalgames(c fiber.Ctx) error {
 	var req dto.QuizGalgameSearchRequest
@@ -207,5 +207,11 @@ func (h *QuizHandler) GetQuizAnswers(c fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的题目 ID"))
 	}
-	return response.OK(c, h.quizService.GetQuizAnswers(c.Context(), id))
+	// OptionalAuth-populated viewer (nil when anonymous). The service reveals
+	// each answerer's submitted answer only to a viewer who has engaged the quiz.
+	viewerID := 0
+	if u := middleware.GetUser(c); u != nil {
+		viewerID = u.ID
+	}
+	return response.OK(c, h.quizService.GetQuizAnswers(c.Context(), id, viewerID))
 }

@@ -535,12 +535,18 @@ func (s *QuizService) GetQuizForEdit(
 const quizAnswerersLimit = 100
 
 func (s *QuizService) GetQuizAnswers(
-	ctx context.Context, quizID int,
+	ctx context.Context, quizID, viewerID int,
 ) []dto.QuizAnswererRecord {
 	rows := s.quizRepo.FindQuizAnswerers(quizID, quizAnswerersLimit)
 	if len(rows) == 0 {
 		return []dto.QuizAnswererRecord{}
 	}
+	// A submitted answer reveals the correct answer, so surface it ONLY to a
+	// viewer who has themselves engaged this quiz — answered it, or authored it
+	// (both already know the answer). A non-answerer still sees who answered +
+	// their grade, never the answers. Anonymous viewer (id 0) → no row → hidden.
+	_, viewerEngaged := s.quizRepo.FindAnswer(quizID, viewerID)
+
 	userIDs := make([]int, 0, len(rows))
 	for _, r := range rows {
 		userIDs = append(userIDs, r.UserID)
@@ -552,11 +558,15 @@ func (s *QuizService) GetQuizAnswers(
 		if !userclient.IsRenderable(u) {
 			continue
 		}
-		records = append(records, dto.QuizAnswererRecord{
+		rec := dto.QuizAnswererRecord{
 			User:      userBriefToDTO(u),
 			IsCorrect: r.IsCorrect,
 			Created:   r.Created,
-		})
+		}
+		if viewerEngaged {
+			rec.Submitted = r.Submitted
+		}
+		records = append(records, rec)
 	}
 	return records
 }
@@ -651,7 +661,7 @@ func (s *QuizService) fetchBriefsPublic(ctx context.Context, galgameIDs []int, i
 }
 
 // ──────────────────────────────────────────
-// SearchGalgameOptions — GET /galgame-quiz/galgame-search
+// SearchGalgameOptions — GET /galgame/search/picker
 // Powers the 出题 modal's galgame picker: a name search enriched with each
 // hit's banner + maker (会社) names. Soft-fails to an empty list.
 // ──────────────────────────────────────────
