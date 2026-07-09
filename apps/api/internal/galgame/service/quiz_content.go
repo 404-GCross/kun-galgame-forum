@@ -191,6 +191,55 @@ func gradeQuiz(qtype string, content, submitted json.RawMessage) (*bool, *errors
 	}
 }
 
+// quizAnswerSummary renders a short preview of what the answerer submitted, for
+// the quiz author's notification. Choice questions surface the chosen option
+// text (per the product ask); fill shows the filled text; judge/essay are
+// summarized. Best-effort — a malformed submission yields "".
+func quizAnswerSummary(qtype string, content, submitted json.RawMessage) string {
+	switch qtype {
+	case quizTypeSingle:
+		var c quizSingleContent
+		var s quizSingleSubmit
+		if json.Unmarshal(content, &c) == nil && json.Unmarshal(submitted, &s) == nil {
+			return "选择「" + quizOptionLabel(c.Options, s.Value) + "」"
+		}
+	case quizTypeMultiple:
+		var c quizMultipleContent
+		var s quizMultipleSubmit
+		if json.Unmarshal(content, &c) == nil && json.Unmarshal(submitted, &s) == nil {
+			parts := make([]string, 0, len(s.Values))
+			for _, v := range s.Values {
+				parts = append(parts, quizOptionLabel(c.Options, v))
+			}
+			return "选择「" + strings.Join(parts, "、") + "」"
+		}
+	case quizTypeJudge:
+		var s quizJudgeSubmit
+		if json.Unmarshal(submitted, &s) == nil {
+			if s.Value {
+				return "选择「正确」"
+			}
+			return "选择「错误」"
+		}
+	case quizTypeFill:
+		var s quizFillSubmit
+		if json.Unmarshal(submitted, &s) == nil {
+			return "填写「" + strings.Join(s.Values, " / ") + "」"
+		}
+	case quizTypeEssay:
+		return "提交了作答"
+	}
+	return ""
+}
+
+// quizOptionLabel renders "A. <text>" for the i-th option (out-of-range → "?").
+func quizOptionLabel(options []string, i int) string {
+	if i < 0 || i >= len(options) {
+		return "?"
+	}
+	return string(rune('A'+i)) + ". " + options[i]
+}
+
 // ──────────────────────────────────────────
 // helpers
 // ──────────────────────────────────────────

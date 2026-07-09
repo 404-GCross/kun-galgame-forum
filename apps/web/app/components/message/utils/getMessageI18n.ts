@@ -11,6 +11,7 @@ const messageTemplates: Record<string, Record<string, string>> = {
     declined: ' declined your update request!',
     admin: 'System message',
     mentioned: ' mentioned you!',
+    'quiz-answered': ' answered your quiz!',
     default: ' {{action}} you!'
   },
   'ja-jp': {
@@ -24,7 +25,8 @@ const messageTemplates: Record<string, Record<string, string>> = {
     merged: ' があなたの更新リクエストをマージしました！',
     declined: ' があなたの更新リクエストを拒否しました！',
     admin: 'システムメッセージ',
-    mentioned: ' があなたをメンションしました！'
+    mentioned: ' があなたをメンションしました！',
+    'quiz-answered': ' があなたのクイズに回答しました！'
   },
   'zh-cn': {
     upvoted: ' 推了您!',
@@ -38,7 +40,8 @@ const messageTemplates: Record<string, Record<string, string>> = {
     merged: ' 合并了您的更新请求！',
     declined: ' 拒绝了您的更新请求！',
     admin: '系统消息',
-    mentioned: ' 提到了您！'
+    mentioned: ' 提到了您！',
+    'quiz-answered': ' 回答了您的题目!'
   },
   'zh-tw': {
     upvoted: ' 推了您!',
@@ -51,7 +54,8 @@ const messageTemplates: Record<string, Record<string, string>> = {
     merged: ' 合併了您的更新請求！',
     declined: ' 拒絕了您的更新請求！',
     admin: '繫統消息',
-    mentioned: ' 提到了您！'
+    mentioned: ' 提到了您！',
+    'quiz-answered': ' 回答了您的題目!'
   }
 }
 

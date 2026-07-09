@@ -306,6 +306,17 @@ func (s *QuizService) AnswerQuiz(
 		reward = quizCorrectReward(quiz.Difficulty)
 	}
 
+	// Notify the author of this answer + verdict (choice questions include the
+	// chosen option text; essay is ungraded so it carries no verdict).
+	notifyContent := quizAnswerSummary(quiz.Type, quiz.Content, req.Submitted)
+	if grade != nil {
+		if *grade {
+			notifyContent += "，回答正确"
+		} else {
+			notifyContent += "，回答错误"
+		}
+	}
+
 	row := &model.GalgameQuizAnswer{
 		QuizID:    req.QuizID,
 		UserID:    userID,
@@ -321,6 +332,7 @@ func (s *QuizService) AnswerQuiz(
 		if err := s.quizRepo.BumpAnswerStats(tx, req.QuizID, correct); err != nil {
 			return err
 		}
+		s.helpers.CreateQuizAnswerMessage(tx, userID, quiz.UserID, notifyContent, req.QuizID)
 		if reward > 0 {
 			s.helpers.AdjustMoemoepoint(tx, userID, reward,
 				moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame_quiz_answer", row.ID))

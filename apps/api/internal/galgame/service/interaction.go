@@ -64,6 +64,36 @@ func (InteractionHelpers) CreateGalgameMessageWithContent(
 	})
 }
 
+// CreateQuizAnswerMessage notifies a quiz's author that `senderID` just answered
+// their quiz, carrying a preview of the answerer's choice + verdict. Link → the
+// quiz; dedups on (sender, receiver, "quiz-answered", link). No-op on self / no
+// receiver.
+func (InteractionHelpers) CreateQuizAnswerMessage(
+	tx *gorm.DB,
+	senderID, receiverID int,
+	content string,
+	quizID int,
+) {
+	if senderID == receiverID || receiverID <= 0 {
+		return
+	}
+	link := fmt.Sprintf("/galgame-quiz/%d", quizID)
+
+	var count int64
+	tx.Model(&msgModel.Message{}).
+		Where("sender_id = ? AND receiver_id = ? AND type = ? AND link = ?",
+			senderID, receiverID, "quiz-answered", link).
+		Count(&count)
+	if count > 0 {
+		return
+	}
+
+	tx.Create(&msgModel.Message{
+		SenderID: senderID, ReceiverID: receiverID,
+		Type: "quiz-answered", Content: content, Link: link, Status: "unread",
+	})
+}
+
 // CreateGalgameCommentMention notifies a user @-mentioned in a galgame comment,
 // deep-linked to that comment so clicking the notification lands on it:
 // ?comment=<id> is the comment to highlight, &thread=<rootID> is the thread's
@@ -96,4 +126,3 @@ func (InteractionHelpers) CreateGalgameCommentMention(
 		Type: "mentioned", Content: content, Link: link, Status: "unread",
 	})
 }
-
