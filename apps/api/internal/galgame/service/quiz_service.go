@@ -591,6 +591,12 @@ func (s *QuizService) GetQuizForEdit(
 }
 
 // ──────────────────────────────────────────
+// GetMyFavorites returns the quiz ids the viewer has favorited — for the feed
+// card's client-side favorite hydration.
+func (s *QuizService) GetMyFavorites(userID int) []int {
+	return s.quizRepo.FindFavoritedQuizIDs(userID)
+}
+
 // GetQuizAnswers — GET /galgame-quiz/:id/answers
 // The genuine answerers + their grade, for the card 查看详情 panel.
 // ──────────────────────────────────────────

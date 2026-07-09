@@ -413,6 +413,7 @@ func (a *App) setupRoutes() {
 	// Galgame quiz (答题): author / answer / rate-quality / delete + a self
 	// "answered" history. Publishing is open to anyone in MVP (no review gate).
 	authed.Get("/galgame-quiz/mine/answered", a.GalgameQuizHandler.GetMyAnswered)
+	authed.Get("/galgame-quiz/mine/favorites", a.GalgameQuizHandler.GetMyFavorites)
 	authed.Post("/galgame-quiz", a.GalgameQuizHandler.CreateQuiz)
 	authed.Delete("/galgame-quiz/:id", a.GalgameQuizHandler.DeleteQuiz)
 	authed.Post("/galgame-quiz/:id/answer", a.GalgameQuizHandler.AnswerQuiz)

@@ -203,6 +203,20 @@ func (r *QuizRepository) FindQuizFavorite(quizID, userID int) bool {
 	return count > 0
 }
 
+// FindFavoritedQuizIDs returns every quiz id the user has favorited — for the
+// feed card's client-side favorite hydration (the shared feed can't carry the
+// viewer's own state).
+func (r *QuizRepository) FindFavoritedQuizIDs(userID int) []int {
+	ids := []int{}
+	if userID == 0 {
+		return ids
+	}
+	r.db.Table("galgame_quiz_favorite").
+		Where("user_id = ?", userID).
+		Pluck("quiz_id", &ids)
+	return ids
+}
+
 // CreateQuizFavorite inserts a favorite row (created filled by the DB default).
 func (r *QuizRepository) CreateQuizFavorite(tx *gorm.DB, quizID, userID int) error {
 	return tx.Create(&model.GalgameQuizFavorite{QuizID: quizID, UserID: userID}).Error

@@ -134,6 +134,7 @@ var homeTabTypes = map[string][]string{
 		"GALGAME_RATING_COMMENT_CREATION", "GALGAME_WEBSITE_CREATION",
 		"GALGAME_WEBSITE_COMMENT_CREATION", "TOOLSET_CREATION",
 		"TOOLSET_RESOURCE_CREATION", "TOOLSET_COMMENT_CREATION",
+		"GALGAME_QUIZ_CREATION",
 	},
 	// 资源和求助 tab: newly published galgame resources + 资源/求助 topics (the
 	// sectionMode in FetchFeed scopes TOPIC_CREATION to g-seeking/g-other/t-help
@@ -399,6 +400,7 @@ func (s *ActivityService) enrichAndHydrate(ctx context.Context, rows []repositor
 	s.enrichTopicCommentItems(ctx, items)
 	s.enrichReplyItems(ctx, items)
 	s.enrichNoteItems(items)
+	s.enrichQuizItems(items)
 	s.enrichEntityRefItems(items)
 	s.enrichSolutionItems(items)
 	s.renderMarkdownBodies(items)
@@ -542,6 +544,47 @@ func (s *ActivityService) enrichNoteItems(items []dto.ActivityItem) {
 					items[i].Data = dto.NoteActivityData{Version: v}
 				}
 			}
+		}
+	}
+}
+
+// enrichQuizItems attaches the 出题 card payload (category / type / difficulty +
+// answer stats) to GALGAME_QUIZ_CREATION rows. Item.ID is the quiz id. Best-effort:
+// a query error just leaves nil Data → the generic card.
+func (s *ActivityService) enrichQuizItems(items []dto.ActivityItem) {
+	idToIdx := map[int][]int{}
+	for i, it := range items {
+		if it.Type == "GALGAME_QUIZ_CREATION" {
+			idToIdx[it.ID] = append(idToIdx[it.ID], i)
+		}
+	}
+	if len(idToIdx) == 0 {
+		return
+	}
+	ids := make([]int, 0, len(idToIdx))
+	for id := range idToIdx {
+		ids = append(ids, id)
+	}
+	metaMap, err := s.repo.FetchQuizActivityData(ids)
+	if err != nil {
+		return
+	}
+	for id, idxs := range idToIdx {
+		m, ok := metaMap[id]
+		if !ok {
+			continue
+		}
+		payload := dto.QuizActivityData{
+			Category:      m.Category,
+			Type:          m.Type,
+			Difficulty:    m.Difficulty,
+			AnswerCount:   m.AnswerCount,
+			CorrectCount:  m.CorrectCount,
+			FavoriteCount: m.FavoriteCount,
+			Description:   m.Description,
+		}
+		for _, i := range idxs {
+			items[i].Data = payload
 		}
 	}
 }

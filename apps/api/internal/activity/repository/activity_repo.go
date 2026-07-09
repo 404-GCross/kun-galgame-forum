@@ -35,6 +35,7 @@ var knownActivityTypes = map[string]struct{}{
 	"GALGAME_WEBSITE_COMMENT_CREATION": {}, "TOOLSET_CREATION": {},
 	"TOOLSET_RESOURCE_CREATION": {}, "TOOLSET_COMMENT_CREATION": {},
 	"TODO_CREATION": {}, "UPDATE_LOG_CREATION": {},
+	"GALGAME_QUIZ_CREATION": {},
 }
 
 // ──────────────────────────────────────────
@@ -591,6 +592,60 @@ func (r *ActivityRepository) FetchRatingActivityData(ratingIDs []int) (map[int]R
 			SpoilerLevel: row.SpoilerLevel,
 			LikeCount:    row.LikeCount,
 			AuthorID:     row.UserID,
+		}
+	}
+	return out, nil
+}
+
+// QuizActivity is the 出题 card's per-quiz meta (category / type / difficulty +
+// answer stats) for the feed.
+type QuizActivity struct {
+	Category      string
+	Type          string
+	Difficulty    int
+	AnswerCount   int
+	CorrectCount  int
+	FavoriteCount int
+	Description   string
+}
+
+// FetchQuizActivityData batch-loads quiz meta by galgame_quiz id for the feed's
+// 出题 card. Empty ids → empty map.
+func (r *ActivityRepository) FetchQuizActivityData(quizIDs []int) (map[int]QuizActivity, error) {
+	out := map[int]QuizActivity{}
+	if len(quizIDs) == 0 {
+		return out, nil
+	}
+	var rows []struct {
+		ID            int    `gorm:"column:id"`
+		Category      string `gorm:"column:category"`
+		Type          string `gorm:"column:type"`
+		Difficulty    int    `gorm:"column:difficulty"`
+		AnswerCount   int    `gorm:"column:answer_count"`
+		CorrectCount  int    `gorm:"column:correct_count"`
+		FavoriteCount int    `gorm:"column:favorite_count"`
+		Description   string `gorm:"column:description"`
+	}
+	// description is the markdown 题目描述, truncated to a 200-char preview (+ … when
+	// clipped) for the feed card; the FE strips the markdown to plain text.
+	if err := r.db.Raw(`
+		SELECT id, category, type, difficulty, answer_count, correct_count, favorite_count,
+			CASE WHEN CHAR_LENGTH(description) > 200
+				THEN LEFT(description, 200) || '…'
+				ELSE description END AS description
+		FROM galgame_quiz
+		WHERE id IN ?`, quizIDs).Scan(&rows).Error; err != nil {
+		return out, err
+	}
+	for _, row := range rows {
+		out[row.ID] = QuizActivity{
+			Category:      row.Category,
+			Type:          row.Type,
+			Difficulty:    row.Difficulty,
+			AnswerCount:   row.AnswerCount,
+			CorrectCount:  row.CorrectCount,
+			FavoriteCount: row.FavoriteCount,
+			Description:   row.Description,
 		}
 	}
 	return out, nil

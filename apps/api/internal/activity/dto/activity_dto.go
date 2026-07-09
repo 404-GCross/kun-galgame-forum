@@ -180,6 +180,19 @@ type EntityRefActivityData struct {
 	ParentName string `json:"parent_name"`
 }
 
+// QuizActivityData is the rich-card payload for GALGAME_QUIZ_CREATION (出题): the
+// quiz's category / type / difficulty + answer stats. The 题干 is ActivityItem.Content.
+type QuizActivityData struct {
+	Category      string `json:"category"`
+	Type          string `json:"type"`
+	Difficulty    int    `json:"difficulty"`
+	AnswerCount   int    `json:"answer_count"`
+	CorrectCount  int    `json:"correct_count"`
+	FavoriteCount int    `json:"favorite_count"`
+	// Description is the 题目描述, truncated to a 200-char markdown preview.
+	Description string `json:"description"`
+}
+
 // SolutionActivityData is the rich-card payload for MESSAGE_SOLUTION (a best
 // answer was accepted): the title of the owning topic, so the card can name it
 // and link to it. The accepted reply's preview is ActivityItem.Content.

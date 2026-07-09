@@ -10,6 +10,7 @@ export const KUN_ACTIVITY_TYPE_TYPE: Record<string, string> = {
   TOPIC_COMMENT_CREATION: '话题评论',
   GALGAME_WEBSITE_CREATION: 'Galgame 网站',
   GALGAME_RESOURCE_CREATION: 'Galgame 资源',
+  GALGAME_QUIZ_CREATION: 'Galgame 题目',
   GALGAME_EDIT: 'Galgame 编辑',
   GALGAME_PR_CREATION: '提出更新请求',
   GALGAME_COMMENT_CREATION: 'Galgame 评论',
@@ -29,6 +30,7 @@ export const KUN_ALLOWED_ACTIVITY_TYPE = [
   'GALGAME_WEBSITE_CREATION',
   'GALGAME_WEBSITE_COMMENT_CREATION',
   'GALGAME_RESOURCE_CREATION',
+  'GALGAME_QUIZ_CREATION',
   'GALGAME_EDIT',
   'GALGAME_PR_CREATION',
   'TOOLSET_CREATION',
@@ -56,6 +58,7 @@ export const KUN_ACTIVITY_GROUPS: { label: string; types: string[] }[] = [
       'GALGAME_EDIT',
       'GALGAME_PR_CREATION',
       'GALGAME_RESOURCE_CREATION',
+      'GALGAME_QUIZ_CREATION',
       'GALGAME_RATING_CREATION',
       'GALGAME_RATING_COMMENT_CREATION',
       'GALGAME_COMMENT_CREATION',
@@ -96,6 +99,7 @@ export const KUN_ACTIVITY_ICON_MAP: Record<string, string> = {
   GALGAME_WEBSITE_CREATION: 'lucide:globe',
   GALGAME_WEBSITE_COMMENT_CREATION: 'lucide:message-square-text',
   GALGAME_RESOURCE_CREATION: 'lucide:box',
+  GALGAME_QUIZ_CREATION: 'lucide:brain',
   GALGAME_EDIT: 'lucide:file-pen-line',
   GALGAME_PR_CREATION: 'lucide:git-pull-request',
   TOOLSET_CREATION: 'lucide:wrench',
@@ -169,6 +173,7 @@ export const KUN_FEED_KIND_GROUPS: { label: string; kinds: KunFeedKind[] }[] = [
         icon: 'lucide:message-square-text'
       },
       { value: 'GALGAME_RESOURCE_CREATION', label: '游戏资源', icon: 'lucide:box' },
+      { value: 'GALGAME_QUIZ_CREATION', label: '游戏题目', icon: 'lucide:brain' },
       { value: 'GALGAME_WEBSITE_CREATION', label: '网站', icon: 'lucide:globe' },
       {
         value: 'GALGAME_WEBSITE_COMMENT_CREATION',
@@ -214,6 +219,7 @@ const KUN_ALL_TAB_KINDS = [
   'TOPIC_COMMENT_CREATION',
   'TOPIC_UPVOTE',
   'MESSAGE_SOLUTION',
+  'GALGAME_QUIZ_CREATION',
   'GALGAME_RATING_CREATION',
   'GALGAME_RATING_COMMENT_CREATION',
   'GALGAME_WEBSITE_CREATION',
@@ -228,7 +234,7 @@ const KUN_ALL_TAB_KINDS = [
 // Bump when the DEFAULT tab structure changes (new / renamed / removed tabs) so
 // the settings store can force a one-time reset of stale persisted tabs (see its
 // afterHydrate). NOTE: this also resets users' CUSTOM tabs — acceptable here.
-export const KUN_FEED_TABS_VERSION = 4
+export const KUN_FEED_TABS_VERSION = 5
 
 // Default tabs. Stable ids so the ?tab= URL + the active selection survive edits.
 // The FIRST tab is the default landing tab.
@@ -253,6 +259,7 @@ export const KUN_DEFAULT_FEED_TABS: KunFeedTab[] = [
       'GALGAME_EDIT',
       'GALGAME_PR_CREATION',
       'GALGAME_COMMENT_CREATION',
+      'GALGAME_QUIZ_CREATION',
       'GALGAME_RATING_CREATION',
       'GALGAME_RATING_COMMENT_CREATION',
       'GALGAME_WEBSITE_CREATION',

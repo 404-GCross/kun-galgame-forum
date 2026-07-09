@@ -8,6 +8,7 @@ export type ActivityEventType =
   | 'GALGAME_WEBSITE_CREATION'
   | 'GALGAME_WEBSITE_COMMENT_CREATION'
   | 'GALGAME_RESOURCE_CREATION'
+  | 'GALGAME_QUIZ_CREATION'
   | 'TOOLSET_CREATION'
   | 'TOOLSET_RESOURCE_CREATION'
   | 'TOOLSET_COMMENT_CREATION'
@@ -189,6 +190,19 @@ export interface SolutionActivityData {
   floor: number
 }
 
+// Rich-card payload for GALGAME_QUIZ_CREATION (出题): the quiz's category / type /
+// difficulty + answer stats. The 题干 is in ActivityItem.content.
+export interface QuizActivityData {
+  category: string
+  type: string
+  difficulty: number
+  answer_count: number
+  correct_count: number
+  favorite_count: number
+  // The 题目描述, truncated to a 200-char markdown preview (blank when none).
+  description: string
+}
+
 // Per-type rich-card payload, discriminated by ActivityItem.type. Each card
 // casts activity.data to the shape its type carries (the dispatcher routes by
 // type, so the cast is safe). Absent for types without a rich card yet.
@@ -200,6 +214,7 @@ export type ActivityData =
   | NoteActivityData
   | EntityRefActivityData
   | SolutionActivityData
+  | QuizActivityData
 
 export interface ActivityItem {
   unique_id: string

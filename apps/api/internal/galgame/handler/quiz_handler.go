@@ -57,6 +57,15 @@ func (h *QuizHandler) GetMyAnswered(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
+// GetMyFavorites — GET /api/galgame-quiz/mine/favorites (self)
+func (h *QuizHandler) GetMyFavorites(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, fiber.Map{"favorited": h.quizService.GetMyFavorites(user.ID)})
+}
+
 // SearchGalgames — GET /api/galgame/search/picker
 // Name search for the 出题 picker, enriched with banner + 会社.
 func (h *QuizHandler) SearchGalgames(c fiber.Ctx) error {

@@ -78,5 +78,9 @@ defineProps<{ activity: ActivityItem }>()
     v-else-if="activity.type === 'MESSAGE_SOLUTION'"
     :activity="activity"
   />
+  <ActivityCardQuiz
+    v-else-if="activity.type === 'GALGAME_QUIZ_CREATION'"
+    :activity="activity"
+  />
   <ActivityCardGeneric v-else :activity="activity" />
 </template>
