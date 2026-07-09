@@ -43,12 +43,18 @@ func (r *UserStatsRepository) GetUserStats(userID int) (*model.UserStats, error)
 }
 
 // CountUnreadMessages counts 1:1 messages addressed to the user that are
-// still in the `unread` state.
-func (r *UserStatsRepository) CountUnreadMessages(userID int) (int64, error) {
+// still in the `unread` state. mutedLocal (from the user's notification
+// preferences — migration 053) excludes those message.type values from the
+// count so the red dot doesn't light for categories the user muted; the rows
+// themselves are untouched and still visible in the notification center.
+func (r *UserStatsRepository) CountUnreadMessages(userID int, mutedLocal []string) (int64, error) {
 	var count int64
-	err := r.db.Table("message").
-		Where("receiver_id = ? AND status = 'unread'", userID).
-		Count(&count).Error
+	q := r.db.Table("message").
+		Where("receiver_id = ? AND status = 'unread'", userID)
+	if len(mutedLocal) > 0 {
+		q = q.Not("type IN ?", mutedLocal)
+	}
+	err := q.Count(&count).Error
 	return count, err
 }
 

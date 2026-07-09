@@ -146,11 +146,20 @@ func (r *MessageRepository) UpsertSystemReadCursorForward(userID int, lastReadID
 // Nav summary
 // ──────────────────────────────────────────
 
-func (r *MessageRepository) GetNavSummary(userID int) ([]map[string]any, error) {
+// GetNavSummary builds the [notice, system] nav badges. localMuted/systemMuted
+// come from the caller's notification preferences (migration 053): muted
+// categories are excluded from the *unread* counts so the badges match the
+// top-bar red dot, while the total counts (and the message rows themselves) are
+// left intact — muting suppresses the badge, not the record.
+func (r *MessageRepository) GetNavSummary(userID int, localMuted []string, systemMuted bool) ([]map[string]any, error) {
 	// Notice messages
 	var noticeTotal, noticeUnread int64
 	r.db.Model(&model.Message{}).Where("receiver_id = ?", userID).Count(&noticeTotal)
-	r.db.Model(&model.Message{}).Where("receiver_id = ? AND status = 'unread'", userID).Count(&noticeUnread)
+	unreadQuery := r.db.Model(&model.Message{}).Where("receiver_id = ? AND status = 'unread'", userID)
+	if len(localMuted) > 0 {
+		unreadQuery = unreadQuery.Not("type IN ?", localMuted)
+	}
+	unreadQuery.Count(&noticeUnread)
 
 	var latestNotice model.Message
 	noticeResult := r.db.Where("receiver_id = ?", userID).Order("created DESC").First(&latestNotice)
@@ -161,8 +170,10 @@ func (r *MessageRepository) GetNavSummary(userID int) ([]map[string]any, error) 
 	// unread (matches "new user sees backlog" intent).
 	var sysTotal, sysUnread int64
 	r.db.Model(&model.SystemMessage{}).Count(&sysTotal)
-	cursor, _ := r.GetSystemReadCursor(userID)
-	r.db.Model(&model.SystemMessage{}).Where("id > ?", cursor).Count(&sysUnread)
+	if !systemMuted {
+		cursor, _ := r.GetSystemReadCursor(userID)
+		r.db.Model(&model.SystemMessage{}).Where("id > ?", cursor).Count(&sysUnread)
+	}
 
 	var latestSys model.SystemMessage
 	sysResult := r.db.Order("created DESC").First(&latestSys)
@@ -187,24 +198,24 @@ func (r *MessageRepository) GetNavSummary(userID int) ([]map[string]any, error) 
 
 	result := []map[string]any{
 		{
-			"chatroom_name":    "",
-			"content":         noticeContent,
+			"chatroom_name":     "",
+			"content":           noticeContent,
 			"last_message_time": noticeTime,
-			"count":           noticeTotal,
-			"unread_count":     noticeUnread,
-			"route":           "notice",
-			"title":           "zako~",
-			"avatar":          "",
+			"count":             noticeTotal,
+			"unread_count":      noticeUnread,
+			"route":             "notice",
+			"title":             "zako~",
+			"avatar":            "",
 		},
 		{
-			"chatroom_name":    "",
-			"content":         "",
+			"chatroom_name":     "",
+			"content":           "",
 			"last_message_time": sysTime,
-			"count":           sysTotal,
-			"unread_count":     sysUnread,
-			"route":           "system",
-			"title":           "zako~",
-			"avatar":          "",
+			"count":             sysTotal,
+			"unread_count":      sysUnread,
+			"route":             "system",
+			"title":             "zako~",
+			"avatar":            "",
 		},
 	}
 	return result, nil

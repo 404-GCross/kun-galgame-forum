@@ -51,6 +51,10 @@ func (a *App) setupRoutes() {
 	// masked the real "已签到" message with a generic "操作过于频繁" 400.
 	api.Post("/user/check-in", userAuth, a.UserHandler.CheckIn)
 	api.Get("/user/status", userAuth, a.UserHandler.GetStatus)
+	// Notification preferences (own only) — the muted-category opt-out set that
+	// suppresses the red dot / badges. Fixed path, MUST stay before /user/:id.
+	api.Get("/user/notification-preferences", userAuth, a.UserHandler.GetNotificationPreferences)
+	api.Put("/user/notification-preferences", userAuth, a.UserHandler.UpdateNotificationPreferences)
 	// Unified moemoepoint ledger (own only) — fixed path, before /user/:id.
 	api.Get("/user/moemoepoint/log", userAuth, a.UserHandler.GetMoemoepointLog)
 	// @mention autocomplete — fixed path, MUST stay before /user/:id (else

@@ -12,8 +12,17 @@ export type MessageType =
   | 'declined'
   | 'mentioned'
   | 'admin'
+  | 'quiz-answered'
 
 type MessageStatus = 'read' | 'unread'
+
+// Per-user notification preferences (BE migration 053). The opt-out set of
+// muted category keys: message.type values, the "system"/"chat" stream pseudo
+// keys, and namespaced "wiki:*" keys. Muting only suppresses the red dot /
+// unread badges — the messages themselves are still kept.
+export interface NotificationPreference {
+  muted_types: string[]
+}
 
 type MessageSortField = 'time'
 

@@ -11,5 +11,6 @@ defineProps<{
     <UserSettingUsername />
     <UserSettingEmail />
     <UserSettingPassword />
+    <UserSettingNotification />
   </div>
 </template>

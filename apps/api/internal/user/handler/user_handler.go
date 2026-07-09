@@ -77,6 +77,40 @@ func (h *UserHandler) GetStatus(c fiber.Ctx) error {
 	return response.OK(c, status)
 }
 
+// GetNotificationPreferences returns the caller's muted notification categories
+// (the opt-out set that suppresses the red dot / unread badges).
+// GET /api/user/notification-preferences
+func (h *UserHandler) GetNotificationPreferences(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	prefs, appErr := h.userService.GetNotificationPreferences(user.ID)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, prefs)
+}
+
+// UpdateNotificationPreferences replaces the caller's muted set. Unknown keys
+// are dropped server-side. Returns the sanitized set.
+// PUT /api/user/notification-preferences body {muted_types}
+func (h *UserHandler) UpdateNotificationPreferences(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	var req dto.UpdateNotificationPreferenceRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	prefs, appErr := h.userService.UpdateNotificationPreferences(user.ID, req.MutedTypes)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, prefs)
+}
+
 // GetMoemoepointLog returns the session user's unified moemoepoint ledger
 // (cursor-paginated, newest first). Scoped to the caller — there is no :id
 // param, so a user can only read their OWN ledger.

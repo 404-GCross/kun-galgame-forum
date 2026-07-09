@@ -8,6 +8,7 @@ import (
 	"time"
 
 	galgameClient "kun-galgame-api/internal/galgame/client"
+	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
@@ -171,15 +172,28 @@ func (s *UserService) GetUserStatus(ctx context.Context, userID int) (*dto.UserS
 	moe := 0
 	isCheckIn := false
 	var uploadBytes int64
+	var mutedTypes []string
 	if state, err := s.stateRepo.FindByID(userID); err == nil && state != nil {
 		moe = state.Moemoepoint
 		isCheckIn = state.DailyCheckIn == 1
 		uploadBytes = state.DailyToolsetUploadBytes
+		mutedTypes = state.MutedNotificationTypes
 	}
 
-	unreadMessage, _ := s.userStatsRepo.CountUnreadMessages(userID)
-	unreadSystem, _ := s.userStatsRepo.CountUnreadSystemMessages(userID)
-	unreadChat, _ := s.userStatsRepo.CountUnreadChatMessages(userID)
+	// Notification preferences (migration 053): muted categories don't drive the
+	// red dot. localMuted drops those message.type rows from the unread count;
+	// muting the "system"/"chat" streams zeroes their unread contribution. The
+	// rows still exist — this only governs has_new_message.
+	localMuted, systemMuted, chatMuted := msgService.SplitMuted(mutedTypes)
+
+	unreadMessage, _ := s.userStatsRepo.CountUnreadMessages(userID, localMuted)
+	var unreadSystem, unreadChat int64
+	if !systemMuted {
+		unreadSystem, _ = s.userStatsRepo.CountUnreadSystemMessages(userID)
+	}
+	if !chatMuted {
+		unreadChat, _ = s.userStatsRepo.CountUnreadChatMessages(userID)
+	}
 
 	// Live creator-role check (cached ~10min) so the avatar menu can hide the
 	// "创作者申请" entry once the role is held. A lookup miss degrades to false.
@@ -195,6 +209,30 @@ func (s *UserService) GetUserStatus(ctx context.Context, userID int) (*dto.UserS
 		DailyToolsetUploadBytes: uploadBytes,
 		IsCreator:               isCreator,
 	}, nil
+}
+
+// GetNotificationPreferences returns the caller's muted notification-category
+// set (migration 053). A missing state row (brand-new user) → empty set.
+func (s *UserService) GetNotificationPreferences(userID int) (*dto.NotificationPreferenceResponse, *errors.AppError) {
+	muted := []string{}
+	if state, err := s.stateRepo.FindByID(userID); err == nil && state != nil && len(state.MutedNotificationTypes) > 0 {
+		muted = state.MutedNotificationTypes
+	}
+	return &dto.NotificationPreferenceResponse{MutedTypes: muted}, nil
+}
+
+// UpdateNotificationPreferences replaces the caller's muted set wholesale after
+// dropping unknown/duplicate keys. Ensures the state row exists first so a
+// brand-new user's first save isn't a silent no-op.
+func (s *UserService) UpdateNotificationPreferences(userID int, keys []string) (*dto.NotificationPreferenceResponse, *errors.AppError) {
+	clean := msgService.SanitizeMutedKeys(keys)
+	if err := s.stateRepo.Ensure(userID); err != nil {
+		return nil, errors.ErrInternal("保存通知偏好失败")
+	}
+	if err := s.stateRepo.UpdateMutedTypes(userID, clean); err != nil {
+		return nil, errors.ErrInternal("保存通知偏好失败")
+	}
+	return &dto.NotificationPreferenceResponse{MutedTypes: clean}, nil
 }
 
 // ──────────────────────────────────────────

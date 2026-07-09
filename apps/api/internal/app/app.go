@@ -274,7 +274,7 @@ func New(cfg *config.Config) *App {
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
 	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, uc)
 	userContentService := service.NewUserContentService(userContentRepo, gc, uc)
-	messageSvc := msgService.NewMessageService(messageRepository, uc)
+	messageSvc := msgService.NewMessageService(messageRepository, userStateRepo, uc)
 	chatSvc := msgService.NewChatService(chatRepository, uc)
 	notifier := msgService.NewNotifier(messageRepository)
 

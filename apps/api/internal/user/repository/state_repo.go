@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 
 	"kun-galgame-api/internal/user/model"
@@ -73,6 +74,25 @@ func (r *StateRepository) CheckIn(userID int) (bool, error) {
 		return false, res.Error
 	}
 	return res.RowsAffected > 0, nil
+}
+
+// UpdateMutedTypes replaces the user's muted notification-category set. The
+// caller is responsible for validating keys against the whitelist. Written as
+// raw ?::jsonb (mirroring resource_repo.ReplaceProviderNames) so an empty set
+// clears the column reliably — a struct/column Update would skip the zero-value
+// slice. The model's serializer:json handles the read side.
+func (r *StateRepository) UpdateMutedTypes(userID int, keys []string) error {
+	if keys == nil {
+		keys = []string{}
+	}
+	data, err := json.Marshal(keys)
+	if err != nil {
+		return err
+	}
+	return r.db.Exec(
+		`UPDATE kungal_user_state SET muted_notification_types = ?::jsonb WHERE user_id = ?`,
+		string(data), userID,
+	).Error
 }
 
 // IncrementDailyCounter bumps a single daily_* column by 1; used by image /

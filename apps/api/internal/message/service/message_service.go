@@ -5,20 +5,23 @@ import (
 
 	"kun-galgame-api/internal/message/dto"
 	"kun-galgame-api/internal/message/repository"
+	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 )
 
 type MessageService struct {
 	messageRepo *repository.MessageRepository
+	stateRepo   *userRepo.StateRepository
 	userClient  *userclient.Client
 }
 
 func NewMessageService(
 	messageRepo *repository.MessageRepository,
+	stateRepo *userRepo.StateRepository,
 	userClient *userclient.Client,
 ) *MessageService {
-	return &MessageService{messageRepo: messageRepo, userClient: userClient}
+	return &MessageService{messageRepo: messageRepo, stateRepo: stateRepo, userClient: userClient}
 }
 
 func (s *MessageService) GetMessages(
@@ -120,7 +123,15 @@ func (s *MessageService) MarkAllSystemRead(ctx context.Context, userID int) *err
 }
 
 func (s *MessageService) GetNavSummary(ctx context.Context, userID int) ([]map[string]any, *errors.AppError) {
-	result, err := s.messageRepo.GetNavSummary(userID)
+	// The user's muted set (migration 053) excludes muted categories from the
+	// unread badges so they stay in sync with the top-bar red dot.
+	var localMuted []string
+	var systemMuted bool
+	if state, err := s.stateRepo.FindByID(userID); err == nil && state != nil {
+		localMuted, systemMuted, _ = SplitMuted(state.MutedNotificationTypes)
+	}
+
+	result, err := s.messageRepo.GetNavSummary(userID, localMuted, systemMuted)
 	if err != nil {
 		return nil, errors.ErrInternal("获取消息概要失败")
 	}

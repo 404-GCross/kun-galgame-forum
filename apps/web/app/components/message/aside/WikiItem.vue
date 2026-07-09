@@ -41,10 +41,29 @@ const { data: readState } = useKunFetch<ReadStateResp>(
   { server: false, lazy: true }
 )
 
+// Notification preferences (BE migration 053). Wiki is the one stream that
+// never feeds the top-bar red dot (that's server-computed from local/system/
+// chat only), so its "wiki:*" mutes are enforced here on the client instead.
+const { data: prefs } = useKunFetch<NotificationPreference>(
+  '/user/notification-preferences',
+  { server: false, lazy: true }
+)
+const mutedWikiTypes = computed(
+  () =>
+    new Set(
+      (prefs.value?.muted_types ?? [])
+        .filter((k) => k.startsWith('wiki:'))
+        .map((k) => k.slice('wiki:'.length))
+    )
+)
+
 const latest = computed(() => feed.value?.items?.[0])
 const lastReadId = computed(() => readState.value?.last_read_message_id ?? 0)
 const hasUnread = computed(() => {
   if (!latest.value) return false
+  // A muted category doesn't light the badge (matches the latest-message
+  // granularity this component already uses).
+  if (mutedWikiTypes.value.has(latest.value.type)) return false
   return latest.value.id > lastReadId.value
 })
 
