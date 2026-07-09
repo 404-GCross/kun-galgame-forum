@@ -10,13 +10,13 @@ import "strings"
 //
 //   - Local types  — the exact message.type values (upvoted/liked/…). Muting
 //     these excludes their unread rows from CountUnreadMessages / the nav badge.
-//   - Stream pseudo keys — "system" (admin broadcasts) and "chat" (private
-//     messages), enforced by zeroing their unread counts.
+//   - Stream pseudo key — "chat" (private messages), enforced by zeroing its
+//     unread count. (Official system/admin broadcasts are intentionally NOT
+//     mutable — there's no key for them.)
 //   - Wiki keys    — "wiki:*" namespaced (avoids colliding with the local
 //     "declined"). Wiki never feeds has_new_message, so it's filtered on the
 //     frontend; the server only validates + stores these.
 const (
-	KeySystem  = "system"
 	KeyChat    = "chat"
 	wikiPrefix = "wiki:"
 )
@@ -45,7 +45,6 @@ var allNotificationKeys = func() map[string]bool {
 	for _, k := range LocalNotificationTypes {
 		m[k] = true
 	}
-	m[KeySystem] = true
 	m[KeyChat] = true
 	for _, k := range WikiNotificationKeys {
 		m[k] = true
@@ -68,13 +67,11 @@ func SanitizeMutedKeys(keys []string) []string {
 }
 
 // SplitMuted classifies a (already-validated) muted set into the local
-// message.type subset and the stream flags the server enforces. Wiki keys are
-// handled on the frontend and ignored here.
-func SplitMuted(muted []string) (local []string, systemMuted, chatMuted bool) {
+// message.type subset and the chat-stream flag the server enforces. Wiki keys
+// are handled on the frontend and ignored here.
+func SplitMuted(muted []string) (local []string, chatMuted bool) {
 	for _, k := range muted {
 		switch {
-		case k == KeySystem:
-			systemMuted = true
 		case k == KeyChat:
 			chatMuted = true
 		case strings.HasPrefix(k, wikiPrefix):
@@ -83,5 +80,5 @@ func SplitMuted(muted []string) (local []string, systemMuted, chatMuted bool) {
 			local = append(local, k)
 		}
 	}
-	return local, systemMuted, chatMuted
+	return local, chatMuted
 }

@@ -146,12 +146,12 @@ func (r *MessageRepository) UpsertSystemReadCursorForward(userID int, lastReadID
 // Nav summary
 // ──────────────────────────────────────────
 
-// GetNavSummary builds the [notice, system] nav badges. localMuted/systemMuted
-// come from the caller's notification preferences (migration 053): muted
-// categories are excluded from the *unread* counts so the badges match the
-// top-bar red dot, while the total counts (and the message rows themselves) are
-// left intact — muting suppresses the badge, not the record.
-func (r *MessageRepository) GetNavSummary(userID int, localMuted []string, systemMuted bool) ([]map[string]any, error) {
+// GetNavSummary builds the [notice, system] nav badges. localMuted comes from
+// the caller's notification preferences (migration 053): muted categories are
+// excluded from the notice *unread* count so the badge matches the top-bar red
+// dot, while the total count (and the message rows themselves) are left intact —
+// muting suppresses the badge, not the record. System broadcasts are non-mutable.
+func (r *MessageRepository) GetNavSummary(userID int, localMuted []string) ([]map[string]any, error) {
 	// Notice messages
 	var noticeTotal, noticeUnread int64
 	r.db.Model(&model.Message{}).Where("receiver_id = ?", userID).Count(&noticeTotal)
@@ -170,10 +170,8 @@ func (r *MessageRepository) GetNavSummary(userID int, localMuted []string, syste
 	// unread (matches "new user sees backlog" intent).
 	var sysTotal, sysUnread int64
 	r.db.Model(&model.SystemMessage{}).Count(&sysTotal)
-	if !systemMuted {
-		cursor, _ := r.GetSystemReadCursor(userID)
-		r.db.Model(&model.SystemMessage{}).Where("id > ?", cursor).Count(&sysUnread)
-	}
+	cursor, _ := r.GetSystemReadCursor(userID)
+	r.db.Model(&model.SystemMessage{}).Where("id > ?", cursor).Count(&sysUnread)
 
 	var latestSys model.SystemMessage
 	sysResult := r.db.Order("created DESC").First(&latestSys)

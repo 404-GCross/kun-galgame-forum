@@ -182,15 +182,14 @@ func (s *UserService) GetUserStatus(ctx context.Context, userID int) (*dto.UserS
 
 	// Notification preferences (migration 053): muted categories don't drive the
 	// red dot. localMuted drops those message.type rows from the unread count;
-	// muting the "system"/"chat" streams zeroes their unread contribution. The
-	// rows still exist — this only governs has_new_message.
-	localMuted, systemMuted, chatMuted := msgService.SplitMuted(mutedTypes)
+	// muting the "chat" stream zeroes its unread contribution. Official system
+	// broadcasts are non-mutable, so they always count. The rows still exist —
+	// this only governs has_new_message.
+	localMuted, chatMuted := msgService.SplitMuted(mutedTypes)
 
 	unreadMessage, _ := s.userStatsRepo.CountUnreadMessages(userID, localMuted)
-	var unreadSystem, unreadChat int64
-	if !systemMuted {
-		unreadSystem, _ = s.userStatsRepo.CountUnreadSystemMessages(userID)
-	}
+	unreadSystem, _ := s.userStatsRepo.CountUnreadSystemMessages(userID)
+	var unreadChat int64
 	if !chatMuted {
 		unreadChat, _ = s.userStatsRepo.CountUnreadChatMessages(userID)
 	}

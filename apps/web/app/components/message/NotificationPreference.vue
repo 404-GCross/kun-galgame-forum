@@ -1,47 +1,54 @@
 <script setup lang="ts">
-// Notification-category preferences (BE migration 053). Each switch is
+// Notification-category preferences (BE migration 053), reused both in the
+// account settings page and in a modal on /message/notice. Each switch is
 // "接收该类通知" — ON = receive, OFF = mute. Muting only stops the category from
 // driving the top-bar red dot / unread badges; the messages are still kept and
-// stay visible in the notification center. The catalog keys mirror the server
-// whitelist: message.type values, the "system"/"chat" pseudo keys, and
-// namespaced "wiki:*" keys.
+// stay visible in the notification center.
+//
+// Container-agnostic: renders just the heading + tabs + switches, no outer
+// KunCard/modal frame — the host provides that. Catalog keys mirror the server
+// whitelist: message.type values, the "chat" pseudo key, and namespaced
+// "wiki:*" keys. Official system broadcasts are intentionally non-mutable, so
+// they have no switch here.
 interface CategoryItem {
   key: string
   label: string
 }
-interface CategoryGroup {
-  title: string
+interface CategoryTab {
+  value: string
+  textValue: string
+  icon: string
   items: CategoryItem[]
 }
 
-const groups: CategoryGroup[] = [
+const tabs: CategoryTab[] = [
   {
-    title: '互动',
+    value: 'interaction',
+    textValue: '互动',
+    icon: 'lucide:heart',
     items: [
       { key: 'upvoted', label: '被推荐' },
       { key: 'liked', label: '被点赞' },
-      { key: 'favorite', label: '被收藏' }
+      { key: 'favorite', label: '被收藏' },
+      { key: 'mentioned', label: '被 @ 提及' }
     ]
   },
   {
-    title: '回复与评论',
+    value: 'reply',
+    textValue: '回复评论',
+    icon: 'lucide:message-circle',
     items: [
       { key: 'replied', label: '收到回复' },
       { key: 'commented', label: '收到评论' },
       { key: 'solution', label: '回复被采纳为最佳答案' },
-      { key: 'pin-reply', label: '回复被置顶' }
+      { key: 'pin-reply', label: '回复被置顶' },
+      { key: 'quiz-answered', label: '题目被回答' }
     ]
   },
   {
-    title: '提及',
-    items: [{ key: 'mentioned', label: '被 @ 提及' }]
-  },
-  {
-    title: '题库',
-    items: [{ key: 'quiz-answered', label: '题目被回答' }]
-  },
-  {
-    title: '内容与资源审核',
+    value: 'review',
+    textValue: '内容审核',
+    icon: 'lucide:git-pull-request',
     items: [
       { key: 'requested', label: '收到更新请求' },
       { key: 'merged', label: '更新请求被合并' },
@@ -50,15 +57,15 @@ const groups: CategoryGroup[] = [
     ]
   },
   {
-    title: '系统公告',
-    items: [{ key: 'system', label: '官方系统公告' }]
-  },
-  {
-    title: '私信',
+    value: 'chat',
+    textValue: '私信',
+    icon: 'lucide:mail',
     items: [{ key: 'chat', label: '私信消息' }]
   },
   {
-    title: 'Wiki 审核反馈',
+    value: 'wiki',
+    textValue: 'Wiki',
+    icon: 'lucide:book-open',
     items: [
       { key: 'wiki:approved', label: 'Wiki 编辑通过' },
       { key: 'wiki:declined', label: 'Wiki 编辑被拒' },
@@ -68,7 +75,20 @@ const groups: CategoryGroup[] = [
   }
 ]
 
-const allKeys = groups.flatMap((g) => g.items.map((i) => i.key))
+const tabItems = tabs.map(({ value, textValue, icon }) => ({
+  value,
+  textValue,
+  icon
+}))
+const activeTab = ref('interaction')
+
+// Items of the currently-selected tab (mirrors Resource.vue's activeBucket):
+// render a single list rather than v-show-ing every panel.
+const activeItems = computed(
+  () => tabs.find((t) => t.value === activeTab.value)?.items ?? []
+)
+
+const allKeys = tabs.flatMap((t) => t.items.map((i) => i.key))
 
 // enabled[key] === true → receiving (not muted). Defaults to true.
 const enabled = reactive<Record<string, boolean>>(
@@ -139,7 +159,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <KunCard :is-hoverable="false" content-class="space-y-4">
+  <div class="space-y-4">
     <div>
       <span class="text-xl">消息通知</span>
       <p class="text-default-500 text-sm">
@@ -147,22 +167,31 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div v-for="group in groups" :key="group.title" class="space-y-2">
-      <span class="text-default-600 text-sm font-medium">{{ group.title }}</span>
-      <div class="divide-default-100 divide-y">
-        <div
-          v-for="item in group.items"
-          :key="item.key"
-          class="flex items-center justify-between py-2"
-        >
-          <span class="text-default-700 text-sm">{{ item.label }}</span>
-          <KunSwitch
-            :model-value="enabled[item.key] ?? true"
-            :disabled="isLoading"
-            @update:model-value="(v: boolean) => onToggle(item.key, v)"
-          />
-        </div>
+    <!-- Wrap the tab strip so it scrolls (with edge fades) instead of
+         overflowing on narrow / mobile viewports. -->
+    <KunScrollShadow axis="horizontal" shadow-size="2rem">
+      <KunTab
+        v-model="activeTab"
+        :items="tabItems"
+        variant="underlined"
+        color="primary"
+        size="sm"
+      />
+    </KunScrollShadow>
+
+    <div class="divide-default-100 divide-y">
+      <div
+        v-for="item in activeItems"
+        :key="item.key"
+        class="flex items-center justify-between py-2"
+      >
+        <span class="text-default-700 text-sm">{{ item.label }}</span>
+        <KunSwitch
+          :model-value="enabled[item.key] ?? true"
+          :disabled="isLoading"
+          @update:model-value="(v: boolean) => onToggle(item.key, v)"
+        />
       </div>
     </div>
-  </KunCard>
+  </div>
 </template>

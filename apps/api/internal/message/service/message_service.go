@@ -124,14 +124,15 @@ func (s *MessageService) MarkAllSystemRead(ctx context.Context, userID int) *err
 
 func (s *MessageService) GetNavSummary(ctx context.Context, userID int) ([]map[string]any, *errors.AppError) {
 	// The user's muted set (migration 053) excludes muted categories from the
-	// unread badges so they stay in sync with the top-bar red dot.
+	// unread badges so they stay in sync with the top-bar red dot. Only the
+	// local message.type mutes matter here (system is non-mutable; chat isn't
+	// part of this summary).
 	var localMuted []string
-	var systemMuted bool
 	if state, err := s.stateRepo.FindByID(userID); err == nil && state != nil {
-		localMuted, systemMuted, _ = SplitMuted(state.MutedNotificationTypes)
+		localMuted, _ = SplitMuted(state.MutedNotificationTypes)
 	}
 
-	result, err := s.messageRepo.GetNavSummary(userID, localMuted, systemMuted)
+	result, err := s.messageRepo.GetNavSummary(userID, localMuted)
 	if err != nil {
 		return nil, errors.ErrInternal("获取消息概要失败")
 	}
