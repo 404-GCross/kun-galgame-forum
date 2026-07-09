@@ -85,31 +85,55 @@ const applyMuted = (muted: string[]) => {
 
 const collectMuted = () => allKeys.filter((key) => !enabled[key])
 
-const onToggle = async (key: string, value: boolean) => {
-  const previous = enabled[key] ?? true
-  enabled[key] = value
-
-  const result = await kunFetch<NotificationPreference>(
-    '/user/notification-preferences',
-    { method: 'PUT', body: { muted_types: collectMuted() } }
-  )
-
-  if (result?.muted_types) {
-    // Trust the sanitized set the server echoes back.
-    applyMuted(result.muted_types)
-  } else {
-    enabled[key] = previous
-    useMessage('保存失败，请稍后重试', 'error')
-  }
-}
-
-onMounted(async () => {
+// Fetch the authoritative muted set and apply it locally.
+const load = async () => {
   const result = await kunFetch<NotificationPreference>(
     '/user/notification-preferences'
   )
   if (result?.muted_types) {
     applyMuted(result.muted_types)
   }
+}
+
+// Persist the current desired state. One request is kept in flight and rapid
+// toggles are coalesced (queued) so the last state always wins — concurrent
+// PUTs can't overwrite each other out of order. Each PUT sends the full set, so
+// on failure we re-sync from the server rather than track per-toggle rollbacks.
+const isSaving = ref(false)
+let queued = false
+
+const persist = async () => {
+  if (isSaving.value) {
+    queued = true
+    return
+  }
+  isSaving.value = true
+  try {
+    do {
+      queued = false
+      const result = await kunFetch<NotificationPreference>(
+        '/user/notification-preferences',
+        { method: 'PUT', body: { muted_types: collectMuted() } }
+      )
+      if (!result) {
+        throw new Error('save failed')
+      }
+    } while (queued)
+  } catch {
+    useMessage('保存失败，请稍后重试', 'error')
+    await load()
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const onToggle = (key: string, value: boolean) => {
+  enabled[key] = value
+  void persist()
+}
+
+onMounted(async () => {
+  await load()
   isLoading.value = false
 })
 </script>
