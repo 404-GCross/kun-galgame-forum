@@ -6,6 +6,32 @@
 const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
 const expanded = ref(false)
+const bodyRef = ref<HTMLElement | null>(null)
+// 查看详情 expand/collapse. The panel is always rendered but clipped to a 6rem
+// peek; expanding animates max-height to the content's REAL height and then
+// releases the cap (max-height:none) on transitionend, so tall detail (many
+// linked games + a long records list) is never clipped and the page scrolls past
+// it. Collapsing pins the height, then animates back down to the peek. (The old
+// fixed 48rem cap clipped taller quizzes with no scroll.)
+const maxHeight = ref('6rem')
+const expand = () => {
+  const el = bodyRef.value
+  maxHeight.value = el ? `${el.scrollHeight}px` : 'none'
+  expanded.value = true
+}
+const collapse = () => {
+  const el = bodyRef.value
+  if (el) maxHeight.value = `${el.scrollHeight}px`
+  expanded.value = false
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      maxHeight.value = '6rem'
+    })
+  )
+}
+const onTransitionEnd = (e: TransitionEvent) => {
+  if (e.propertyName === 'max-height' && expanded.value) maxHeight.value = 'none'
+}
 const recordsData = ref<QuizAnswererRecord[] | null>(null)
 const loading = ref(false)
 
@@ -54,8 +80,10 @@ onMounted(async () => {
   <div class="space-y-1">
     <div class="relative">
       <div
+        ref="bodyRef"
         class="overflow-hidden transition-[max-height] duration-300"
-        :style="{ maxHeight: expanded ? '48rem' : '6rem' }"
+        :style="{ maxHeight }"
+        @transitionend="onTransitionEnd"
       >
         <div class="space-y-4">
           <!-- linked galgames (or a "revealed after answering" hint) -->
@@ -202,7 +230,11 @@ onMounted(async () => {
     </div>
 
     <div class="flex justify-end">
-      <KunButton variant="light" size="sm" @click="expanded = !expanded">
+      <KunButton
+        variant="light"
+        size="sm"
+        @click="expanded ? collapse() : expand()"
+      >
         <span class="flex items-center gap-1">
           <KunIcon
             :name="expanded ? 'lucide:chevron-up' : 'lucide:chevron-down'"
