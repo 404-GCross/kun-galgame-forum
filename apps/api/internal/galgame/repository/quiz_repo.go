@@ -22,7 +22,8 @@ func (r *QuizRepository) DB() *gorm.DB { return r.db }
 // heavy `content` JSONB (cards never expose the payload).
 const quizCardColumns = `q.id, q.user_id, q.category, q.spoiler_level,
 	q.type, q.difficulty, q.question, q.view, q.answer_count, q.correct_count,
-	q.favorite_count, q.quality_sum, q.quality_count, q.created, q.updated`
+	q.favorite_count, q.quality_sum, q.quality_count, q.status_update_time,
+	q.created, q.updated`
 
 // ──────────────────────────────────────────
 // Reads
@@ -87,6 +88,8 @@ func (r *QuizRepository) ListPaginated(f model.QuizFilter) ([]model.GalgameQuizR
 		orderCol = "q.difficulty"
 	case "answer_count":
 		orderCol = "q.answer_count"
+	case "update_time":
+		orderCol = "q.status_update_time"
 	}
 
 	var rows []model.GalgameQuizRow
@@ -142,6 +145,8 @@ func (r *QuizRepository) CreateAnswer(tx *gorm.DB, a *model.GalgameQuizAnswer) e
 func (r *QuizRepository) BumpAnswerStats(tx *gorm.DB, quizID int, correct bool) error {
 	fields := map[string]any{
 		"answer_count": gorm.Expr("answer_count + 1"),
+		// A new answer counts as activity → bump the last-activity time.
+		"status_update_time": gorm.Expr("now()"),
 	}
 	if correct {
 		fields["correct_count"] = gorm.Expr("correct_count + 1")

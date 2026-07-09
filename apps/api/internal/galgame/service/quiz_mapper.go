@@ -33,15 +33,16 @@ func quizStats(view, answerCount, correctCount, favoriteCount, qualitySum, quali
 // games are not shown on cards, and may be hidden until answered anyway).
 func quizRowToCard(r model.GalgameQuizRow, user userclient.User) dto.QuizCard {
 	return dto.QuizCard{
-		ID:           r.ID,
-		User:         userBriefToDTO(user),
-		Category:     r.Category,
-		SpoilerLevel: r.SpoilerLevel,
-		Type:         r.Type,
-		Difficulty:   r.Difficulty,
-		Question:     r.Question,
-		QuizStats:    quizStats(r.View, r.AnswerCount, r.CorrectCount, r.FavoriteCount, r.QualitySum, r.QualityCount),
-		Created:      r.Created,
-		Updated:      r.Updated,
+		ID:               r.ID,
+		User:             userBriefToDTO(user),
+		Category:         r.Category,
+		SpoilerLevel:     r.SpoilerLevel,
+		Type:             r.Type,
+		Difficulty:       r.Difficulty,
+		Question:         r.Question,
+		QuizStats:        quizStats(r.View, r.AnswerCount, r.CorrectCount, r.FavoriteCount, r.QualitySum, r.QualityCount),
+		StatusUpdateTime: r.StatusUpdateTime,
+		Created:          r.Created,
+		Updated:          r.Updated,
 	}
 }

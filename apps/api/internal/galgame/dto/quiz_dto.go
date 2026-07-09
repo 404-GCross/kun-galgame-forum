@@ -151,6 +151,8 @@ type QuizCard struct {
 	QuizStats              // embedded view/answer/correct/quality
 	Created      string    `json:"created"`
 	Updated      string    `json:"updated"`
+	// Last-activity time (bumped on answer / author edit) — the list's 最近活跃 sort.
+	StatusUpdateTime string `json:"status_update_time"`
 	// The viewer's own status on this quiz:
 	// author | correct | incorrect | answered | unanswered.
 	MyStatus string `json:"my_status"`

@@ -72,7 +72,7 @@ const correctRate = (q: GalgameQuizCard) =>
             />
             {{ quiz.user.name }}
           </span>
-          <KunTime :time="quiz.created" />
+          <KunTime :time="quiz.status_update_time" />
           <span class="flex items-center gap-1">
             <KunIcon :name="KUN_QUIZ_TYPE_ICON_MAP[quiz.type]" />
             {{ KUN_QUIZ_TYPE_MAP[quiz.type] }}

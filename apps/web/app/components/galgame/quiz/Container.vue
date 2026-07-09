@@ -14,7 +14,7 @@ const tab = ref<'all' | 'mine'>('all')
 const params = reactive({
   page: 1,
   limit: 50,
-  sort_field: 'time',
+  sort_field: 'update_time',
   sort_order: 'desc',
   category: 'all',
   type: 'all',

@@ -33,8 +33,12 @@ type GalgameQuiz struct {
 	QualitySum    int `gorm:"column:quality_sum;default:0" json:"quality_sum"`
 	QualityCount  int `gorm:"column:quality_count;default:0" json:"quality_count"`
 
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
+	// StatusUpdateTime is the last-activity time (mirrors topic): defaults to
+	// created, bumped when a user answers or the author edits — drives the 题库
+	// list's "最近活跃" sort.
+	StatusUpdateTime time.Time `gorm:"column:status_update_time;default:now()" json:"status_update_time"`
+	CreatedAt        time.Time `gorm:"column:created" json:"created"`
+	UpdatedAt        time.Time `gorm:"column:updated" json:"updated"`
 }
 
 func (GalgameQuiz) TableName() string { return "galgame_quiz" }
@@ -79,21 +83,22 @@ func (GalgameQuizFavorite) TableName() string { return "galgame_quiz_favorite" }
 // `content` — cards never expose the payload). Identity + linked-game briefs
 // are hydrated at the service layer.
 type GalgameQuizRow struct {
-	ID            int    `gorm:"column:id"`
-	UserID        int    `gorm:"column:user_id"`
-	Category      string `gorm:"column:category"`
-	SpoilerLevel  string `gorm:"column:spoiler_level"`
-	Type          string `gorm:"column:type"`
-	Difficulty    int    `gorm:"column:difficulty"`
-	Question      string `gorm:"column:question"`
-	View          int    `gorm:"column:view"`
-	AnswerCount   int    `gorm:"column:answer_count"`
-	CorrectCount  int    `gorm:"column:correct_count"`
-	FavoriteCount int    `gorm:"column:favorite_count"`
-	QualitySum    int    `gorm:"column:quality_sum"`
-	QualityCount  int    `gorm:"column:quality_count"`
-	Created       string `gorm:"column:created"`
-	Updated       string `gorm:"column:updated"`
+	ID               int    `gorm:"column:id"`
+	UserID           int    `gorm:"column:user_id"`
+	Category         string `gorm:"column:category"`
+	SpoilerLevel     string `gorm:"column:spoiler_level"`
+	Type             string `gorm:"column:type"`
+	Difficulty       int    `gorm:"column:difficulty"`
+	Question         string `gorm:"column:question"`
+	View             int    `gorm:"column:view"`
+	AnswerCount      int    `gorm:"column:answer_count"`
+	CorrectCount     int    `gorm:"column:correct_count"`
+	FavoriteCount    int    `gorm:"column:favorite_count"`
+	QualitySum       int    `gorm:"column:quality_sum"`
+	QualityCount     int    `gorm:"column:quality_count"`
+	StatusUpdateTime string `gorm:"column:status_update_time"`
+	Created          string `gorm:"column:created"`
+	Updated          string `gorm:"column:updated"`
 }
 
 // GalgameQuizAnswererRow is a flat projection of an answerer's outcome, for the

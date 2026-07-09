@@ -41,6 +41,7 @@ export const quizDifficultyOptions = [
 ]
 
 export const quizSortFieldOptions = [
+  { value: 'update_time', label: '最近活跃' },
   { value: 'time', label: '最新' },
   { value: 'view_1d', label: '日浏览数' },
   { value: 'view_7d', label: '周浏览数' },

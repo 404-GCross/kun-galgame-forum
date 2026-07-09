@@ -88,6 +88,7 @@ export const KUN_QUIZ_CATEGORY_MAP: Record<string, string> = {
 }
 
 export const KUN_QUIZ_SORT_FIELD_CONST = [
+  'update_time',
   'time',
   'view',
   'view_1d',

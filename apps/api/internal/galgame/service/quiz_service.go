@@ -233,6 +233,8 @@ func (s *QuizService) CreateQuiz(
 		Content:      req.Content,
 		Explanation:  req.Explanation,
 		HideGalgame:  req.HideGalgame,
+		// Seed last-activity = creation time (bumped later on answer / edit).
+		StatusUpdateTime: time.Now(),
 	}
 	reward := quizCreateReward(req.Difficulty)
 
@@ -485,6 +487,8 @@ func (s *QuizService) UpdateQuiz(
 		"content":       req.Content,
 		"explanation":   req.Explanation,
 		"hide_galgame":  req.HideGalgame,
+		// An author edit counts as activity → bump the last-activity time.
+		"status_update_time": gorm.Expr("now()"),
 	}
 	// Point the local model at the NEW key/difficulty so the regrade grades and
 	// rewards against what was just saved (UpdateQuizFields writes from `fields`).

@@ -5,10 +5,13 @@
 -- it is never NSFW-dropped by the feed's galgame enrichment. content = the 题干.
 -- Idempotent (reuses the shared feed_upsert / feed_delete helpers).
 
+-- NOTE galgame_quiz.id is BIGINT (unlike the other feed sources' INT ids), so
+-- NEW.id / OLD.id must be cast to integer or the feed_upsert/feed_delete calls
+-- (INT source_id params) fail to resolve ("function does not exist").
 CREATE OR REPLACE FUNCTION feed_sync_galgame_quiz() RETURNS trigger AS $$
 BEGIN
-    IF TG_OP = 'DELETE' THEN PERFORM feed_delete('GALGAME_QUIZ_CREATION', OLD.id); RETURN OLD; END IF;
-    PERFORM feed_upsert('GALGAME_QUIZ_CREATION', NEW.id, NEW.user_id, 0, NEW.question, '/galgame-quiz/' || NEW.id, false, NEW.created);
+    IF TG_OP = 'DELETE' THEN PERFORM feed_delete('GALGAME_QUIZ_CREATION', OLD.id::integer); RETURN OLD; END IF;
+    PERFORM feed_upsert('GALGAME_QUIZ_CREATION', NEW.id::integer, NEW.user_id, 0, NEW.question, '/galgame-quiz/' || NEW.id, false, NEW.created);
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 

@@ -59,6 +59,8 @@ export interface GalgameQuizCard extends QuizStats {
   question: string
   created: string | Date
   updated: string | Date
+  // Last-activity time (bumped on answer / author edit) — the list's 最近活跃 sort.
+  status_update_time: string | Date
   my_status: QuizMyStatus
 }
 
