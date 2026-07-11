@@ -41,6 +41,27 @@ func (h *MessageHandler) GetMessages(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
+// GetMutedMessages returns messages of muted categories (the "已静音的消息"
+// view). Optional ?type= narrows to a single currently-muted category.
+// GET /api/message/muted
+func (h *MessageHandler) GetMutedMessages(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	var req dto.ListMessagesRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	result, appErr := h.messageService.GetMutedMessages(c.Context(), user.ID, &req)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, result)
+}
+
 // DeleteMessage deletes a single notification message.
 // DELETE /api/message/:id
 func (h *MessageHandler) DeleteMessage(c fiber.Ctx) error {

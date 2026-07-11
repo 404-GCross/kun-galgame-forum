@@ -329,6 +329,7 @@ func (a *App) setupRoutes() {
 
 	// Message (authenticated)
 	authed.Get("/message", a.MessageHandler.GetMessages)
+	authed.Get("/message/muted", a.MessageHandler.GetMutedMessages)
 	authed.Delete("/message/:id", a.MessageHandler.DeleteMessage)
 	authed.Put("/message/system/read", a.MessageHandler.MarkAllRead)
 	authed.Get("/message/admin", a.MessageHandler.GetSystemMessages)

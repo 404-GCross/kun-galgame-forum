@@ -43,6 +43,8 @@ const contact = computed(
 
     <MessageAsideSystemItem v-if="system" title="通知" :data="system[0]!" />
 
+    <MessageAsideMutedItem />
+
     <MessageAsideSystemItem v-if="system" title="系统消息" :data="system[1]!">
       <template #system>
         <span v-if="!system[1]!.unread_count" class="zako">杂鱼~♡</span>

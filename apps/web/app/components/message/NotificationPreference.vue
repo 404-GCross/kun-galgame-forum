@@ -10,70 +10,9 @@
 // whitelist: message.type values, the "chat" pseudo key, and namespaced
 // "wiki:*" keys. Official system broadcasts are intentionally non-mutable, so
 // they have no switch here.
-interface CategoryItem {
-  key: string
-  label: string
-}
-interface CategoryTab {
-  value: string
-  textValue: string
-  icon: string
-  items: CategoryItem[]
-}
+import { notificationCategoryGroups } from '~/constants/notification'
 
-const tabs: CategoryTab[] = [
-  {
-    value: 'interaction',
-    textValue: '互动',
-    icon: 'lucide:heart',
-    items: [
-      { key: 'upvoted', label: '被推荐' },
-      { key: 'liked', label: '被点赞' },
-      { key: 'favorite', label: '被收藏' },
-      { key: 'mentioned', label: '被 @ 提及' }
-    ]
-  },
-  {
-    value: 'reply',
-    textValue: '回复评论',
-    icon: 'lucide:message-circle',
-    items: [
-      { key: 'replied', label: '收到回复' },
-      { key: 'commented', label: '收到评论' },
-      { key: 'solution', label: '回复被采纳为最佳答案' },
-      { key: 'pin-reply', label: '回复被置顶' },
-      { key: 'quiz-answered', label: '题目被回答' }
-    ]
-  },
-  {
-    value: 'review',
-    textValue: '内容审核',
-    icon: 'lucide:git-pull-request',
-    items: [
-      { key: 'requested', label: '收到更新请求' },
-      { key: 'merged', label: '更新请求被合并' },
-      { key: 'declined', label: '更新请求被拒绝' },
-      { key: 'expired', label: '资源链接被报告过期' }
-    ]
-  },
-  {
-    value: 'chat',
-    textValue: '私信',
-    icon: 'lucide:mail',
-    items: [{ key: 'chat', label: '私信消息' }]
-  },
-  {
-    value: 'wiki',
-    textValue: 'Wiki',
-    icon: 'lucide:book-open',
-    items: [
-      { key: 'wiki:approved', label: 'Wiki 编辑通过' },
-      { key: 'wiki:declined', label: 'Wiki 编辑被拒' },
-      { key: 'wiki:banned', label: 'Wiki 被封禁' },
-      { key: 'wiki:unbanned', label: 'Wiki 被解封' }
-    ]
-  }
-]
+const tabs = notificationCategoryGroups
 
 const tabItems = tabs.map(({ value, textValue, icon }) => ({
   value,

@@ -35,9 +35,13 @@ type MessageRow struct {
 	CreatedAt  string
 }
 
+// FindMessages lists a user's notifications. onlyTypes restricts to those
+// message.type values (the muted view); excludeTypes drops them (the notice
+// view excludes muted categories — migration 053). At most one is set.
 func (r *MessageRepository) FindMessages(
 	receiverID int,
-	msgType, sortOrder string,
+	excludeTypes, onlyTypes []string,
+	sortOrder string,
 	page, limit int,
 ) ([]MessageRow, int64, error) {
 	var rows []MessageRow
@@ -48,8 +52,11 @@ func (r *MessageRepository) FindMessages(
 			m.receiver_id, m.link, m.content, m.status, m.type, m.created AS created_at`).
 		Where("m.receiver_id = ?", receiverID)
 
-	if msgType != "" {
-		query = query.Where("m.type = ?", msgType)
+	if len(onlyTypes) > 0 {
+		query = query.Where("m.type IN ?", onlyTypes)
+	}
+	if len(excludeTypes) > 0 {
+		query = query.Where("m.type NOT IN ?", excludeTypes)
 	}
 
 	query.Count(&total)
@@ -152,17 +159,22 @@ func (r *MessageRepository) UpsertSystemReadCursorForward(userID int, lastReadID
 // dot, while the total count (and the message rows themselves) are left intact —
 // muting suppresses the badge, not the record. System broadcasts are non-mutable.
 func (r *MessageRepository) GetNavSummary(userID int, localMuted []string) ([]map[string]any, error) {
-	// Notice messages
-	var noticeTotal, noticeUnread int64
-	r.db.Model(&model.Message{}).Where("receiver_id = ?", userID).Count(&noticeTotal)
-	unreadQuery := r.db.Model(&model.Message{}).Where("receiver_id = ? AND status = 'unread'", userID)
-	if len(localMuted) > 0 {
-		unreadQuery = unreadQuery.Not("type IN ?", localMuted)
+	// Notice messages — muted categories are excluded across the board (they
+	// live in the separate muted view now), so total / unread / preview all
+	// skip them and this badge matches the muted-free notice list.
+	noticeBase := func() *gorm.DB {
+		q := r.db.Model(&model.Message{}).Where("receiver_id = ?", userID)
+		if len(localMuted) > 0 {
+			q = q.Not("type IN ?", localMuted)
+		}
+		return q
 	}
-	unreadQuery.Count(&noticeUnread)
+	var noticeTotal, noticeUnread int64
+	noticeBase().Count(&noticeTotal)
+	noticeBase().Where("status = 'unread'").Count(&noticeUnread)
 
 	var latestNotice model.Message
-	noticeResult := r.db.Where("receiver_id = ?", userID).Order("created DESC").First(&latestNotice)
+	noticeResult := noticeBase().Order("created DESC").First(&latestNotice)
 
 	// System messages — unread is computed against the user's HWM cursor
 	// (see migration 012). A missing cursor row means the user has never

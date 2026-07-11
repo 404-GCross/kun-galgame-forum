@@ -19,7 +19,9 @@ onMounted(() => (messageStatus.value = 'online'))
 </script>
 
 <template>
-  <div class="flex h-[calc(100dvh-120px)] flex-row">
+  <div class="flex h-[calc(100dvh-120px)] flex-row sm:gap-4">
+    <!-- sm:gap-4 keeps the content off the aside's divider on desktop; on mobile
+         only one pane shows, so the gap is a no-op there. -->
     <MessageAsideContainer />
     <NuxtPage :transition="false" />
   </div>
