@@ -62,7 +62,9 @@ func (r *ReplyRepository) FindRepliesPaginated(
 	var rows []ReplyRow
 	query := r.db.Table("topic_reply").
 		Select(`topic_reply.*`).
-		Where("topic_reply.topic_id = ?", topicID)
+		Where("topic_reply.topic_id = ?", topicID).
+		// Exclude moderation-hidden replies (T&S `hide`, migration 055).
+		Where("topic_reply.status = ?", 0)
 
 	if len(excludeIDs) > 0 {
 		query = query.Where("topic_reply.id NOT IN ?", excludeIDs)
@@ -127,6 +129,7 @@ func (r *ReplyRepository) FindRepliesByIDs(ids []int) ([]ReplyRow, error) {
 	err := r.db.Table("topic_reply").
 		Select(`topic_reply.*`).
 		Where("topic_reply.id IN ?", ids).
+		Where("topic_reply.status = ?", 0).
 		Find(&rows).Error
 	return rows, err
 }
@@ -179,6 +182,13 @@ func (r *ReplyRepository) DeleteRepliesByIDs(tx *gorm.DB, ids []int) error {
 	tx.Where("topic_reply_id IN ?", ids).Delete(&model.TopicReplyDislike{})
 
 	return tx.Where("id IN ?", ids).Delete(&model.TopicReply{}).Error
+}
+
+// SetStatus flips a reply's moderation status (0=normal, 1=hidden), used by the
+// T&S enforcement dispatcher (migration 055). Idempotent; a missing row is a
+// no-op (0 rows affected).
+func (r *ReplyRepository) SetStatus(id, status int) error {
+	return r.db.Model(&model.TopicReply{}).Where("id = ?", id).Update("status", status).Error
 }
 
 // CountReplyRelated returns counts used for moemoepoint penalty calculation.

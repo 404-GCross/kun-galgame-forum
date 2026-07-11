@@ -134,10 +134,12 @@ func createDedupMessage(tx *gorm.DB, senderID, receiverID int, msgType, content,
 // cascade delete that removes a reply plus its nested replies and their
 // comments in a single statement. Call it inside the SAME tx as the mutation.
 func recomputeTopicCounts(tx *gorm.DB, topicID int) error {
+	// status = 0 excludes moderation-hidden rows from the visible counts
+	// (T&S `hide`, migration 055).
 	return tx.Exec(`
 		UPDATE topic SET
-			reply_count   = (SELECT COUNT(*) FROM topic_reply  WHERE topic_id = ?),
-			comment_count = (SELECT COUNT(*) FROM topic_comment WHERE topic_id = ?)
+			reply_count   = (SELECT COUNT(*) FROM topic_reply  WHERE topic_id = ? AND status = 0),
+			comment_count = (SELECT COUNT(*) FROM topic_comment WHERE topic_id = ? AND status = 0)
 		WHERE id = ?`, topicID, topicID, topicID).Error
 }
 

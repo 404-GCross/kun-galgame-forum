@@ -14,22 +14,22 @@ import "time"
 // column trips a constraint violation even when the row already
 // exists. GORM auto-populates these by field-name convention.
 type GalgameLocal struct {
-	ID               int       `gorm:"primaryKey" json:"id"`
-	View             int       `gorm:"default:0" json:"view"`
-	LikeCount        int       `gorm:"column:like_count;default:0" json:"like_count"`
-	FavoriteCount    int       `gorm:"column:favorite_count;default:0" json:"favorite_count"`
-	ResourceCount    int       `gorm:"column:resource_count;default:0" json:"resource_count"`
-	CommentCount     int       `gorm:"column:comment_count;default:0" json:"comment_count"`
-	ContributorCount int       `gorm:"column:contributor_count;default:0" json:"contributor_count"`
-	RatingCount      int       `gorm:"column:rating_count;default:0" json:"rating_count"`
+	ID               int `gorm:"primaryKey" json:"id"`
+	View             int `gorm:"default:0" json:"view"`
+	LikeCount        int `gorm:"column:like_count;default:0" json:"like_count"`
+	FavoriteCount    int `gorm:"column:favorite_count;default:0" json:"favorite_count"`
+	ResourceCount    int `gorm:"column:resource_count;default:0" json:"resource_count"`
+	CommentCount     int `gorm:"column:comment_count;default:0" json:"comment_count"`
+	ContributorCount int `gorm:"column:contributor_count;default:0" json:"contributor_count"`
+	RatingCount      int `gorm:"column:rating_count;default:0" json:"rating_count"`
 	// Mirror of wiki's release_date (migration 013), so the local browse
 	// list can filter/sort by release year/month — kungal's /galgame
 	// doesn't proxy wiki's list. Nullable: NULL = unknown / not yet
 	// backfilled. Populated by cmd/backfill-release-date (idempotent).
 	// The lazy-create stub leaves it nil → NULL until a backfill run.
-	ReleaseDate      *time.Time `gorm:"column:release_date" json:"release_date"`
-	CreatedAt        time.Time  `gorm:"column:created" json:"created"`
-	UpdatedAt        time.Time  `gorm:"column:updated" json:"updated"`
+	ReleaseDate *time.Time `gorm:"column:release_date" json:"release_date"`
+	CreatedAt   time.Time  `gorm:"column:created" json:"created"`
+	UpdatedAt   time.Time  `gorm:"column:updated" json:"updated"`
 	// ResourceUpdateTime is the dedicated content-update sort key (migration
 	// 018), separate from the generic audit `updated`. autoCreateTime means GORM
 	// sets it once on the lazy-create stub and NEVER bumps it on a plain
@@ -72,10 +72,10 @@ func (GalgameFavorite) TableName() string { return "galgame_favorite" }
 // ──────────────────────────────────────────
 
 type GalgameComment struct {
-	ID           int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content      string `gorm:"type:varchar(5000);not null" json:"content"`
-	GalgameID    int    `gorm:"column:galgame_id;not null" json:"galgame_id"`
-	UserID       int    `gorm:"column:user_id;not null" json:"user_id"`
+	ID        int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Content   string `gorm:"type:varchar(5000);not null" json:"content"`
+	GalgameID int    `gorm:"column:galgame_id;not null" json:"galgame_id"`
+	UserID    int    `gorm:"column:user_id;not null" json:"user_id"`
 	// ParentCommentID: direct reply parent. NULL = top-level (root)
 	// comment. Self-referencing FK with ON DELETE CASCADE; deleting a
 	// parent removes all descendants.
@@ -90,6 +90,9 @@ type GalgameComment struct {
 	// endpoint. Nil = never edited. Distinct from `updated`, which
 	// ticks on any row-level write (e.g. like_count bumps).
 	Edited *time.Time `gorm:"column:edited" json:"edited"`
+
+	// Status: 0=normal, 1=hidden by a T&S `hide` enforcement (migration 055).
+	Status int `gorm:"column:status;default:0" json:"-"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`

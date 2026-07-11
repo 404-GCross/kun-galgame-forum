@@ -139,6 +139,10 @@ type TopicReply struct {
 	UserID  int `gorm:"column:user_id;not null" json:"user_id"`
 	TopicID int `gorm:"column:topic_id;not null" json:"topic_id"`
 
+	// Status mirrors topic's convention (0=normal, 1=hidden) — set by a T&S
+	// `hide` enforcement (migration 055). Hidden rows are filtered at render.
+	Status int `gorm:"column:status;default:0" json:"-"`
+
 	// Counts (denormalized)
 	LikeCount    int `gorm:"column:like_count;default:0" json:"like_count"`
 	DislikeCount int `gorm:"column:dislike_count;default:0" json:"dislike_count"`
@@ -220,6 +224,9 @@ type TopicComment struct {
 	// Edited is set only when the author rewrites the content (PUT), so the
 	// UI can show "(编辑于 …)". nil = never edited. See migration 014.
 	Edited *time.Time `gorm:"column:edited" json:"edited"`
+
+	// Status: 0=normal, 1=hidden by a T&S `hide` enforcement (migration 055).
+	Status int `gorm:"column:status;default:0" json:"-"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`

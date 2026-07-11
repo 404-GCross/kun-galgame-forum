@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 
 	activityHandler "kun-galgame-api/internal/activity/handler"
@@ -51,6 +52,7 @@ import (
 	topicHandler "kun-galgame-api/internal/topic/handler"
 	topicRepo "kun-galgame-api/internal/topic/repository"
 	topicService "kun-galgame-api/internal/topic/service"
+	"kun-galgame-api/internal/trust/enforce"
 	trustHandler "kun-galgame-api/internal/trust/handler"
 	trustService "kun-galgame-api/internal/trust/service"
 	updateHandler "kun-galgame-api/internal/update/handler"
@@ -395,6 +397,70 @@ func New(cfg *config.Config) *App {
 		fileStorageClient, uc, toolsetPracticalitySvc, toolsetCommentSvc,
 	)
 
+	// Trust & Safety enforcement adapters — the "thin adapter" half of the
+	// pipeline: each subject_kind wires hide/remove/author-lookup to existing
+	// services/repos. galgame + user are ABSENT (human-only: galgame moderation
+	// is wiki-side, user bans are IdP-side), so their callbacks no-op locally.
+	trustRegistry := enforce.Registry{
+		"forum_topic": {
+			// No hard delete exists for topics → hide == remove (status=1).
+			Hide: func(_ context.Context, id int) error {
+				return topicRepository.UpdateFields(id, map[string]any{"status": 1})
+			},
+			Remove: func(_ context.Context, id int) error {
+				return topicRepository.UpdateFields(id, map[string]any{"status": 1})
+			},
+			AuthorID: func(_ context.Context, id int) (int, error) {
+				t, err := topicRepository.FindByID(id)
+				if err != nil {
+					return 0, nil
+				}
+				return t.UserID, nil
+			},
+		},
+		"forum_reply": {
+			Hide:   func(_ context.Context, id int) error { return replyRepository.SetStatus(id, 1) },
+			Remove: func(_ context.Context, id int) error { return replySvc.ModerationRemove(id) },
+			AuthorID: func(_ context.Context, id int) (int, error) {
+				r, err := replyRepository.FindByID(id)
+				if err != nil {
+					return 0, nil
+				}
+				return r.UserID, nil
+			},
+		},
+		"forum_comment": {
+			Hide:   func(_ context.Context, id int) error { return topicCommentRepo.SetStatus(id, 1) },
+			Remove: func(_ context.Context, id int) error { return commentSvc.ModerationRemove(id) },
+			AuthorID: func(_ context.Context, id int) (int, error) {
+				c, err := topicCommentRepo.FindCommentByID(id)
+				if err != nil {
+					return 0, nil
+				}
+				return c.UserID, nil
+			},
+		},
+		"galgame_comment": {
+			Hide: func(_ context.Context, id int) error { return galgameCommentRepo.SetStatus(id, 1) },
+			Remove: func(_ context.Context, id int) error {
+				if appErr := galgameCommentSvc.DeleteComment(0, true, id); appErr != nil {
+					return appErr
+				}
+				return nil
+			},
+			AuthorID: func(_ context.Context, id int) (int, error) {
+				c, err := galgameCommentRepo.FindByID(id)
+				if err != nil {
+					return 0, nil
+				}
+				return c.UserID, nil
+			},
+		},
+	}
+	// warn_user is record-only for now (no system-sender user for a targeted
+	// notice) — pass nil; the dispatcher no-ops warn gracefully.
+	trustEnforce := enforce.NewService(db, trustRegistry, nil)
+
 	// Handlers
 	app := &App{
 		DB: db, Redis: rdb, S3: s3Client, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
@@ -424,7 +490,7 @@ func New(cfg *config.Config) *App {
 		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
 		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
-		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli)),
+		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli), trustEnforce, cfg.Trust.CallbackSecret),
 		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),

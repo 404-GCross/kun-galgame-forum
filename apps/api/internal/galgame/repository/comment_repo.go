@@ -63,7 +63,7 @@ const commentSelect = `gc.id, gc.content, gc.galgame_id, gc.user_id,
 func (r *CommentRepository) CountByGalgame(galgameID int) int64 {
 	var total int64
 	r.db.Model(&model.GalgameComment{}).
-		Where("galgame_id = ?", galgameID).
+		Where("galgame_id = ? AND status = 0", galgameID).
 		Count(&total)
 	return total
 }
@@ -73,7 +73,7 @@ func (r *CommentRepository) CountByGalgame(galgameID int) int64 {
 func (r *CommentRepository) CountRootsByGalgame(galgameID int) int64 {
 	var total int64
 	r.db.Model(&model.GalgameComment{}).
-		Where("galgame_id = ? AND parent_comment_id IS NULL", galgameID).
+		Where("galgame_id = ? AND parent_comment_id IS NULL AND status = 0", galgameID).
 		Count(&total)
 	return total
 }
@@ -88,7 +88,7 @@ func (r *CommentRepository) FindRootsPaginated(galgameID, page, limit int, sortO
 	var rows []CommentRow
 	r.db.Table("galgame_comment gc").
 		Select(commentSelect).
-		Where("gc.galgame_id = ? AND gc.parent_comment_id IS NULL", galgameID).
+		Where("gc.galgame_id = ? AND gc.parent_comment_id IS NULL AND gc.status = 0", galgameID).
 		Order("gc.created " + sortOrder).
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&rows)
@@ -123,7 +123,7 @@ func (r *CommentRepository) FindLatestDescendantsByRoots(rootIDs []int, perRoot 
 			           ORDER BY gc.created DESC
 			       ) AS rn
 			FROM galgame_comment gc
-			WHERE gc.root_comment_id IN ?
+			WHERE gc.root_comment_id IN ? AND gc.status = 0
 		) sub
 		WHERE rn <= ?
 		ORDER BY root_comment_id, created_at ASC
@@ -145,7 +145,7 @@ func (r *CommentRepository) CountDescendantsByRoots(rootIDs []int) map[int]int {
 	}
 	r.db.Table("galgame_comment").
 		Select("root_comment_id, COUNT(*) AS count").
-		Where("root_comment_id IN ?", rootIDs).
+		Where("root_comment_id IN ? AND status = 0", rootIDs).
 		Group("root_comment_id").
 		Scan(&rows)
 	out := make(map[int]int, len(rows))
@@ -166,10 +166,16 @@ func (r *CommentRepository) FindThreadByRoot(rootID int) []CommentRow {
 	var rows []CommentRow
 	r.db.Table("galgame_comment gc").
 		Select(commentSelect).
-		Where("gc.id = ? OR gc.root_comment_id = ?", rootID, rootID).
+		Where("(gc.id = ? OR gc.root_comment_id = ?) AND gc.status = 0", rootID, rootID).
 		Order("gc.created ASC").
 		Find(&rows)
 	return rows
+}
+
+// SetStatus flips a galgame comment's moderation status (0=normal, 1=hidden),
+// used by the T&S enforcement dispatcher (migration 055). Idempotent.
+func (r *CommentRepository) SetStatus(id, status int) error {
+	return r.db.Model(&model.GalgameComment{}).Where("id = ?", id).Update("status", status).Error
 }
 
 // FindByID returns a comment by its primary key.

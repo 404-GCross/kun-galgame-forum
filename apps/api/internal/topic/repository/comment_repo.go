@@ -57,6 +57,8 @@ func (r *CommentRepository) FindCommentsByReplyIDs(replyIDs []int) (map[int][]Co
 			(SELECT COUNT(*) FROM topic_comment_like WHERE topic_comment_id = tc.id) AS like_count,
 			tc.created AS created_at, tc.edited`).
 		Where("tc.topic_reply_id IN ?", replyIDs).
+		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
+		Where("tc.status = ?", 0).
 		Order("tc.created ASC").
 		Find(&rows).Error
 	if err != nil {
@@ -134,4 +136,10 @@ func (r *CommentRepository) DeleteCommentLikesForComment(tx *gorm.DB, commentID 
 // DeleteCommentByID removes a single TopicComment row by primary key.
 func (r *CommentRepository) DeleteCommentByID(tx *gorm.DB, commentID int) error {
 	return tx.Delete(&model.TopicComment{}, commentID).Error
+}
+
+// SetStatus flips a comment's moderation status (0=normal, 1=hidden), used by
+// the T&S enforcement dispatcher (migration 055). Idempotent.
+func (r *CommentRepository) SetStatus(id, status int) error {
+	return r.db.Model(&model.TopicComment{}).Where("id = ?", id).Update("status", status).Error
 }

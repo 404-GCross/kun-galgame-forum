@@ -328,6 +328,23 @@ func (s *ReplyService) DeleteReply(
 	return nil
 }
 
+// ModerationRemove hard-deletes a reply for a T&S `remove` enforcement — no
+// permission check (the disposition is already authorized) and NO moemoepoint
+// penalty (unlike DeleteReply, which can even abort on insufficient author
+// points). Idempotent: a missing reply is a no-op.
+func (s *ReplyService) ModerationRemove(replyID int) error {
+	reply, err := s.replyRepo.FindByID(replyID)
+	if err != nil {
+		return nil
+	}
+	return s.replyRepo.DB().Transaction(func(tx *gorm.DB) error {
+		if err := s.replyRepo.DeleteRepliesByIDs(tx, []int{replyID}); err != nil {
+			return err
+		}
+		return recomputeTopicCounts(tx, reply.TopicID)
+	})
+}
+
 // ──────────────────────────────────────────
 // Reply interactions
 // ──────────────────────────────────────────

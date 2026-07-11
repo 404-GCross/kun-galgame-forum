@@ -34,6 +34,10 @@ func (a *App) setupRoutes() {
 
 	api.Get("/home", a.HomeHandler.GetHome)
 
+	// Trust & Safety enforcement callback (PUBLIC — authenticated by the HMAC
+	// X-Trust-Signature over the raw body, not a session). Idempotent.
+	api.Post("/trust/callback", a.TrustHandler.Callback)
+
 	// Auth (public). Identity changes (password / email / username / bio /
 	// avatar) all live in the OAuth admin UI now — kungal owns nothing
 	// that needs an /auth/* email-code flow.

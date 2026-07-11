@@ -274,3 +274,21 @@ func (s *CommentService) DeleteComment(ctx context.Context, userID int, canModer
 	}
 	return nil
 }
+
+// ModerationRemove hard-deletes a topic comment for a T&S `remove` enforcement
+// — no permission check, no moemoepoint penalty. Idempotent.
+func (s *CommentService) ModerationRemove(commentID int) error {
+	comment, err := s.commentRepo.FindCommentByID(commentID)
+	if err != nil {
+		return nil
+	}
+	return s.replyRepo.DB().Transaction(func(tx *gorm.DB) error {
+		if err := s.commentRepo.DeleteCommentLikesForComment(tx, commentID); err != nil {
+			return err
+		}
+		if err := s.commentRepo.DeleteCommentByID(tx, commentID); err != nil {
+			return err
+		}
+		return recomputeTopicCounts(tx, comment.TopicID)
+	})
+}
