@@ -490,7 +490,7 @@ func New(cfg *config.Config) *App {
 		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
 		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
-		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli), trustEnforce, cfg.Trust.CallbackSecret),
+		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
 		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),

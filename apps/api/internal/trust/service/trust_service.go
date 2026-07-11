@@ -2,7 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	stderrors "errors"
+	"net/http"
+	"net/url"
+	"strconv"
 
 	"kun-galgame-api/internal/trust"
 	"kun-galgame-api/internal/trust/dto"
@@ -10,14 +14,85 @@ import (
 	"kun-galgame-api/pkg/trustclient"
 )
 
-// TrustService is the BFF façade over the infra Trust & Safety client. Phase 1
-// is a thin, generic report forwarder — no per-content-type logic lives here.
+// TrustService is the BFF façade over the infra Trust & Safety client: the
+// generic report forwarder (Phase 1) and the moderator-inbox proxy (Phase 3).
 type TrustService struct {
 	trust *trustclient.Client
+	site  string // kungal's catalog_site, to scope the inbox
 }
 
-func NewTrustService(trust *trustclient.Client) *TrustService {
-	return &TrustService{trust: trust}
+func NewTrustService(trust *trustclient.Client, site string) *TrustService {
+	return &TrustService{trust: trust, site: site}
+}
+
+// mapAdminErr turns a trustclient AdminError into a kungal AppError, preserving
+// the meaningful statuses (409 claim conflict / illegal transition, 400 bad
+// decision, 403 missing permission).
+func mapAdminErr(err error) *errors.AppError {
+	if stderrors.Is(err, trustclient.ErrNotConfigured) {
+		return errors.ErrInternal("审核服务暂未启用")
+	}
+	var ae *trustclient.AdminError
+	if stderrors.As(err, &ae) {
+		switch ae.Status {
+		case http.StatusConflict:
+			return errors.New(errors.CodeBiz, "该条目状态已变化，请刷新后重试", 409)
+		case http.StatusBadRequest:
+			return errors.ErrBadRequest("处置参数无效")
+		case http.StatusForbidden:
+			return errors.ErrForbidden("你没有审核权限")
+		case http.StatusUnauthorized:
+			return errors.ErrUnauthorized("登录已失效")
+		case http.StatusNotFound:
+			return errors.ErrNotFound("未找到该审核条目")
+		}
+	}
+	return errors.ErrInternal("审核服务请求失败")
+}
+
+// ListReviewItems proxies the inbox, forcing site=kungal so a kungal moderator
+// only sees kungal's items.
+func (s *TrustService) ListReviewItems(
+	ctx context.Context, token string, req *dto.ListReviewItemsRequest,
+) (json.RawMessage, *errors.AppError) {
+	q := url.Values{}
+	if s.site != "" {
+		q.Set("site", s.site)
+	}
+	q.Set("status", strconv.Itoa(req.Status))
+	q.Set("source", strconv.Itoa(req.Source))
+	q.Set("page", strconv.Itoa(req.Page))
+	q.Set("limit", strconv.Itoa(req.Limit))
+
+	data, err := s.trust.ListReviewItems(ctx, token, q)
+	if err != nil {
+		return nil, mapAdminErr(err)
+	}
+	return data, nil
+}
+
+func (s *TrustService) GetReviewItem(ctx context.Context, token string, id int64) (json.RawMessage, *errors.AppError) {
+	data, err := s.trust.GetReviewItem(ctx, token, id)
+	if err != nil {
+		return nil, mapAdminErr(err)
+	}
+	return data, nil
+}
+
+func (s *TrustService) ClaimReviewItem(ctx context.Context, token string, id int64) (json.RawMessage, *errors.AppError) {
+	data, err := s.trust.ClaimReviewItem(ctx, token, id)
+	if err != nil {
+		return nil, mapAdminErr(err)
+	}
+	return data, nil
+}
+
+func (s *TrustService) DecideReviewItem(ctx context.Context, token string, id int64, body []byte) (json.RawMessage, *errors.AppError) {
+	data, err := s.trust.DecideReviewItem(ctx, token, id, body)
+	if err != nil {
+		return nil, mapAdminErr(err)
+	}
+	return data, nil
 }
 
 // Reasons returns the report-reason catalog for the browser dropdown.

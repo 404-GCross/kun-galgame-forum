@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/middleware"
@@ -88,4 +89,65 @@ func (h *TrustHandler) Callback(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrInternal("处置执行失败"))
 	}
 	return response.OK(c, fiber.Map{"ok": true})
+}
+
+// ─────────────────────────────────────────────
+// Moderator inbox proxy (Phase 3) — RequireModerator-gated. Forwards the
+// moderator's OAuth token to the trust admin API; site is forced to kungal.
+// ─────────────────────────────────────────────
+
+// ListReviewItems — GET /api/admin/trust/review-items
+func (h *TrustHandler) ListReviewItems(c fiber.Ctx) error {
+	req := &dto.ListReviewItemsRequest{
+		Status: fiber.Query(c, "status", -1),
+		Source: fiber.Query(c, "source", -1),
+		Page:   max(fiber.Query(c, "page", 1), 1),
+		Limit:  min(max(fiber.Query(c, "limit", 30), 1), 200),
+	}
+	data, appErr := h.trustService.ListReviewItems(c.Context(), middleware.GetAccessToken(c), req)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, data)
+}
+
+// GetReviewItem — GET /api/admin/trust/review-items/:id
+func (h *TrustHandler) GetReviewItem(c fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的条目 ID"))
+	}
+	data, appErr := h.trustService.GetReviewItem(c.Context(), middleware.GetAccessToken(c), id)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, data)
+}
+
+// ClaimReviewItem — POST /api/admin/trust/review-items/:id/claim
+func (h *TrustHandler) ClaimReviewItem(c fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的条目 ID"))
+	}
+	data, appErr := h.trustService.ClaimReviewItem(c.Context(), middleware.GetAccessToken(c), id)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, data)
+}
+
+// DecideReviewItem — POST /api/admin/trust/review-items/:id/decide
+// The body (DecideRequest) is forwarded to the trust service verbatim, which
+// owns its validation.
+func (h *TrustHandler) DecideReviewItem(c fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的条目 ID"))
+	}
+	data, appErr := h.trustService.DecideReviewItem(c.Context(), middleware.GetAccessToken(c), id, c.Body())
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, data)
 }

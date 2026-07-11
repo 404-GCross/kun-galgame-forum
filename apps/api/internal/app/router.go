@@ -543,6 +543,14 @@ func (a *App) setupRoutes() {
 	// (per docs/galgame_wiki/06-admin.md + 08-messages.md); we mirror the
 	// gate locally and forward via ProxyWriteWithToken so the wiki sees
 	// the calling admin's identity for the revision/message side effects.
+	// Trust & Safety moderator inbox (proxied to the trust admin API with the
+	// moderator's own token; site forced to kungal).
+	trustAdmin := authed.Group("", middleware.RequireModerator())
+	trustAdmin.Get("/admin/trust/review-items", a.TrustHandler.ListReviewItems)
+	trustAdmin.Get("/admin/trust/review-items/:id", a.TrustHandler.GetReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/claim", a.TrustHandler.ClaimReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/decide", a.TrustHandler.DecideReviewItem)
+
 	galgameAdmin := authed.Group("", middleware.RequireModerator())
 	galgameAdmin.Get("/admin/galgame/messages", a.GalgameMessageHandler.AdminMessages)
 	galgameAdmin.Put(

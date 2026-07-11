@@ -18,6 +18,15 @@ type SubmitReportResponse struct {
 	ReportID int64 `json:"report_id"`
 }
 
+// ListReviewItemsRequest is the moderator-inbox query (populated from query
+// params in the handler). Status/Source of -1 = no filter.
+type ListReviewItemsRequest struct {
+	Status int
+	Source int
+	Page   int
+	Limit  int
+}
+
 // TrustCallback is the enforcement callback body posted by the trust dispatch
 // worker (must match the trust service's callbackBody). disposition_id is the
 // idempotency key.

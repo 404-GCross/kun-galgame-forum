@@ -33,6 +33,11 @@ type Config struct {
 type TrustConfig struct {
 	BaseURL        string // trust service base, e.g. http://127.0.0.1:9283
 	CallbackSecret string // HMAC secret shared with the trust subject-kind registry
+	// Site is kungal's catalog_site key. Used ONLY to scope the moderator inbox
+	// proxy (Phase 3) so kungal moderators see kungal's review items, not other
+	// sites'. Must match the oauth_clients.catalog_site binding; a wrong value
+	// yields an empty (but safe) inbox.
+	Site string
 }
 
 // ArtifactClientConfig holds the credentials kungal uses to call the centralized
@@ -251,6 +256,7 @@ func Load() (*Config, error) {
 		Trust: TrustConfig{
 			BaseURL:        envOrDefault("KUN_TRUST_BASE_URL", "http://127.0.0.1:9283"),
 			CallbackSecret: envOrDefault("KUN_TRUST_CALLBACK_SECRET", ""),
+			Site:           envOrDefault("KUN_TRUST_SITE", "kungal"),
 		},
 	}, nil
 }

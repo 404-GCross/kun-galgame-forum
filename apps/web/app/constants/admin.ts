@@ -54,6 +54,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'overview',
   'user',
   'submissions',
+  'moderation',
   'friend-link',
   'doc',
   'setting'
@@ -86,6 +87,12 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     label: 'Galgame 审核',
     icon: 'lucide:clipboard-check',
     router: 'submissions'
+  },
+  {
+    name: 'moderation',
+    label: '内容审核',
+    icon: 'lucide:shield-alert',
+    router: 'moderation'
   },
   {
     name: 'friend-link',
