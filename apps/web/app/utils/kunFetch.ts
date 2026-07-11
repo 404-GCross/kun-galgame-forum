@@ -34,8 +34,8 @@ const CODE_BANNED = 234
 // a logged-out user instead of a dead-end toast. Mirrors the "您需要登录…" set
 // in app/error/kunMessage.ts.
 const LOGIN_REQUIRED_CODES = new Set([
-  10115, 10142, 10146, 10216, 10220, 10228, 10232, 10235, 10237, 10240, 10249,
-  10529, 10532, 10546
+  10115, 10146, 10216, 10220, 10228, 10232, 10235, 10237, 10240, 10249, 10529,
+  10532, 10546
 ])
 
 // Forward a SMALL ALLOWLIST of cookies to the Go backend during SSR — never

@@ -244,18 +244,6 @@ const handleMarkValid = async () => {
           重新标记有效
         </KunButton>
 
-        <KunTooltip v-if="!isOwner" text="举报违规">
-          <KunButton
-            :is-icon-only="true"
-            color="danger"
-            variant="light"
-            size="sm"
-            href="/report"
-          >
-            <KunIcon name="lucide:triangle-alert" />
-          </KunButton>
-        </KunTooltip>
-
         <KunButton
           size="sm"
           :color="isExpired ? 'warning' : 'primary'"

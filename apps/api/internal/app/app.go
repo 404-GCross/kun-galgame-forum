@@ -37,8 +37,6 @@ import (
 	rankingHandler "kun-galgame-api/internal/ranking/handler"
 	rankingRepo "kun-galgame-api/internal/ranking/repository"
 	rankingService "kun-galgame-api/internal/ranking/service"
-	reportHandler "kun-galgame-api/internal/report/handler"
-	reportRepo "kun-galgame-api/internal/report/repository"
 	rssHandler "kun-galgame-api/internal/rss/handler"
 	rssRepo "kun-galgame-api/internal/rss/repository"
 	searchHandler "kun-galgame-api/internal/search/handler"
@@ -112,7 +110,6 @@ type App struct {
 	WebsiteTagHandler          *websiteHandler.TagHandler
 	UpdateHandler              *updateHandler.UpdateHandler
 	FriendLinkHandler          *friendHandler.FriendLinkHandler
-	ReportHandler              *reportHandler.ReportHandler
 	RSSHandler                 *rssHandler.RSSHandler
 	GalgameHandler             *galgameHandler.GalgameHandler
 	GalgameCollectionHandler   *galgameHandler.GalgameCollectionHandler
@@ -408,7 +405,6 @@ func New(cfg *config.Config) *App {
 		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
 		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
-		ReportHandler:            reportHandler.NewReportHandler(reportRepo.NewReportRepository(db)),
 		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),

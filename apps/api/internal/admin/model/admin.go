@@ -2,19 +2,6 @@ package model
 
 import "time"
 
-// Report is a user-submitted report/complaint.
-type Report struct {
-	ID     int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Reason string `gorm:"type:varchar(1007);not null" json:"reason"`
-	Type   string `gorm:"default:''" json:"type"`
-	Status int    `gorm:"default:0" json:"status"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (Report) TableName() string { return "report" }
-
 // UpdateLog records system update changelogs with multi-language content.
 type UpdateLog struct {
 	ID            int    `gorm:"primaryKey;autoIncrement" json:"id"`

@@ -354,9 +354,6 @@ func (a *App) setupRoutes() {
 	// the hash to a covers[] or screenshots[] row on the next PUT/PR.
 	authed.Post("/image/galgame", a.ImageHandler.UploadGalgameImage)
 
-	// Report (authenticated)
-	authed.Post("/report/submit", a.ReportHandler.SubmitReport)
-
 	// Website interactions (authenticated)
 	authed.Put("/website/:domain/like", a.WebsiteHandler.ToggleLike)
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)
