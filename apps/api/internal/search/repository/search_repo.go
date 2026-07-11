@@ -140,7 +140,9 @@ func (r *SearchRepository) SearchReplies(keywords []string, page, limit int) (ro
 		Select(`r.id, r.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
 			SUBSTRING(COALESCE(r.content, ''), 1, 233) AS content, r.floor,
 			r.user_id, r.created`).
-		Joins("LEFT JOIN topic t ON t.id = r.topic_id")
+		Joins("LEFT JOIN topic t ON t.id = r.topic_id").
+		// Exclude moderation-hidden replies (T&S `hide`, migration 055).
+		Where("r.status = 0")
 	for _, kw := range keywords {
 		query = query.Where("r.content ILIKE ?", "%"+kw+"%")
 	}
@@ -159,7 +161,9 @@ func (r *SearchRepository) SearchComments(keywords []string, page, limit int) (r
 		Select(`c.id, c.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
 			SUBSTRING(c.content, 1, 233) AS content,
 			c.user_id, c.created`).
-		Joins("LEFT JOIN topic t ON t.id = c.topic_id")
+		Joins("LEFT JOIN topic t ON t.id = c.topic_id").
+		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
+		Where("c.status = 0")
 	for _, kw := range keywords {
 		query = query.Where("c.content ILIKE ?", "%"+kw+"%")
 	}

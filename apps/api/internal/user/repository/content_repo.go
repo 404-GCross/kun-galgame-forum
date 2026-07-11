@@ -41,13 +41,13 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 	case "galgame_comment":
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
-			Where("galgame_comment.user_id = ?", userID).
+			Where("galgame_comment.user_id = ? AND galgame_comment.status = 0", userID).
 			Group("galgame.id")
 	case "galgame_comment_like":
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
 			Joins("JOIN galgame_comment_like ON galgame_comment_like.galgame_comment_id = galgame_comment.id").
-			Where("galgame_comment_like.user_id = ?", userID).
+			Where("galgame_comment_like.user_id = ? AND galgame_comment.status = 0", userID).
 			Group("galgame.id")
 	default:
 		return []int{}, 0, nil
@@ -116,7 +116,9 @@ func (r *UserContentRepository) FindUserGalgameComments(
 	var total int64
 
 	baseQuery := r.db.Table("galgame_comment").
-		Select("galgame_comment.id, galgame_comment.galgame_id, galgame_comment.content, galgame_comment.user_id, galgame_comment.created")
+		Select("galgame_comment.id, galgame_comment.galgame_id, galgame_comment.content, galgame_comment.user_id, galgame_comment.created").
+		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
+		Where("galgame_comment.status = 0")
 
 	switch queryType {
 	case "galgame_comment":
@@ -218,7 +220,9 @@ func (r *UserContentRepository) FindUserReplies(userID int, queryType string, pa
 		Select(`topic_reply.topic_id,
 			topic_reply.floor,
 			COALESCE(topic_reply.content, '') AS content,
-			topic_reply.created`)
+			topic_reply.created`).
+		// Exclude moderation-hidden replies (T&S `hide`, migration 055).
+		Where("topic_reply.status = 0")
 
 	switch queryType {
 	case "reply_target":
@@ -264,7 +268,9 @@ func (r *UserContentRepository) FindUserComments(userID int, queryType string, p
 	var total int64
 
 	baseQuery := r.db.Table("topic_comment").
-		Select("topic_comment.id, topic_comment.topic_id, topic_comment.content, topic_comment.created")
+		Select("topic_comment.id, topic_comment.topic_id, topic_comment.content, topic_comment.created").
+		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
+		Where("topic_comment.status = 0")
 
 	switch queryType {
 	case "comment_target":

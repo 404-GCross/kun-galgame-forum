@@ -883,10 +883,10 @@ func (r *ActivityRepository) FetchTopicLatestActivity(ids []int) (map[int]Latest
 	if err := r.db.Raw(`
 		SELECT DISTINCT ON (topic_id) topic_id, kind, id, floor, content, user_id, created FROM (
 			SELECT topic_id, 'reply' AS kind, id, floor, SUBSTRING(content, 1, 200) AS content, user_id, created
-				FROM topic_reply WHERE topic_id IN ?
+				FROM topic_reply WHERE topic_id IN ? AND status = 0
 			UNION ALL
 			SELECT topic_id, 'comment' AS kind, id, 0 AS floor, SUBSTRING(content, 1, 200) AS content, user_id, created
-				FROM topic_comment WHERE topic_id IN ?
+				FROM topic_comment WHERE topic_id IN ? AND status = 0
 		) x
 		ORDER BY topic_id, created DESC, id DESC`, ids, ids).
 		Scan(&rows).Error; err != nil {

@@ -27,9 +27,9 @@ func (r *UserStatsRepository) GetUserStats(userID int) (*model.UserStats, error)
 		SELECT
 			(SELECT COUNT(*) FROM topic WHERE user_id = @userID) AS topic,
 			(SELECT COUNT(*) FROM topic_poll WHERE user_id = @userID) AS topic_poll,
-			(SELECT COUNT(*) FROM topic_reply WHERE user_id = @userID) AS reply_created,
-			(SELECT COUNT(*) FROM topic_comment WHERE user_id = @userID) AS comment_created,
-			(SELECT COUNT(*) FROM galgame_comment WHERE user_id = @userID) AS galgame_comment,
+			(SELECT COUNT(*) FROM topic_reply WHERE user_id = @userID AND status = 0) AS reply_created,
+			(SELECT COUNT(*) FROM topic_comment WHERE user_id = @userID AND status = 0) AS comment_created,
+			(SELECT COUNT(*) FROM galgame_comment WHERE user_id = @userID AND status = 0) AS galgame_comment,
 			(SELECT COUNT(*) FROM galgame_rating WHERE user_id = @userID) AS galgame_rating,
 			(SELECT COUNT(*) FROM galgame_resource WHERE user_id = @userID) AS galgame_resource,
 			(SELECT COUNT(*) FROM galgame_website WHERE user_id = @userID) AS galgame_toolset,
@@ -103,9 +103,9 @@ func (r *UserStatsRepository) FindFloatingStats(userID int) FloatingStatsRow {
 	r.db.Raw(`
 		SELECT
 			(SELECT COUNT(*) FROM topic WHERE user_id = @userID) AS topic_count,
-			(SELECT COUNT(*) FROM topic_reply WHERE user_id = @userID) AS topic_reply_count,
-			(SELECT COUNT(*) FROM topic_comment WHERE user_id = @userID)
-				+ (SELECT COUNT(*) FROM galgame_comment WHERE user_id = @userID)
+			(SELECT COUNT(*) FROM topic_reply WHERE user_id = @userID AND status = 0) AS topic_reply_count,
+			(SELECT COUNT(*) FROM topic_comment WHERE user_id = @userID AND status = 0)
+				+ (SELECT COUNT(*) FROM galgame_comment WHERE user_id = @userID AND status = 0)
 				+ (SELECT COUNT(*) FROM galgame_website_comment WHERE user_id = @userID) AS topic_comment_count,
 			(SELECT COUNT(*) FROM galgame_resource WHERE user_id = @userID) AS resource_count
 	`, map[string]any{"userID": userID}).Scan(&stats)
