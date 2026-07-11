@@ -354,6 +354,11 @@ func (a *App) setupRoutes() {
 	// the hash to a covers[] or screenshots[] row on the next PUT/PR.
 	authed.Post("/image/galgame", a.ImageHandler.UploadGalgameImage)
 
+	// Content reporting → infra Trust & Safety (Phase 1). Generic passthrough;
+	// the reporter is the session user, subject kind/id come from the body.
+	authed.Get("/report/reasons", a.TrustHandler.GetReasons)
+	authed.Post("/report/submit", a.TrustHandler.SubmitReport)
+
 	// Website interactions (authenticated)
 	authed.Put("/website/:domain/like", a.WebsiteHandler.ToggleLike)
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)

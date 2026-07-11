@@ -18,6 +18,8 @@ const emits = defineEmits<{
   onRatingCreated: [GalgameRatingCardOnGalgamePage]
 }>()
 
+const { id } = usePersistUserStore()
+
 const galgameAliasArray = computed(() => {
   const nameArray = Object.entries(props.galgame.name)
     .filter(
@@ -193,6 +195,13 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             </KunButton>
 
             <GalgameRewrite :galgame="galgame" />
+
+            <ReportButton
+              v-if="galgame.user.id !== id"
+              subject-kind="galgame"
+              :subject-id="galgame.id"
+              :snapshot="getPreferredLanguageText(galgame.name)"
+            />
 
             <GalgameRatingPublish
               v-model="isRatingOpen"

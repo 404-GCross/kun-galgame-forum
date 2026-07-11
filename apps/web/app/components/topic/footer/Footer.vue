@@ -57,6 +57,13 @@ const { id } = usePersistUserStore()
             分享
           </KunButton>
           <TopicFooterHide v-if="id" :topic-id="topic.id" />
+          <ReportButton
+            v-if="topic.user.id !== id"
+            menu
+            subject-kind="forum_topic"
+            :subject-id="topic.id"
+            :snapshot="topic.title"
+          />
         </div>
       </KunPopover>
     </div>

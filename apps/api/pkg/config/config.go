@@ -20,6 +20,19 @@ type Config struct {
 	ImageClient    ImageClientConfig
 	ArtifactClient ArtifactClientConfig
 	LinkChecker    LinkCheckerConfig
+	Trust          TrustConfig
+}
+
+// TrustConfig holds what kungal needs to integrate the infra Trust & Safety
+// service (kun-galgame-infra :9283): the base URL for submitting reports S2S,
+// and the HMAC secret for verifying inbound enforcement callbacks. The S2S
+// Basic-auth credentials reuse the OAuth client_id/secret (wired in app.go) —
+// the trust service reads oauth_clients.catalog_site to derive kungal's site.
+// Empty BaseURL / CallbackSecret = the integration is inert (reports degrade,
+// callbacks are rejected) so a dev box without a trust service is harmless.
+type TrustConfig struct {
+	BaseURL        string // trust service base, e.g. http://127.0.0.1:9283
+	CallbackSecret string // HMAC secret shared with the trust subject-kind registry
 }
 
 // ArtifactClientConfig holds the credentials kungal uses to call the centralized
@@ -234,6 +247,10 @@ func Load() (*Config, error) {
 			APIKey:               envOrDefault("LINK_CHECKER_API_KEY", ""),
 			CFAccessClientID:     envOrDefault("CF_ACCESS_CLIENT_ID", ""),
 			CFAccessClientSecret: envOrDefault("CF_ACCESS_CLIENT_SECRET", ""),
+		},
+		Trust: TrustConfig{
+			BaseURL:        envOrDefault("KUN_TRUST_BASE_URL", "http://127.0.0.1:9283"),
+			CallbackSecret: envOrDefault("KUN_TRUST_CALLBACK_SECRET", ""),
 		},
 	}, nil
 }

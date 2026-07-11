@@ -195,6 +195,13 @@ const handleDelete = async () => {
 
         <GalgameCommentLike :comment="comment" />
 
+        <ReportButton
+          v-if="comment.user?.id !== id"
+          subject-kind="galgame_comment"
+          :subject-id="comment.id"
+          :snapshot="comment.content"
+        />
+
         <KunTooltip v-if="isShowEdit" text="编辑">
           <KunButton
             :is-icon-only="true"

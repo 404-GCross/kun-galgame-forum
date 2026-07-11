@@ -70,6 +70,13 @@ const handleNewComment = (comment: TopicComment) => {
               <TopicReplyBestAnswer :reply="reply" />
               <TopicReplyDelete :reply="reply" />
             </template>
+            <ReportButton
+              v-if="reply.user.id !== id"
+              menu
+              subject-kind="forum_reply"
+              :subject-id="reply.id"
+              :snapshot="reply.content_markdown"
+            />
           </div>
         </KunPopover>
       </div>

@@ -269,6 +269,12 @@ const handleSaveEdit = async (comment: TopicComment) => {
                 >
                   <KunIcon name="uil:comment-dots" />
                 </KunButton>
+                <ReportButton
+                  v-if="comment.user.id !== currentUserId"
+                  subject-kind="forum_comment"
+                  :subject-id="comment.id"
+                  :snapshot="comment.content"
+                />
               </div>
             </div>
           </div>

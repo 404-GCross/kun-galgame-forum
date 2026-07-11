@@ -67,6 +67,12 @@ useIntersectionObserver(
               <KunIcon name="lucide:message-circle" />
               私聊
             </KunButton>
+            <ReportButton
+              v-if="!isSelf"
+              subject-kind="user"
+              :subject-id="user.id"
+              :snapshot="user.name"
+            />
           </h1>
 
           <div class="mt-2 flex flex-wrap items-center gap-2">

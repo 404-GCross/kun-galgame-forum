@@ -51,6 +51,8 @@ import (
 	topicHandler "kun-galgame-api/internal/topic/handler"
 	topicRepo "kun-galgame-api/internal/topic/repository"
 	topicService "kun-galgame-api/internal/topic/service"
+	trustHandler "kun-galgame-api/internal/trust/handler"
+	trustService "kun-galgame-api/internal/trust/service"
 	updateHandler "kun-galgame-api/internal/update/handler"
 	updateRepo "kun-galgame-api/internal/update/repository"
 	"kun-galgame-api/internal/user/handler"
@@ -66,6 +68,7 @@ import (
 	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/gofiber/fiber/v3"
@@ -110,6 +113,7 @@ type App struct {
 	WebsiteTagHandler          *websiteHandler.TagHandler
 	UpdateHandler              *updateHandler.UpdateHandler
 	FriendLinkHandler          *friendHandler.FriendLinkHandler
+	TrustHandler               *trustHandler.TrustHandler
 	RSSHandler                 *rssHandler.RSSHandler
 	GalgameHandler             *galgameHandler.GalgameHandler
 	GalgameCollectionHandler   *galgameHandler.GalgameCollectionHandler
@@ -246,6 +250,21 @@ func New(cfg *config.Config) *App {
 		slog.Info("artifact service client configured", "base_url", cfg.ArtifactClient.BaseURL)
 	} else {
 		slog.Warn("artifact service client NOT configured; toolset upload will return 未配置 — set KUN_ARTIFACT_CLIENT_BASE_URL + OAuth creds")
+	}
+
+	// Trust & Safety client — report intake (Phase 1) + moderator inbox proxy
+	// (Phase 3). Basic auth reuses the OAuth client_id/secret; the trust service
+	// reads oauth_clients.catalog_site to derive kungal's site. Degrades to a
+	// no-op when KUN_TRUST_BASE_URL / OAuth creds are unset.
+	trustCli := trustclient.New(trustclient.Config{
+		BaseURL:      cfg.Trust.BaseURL,
+		ClientID:     cfg.OAuth.ClientID,
+		ClientSecret: cfg.OAuth.ClientSecret,
+	})
+	if trustCli.Configured() {
+		slog.Info("trust service client configured", "base_url", cfg.Trust.BaseURL)
+	} else {
+		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
 	}
 
 	// kungal-link-live-checker client — the "report resource expired" gate.
@@ -405,6 +424,7 @@ func New(cfg *config.Config) *App {
 		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
 		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
+		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli)),
 		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
