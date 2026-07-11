@@ -17,6 +17,9 @@ interface MoemoepointLogEntry {
   source_app: string
   ref: string
   created_at: string
+  // Granted by THIS site (source_app == our client_id) → its ref resolves to a
+  // local page, so only these get a clickable id.
+  is_local: boolean
 }
 
 const PAGE_SIZE = 20
@@ -60,6 +63,7 @@ const REF_KIND_LABEL: Record<string, string> = {
   galgame_comment: '游戏评论',
   galgame_rating: '游戏评分',
   galgame_resource: '游戏资源',
+  galgame_quiz: '题目',
   toolset: '工具集',
   toolset_resource: '工具资源',
   topic: '话题',
@@ -75,27 +79,24 @@ const reasonMeta = (reason: string) =>
 
 // OAuth keeps a tiny generic reason enum; the concrete behavior is carried by
 // the ref-kind (06-moemoepoint.md §2). So the PRIMARY label is derived from
-// (reason, ref-kind): a precise override first, else a composed "<内容><动作>"
-// (e.g. 游戏资源 + 被采纳), else the bare reason label. This is why a single
-// `content_approved` row reads as 通过审核 / 修订被合并 / 资源被采纳 / 评论被采纳…
-const REASON_ACTION: Record<string, string> = {
-  content_approved: '被采纳',
-  liked: '被点赞',
-  content_removed: '被移除'
+// (reason, ref-kind): a precise override first, else a composed form — for
+// `content_approved` (earned by producing content) that's "创建了新的<内容>", for
+// the rest a "<内容><动作>" suffix — else the bare reason label.
+// Suffix action per reason, keyed by delta sign. `liked` is bidirectional — a
+// cancelled like arrives as a negative delta — so a −1 that still read "被点赞"
+// was the bug this fixes. content_removed is always negative.
+const REASON_ACTION: Record<string, { pos: string; neg: string }> = {
+  liked: { pos: '被点赞', neg: '取消点赞' },
+  content_removed: { pos: '被移除', neg: '被移除' }
 }
 
 const BEHAVIOR_LABEL: Record<string, string> = {
-  'content_approved:galgame': 'Galgame 通过审核',
-  'content_approved:galgame_pr': 'Galgame 修订被合并',
-  'content_approved:galgame_resource': '发布的资源被采纳',
-  'content_approved:galgame_comment': '游戏评论被采纳',
-  'content_approved:topic': '发布的话题被采纳',
-  'content_approved:topic_reply': '回复被采纳',
-  'content_approved:topic_comment': '话题评论被采纳',
-  // 推话题: a distinct ref-kind so the cost reads as 推话题消耗 (not 话题被移除) and
-  // the owner's credit as 话题被推荐 (not 被采纳). Reasons stay OAuth's enum.
-  'content_removed:topic_upvote': '推话题消耗',
-  'content_approved:topic_upvote': '话题被推荐'
+  // Non-create content_approved rows, where "创建了新的…" would be wrong:
+  // answering a quiz correctly, and the owner's credit when their topic is推.
+  'content_approved:galgame_quiz_answer': '答对了题目',
+  'content_approved:topic_upvote': '话题被推荐',
+  // 推话题 cost: a distinct ref-kind so it reads as 推话题消耗 (not 话题被移除).
+  'content_removed:topic_upvote': '推话题消耗'
 }
 
 const refKindOf = (ref: string) => ref.split(':')[0] ?? ''
@@ -105,9 +106,36 @@ const behaviorLabel = (entry: MoemoepointLogEntry): string => {
   const specific = BEHAVIOR_LABEL[`${entry.reason}:${kind}`]
   if (specific) return specific
   const kindLabel = REF_KIND_LABEL[kind]
-  const action = REASON_ACTION[entry.reason]
-  if (kindLabel && action) return `${kindLabel}${action}`
+  if (kindLabel) {
+    // content_approved is earned by producing content (+); a negative delta is
+    // that reward being reversed, which reads as a removal.
+    if (entry.reason === 'content_approved') {
+      return entry.delta < 0 ? `${kindLabel}被移除` : `创建了新的${kindLabel}`
+    }
+    const action = REASON_ACTION[entry.reason]
+    if (action) return `${kindLabel}${entry.delta < 0 ? action.neg : action.pos}`
+  }
   return reasonMeta(entry.reason).label
+}
+
+// Ref-kinds whose id maps directly to a page on THIS site. Others (comment /
+// reply / rating / answer / resource) carry a child id with no standalone page.
+const REF_LINK_BASE: Record<string, string> = {
+  topic: '/topic',
+  topic_upvote: '/topic',
+  galgame: '/galgame',
+  galgame_pr: '/galgame',
+  galgame_quiz: '/galgame-quiz',
+  toolset: '/toolset'
+}
+
+// A page URL for the entry's ref — only for locally-granted entries (a remote
+// site's topic:5 must not link to OUR /topic/5).
+const refHref = (entry: MoemoepointLogEntry): string => {
+  if (!entry.is_local) return ''
+  const base = REF_LINK_BASE[refKindOf(entry.ref)]
+  const id = entry.ref.split(':')[1]
+  return base && id ? `${base}/${id}` : ''
 }
 
 const isOpaqueId = (value: string) => /^[0-9a-f]{16,}$/i.test(value)
@@ -127,14 +155,18 @@ const refId = (refValue: string): string => {
 }
 
 // One muted line under the behavior: "source · #id · time", omitting empties.
-const entryMeta = (entry: MoemoepointLogEntry): string =>
-  [
-    sourceLabel(entry.source_app),
-    refId(entry.ref),
-    formatTimeDifference(entry.created_at)
-  ]
-    .filter(Boolean)
-    .join(' · ')
+// Segmented (not a joined string) so the #id can render as a link to its page.
+const metaSegments = (
+  entry: MoemoepointLogEntry
+): { text: string; href?: string }[] => {
+  const segments: { text: string; href?: string }[] = []
+  const source = sourceLabel(entry.source_app)
+  if (source) segments.push({ text: source })
+  const id = refId(entry.ref)
+  if (id) segments.push({ text: id, href: refHref(entry) || undefined })
+  segments.push({ text: formatTimeDifference(entry.created_at) })
+  return segments
+}
 
 const entries = ref<MoemoepointLogEntry[]>([])
 const status = ref<'idle' | 'loading' | 'loadingMore' | 'error'>('idle')
@@ -216,8 +248,24 @@ watch(isOpen, (open) => {
             <span class="truncate text-sm font-medium">
               {{ behaviorLabel(entry) }}
             </span>
-            <span class="text-default-400 truncate text-xs">
-              {{ entryMeta(entry) }}
+            <span
+              class="text-default-400 flex items-center gap-1 truncate text-xs"
+            >
+              <template
+                v-for="(seg, i) in metaSegments(entry)"
+                :key="i"
+              >
+                <span v-if="i > 0">·</span>
+                <KunLink
+                  v-if="seg.href"
+                  :to="seg.href"
+                  class="hover:text-primary cursor-pointer transition-colors"
+                  @click="isOpen = false"
+                >
+                  {{ seg.text }}
+                </KunLink>
+                <span v-else>{{ seg.text }}</span>
+              </template>
             </span>
           </div>
           <span

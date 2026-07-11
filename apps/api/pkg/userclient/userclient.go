@@ -430,6 +430,11 @@ type MoemoepointLogEntry struct {
 	SourceApp string `json:"source_app"`
 	Ref       string `json:"ref"`
 	CreatedAt string `json:"created_at"`
+	// IsLocal marks entries this app itself granted (source_app == our
+	// client_id). Only these have a `ref` that resolves to a page on THIS site,
+	// so the FE links the ref id only when IsLocal. Not part of OAuth's payload
+	// — filled in by MoemoepointLog below.
+	IsLocal bool `json:"is_local"`
 }
 
 // MoemoepointLogPage is one page of the ledger as OAuth returns it
@@ -464,6 +469,10 @@ func (c *Client) MoemoepointLog(
 	}
 	if page.Items == nil {
 		page.Items = []MoemoepointLogEntry{}
+	}
+	// Flag entries this app granted — their ref resolves to a local page.
+	for i := range page.Items {
+		page.Items[i].IsLocal = page.Items[i].SourceApp == c.cfg.ClientID
 	}
 	return page, nil
 }
