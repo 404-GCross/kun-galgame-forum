@@ -4,18 +4,18 @@
 package trust
 
 // ReportReason mirrors an infra-seeded global report reason
-// (trust_report_reason). The trust service exposes reasons only via its
-// JWT-gated admin API — there is no S2S "list reasons for my site" endpoint —
-// so kungal keeps the stable global set here to feed the report dropdown. Keep
-// in sync with infra migrate/migrate.go SeedReasons; if infra later ships an
-// S2S reasons feed, serve that instead of this constant.
+// (trust_report_reason). The reasons are now fetched live from the trust S2S
+// feed (GET /api/v1/trust/report-reasons — TrustService.Reasons); this constant
+// is only the FALLBACK used when trust is unconfigured/unreachable, so the
+// report dropdown always has options. Keep in sync with infra SeedReasons.
 type ReportReason struct {
 	Key      string `json:"key"`
 	Label    string `json:"label"`
 	Severity int    `json:"severity"`
 }
 
-// GlobalReasons are the six seeded global reasons (severity 1=low … 3=high).
+// GlobalReasons are the six seeded global reasons (severity 1=low … 3=high),
+// used as the offline fallback for Reasons().
 var GlobalReasons = []ReportReason{
 	{Key: "abuse", Label: "辱骂骚扰", Severity: 2},
 	{Key: "spam", Label: "垃圾信息", Severity: 1},

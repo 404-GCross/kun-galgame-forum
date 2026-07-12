@@ -87,6 +87,53 @@ type ReportResult struct {
 	ReviewItemID int64 `json:"review_item_id,omitempty"`
 }
 
+// ReasonView mirrors the trust service's ReasonView (a usable report reason for
+// the calling site — global base + this site's extensions, non-deprecated).
+type ReasonView struct {
+	ID           int64  `json:"id"`
+	Key          string `json:"key"`
+	NameCN       string `json:"name_cn"`
+	Severity     int    `json:"severity"`
+	IsDeprecated bool   `json:"is_deprecated"`
+	Site         string `json:"site,omitempty"`
+}
+
+// ListReportReasons returns the reasons kungal's report UI may offer, resolved
+// server-side from the client's site binding (S2S Basic auth).
+func (c *Client) ListReportReasons(ctx context.Context) ([]ReasonView, error) {
+	if !c.Configured() {
+		return nil, ErrNotConfigured
+	}
+	req, err := http.NewRequestWithContext(
+		ctx, http.MethodGet, c.baseURL+"/api/v1/trust/report-reasons", nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", c.basicAuth)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+
+	var env struct {
+		Code int `json:"code"`
+		Data struct {
+			Reasons []ReasonView `json:"reasons"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK || env.Code != 0 {
+		return nil, fmt.Errorf("trustclient: list reasons failed (status %d, code %d)", resp.StatusCode, env.Code)
+	}
+	return env.Data.Reasons, nil
+}
+
 // SubmitReport files a report against (subject_kind, subject_id) on kungal's
 // site. Dedup + rate-limit + weighting happen server-side.
 func (c *Client) SubmitReport(ctx context.Context, req ReportRequest) (*ReportResult, error) {

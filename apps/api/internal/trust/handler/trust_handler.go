@@ -38,7 +38,7 @@ func NewTrustHandler(
 // GetReasons returns the report-reason catalog for the report dropdown.
 // GET /api/report/reasons
 func (h *TrustHandler) GetReasons(c fiber.Ctx) error {
-	return response.OK(c, h.trustService.Reasons())
+	return response.OK(c, h.trustService.Reasons(c.Context()))
 }
 
 // SubmitReport files a report against a content subject on behalf of the

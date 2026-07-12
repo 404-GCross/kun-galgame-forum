@@ -61,6 +61,36 @@ func TestSubmitReportSuccess(t *testing.T) {
 	}
 }
 
+func TestListReportReasons(t *testing.T) {
+	var gotAuth, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"reasons":[{"id":1,"key":"spam","name_cn":"垃圾信息","severity":1,"is_deprecated":false}]}}`))
+	}))
+	defer srv.Close()
+
+	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	reasons, err := c.ListReportReasons(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(reasons) != 1 || reasons[0].Key != "spam" || reasons[0].NameCN != "垃圾信息" {
+		t.Fatalf("bad reasons: %+v", reasons)
+	}
+	if gotPath != "/api/v1/trust/report-reasons" {
+		t.Fatalf("bad path %q", gotPath)
+	}
+	if gotAuth[:6] != "Basic " {
+		t.Fatalf("expected Basic auth, got %q", gotAuth)
+	}
+
+	// Not configured → error (service falls back to the local constant).
+	if _, err := New(Config{}).ListReportReasons(context.Background()); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("want ErrNotConfigured, got %v", err)
+	}
+}
+
 func TestSubmitReportErrorMapping(t *testing.T) {
 	cases := []struct {
 		status int

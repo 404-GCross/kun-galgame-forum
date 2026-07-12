@@ -95,9 +95,20 @@ func (s *TrustService) DecideReviewItem(ctx context.Context, token string, id in
 	return data, nil
 }
 
-// Reasons returns the report-reason catalog for the browser dropdown.
-func (s *TrustService) Reasons() []trust.ReportReason {
-	return trust.GlobalReasons
+// Reasons returns the report-reason catalog for the browser dropdown, resolved
+// live from the trust registry (global base + kungal's site extensions). Falls
+// back to the seeded global constant when trust is unconfigured or unreachable,
+// so the report UI always has options.
+func (s *TrustService) Reasons(ctx context.Context) []trust.ReportReason {
+	views, err := s.trust.ListReportReasons(ctx)
+	if err != nil || len(views) == 0 {
+		return trust.GlobalReasons
+	}
+	out := make([]trust.ReportReason, 0, len(views))
+	for _, v := range views {
+		out = append(out, trust.ReportReason{Key: v.Key, Label: v.NameCN, Severity: v.Severity})
+	}
+	return out
 }
 
 // SubmitReport forwards a report to the trust service with the session user as
