@@ -102,6 +102,22 @@ x-kungal-api-env: &kungal-api-env
   LINK_CHECKER_API_KEY: ${LINK_CHECKER_API_KEY:-}
   CF_ACCESS_CLIENT_ID: ${CF_ACCESS_CLIENT_ID:-}
   CF_ACCESS_CLIENT_SECRET: ${CF_ACCESS_CLIENT_SECRET:-}
+  # Trust & Safety (doc 18): report intake (kungal → trust) + enforcement
+  # callback verification (trust → kungal). BASE_URL/SITE are non-secret
+  # structural values → literal, like the sibling service URLs above (a Dokploy
+  # panel var alone never reaches the container — the moyu/image lesson). The Go
+  # defaults (127.0.0.1:9283 / kungal) are WRONG in-container for BASE_URL, so
+  # pin the dokploy-network name (infra exposes the trust service as `trust`).
+  # ⚠ With BASE_URL set, report intake goes LIVE the moment kungal deploys — so
+  # infra's trust service + kungal's 6 subject_kind rows + the subject_url column
+  # must be up FIRST, else reports 403 (catalog_site unbound) / 422 (kind
+  # unregistered or pre-subject_url schema). CALLBACK_SECRET (panel) gates ONLY
+  # the inbound enforcement callback: empty → callbacks fail-closed 401 while
+  # reports still flow, so enforcement stays off until you set it to the SAME
+  # secret registered on kungal's subject_kind rows in the trust registry.
+  KUN_TRUST_BASE_URL: http://trust:9283
+  KUN_TRUST_SITE: kungal
+  KUN_TRUST_CALLBACK_SECRET: ${KUN_TRUST_CALLBACK_SECRET:-}
 
 services:
   # ───────────────────────────── Go API (distroless) ─────────────────────────
