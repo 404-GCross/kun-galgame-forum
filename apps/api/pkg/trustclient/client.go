@@ -78,6 +78,10 @@ type ReportRequest struct {
 	ReporterID  int64  `json:"reporter_id"`
 	Note        string `json:"note,omitempty"`
 	Snapshot    string `json:"snapshot,omitempty"`
+	// SubjectURL is the absolute deep-link to the reported content, so the
+	// moderator console can jump straight into context (trust 53d1f22). Must be
+	// absolute http(s), ≤512 chars, or trust rejects the report (422).
+	SubjectURL string `json:"subject_url,omitempty"`
 }
 
 // ReportResult mirrors dto.ReportResponse. ReviewItemID is 0 when the report

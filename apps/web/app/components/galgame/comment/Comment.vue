@@ -200,6 +200,7 @@ const handleDelete = async () => {
           subject-kind="galgame_comment"
           :subject-id="comment.id"
           :snapshot="comment.content"
+          :subject-url="`${kungal.domain.main}/galgame/${comment.galgame_id}#galgame-comment-${comment.id}`"
         />
 
         <KunTooltip v-if="isShowEdit" text="编辑">

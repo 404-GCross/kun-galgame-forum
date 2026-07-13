@@ -10,6 +10,9 @@ type SubmitReportRequest struct {
 	ReasonKey   string `json:"reason_key" validate:"required,max=64"`
 	Note        string `json:"note" validate:"max=1000"`
 	Snapshot    string `json:"snapshot" validate:"max=2000"`
+	// SubjectURL: absolute deep-link to the content (built by the FE), so the
+	// moderator console opens it in context. http(s) + ≤512 (trust also enforces).
+	SubjectURL string `json:"subject_url" validate:"omitempty,http_url,max=512"`
 }
 
 // SubmitReportResponse echoes the trust report id (the browser only needs a

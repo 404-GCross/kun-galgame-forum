@@ -126,6 +126,7 @@ func (s *TrustService) SubmitReport(
 		ReporterID:  int64(reporterID),
 		Note:        req.Note,
 		Snapshot:    req.Snapshot,
+		SubjectURL:  req.SubjectURL,
 	})
 	if err != nil {
 		switch {

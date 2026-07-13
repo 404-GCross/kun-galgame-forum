@@ -66,6 +66,20 @@ const isOpen = computed(() => {
   return s === 0 || s === 1
 })
 
+// The deep-link to the reported content: prefer the reporter-carried subject_url
+// (works for every kind, incl. reply/comment), fall back to reconstructing one
+// from subject_kind + id (top-level kinds only).
+const subjectHref = computed(() => {
+  if (!detail.value) {
+    return undefined
+  }
+  const fromReport = detail.value.reports.find((r) => r.subject_url)?.subject_url
+  return (
+    fromReport ||
+    trustSubjectHref(detail.value.item.subject_kind, detail.value.item.subject_id)
+  )
+})
+
 const claim = async () => {
   if (!detail.value) return
   isWorking.value = true
@@ -176,8 +190,8 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
           <span class="text-lg font-bold">审核详情</span>
           <KunChip color="secondary">{{ kindLabel(detail.item.subject_kind) }}</KunChip>
           <KunLink
-            v-if="trustSubjectHref(detail.item.subject_kind, detail.item.subject_id)"
-            :to="trustSubjectHref(detail.item.subject_kind, detail.item.subject_id)"
+            v-if="subjectHref"
+            :to="subjectHref"
             target="_blank"
             class="text-primary text-sm"
           >

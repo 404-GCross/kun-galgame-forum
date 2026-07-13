@@ -9,12 +9,15 @@ const props = withDefaults(
     subjectKind: string
     subjectId: string | number
     snapshot?: string
+    // Absolute deep-link to the reported content (built by the caller with
+    // kungal.domain.main), attached so moderators can jump straight to it.
+    subjectUrl?: string
     label?: string
     // `menu` renders a full-width row (for ⋯ popover menus); default is a
     // compact icon-only button (for action bars).
     menu?: boolean
   }>(),
-  { snapshot: '', label: '举报', menu: false }
+  { snapshot: '', subjectUrl: '', label: '举报', menu: false }
 )
 
 const userStore = usePersistUserStore()
@@ -28,7 +31,8 @@ const trigger = () => {
   open({
     subjectKind: props.subjectKind,
     subjectId: props.subjectId,
-    snapshot: props.snapshot
+    snapshot: props.snapshot,
+    subjectUrl: props.subjectUrl
   })
 }
 </script>

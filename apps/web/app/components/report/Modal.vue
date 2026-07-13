@@ -38,7 +38,8 @@ const submit = async () => {
       reason_key: reasonKey.value,
       note: note.value,
       // Cap evidence length (BFF validates snapshot ≤ 2000).
-      snapshot: (target.value.snapshot ?? '').slice(0, 1000)
+      snapshot: (target.value.snapshot ?? '').slice(0, 1000),
+      subject_url: target.value.subjectUrl ?? ''
     }
   })
   isSubmitting.value = false

@@ -76,6 +76,7 @@ const handleNewComment = (comment: TopicComment) => {
               subject-kind="forum_reply"
               :subject-id="reply.id"
               :snapshot="reply.content_markdown"
+              :subject-url="`${kungal.domain.main}/topic/${reply.topic_id}?reply=${reply.floor}`"
             />
           </div>
         </KunPopover>

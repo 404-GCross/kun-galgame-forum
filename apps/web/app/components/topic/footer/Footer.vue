@@ -63,6 +63,7 @@ const { id } = usePersistUserStore()
             subject-kind="forum_topic"
             :subject-id="topic.id"
             :snapshot="topic.title"
+            :subject-url="`${kungal.domain.main}/topic/${topic.id}`"
           />
         </div>
       </KunPopover>

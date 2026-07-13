@@ -211,6 +211,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                   subject-kind="galgame"
                   :subject-id="galgame.id"
                   :snapshot="getPreferredLanguageText(galgame.name)"
+                  :subject-url="`${kungal.domain.main}/galgame/${galgame.id}`"
                 />
               </div>
             </KunPopover>

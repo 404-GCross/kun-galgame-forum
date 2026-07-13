@@ -72,6 +72,7 @@ useIntersectionObserver(
               subject-kind="user"
               :subject-id="user.id"
               :snapshot="user.name"
+              :subject-url="`${kungal.domain.main}/user/${user.id}`"
             />
           </h1>
 

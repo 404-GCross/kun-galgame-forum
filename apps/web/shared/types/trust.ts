@@ -29,6 +29,8 @@ export interface ReportView {
   reason_id: number
   note?: string
   subject_snapshot?: string
+  // Absolute deep-link the reporter's page carried (trust 53d1f22).
+  subject_url?: string
   weight: number
   review_item_id?: number
   status: number

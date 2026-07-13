@@ -8,6 +8,9 @@ export interface ReportTarget {
   subjectKind: string
   subjectId: string | number
   snapshot?: string
+  // Absolute deep-link to the content, so the moderator console opens it in
+  // context (must be absolute — the link is clicked in infra's console).
+  subjectUrl?: string
 }
 
 const isOpen = ref(false)

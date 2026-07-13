@@ -274,6 +274,7 @@ const handleSaveEdit = async (comment: TopicComment) => {
                   subject-kind="forum_comment"
                   :subject-id="comment.id"
                   :snapshot="comment.content"
+                  :subject-url="`${kungal.domain.main}/topic/${comment.topic_id}?comment=${comment.id}`"
                 />
               </div>
             </div>
