@@ -154,6 +154,10 @@ onMounted(() => {
     <LazyKunTopBarLogout />
     <LazyKunTopBarCreatorApply />
 
+    <!-- Single global report modal (triggered by every <ReportButton>). At the
+         stable root so it animates on close and survives a triggering popover. -->
+    <LazyReportModal />
+
     <KunFloatingBar />
 
     <LazyTopicReplyPanel />

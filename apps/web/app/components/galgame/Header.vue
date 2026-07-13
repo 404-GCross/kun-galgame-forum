@@ -152,7 +152,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
           </KunChip>
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-center gap-1">
             <!-- View count: the same compact pill as 点赞 / 收藏 (KunReaction),
                  but STATIC — action skin (no toggle), no animation, and
@@ -185,10 +185,13 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             />
           </div>
 
-          <div class="flex gap-1">
+          <!-- ml-auto keeps this group right-aligned even after it wraps to its
+               own line on mobile (justify-between would left-align a wrapped row). -->
+          <div class="ml-auto flex flex-wrap items-center justify-end gap-1">
             <KunButton
               variant="shadow"
               color="primary"
+              size="sm"
               @click="isRatingOpen = true"
             >
               添加评分
@@ -196,12 +199,21 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 
             <GalgameRewrite :galgame="galgame" />
 
-            <ReportButton
-              v-if="galgame.user.id !== id"
-              subject-kind="galgame"
-              :subject-id="galgame.id"
-              :snapshot="getPreferredLanguageText(galgame.name)"
-            />
+            <KunPopover v-if="galgame.user.id !== id" position="bottom-end">
+              <template #trigger>
+                <KunButton :is-icon-only="true" variant="light" color="default" size="sm">
+                  <KunIcon name="lucide:ellipsis" />
+                </KunButton>
+              </template>
+              <div class="flex w-32 flex-col gap-1 p-2">
+                <ReportButton
+                  menu
+                  subject-kind="galgame"
+                  :subject-id="galgame.id"
+                  :snapshot="getPreferredLanguageText(galgame.name)"
+                />
+              </div>
+            </KunPopover>
 
             <GalgameRatingPublish
               v-model="isRatingOpen"

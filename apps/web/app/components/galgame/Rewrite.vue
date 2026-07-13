@@ -99,17 +99,16 @@ const handleRewriteGalgame = async (galgame: GalgameDetail) => {
 </script>
 
 <template>
-  <KunTooltip text="编辑">
-    <KunButton
-      :is-icon-only="true"
-      variant="light"
-      color="default"
-      size="lg"
-      :loading="isOpening"
-      :disabled="isOpening"
-      @click="handleRewriteGalgame(galgame)"
-    >
-      <KunIcon name="lucide:pencil" />
-    </KunButton>
-  </KunTooltip>
+  <KunButton
+    variant="light"
+    color="default"
+    size="sm"
+    :loading="isOpening"
+    :disabled="isOpening"
+    @click="handleRewriteGalgame(galgame)"
+  >
+    <span class="flex items-center gap-1">
+      <KunIcon name="lucide:pencil" />编辑
+    </span>
+  </KunButton>
 </template>
