@@ -74,6 +74,9 @@ x-kungal-api-env: &kungal-api-env
   MEILISEARCH_URL: http://meilisearch:7700
   MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (= infra 的同名值)}
   GALGAME_WIKI_BASE_URL: http://galgame:9280/api
+  # catalog read proxy (step 36): credits / entity reverse-lookups. Reuses the
+  # OAuth client pair for S2S Basic auth; unset → those routes degrade to 503.
+  KUN_CATALOG_API_BASE: http://catalog:9281
   # image_service (shared CDN domain == infra KUN_IMAGE_PUBLIC_BASE_URL)
   KUN_IMAGE_PUBLIC_BASE_URL: https://image.kungal.iloveren.link
   KUN_IMAGE_CLIENT_BASE_URL: http://image:9278
