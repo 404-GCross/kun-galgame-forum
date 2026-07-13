@@ -65,6 +65,7 @@ import (
 	websiteRepo "kun-galgame-api/internal/website/repository"
 	websiteService "kun-galgame-api/internal/website/service"
 	"kun-galgame-api/pkg/artifactclient"
+	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/config"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
@@ -129,6 +130,7 @@ type App struct {
 	GalgameWikiHandler         *galgameHandler.WikiHandler
 	GalgameSubmissionHandler   *galgameHandler.SubmissionHandler
 	GalgameMessageHandler      *galgameHandler.WikiMessageHandler
+	GalgameCrossSourceHandler  *galgameHandler.CrossSourceHandler
 	ActivityHandler            *activityHandler.ActivityHandler
 	ImageHandler               *imageHandler.ImageHandler
 	SearchHandler              *searchHandler.SearchHandler
@@ -269,6 +271,22 @@ func New(cfg *config.Config) *App {
 		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
 	}
 
+	// Catalog read client — the galgame detail page's credits + name/character
+	// reverse lookups (step 36). GET-only S2S; Basic auth reuses the OAuth
+	// client_id/secret (the catalog read face imposes no site binding). Degrades
+	// to a no-op (calls return ErrNotConfigured → 503) when KUN_CATALOG_API_BASE
+	// / OAuth creds are unset, so a dev box without a catalog service still boots.
+	catalogCli := catalogclient.New(catalogclient.Config{
+		BaseURL:      cfg.Catalog.BaseURL,
+		ClientID:     cfg.OAuth.ClientID,
+		ClientSecret: cfg.OAuth.ClientSecret,
+	})
+	if catalogCli.Configured() {
+		slog.Info("catalog service client configured", "base_url", cfg.Catalog.BaseURL)
+	} else {
+		slog.Warn("catalog service client NOT configured; catalog credits proxy returns 未启用 — set KUN_CATALOG_API_BASE + OAuth creds")
+	}
+
 	// kungal-link-live-checker client — the "report resource expired" gate.
 	// Only construct when BOTH base URL + API key are set; otherwise the gate is
 	// nil and MarkExpired falls back to the legacy single-report-expires flow
@@ -347,6 +365,11 @@ func New(cfg *config.Config) *App {
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
 	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, galgameLocalRepo)
+	// Cross-source read face (step 36): three-source scores + site stats (wiki
+	// passthrough) and catalog credits / entity reverse-lookups (catalog S2S
+	// passthrough) for the galgame detail page. Pure GET passthrough — no local
+	// state.
+	galgameCrossSourceSvc := galgameService.NewCrossSourceService(gc, catalogCli)
 
 	// Wiki message stream: user notifications + admin queue + per-user
 	// "read up to" cursor. The cron-driven ingestion lives in
@@ -506,6 +529,7 @@ func New(cfg *config.Config) *App {
 		GalgameWikiHandler:         galgameHandler.NewWikiHandler(galgameWikiSvc),
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameMessageHandler:      galgameHandler.NewWikiMessageHandler(galgameMessageSvc),
+		GalgameCrossSourceHandler:  galgameHandler.NewCrossSourceHandler(galgameCrossSourceSvc),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), s3Client, imgCli, gc)),
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),

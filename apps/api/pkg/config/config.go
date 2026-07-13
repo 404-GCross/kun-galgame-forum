@@ -21,6 +21,19 @@ type Config struct {
 	ArtifactClient ArtifactClientConfig
 	LinkChecker    LinkCheckerConfig
 	Trust          TrustConfig
+	Catalog        CatalogClientConfig
+}
+
+// CatalogClientConfig holds what kungal needs to read the infra Catalog service
+// (kun-galgame-infra cmd/catalog :9281): the base URL for the S2S read face
+// (credits + name/character reverse lookups behind the galgame detail page).
+// Auth is HTTP Basic reusing the OAuth client_id/secret (wired in app.go) — the
+// catalog READ face imposes no site binding, so kungal's OAuth client
+// authenticates as-is. Empty BaseURL (or OAuth creds) = the integration is inert
+// (the catalog proxy endpoints degrade to 503) so a dev box without a catalog
+// service is harmless.
+type CatalogClientConfig struct {
+	BaseURL string // catalog service base, e.g. http://127.0.0.1:9281
 }
 
 // TrustConfig holds what kungal needs to integrate the infra Trust & Safety
@@ -257,6 +270,9 @@ func Load() (*Config, error) {
 			BaseURL:        envOrDefault("KUN_TRUST_BASE_URL", "http://127.0.0.1:9283"),
 			CallbackSecret: envOrDefault("KUN_TRUST_CALLBACK_SECRET", ""),
 			Site:           envOrDefault("KUN_TRUST_SITE", "kungal"),
+		},
+		Catalog: CatalogClientConfig{
+			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:9281"),
 		},
 	}, nil
 }

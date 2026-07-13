@@ -724,6 +724,76 @@ func bodySnippet(b []byte) string {
 	return string(b)
 }
 
+// ──────────────────────────────────────────
+// Cross-source scores / stats (public wiki read face, step 34)
+// ──────────────────────────────────────────
+
+// Scores fetches the three-source (VNDB / Bangumi / EG) rating snapshot for one
+// galgame from the wiki's public read face and returns the response `data`
+// verbatim (naming = contract; the 37 frontend reads the infra shape directly).
+// Missing sources are null server-side; a galgame with no rows returns all-null.
+func (c *GalgameClient) Scores(ctx context.Context, gid int) (json.RawMessage, *errors.AppError) {
+	return c.Get(ctx, "/galgame/"+strconv.Itoa(gid)+"/scores", nil)
+}
+
+// StatsResult carries a stats fetch: the verbatim `data` payload plus the wiki's
+// ETag, or NotModified when the wiki answered 304 to the forwarded If-None-Match
+// (Data is then nil). The BFF re-emits the ETag and the 304 so the browser's
+// conditional cache survives the extra hop.
+type StatsResult struct {
+	NotModified bool
+	ETag        string
+	Data        json.RawMessage
+}
+
+// Stats fetches the site-wide cross-source statistics overview from the wiki's
+// public read face, preserving the ETag / If-None-Match conditional cache. A
+// non-empty ifNoneMatch is forwarded; a wiki 304 comes back as
+// StatsResult.NotModified so the caller can relay an empty 304. The six frozen
+// keys' payloads pass through untouched. This does not go through the shared
+// doRequest because it needs the raw status code + ETag header, which the
+// envelope-only doRequest hides.
+func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsResult, *errors.AppError) {
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/galgame/stats", nil)
+	if err != nil {
+		return nil, errors.ErrInternal("创建请求失败")
+	}
+	if ifNoneMatch != "" {
+		req.Header.Set("If-None-Match", ifNoneMatch)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		slog.Error("Wiki 服务请求失败 (传输层)",
+			"method", req.Method, "url", req.URL.String(), "error", err)
+		return nil, errors.ErrInternal(fmt.Sprintf("Wiki 服务不可达: %v", err))
+	}
+	defer resp.Body.Close()
+
+	etag := resp.Header.Get("ETag")
+	if resp.StatusCode == http.StatusNotModified {
+		return &StatsResult{NotModified: true, ETag: etag}, nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.ErrInternal("读取 Wiki 响应失败")
+	}
+
+	var result apiResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		slog.Error("解析 Wiki 响应失败 (非 JSON 响应)",
+			"method", req.Method, "url", req.URL.String(),
+			"status", resp.StatusCode, "body", bodySnippet(body))
+		return nil, errors.New(errors.CodeBiz,
+			fmt.Sprintf("Wiki 服务返回了非预期响应 (HTTP %d)", resp.StatusCode), resp.StatusCode)
+	}
+	if result.Code != 0 {
+		return nil, errors.New(result.Code, result.Message, resp.StatusCode)
+	}
+	return &StatsResult{ETag: etag, Data: result.Data}, nil
+}
+
 func (c *GalgameClient) doRequest(req *http.Request) (json.RawMessage, *errors.AppError) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

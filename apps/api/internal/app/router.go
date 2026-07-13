@@ -172,6 +172,10 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
 	api.Get("/galgame/calendar/tba", a.GalgameCalendarHandler.GetTBA)
 	api.Get("/galgame/calendar/upcoming", a.GalgameCalendarHandler.GetUpcoming)
+	// Cross-source site statistics (wiki passthrough, ETag/304 preserved). The
+	// literal "stats" segment must precede the /galgame/:gid catch-all (optAuth
+	// below) — same registration-order rule as /galgame/calendar above.
+	api.Get("/galgame/stats", a.GalgameCrossSourceHandler.Stats)
 	api.Get("/galgame/:gid/revisions", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/revisions/:rev/diff", a.GalgameWikiHandler.ProxyGet)
@@ -179,6 +183,9 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame/:gid/prs/:id", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/links", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/aliases", a.GalgameWikiHandler.ProxyGet)
+	// Three-source (VNDB / Bangumi / EG) rating snapshot (wiki passthrough,
+	// public + display-only). 3-segment, so it never collides with /galgame/:gid.
+	api.Get("/galgame/:gid/scores", a.GalgameCrossSourceHandler.Scores)
 	// `/galgame/:gid/contributors` is unused — the FE contributor view
 	// reads from detail's embedded `contributor[]` array now
 	// (apps/web/.../components/galgame/contributor/Container.vue notes
@@ -198,6 +205,14 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-engine/:name", a.GalgameEntityHandler.GetEngineDetail)
 	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
 	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
+	// Catalog read proxy (public, catalog S2S passthrough) — the galgame detail
+	// page's credits block + "open a credited person/character → their other
+	// works" reverse lookups. :wid comes from the detail response's
+	// catalog_work_id (frontend passes it back); the backend never resolves
+	// gid→wid. Response shape is the catalog contract verbatim.
+	api.Get("/catalog/works/:wid/credits", a.GalgameCrossSourceHandler.WorkCredits)
+	api.Get("/catalog/names/:nid/works", a.GalgameCrossSourceHandler.NameWorks)
+	api.Get("/catalog/characters/:cid/works", a.GalgameCrossSourceHandler.CharacterWorks)
 	// `/galgame-resource` list — moved to optAuth below (FE list cards
 	// show the heart icon and need the viewer's per-row like state).
 	// `/galgame-rating/all` stays here in the public group: the rating
