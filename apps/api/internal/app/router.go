@@ -282,6 +282,11 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/galgame/:gid/resource/all", a.GalgameResourceHandler.GetGalgameResources)
 	optAuth.Get("/galgame/:gid/comment/all", a.GalgameCommentHandler.GetComments)
 	optAuth.Get("/galgame/:gid/comment/thread/:rootId", a.GalgameCommentHandler.GetCommentThread)
+	// NEW community-backed comment READS (flag-gated, anonymous-readable). These
+	// must be mounted BEFORE the mandatory-auth boundary below — Fiber middleware
+	// is stack-ordered, so anything registered after it is login-gated regardless
+	// of the group handle. The write half mounts after the boundary.
+	a.GalgameCommunityCommentHandler.RegisterReads(optAuth, a.Config.Community.Enabled)
 	optAuth.Get("/galgame/:gid/pr/all", a.GalgameWikiHandler.GetGalgamePRs)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameWikiHandler.GetGalgameLinks)
 	optAuth.Get("/galgame/:gid/history/all", a.GalgameWikiHandler.GetGalgameHistory)
@@ -425,10 +430,11 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.DeleteComment)
 	authed.Put("/galgame/:gid/comment/like", commentReadonly, a.GalgameCommentHandler.ToggleCommentLike)
 
-	// NEW community-backed comment routes (`/comments` plural), mounted only when
+	// NEW community-backed comment WRITES (`/comments` plural), mounted only when
 	// KUN_GALGAME_COMMENTS_COMMUNITY is on — off means none of them exist (404),
-	// the byte-identical deployment invariant. Coexists with the old routes above.
-	a.GalgameCommunityCommentHandler.Register(optAuth, authed, a.Config.Community.Enabled)
+	// the byte-identical deployment invariant. Coexists with the old routes above;
+	// the anonymous read half is mounted before the auth boundary (see optAuth).
+	a.GalgameCommunityCommentHandler.RegisterWrites(authed, a.Config.Community.Enabled)
 
 	// Galgame resource (authenticated, local)
 	authed.Post("/galgame/:gid/resource", a.GalgameResourceHandler.CreateResource)

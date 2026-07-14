@@ -27,16 +27,28 @@ func NewCommunityCommentHandler(svc *service.CommunityCommentService) *Community
 	return &CommunityCommentHandler{service: svc}
 }
 
-// Register mounts the community comment routes when enabled; a no-op when not,
-// so with the flag off none of these paths exist (404) — the byte-identical
-// deployment invariant. optAuth is the OptionalAuth group (public reads),
-// authed the session-required group.
-func (h *CommunityCommentHandler) Register(optAuth, authed fiber.Router, enabled bool) {
+// RegisterReads / RegisterWrites mount the community comment routes when
+// enabled; no-ops when not, so with the flag off none of these paths exist
+// (404) — the byte-identical deployment invariant.
+//
+// The two halves MUST be mounted on opposite sides of the router's mandatory-
+// auth boundary: Fiber middleware is stack-ordered, so a route registered after
+// the session-required `Use` passes through it no matter which group handle
+// registered it. Mounting the public reads via the optAuth handle but after
+// that boundary silently made them login-only (anonymous 205) — the split keeps
+// the registration position explicit.
+func (h *CommunityCommentHandler) RegisterReads(optAuth fiber.Router, enabled bool) {
 	if !enabled {
 		return
 	}
 	optAuth.Get("/galgame/:gid/comments", h.List)
 	optAuth.Get("/galgame/:gid/comments/locate", h.Locate)
+}
+
+func (h *CommunityCommentHandler) RegisterWrites(authed fiber.Router, enabled bool) {
+	if !enabled {
+		return
+	}
 	authed.Post("/galgame/:gid/comments", h.Create)
 	authed.Put("/galgame/comments/:postId", h.Update)
 	authed.Delete("/galgame/comments/:postId", h.Delete)
