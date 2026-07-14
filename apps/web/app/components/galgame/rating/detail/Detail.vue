@@ -20,6 +20,14 @@ const props = defineProps<{
 const { id: userId } = usePersistUserStore()
 const { canModerate } = useRole()
 
+// Charter step 08: the community-primitive resource comment sections are behind a
+// public flag (NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY). Off (default, empty) = the
+// legacy comment section renders byte-identically. This is the SINGLE fork point
+// for the rating area — the two comment component sets never mix below here.
+const isCommunityComments = ['1', 'true', 'on', 'yes'].includes(
+  String(useRuntimeConfig().public.resourceCommentsCommunity ?? '').toLowerCase()
+)
+
 // Even on the detail page (which the reader opened deliberately), a 严重剧透
 // review stays behind a one-click frosted overlay; 部分剧透 / 无剧透 show直接.
 const spoilerRevealed = ref(false)
@@ -274,8 +282,13 @@ const handleDeleteRating = async () => {
       <GalgameSeriesCard :series="data.galgame_series" />
     </KunCard>
 
+    <GalgameRatingCommentCommunityContainer
+      v-if="data && isCommunityComments"
+      :rating-id="data.id"
+      :rating-author="data.user"
+    />
     <GalgameRatingCommentContainer
-      v-if="data"
+      v-else-if="data"
       :rating-id="data.id"
       :rating-author="data.user"
       :comments-data="data.comments"
