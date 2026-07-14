@@ -51,6 +51,14 @@ x-kungal-api-env: &kungal-api-env
   OAUTH_CLIENT_ID: 4ed9bc99ec0a789a4796b83e22bd84c5
   OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?set OAUTH_CLIENT_SECRET in Dokploy (论坛 client 注册时的明文)}
   OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
+  # ── galgame comment migration onto the community primitive (track 03) ──
+  # Client creds fall back to OAUTH_CLIENT_ID/SECRET above (app.go). The cutover
+  # choreography is compose-literal on purpose (non-secret, auditable, rollback =
+  # revert): READONLY freezes the OLD write routes for the import window and then
+  # STAYS on after the flip so no direct API call can fork writes into the
+  # retired galgame_comment table (old-world removal is tracked as step 06a).
+  KUN_COMMUNITY_API_BASE: http://community:9282/api/v1/community
+  KUN_GALGAME_COMMENT_READONLY: "true"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # inline image bed (Cloudflare R2 in prod; blank → disabled)
   S3_ENDPOINT: ${S3_ENDPOINT:-}
