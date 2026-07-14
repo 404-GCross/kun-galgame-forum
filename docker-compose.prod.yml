@@ -58,6 +58,7 @@ x-kungal-api-env: &kungal-api-env
   # STAYS on after the flip so no direct API call can fork writes into the
   # retired galgame_comment table (old-world removal is tracked as step 06a).
   KUN_COMMUNITY_API_BASE: http://community:9282/api/v1/community
+  KUN_GALGAME_COMMENTS_COMMUNITY: "true"
   KUN_GALGAME_COMMENT_READONLY: "true"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # inline image bed (Cloudflare R2 in prod; blank → disabled)
@@ -170,6 +171,7 @@ services:
       NUXT_PUBLIC_OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
       NUXT_PUBLIC_GALGAME_WIKI_URL: https://wiki.kungal.com/api
       NUXT_PUBLIC_KUN_GALGAME_URL: https://www.kungal.com
+      NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY: "true"
     expose: ["7777"]
     depends_on:
       kungal-api: { condition: service_healthy }
