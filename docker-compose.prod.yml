@@ -61,6 +61,7 @@ x-kungal-api-env: &kungal-api-env
   KUN_GALGAME_COMMENTS_COMMUNITY: "true"
   KUN_GALGAME_COMMENT_READONLY: "true"
   KUN_RESOURCE_COMMENT_READONLY: "true"
+  KUN_RESOURCE_COMMENTS_COMMUNITY: "true"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # inline image bed (Cloudflare R2 in prod; blank → disabled)
   S3_ENDPOINT: ${S3_ENDPOINT:-}
@@ -173,6 +174,7 @@ services:
       NUXT_PUBLIC_GALGAME_WIKI_URL: https://wiki.kungal.com/api
       NUXT_PUBLIC_KUN_GALGAME_URL: https://www.kungal.com
       NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY: "true"
+      NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY: "true"
     expose: ["7777"]
     depends_on:
       kungal-api: { condition: service_healthy }
