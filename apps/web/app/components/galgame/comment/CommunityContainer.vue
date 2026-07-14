@@ -231,17 +231,22 @@ const resolveDeepLink = async () => {
 }
 
 onMounted(() => {
-  // Resolve deep-links client-side, once the first page has seeded.
-  const stop = watch(
-    seeded,
-    (ready) => {
-      if (ready) {
-        stop()
-        resolveDeepLink()
-      }
-    },
-    { immediate: true }
-  )
+  // Resolve deep-links client-side, once the first page has seeded. When the
+  // comment subtree hydrates lazily (folded tab), the SSR payload has already
+  // seeded the page by the time we mount — check the current value instead of
+  // an immediate watch: an immediate callback runs synchronously INSIDE the
+  // watch() call, so calling the not-yet-assigned stop handle there is a TDZ
+  // crash ("Cannot access 'stop' before initialization").
+  if (seeded.value) {
+    resolveDeepLink()
+    return
+  }
+  const stop = watch(seeded, (ready) => {
+    if (ready) {
+      stop()
+      resolveDeepLink()
+    }
+  })
 })
 </script>
 
