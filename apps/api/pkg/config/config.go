@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -22,6 +23,30 @@ type Config struct {
 	LinkChecker    LinkCheckerConfig
 	Trust          TrustConfig
 	Catalog        CatalogClientConfig
+	Community      CommunityConfig
+}
+
+// CommunityConfig holds what kungal needs to reroute the galgame comment area
+// onto the infra community primitive (kun-galgame-infra cmd/community :9282).
+// Auth is HTTP Basic reusing the OAuth client_id/secret; the community service
+// reads oauth_clients.catalog_site to derive kungal's tenant (never on the
+// wire). ClientID/ClientSecret default to the OAuth credentials when unset
+// (filled in app.go), so a single OAuth client works.
+//
+// TWO independent flags gate the migration; BOTH default off, and off means
+// byte-identical behavior — the deployment safety invariant:
+//   - Enabled (KUN_GALGAME_COMMENTS_COMMUNITY): when on, the new community-backed
+//     comment routes are mounted and the login-time trust Boost is declared. Off
+//     = the new routes are never registered (404) and no Boost ever fires.
+//   - Readonly (KUN_GALGAME_COMMENT_READONLY): when on, the OLD comment WRITE
+//     routes answer 503 (the cutover freeze window, step 05); reads are
+//     unaffected. Independent of Enabled.
+type CommunityConfig struct {
+	BaseURL      string // community S2S base, e.g. http://127.0.0.1:9282/api/v1/community
+	ClientID     string // OAuth client id (Basic auth); defaults to OAuth.ClientID
+	ClientSecret string // OAuth client secret; defaults to OAuth.ClientSecret
+	Enabled      bool   // KUN_GALGAME_COMMENTS_COMMUNITY
+	Readonly     bool   // KUN_GALGAME_COMMENT_READONLY
 }
 
 // CatalogClientConfig holds what kungal needs to read the infra Catalog service
@@ -274,7 +299,28 @@ func Load() (*Config, error) {
 		Catalog: CatalogClientConfig{
 			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:9281"),
 		},
+		Community: CommunityConfig{
+			// Empty base URL by default: the client's Configured() gate then
+			// stays false on a dev box without a community service, so S2S calls
+			// degrade cleanly even if the feature flag is flipped on.
+			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),
+			ClientID:     envOrDefault("KUN_COMMUNITY_CLIENT_ID", ""),
+			ClientSecret: envOrDefault("KUN_COMMUNITY_CLIENT_SECRET", ""),
+			Enabled:      envTruthy("KUN_GALGAME_COMMENTS_COMMUNITY"),
+			Readonly:     envTruthy("KUN_GALGAME_COMMENT_READONLY"),
+		},
 	}, nil
+}
+
+// envTruthy reports whether an env var is set to a truthy value (1/true/on/yes,
+// case-insensitive). Empty or any other value = false — a feature flag defaults
+// OFF, the byte-identical deployment safety invariant of the comment migration.
+func envTruthy(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "on", "yes":
+		return true
+	}
+	return false
 }
 
 func requireEnv(key string) (string, error) {

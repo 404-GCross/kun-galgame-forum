@@ -1,6 +1,7 @@
 package handler
 
 import (
+	communitytrust "kun-galgame-api/internal/community/trust"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/service"
@@ -13,10 +14,14 @@ import (
 type OAuthHandler struct {
 	authService *service.AuthService
 	secure      bool // true in production (HTTPS), false in dev (HTTP)
+	// booster declares the community trust starter Boost at login (charter step
+	// 03). Self-gating: a no-op unless the community migration flag is on and the
+	// S2S client is configured, so with the flag off no Boost ever fires.
+	booster *communitytrust.Reporter
 }
 
-func NewOAuthHandler(authService *service.AuthService, isProd bool) *OAuthHandler {
-	return &OAuthHandler{authService: authService, secure: isProd}
+func NewOAuthHandler(authService *service.AuthService, isProd bool, booster *communitytrust.Reporter) *OAuthHandler {
+	return &OAuthHandler{authService: authService, secure: isProd, booster: booster}
 }
 
 // Callback handles the OAuth code exchange: code → token → userinfo → session.
@@ -35,6 +40,13 @@ func (h *OAuthHandler) Callback(c fiber.Ctx) error {
 	session, appErr := h.authService.OAuthCallback(c.Context(), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
+	}
+
+	// Declare the community trust starter Boost from the effective role set +
+	// account age. Non-blocking and self-gating (no-op when the community flag is
+	// off); never fails or delays login.
+	if h.booster != nil {
+		h.booster.Boost(session.User.ID, session.User.Roles)
 	}
 
 	c.Cookie(&fiber.Cookie{

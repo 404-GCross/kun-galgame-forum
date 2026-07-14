@@ -414,10 +414,21 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame/collection/:cid", a.GalgameCollectionHandler.Delete)
 	authed.Get("/galgame/:gid/collections/mine", a.GalgameCollectionHandler.MyCollectionsForGalgame)
 	authed.Put("/galgame/:gid/collections", a.GalgameCollectionHandler.SetMembership)
-	authed.Post("/galgame/:gid/comment", a.GalgameCommentHandler.CreateComment)
-	authed.Put("/galgame/:gid/comment", a.GalgameCommentHandler.UpdateComment)
-	authed.Delete("/galgame/:gid/comment", a.GalgameCommentHandler.DeleteComment)
-	authed.Put("/galgame/:gid/comment/like", a.GalgameCommentHandler.ToggleCommentLike)
+	// OLD galgame comment WRITE routes, guarded by a thin read-only pre-check for
+	// the migration cutover freeze window (KUN_GALGAME_COMMENT_READONLY). The
+	// guard is a pure passthrough when the flag is off (the default), so this is
+	// byte-identical to today; reads (comment/all, comment/thread) are never
+	// mounted behind it. The old handlers are untouched.
+	commentReadonly := middleware.GalgameCommentReadonly(a.Config.Community.Readonly)
+	authed.Post("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.CreateComment)
+	authed.Put("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.UpdateComment)
+	authed.Delete("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.DeleteComment)
+	authed.Put("/galgame/:gid/comment/like", commentReadonly, a.GalgameCommentHandler.ToggleCommentLike)
+
+	// NEW community-backed comment routes (`/comments` plural), mounted only when
+	// KUN_GALGAME_COMMENTS_COMMUNITY is on — off means none of them exist (404),
+	// the byte-identical deployment invariant. Coexists with the old routes above.
+	a.GalgameCommunityCommentHandler.Register(optAuth, authed, a.Config.Community.Enabled)
 
 	// Galgame resource (authenticated, local)
 	authed.Post("/galgame/:gid/resource", a.GalgameResourceHandler.CreateResource)

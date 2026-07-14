@@ -10,6 +10,7 @@ import (
 	adminHandler "kun-galgame-api/internal/admin/handler"
 	adminRepo "kun-galgame-api/internal/admin/repository"
 	adminService "kun-galgame-api/internal/admin/service"
+	communitytrust "kun-galgame-api/internal/community/trust"
 	docHandler "kun-galgame-api/internal/doc/handler"
 	docRepo "kun-galgame-api/internal/doc/repository"
 	docService "kun-galgame-api/internal/doc/service"
@@ -66,6 +67,7 @@ import (
 	websiteService "kun-galgame-api/internal/website/service"
 	"kun-galgame-api/pkg/artifactclient"
 	"kun-galgame-api/pkg/catalogclient"
+	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/config"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
@@ -92,54 +94,55 @@ type App struct {
 	UserClient  *userclient.Client
 
 	// Handlers
-	OAuthHandler               *handler.OAuthHandler
-	UserHandler                *handler.UserHandler
-	UserProfileHandler         *handler.ProfileHandler
-	HomeHandler                *homeHandler.HomeHandler
-	TopicHandler               *topicHandler.TopicHandler
-	TopicDraftHandler          *topicHandler.TopicDraftHandler
-	ReplyHandler               *topicHandler.ReplyHandler
-	TopicCommentHandler        *topicHandler.CommentHandler
-	PollHandler                *topicHandler.PollHandler
-	MessageHandler             *msgHandler.MessageHandler
-	MessageChatHandler         *msgHandler.ChatHandler
-	AdminOverviewHandler       *adminHandler.OverviewHandler
-	AdminPurgeHandler          *adminHandler.PurgeHandler
-	RankingHandler             *rankingHandler.RankingHandler
-	SectionHandler             *sectionHandler.SectionHandler
-	DocArticleHandler          *docHandler.ArticleHandler
-	DocCategoryHandler         *docHandler.CategoryHandler
-	DocTagHandler              *docHandler.TagHandler
-	WebsiteHandler             *websiteHandler.WebsiteHandler
-	WebsiteCommentHandler      *websiteHandler.CommentHandler
-	WebsiteCategoryHandler     *websiteHandler.CategoryHandler
-	WebsiteTagHandler          *websiteHandler.TagHandler
-	UpdateHandler              *updateHandler.UpdateHandler
-	FriendLinkHandler          *friendHandler.FriendLinkHandler
-	TrustHandler               *trustHandler.TrustHandler
-	RSSHandler                 *rssHandler.RSSHandler
-	GalgameHandler             *galgameHandler.GalgameHandler
-	GalgameCollectionHandler   *galgameHandler.GalgameCollectionHandler
-	GalgameCommentHandler      *galgameHandler.CommentHandler
-	GalgameResourceHandler     *galgameHandler.ResourceHandler
-	GalgameRatingHandler       *galgameHandler.RatingHandler
-	GalgameQuizHandler         *galgameHandler.QuizHandler
-	CreatorHandler             *galgameHandler.CreatorHandler
-	GalgameEntityHandler       *galgameHandler.EntityHandler
-	GalgameCalendarHandler     *galgameHandler.CalendarHandler
-	GalgameWikiHandler         *galgameHandler.WikiHandler
-	GalgameSubmissionHandler   *galgameHandler.SubmissionHandler
-	GalgameMessageHandler      *galgameHandler.WikiMessageHandler
-	GalgameCrossSourceHandler  *galgameHandler.CrossSourceHandler
-	ActivityHandler            *activityHandler.ActivityHandler
-	ImageHandler               *imageHandler.ImageHandler
-	SearchHandler              *searchHandler.SearchHandler
-	ToolsetHandler             *toolsetHandler.ToolsetHandler
-	ToolsetPracticalityHandler *toolsetHandler.PracticalityHandler
-	ToolsetCommentHandler      *toolsetHandler.CommentHandler
-	ToolsetResourceHandler     *toolsetHandler.ResourceHandler
-	ToolsetUploadHandler       *toolsetHandler.UploadHandler
-	CronStop                   func()
+	OAuthHandler                   *handler.OAuthHandler
+	UserHandler                    *handler.UserHandler
+	UserProfileHandler             *handler.ProfileHandler
+	HomeHandler                    *homeHandler.HomeHandler
+	TopicHandler                   *topicHandler.TopicHandler
+	TopicDraftHandler              *topicHandler.TopicDraftHandler
+	ReplyHandler                   *topicHandler.ReplyHandler
+	TopicCommentHandler            *topicHandler.CommentHandler
+	PollHandler                    *topicHandler.PollHandler
+	MessageHandler                 *msgHandler.MessageHandler
+	MessageChatHandler             *msgHandler.ChatHandler
+	AdminOverviewHandler           *adminHandler.OverviewHandler
+	AdminPurgeHandler              *adminHandler.PurgeHandler
+	RankingHandler                 *rankingHandler.RankingHandler
+	SectionHandler                 *sectionHandler.SectionHandler
+	DocArticleHandler              *docHandler.ArticleHandler
+	DocCategoryHandler             *docHandler.CategoryHandler
+	DocTagHandler                  *docHandler.TagHandler
+	WebsiteHandler                 *websiteHandler.WebsiteHandler
+	WebsiteCommentHandler          *websiteHandler.CommentHandler
+	WebsiteCategoryHandler         *websiteHandler.CategoryHandler
+	WebsiteTagHandler              *websiteHandler.TagHandler
+	UpdateHandler                  *updateHandler.UpdateHandler
+	FriendLinkHandler              *friendHandler.FriendLinkHandler
+	TrustHandler                   *trustHandler.TrustHandler
+	RSSHandler                     *rssHandler.RSSHandler
+	GalgameHandler                 *galgameHandler.GalgameHandler
+	GalgameCollectionHandler       *galgameHandler.GalgameCollectionHandler
+	GalgameCommentHandler          *galgameHandler.CommentHandler
+	GalgameCommunityCommentHandler *galgameHandler.CommunityCommentHandler
+	GalgameResourceHandler         *galgameHandler.ResourceHandler
+	GalgameRatingHandler           *galgameHandler.RatingHandler
+	GalgameQuizHandler             *galgameHandler.QuizHandler
+	CreatorHandler                 *galgameHandler.CreatorHandler
+	GalgameEntityHandler           *galgameHandler.EntityHandler
+	GalgameCalendarHandler         *galgameHandler.CalendarHandler
+	GalgameWikiHandler             *galgameHandler.WikiHandler
+	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
+	GalgameMessageHandler          *galgameHandler.WikiMessageHandler
+	GalgameCrossSourceHandler      *galgameHandler.CrossSourceHandler
+	ActivityHandler                *activityHandler.ActivityHandler
+	ImageHandler                   *imageHandler.ImageHandler
+	SearchHandler                  *searchHandler.SearchHandler
+	ToolsetHandler                 *toolsetHandler.ToolsetHandler
+	ToolsetPracticalityHandler     *toolsetHandler.PracticalityHandler
+	ToolsetCommentHandler          *toolsetHandler.CommentHandler
+	ToolsetResourceHandler         *toolsetHandler.ResourceHandler
+	ToolsetUploadHandler           *toolsetHandler.UploadHandler
+	CronStop                       func()
 }
 
 func New(cfg *config.Config) *App {
@@ -287,6 +290,35 @@ func New(cfg *config.Config) *App {
 		slog.Warn("catalog service client NOT configured; catalog credits proxy returns 未启用 — set KUN_CATALOG_API_BASE + OAuth creds")
 	}
 
+	// Community primitive client — the galgame comment area reroute (charter step
+	// 03; kun-galgame-infra cmd/community :9282). Basic auth reuses the OAuth
+	// client_id/secret (the community service derives kungal's tenant from
+	// oauth_clients.catalog_site), so the S2S creds default to the OAuth client
+	// when KUN_COMMUNITY_CLIENT_ID/SECRET are unset. Degrades to a no-op (calls
+	// return ErrNotConfigured) when the base URL/creds are unset, so a dev box
+	// without a community service boots even with the flag flipped on.
+	commClientID := cfg.Community.ClientID
+	if commClientID == "" {
+		commClientID = cfg.OAuth.ClientID
+	}
+	commClientSecret := cfg.Community.ClientSecret
+	if commClientSecret == "" {
+		commClientSecret = cfg.OAuth.ClientSecret
+	}
+	communityCli := communityclient.New(communityclient.Config{
+		BaseURL:      cfg.Community.BaseURL,
+		ClientID:     commClientID,
+		ClientSecret: commClientSecret,
+	})
+	if cfg.Community.Enabled && communityCli.Configured() {
+		slog.Info("community comment migration ON", "base_url", cfg.Community.BaseURL, "readonly_freeze", cfg.Community.Readonly)
+	} else if cfg.Community.Enabled {
+		slog.Warn("KUN_GALGAME_COMMENTS_COMMUNITY on but community client NOT configured; new comment routes will degrade — set KUN_COMMUNITY_API_BASE + OAuth creds")
+	}
+	// Login-time trust Boost reporter (staff/veteran). Self-gates on the migration
+	// flag + client config, so no Boost fires with the flag off.
+	communityBooster := communitytrust.New(communityCli, rdb, db, cfg.Community.Enabled)
+
 	// kungal-link-live-checker client — the "report resource expired" gate.
 	// Only construct when BOTH base URL + API key are set; otherwise the gate is
 	// nil and MarkExpired falls back to the legacy single-report-expires flow
@@ -332,6 +364,12 @@ func New(cfg *config.Config) *App {
 	// Galgame
 	galgameCommentRepo := galgameRepo.NewCommentRepository(db)
 	galgameCommentSvc := galgameService.NewCommentService(galgameCommentRepo, userStateRepo, uc)
+	// Community-backed comment BFF (charter step 03) — the new `/comments` routes,
+	// mounted only when the migration flag is on (router.go). Coexists with the
+	// old comment service; the local repo owns galgame_post_like + the legacy-id
+	// map (migration 057).
+	galgameCommunityPostRepo := galgameRepo.NewCommunityPostRepository(db)
+	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
 	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
@@ -487,41 +525,42 @@ func New(cfg *config.Config) *App {
 	// Handlers
 	app := &App{
 		DB: db, Redis: rdb, S3: s3Client, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
-		UserState:                userStateRepo,
-		UserClient:               uc,
-		OAuthHandler:             handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod"),
-		UserHandler:              handler.NewUserHandler(userService, userContentService),
-		UserProfileHandler:       handler.NewProfileHandler(oauthClient, uc),
-		HomeHandler:              homeHandler.NewHomeHandler(homeService.NewHomeService(homeRepo.NewHomeRepository(db), gc, uc, rdb)),
-		TopicHandler:             topicHandler.NewTopicHandler(topicSvc, topicWriteSvc),
-		TopicDraftHandler:        topicHandler.NewTopicDraftHandler(draftSvc),
-		ReplyHandler:             topicHandler.NewReplyHandler(replySvc),
-		TopicCommentHandler:      topicHandler.NewCommentHandler(commentSvc),
-		PollHandler:              topicHandler.NewPollHandler(pollSvc),
-		MessageHandler:           msgHandler.NewMessageHandler(messageSvc),
-		MessageChatHandler:       msgHandler.NewChatHandler(chatSvc),
-		AdminOverviewHandler:     adminHandler.NewOverviewHandler(adminOverviewSvc),
-		AdminPurgeHandler:        adminHandler.NewPurgeHandler(adminPurgeSvc),
-		RankingHandler:           rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
-		SectionHandler:           sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
-		DocArticleHandler:        docHandler.NewArticleHandler(docArticleSvc),
-		DocCategoryHandler:       docHandler.NewCategoryHandler(docCategorySvc),
-		DocTagHandler:            docHandler.NewTagHandler(docTagSvc),
-		WebsiteHandler:           websiteHandler.NewWebsiteHandler(websiteCoreSvc),
-		WebsiteCommentHandler:    websiteHandler.NewCommentHandler(websiteCommentSvc),
-		WebsiteCategoryHandler:   websiteHandler.NewCategoryHandler(websiteCategorySvc),
-		WebsiteTagHandler:        websiteHandler.NewTagHandler(websiteTagSvc),
-		UpdateHandler:            updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
-		FriendLinkHandler:        friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
-		TrustHandler:             trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
-		RSSHandler:               rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
-		GalgameHandler:           galgameHandler.NewGalgameHandler(galgameCoreSvc),
-		GalgameCollectionHandler: galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
-		GalgameCommentHandler:    galgameHandler.NewCommentHandler(galgameCommentSvc),
-		GalgameResourceHandler:   galgameHandler.NewResourceHandler(galgameResourceSvc),
-		GalgameRatingHandler:     galgameHandler.NewRatingHandler(galgameRatingSvc),
-		GalgameQuizHandler:       galgameHandler.NewQuizHandler(galgameQuizSvc),
-		CreatorHandler:           galgameHandler.NewCreatorHandler(creatorSvc),
+		UserState:                      userStateRepo,
+		UserClient:                     uc,
+		OAuthHandler:                   handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod", communityBooster),
+		UserHandler:                    handler.NewUserHandler(userService, userContentService),
+		UserProfileHandler:             handler.NewProfileHandler(oauthClient, uc),
+		HomeHandler:                    homeHandler.NewHomeHandler(homeService.NewHomeService(homeRepo.NewHomeRepository(db), gc, uc, rdb)),
+		TopicHandler:                   topicHandler.NewTopicHandler(topicSvc, topicWriteSvc),
+		TopicDraftHandler:              topicHandler.NewTopicDraftHandler(draftSvc),
+		ReplyHandler:                   topicHandler.NewReplyHandler(replySvc),
+		TopicCommentHandler:            topicHandler.NewCommentHandler(commentSvc),
+		PollHandler:                    topicHandler.NewPollHandler(pollSvc),
+		MessageHandler:                 msgHandler.NewMessageHandler(messageSvc),
+		MessageChatHandler:             msgHandler.NewChatHandler(chatSvc),
+		AdminOverviewHandler:           adminHandler.NewOverviewHandler(adminOverviewSvc),
+		AdminPurgeHandler:              adminHandler.NewPurgeHandler(adminPurgeSvc),
+		RankingHandler:                 rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
+		SectionHandler:                 sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
+		DocArticleHandler:              docHandler.NewArticleHandler(docArticleSvc),
+		DocCategoryHandler:             docHandler.NewCategoryHandler(docCategorySvc),
+		DocTagHandler:                  docHandler.NewTagHandler(docTagSvc),
+		WebsiteHandler:                 websiteHandler.NewWebsiteHandler(websiteCoreSvc),
+		WebsiteCommentHandler:          websiteHandler.NewCommentHandler(websiteCommentSvc),
+		WebsiteCategoryHandler:         websiteHandler.NewCategoryHandler(websiteCategorySvc),
+		WebsiteTagHandler:              websiteHandler.NewTagHandler(websiteTagSvc),
+		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
+		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
+		TrustHandler:                   trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
+		RSSHandler:                     rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
+		GalgameHandler:                 galgameHandler.NewGalgameHandler(galgameCoreSvc),
+		GalgameCollectionHandler:       galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
+		GalgameCommentHandler:          galgameHandler.NewCommentHandler(galgameCommentSvc),
+		GalgameCommunityCommentHandler: galgameHandler.NewCommunityCommentHandler(galgameCommunityCommentSvc),
+		GalgameResourceHandler:         galgameHandler.NewResourceHandler(galgameResourceSvc),
+		GalgameRatingHandler:           galgameHandler.NewRatingHandler(galgameRatingSvc),
+		GalgameQuizHandler:             galgameHandler.NewQuizHandler(galgameQuizSvc),
+		CreatorHandler:                 galgameHandler.NewCreatorHandler(creatorSvc),
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
 			galgameSeriesSvc, galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
 		),
