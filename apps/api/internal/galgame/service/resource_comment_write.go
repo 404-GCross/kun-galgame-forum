@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math"
-	"time"
 
 	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/infrastructure/markdown"
@@ -196,7 +194,7 @@ func (s *ResourceCommentService) DeleteComment(ctx context.Context, src CommentS
 	if src.key == sourceWebsite.key {
 		s.bumpWebsiteCommentCount(resourceID, -1)
 	}
-	s.feedDelete(src.feedType, postID)
+	s.feedDelete(src, postID)
 	return nil
 }
 
@@ -346,34 +344,15 @@ func (s *ResourceCommentService) notifyToolset(senderID, receiverID int, msgType
 // ──────────────────────────────────────────
 
 // feedUpsert projects a community-backed comment into the materialized feed the
-// old table's AFTER-INSERT trigger used to maintain (it can't: community posts
-// live in another database). It reuses the SAME feed_upsert() SQL function the
-// triggers call, so the row is byte-for-byte the projection the old comment would
-// have produced — except source_id is the community post id. source_id is an
-// int32 column; a post id beyond int32 is skipped + logged (see the execution
-// report — a latent cap, not a live risk). Best-effort.
+// old table's AFTER-INSERT trigger used to maintain (shared helper in
+// feed_parity.go; the resource-comment triggers pass gid=0).
 func (s *ResourceCommentService) feedUpsert(feedType string, postID int64, userID int, content, link string, nsfw bool, createdAt string) {
-	if postID > math.MaxInt32 {
-		slog.Warn("feed_activity source_id overflow — community post id exceeds int32; feed parity row skipped", "post_id", postID, "type", feedType)
-		return
-	}
-	created, err := time.Parse(time.RFC3339, createdAt)
-	if err != nil {
-		created = time.Now()
-	}
-	if err := s.db.Exec("SELECT feed_upsert(?, ?, ?, ?, ?, ?, ?, ?)",
-		feedType, postID, userID, 0, truncate(content, 100), link, nsfw, created).Error; err != nil {
-		slog.Warn("feed_activity parity upsert failed (best-effort)", "post_id", postID, "type", feedType, "error", err)
-	}
+	feedParityUpsert(s.db, feedType, postID, userID, 0, content, link, nsfw, createdAt)
 }
 
 // feedDelete removes a comment's feed row on tombstone (parity with the old
-// DELETE trigger). Best-effort.
-func (s *ResourceCommentService) feedDelete(feedType string, postID int64) {
-	if postID > math.MaxInt32 {
-		return
-	}
-	if err := s.db.Exec("SELECT feed_delete(?, ?)", feedType, postID).Error; err != nil {
-		slog.Warn("feed_activity parity delete failed (best-effort)", "post_id", postID, "type", feedType, "error", err)
-	}
+// DELETE trigger), including the legacy-keyed row an IMPORTED comment carries.
+func (s *ResourceCommentService) feedDelete(src CommentSource, postID int64) {
+	feedParityDelete(s.db, src.feedType, postID)
+	feedParityDeleteLegacyResource(s.db, src, postID)
 }

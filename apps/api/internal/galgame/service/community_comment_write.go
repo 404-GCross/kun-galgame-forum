@@ -97,6 +97,10 @@ func (s *CommunityCommentService) afterCreate(userID, galgameID int, content str
 	if err != nil {
 		slog.Warn("community comment post-create bookkeeping failed (best-effort)", "galgame_id", galgameID, "post_id", post.ID, "error", err)
 	}
+	// Activity-feed parity (charter ruling 22): the galgame_comment feed trigger
+	// carries the galgame id in the gid slot and links the game page.
+	feedParityUpsert(s.db, feedTypeGalgameComment, post.ID, userID, galgameID,
+		content, "/galgame/"+strconv.Itoa(galgameID), false, post.CreatedAt)
 }
 
 // ──────────────────────────────────────────
@@ -156,6 +160,10 @@ func (s *CommunityCommentService) DeleteComment(ctx context.Context, userID int,
 	if galgameID != nil {
 		s.bumpCommentCount(*galgameID, -1)
 	}
+	// Activity-feed parity (charter ruling 22), including the legacy-keyed row an
+	// imported comment carries (its frozen-table DELETE trigger can never fire).
+	feedParityDelete(s.db, feedTypeGalgameComment, postID)
+	feedParityDeleteLegacyGalgame(s.db, postID)
 	return nil
 }
 
