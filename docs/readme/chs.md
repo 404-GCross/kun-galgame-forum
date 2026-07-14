@@ -2,7 +2,7 @@
 
 ### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
 
-**联系我们：[Telegram](https://t.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
+**联系我们：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
 图片来源为游戏 [方舟指令](https://apps.qoo-app.com/en/app/9593) 中的角色鲲（KUN）
 
@@ -130,7 +130,7 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## 加入 / 联系我们
 
-- [Telegram 群组](https://t.me/kungalgame)
+- [Telegram 群组](https://telegram.me/kungalgame)
 - [Twitter / X](https://twitter.com/kungalgame)
 - [GitHub 仓库](https://github.com/KunMoe/kun-galgame-forum)
 - [Discord 群组](https://discord.com/invite/5F4FS2cXhX)

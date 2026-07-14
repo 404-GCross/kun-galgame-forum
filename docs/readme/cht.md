@@ -2,7 +2,7 @@
 
 ### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
 
-**聯繫我們：[Telegram](https://t.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
+**聯繫我們：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
 圖片來源為遊戲 [方舟指令](https://apps.qoo-app.com/en/app/9593) 中的角色鯤（KUN）
 
@@ -130,7 +130,7 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## 加入 / 聯繫我們
 
-- [Telegram 群](https://t.me/kungalgame)
+- [Telegram 群](https://telegram.me/kungalgame)
 - [Twitter / X](https://twitter.com/kungalgame)
 - [GitHub Repository](https://github.com/KunMoe/kun-galgame-forum)
 - [Discord 群](https://discord.com/invite/5F4FS2cXhX)

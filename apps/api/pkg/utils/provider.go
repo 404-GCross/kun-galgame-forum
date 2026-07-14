@@ -103,6 +103,7 @@ var providerNameSubstrs = []struct {
 	{"github.com", "GitHub"},
 	{"bilibili.com", "哔哩哔哩"},
 	{"t.me", "Telegram"},
+	{"telegram.me", "Telegram"}, // t.me was deregistered 2026-07; new links use telegram.me, old stored ones keep t.me
 	{"archive.org", "Internet Archive"},
 	{"nyaa.si", "Nyaa"},
 	{"2dfan.com", "2BFun"},

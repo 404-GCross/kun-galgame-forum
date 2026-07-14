@@ -2,7 +2,7 @@
 
 ### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
 
-**お問い合わせ：[Telegram](https://t.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
+**お問い合わせ：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
 この画像は、ゲーム [Ark Order](https://apps.qoo-app.com/en/app/9593) から提供されており、キャラクターは 'こん'（Kun）です。
 
@@ -130,7 +130,7 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## 参加 / お問い合わせ
 
-- [Telegram グループ](https://t.me/kungalgame)
+- [Telegram グループ](https://telegram.me/kungalgame)
 - [Twitter / X](https://twitter.com/kungalgame)
 - [GitHub リポジトリ](https://github.com/KunMoe/kun-galgame-forum)
 - [Discord グループ](https://discord.com/invite/5F4FS2cXhX)

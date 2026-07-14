@@ -2,7 +2,7 @@
 
 ### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
 
-**Contact us：[Telegram](https://t.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
+**Contact us：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
 The image is sourced from the game [Ark Order](https://apps.qoo-app.com/en/app/9593), featuring the character 'KUN' (鲲).
 
@@ -130,7 +130,7 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## Join / Contact Us
 
-- [Telegram Group](https://t.me/kungalgame)
+- [Telegram Group](https://telegram.me/kungalgame)
 - [Twitter / X](https://twitter.com/kungalgame)
 - [GitHub Repository](https://github.com/KunMoe/kun-galgame-forum)
 - [Discord Group](https://discord.com/invite/5F4FS2cXhX)
