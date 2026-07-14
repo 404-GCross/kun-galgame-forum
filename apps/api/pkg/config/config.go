@@ -33,20 +33,30 @@ type Config struct {
 // wire). ClientID/ClientSecret default to the OAuth credentials when unset
 // (filled in app.go), so a single OAuth client works.
 //
-// TWO independent flags gate the migration; BOTH default off, and off means
+// FOUR independent flags gate the migration; ALL default off, and off means
 // byte-identical behavior — the deployment safety invariant:
 //   - Enabled (KUN_GALGAME_COMMENTS_COMMUNITY): when on, the new community-backed
-//     comment routes are mounted and the login-time trust Boost is declared. Off
-//     = the new routes are never registered (404) and no Boost ever fires.
-//   - Readonly (KUN_GALGAME_COMMENT_READONLY): when on, the OLD comment WRITE
-//     routes answer 503 (the cutover freeze window, step 05); reads are
+//     galgame comment routes are mounted and the login-time trust Boost is
+//     declared. Off = the new routes are never registered (404) and no Boost
+//     ever fires.
+//   - Readonly (KUN_GALGAME_COMMENT_READONLY): when on, the OLD galgame comment
+//     WRITE routes answer 503 (the cutover freeze window, step 05); reads are
 //     unaffected. Independent of Enabled.
+//   - ResourceEnabled (KUN_RESOURCE_COMMENTS_COMMUNITY): the same gate for the
+//     THREE resource comment areas (rating / website / toolset) rerouted onto the
+//     community primitive (charter step 07). Off = the new resource comment routes
+//     are never registered (404).
+//   - ResourceReadonly (KUN_RESOURCE_COMMENT_READONLY): when on, the OLD rating /
+//     website / toolset comment WRITE routes answer 503 (the resource-wave freeze
+//     window, step 09). Independent of ResourceEnabled.
 type CommunityConfig struct {
-	BaseURL      string // community S2S base, e.g. http://127.0.0.1:9282/api/v1/community
-	ClientID     string // OAuth client id (Basic auth); defaults to OAuth.ClientID
-	ClientSecret string // OAuth client secret; defaults to OAuth.ClientSecret
-	Enabled      bool   // KUN_GALGAME_COMMENTS_COMMUNITY
-	Readonly     bool   // KUN_GALGAME_COMMENT_READONLY
+	BaseURL          string // community S2S base, e.g. http://127.0.0.1:9282/api/v1/community
+	ClientID         string // OAuth client id (Basic auth); defaults to OAuth.ClientID
+	ClientSecret     string // OAuth client secret; defaults to OAuth.ClientSecret
+	Enabled          bool   // KUN_GALGAME_COMMENTS_COMMUNITY
+	Readonly         bool   // KUN_GALGAME_COMMENT_READONLY
+	ResourceEnabled  bool   // KUN_RESOURCE_COMMENTS_COMMUNITY
+	ResourceReadonly bool   // KUN_RESOURCE_COMMENT_READONLY
 }
 
 // CatalogClientConfig holds what kungal needs to read the infra Catalog service
@@ -303,11 +313,13 @@ func Load() (*Config, error) {
 			// Empty base URL by default: the client's Configured() gate then
 			// stays false on a dev box without a community service, so S2S calls
 			// degrade cleanly even if the feature flag is flipped on.
-			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),
-			ClientID:     envOrDefault("KUN_COMMUNITY_CLIENT_ID", ""),
-			ClientSecret: envOrDefault("KUN_COMMUNITY_CLIENT_SECRET", ""),
-			Enabled:      envTruthy("KUN_GALGAME_COMMENTS_COMMUNITY"),
-			Readonly:     envTruthy("KUN_GALGAME_COMMENT_READONLY"),
+			BaseURL:          envOrDefault("KUN_COMMUNITY_API_BASE", ""),
+			ClientID:         envOrDefault("KUN_COMMUNITY_CLIENT_ID", ""),
+			ClientSecret:     envOrDefault("KUN_COMMUNITY_CLIENT_SECRET", ""),
+			Enabled:          envTruthy("KUN_GALGAME_COMMENTS_COMMUNITY"),
+			Readonly:         envTruthy("KUN_GALGAME_COMMENT_READONLY"),
+			ResourceEnabled:  envTruthy("KUN_RESOURCE_COMMENTS_COMMUNITY"),
+			ResourceReadonly: envTruthy("KUN_RESOURCE_COMMENT_READONLY"),
 		},
 	}, nil
 }

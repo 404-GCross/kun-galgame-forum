@@ -287,6 +287,10 @@ func (a *App) setupRoutes() {
 	// is stack-ordered, so anything registered after it is login-gated regardless
 	// of the group handle. The write half mounts after the boundary.
 	a.GalgameCommunityCommentHandler.RegisterReads(optAuth, a.Config.Community.Enabled)
+	// NEW community-backed resource comment READS (rating / website / toolset),
+	// flag-gated + anonymous-readable. Same stack-position rule as above: mounted
+	// BEFORE the mandatory-auth boundary so anonymous reads reach the handler.
+	a.ResourceCommentHandler.RegisterReads(optAuth, a.Config.Community.ResourceEnabled)
 	optAuth.Get("/galgame/:gid/pr/all", a.GalgameWikiHandler.GetGalgamePRs)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameWikiHandler.GetGalgameLinks)
 	optAuth.Get("/galgame/:gid/history/all", a.GalgameWikiHandler.GetGalgameHistory)
@@ -383,11 +387,19 @@ func (a *App) setupRoutes() {
 	authed.Get("/report/reasons", a.TrustHandler.GetReasons)
 	authed.Post("/report/submit", a.TrustHandler.SubmitReport)
 
+	// OLD rating / website / toolset comment WRITE routes are guarded by a thin
+	// read-only pre-check for the resource-wave cutover freeze window
+	// (KUN_RESOURCE_COMMENT_READONLY, charter step 09). The guard is a pure
+	// passthrough when the flag is off (the default) — byte-identical to today —
+	// and reuses the same middleware as the galgame freeze (a content-agnostic 503
+	// gate). Reads are never mounted behind it; the old handlers are untouched.
+	resourceCommentReadonly := middleware.GalgameCommentReadonly(a.Config.Community.ResourceReadonly)
+
 	// Website interactions (authenticated)
 	authed.Put("/website/:domain/like", a.WebsiteHandler.ToggleLike)
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)
-	authed.Post("/website/:domain/comment", a.WebsiteCommentHandler.CreateComment)
-	authed.Delete("/website/:domain/comment", a.WebsiteCommentHandler.DeleteComment)
+	authed.Post("/website/:domain/comment", resourceCommentReadonly, a.WebsiteCommentHandler.CreateComment)
+	authed.Delete("/website/:domain/comment", resourceCommentReadonly, a.WebsiteCommentHandler.DeleteComment)
 
 	// Galgame submission flow (authenticated, any role) — see
 	// docs/galgame_wiki/07-submission.md. The wizard search forces
@@ -436,6 +448,13 @@ func (a *App) setupRoutes() {
 	// the anonymous read half is mounted before the auth boundary (see optAuth).
 	a.GalgameCommunityCommentHandler.RegisterWrites(authed, a.Config.Community.Enabled)
 
+	// NEW community-backed resource comment WRITES (rating / website / toolset
+	// `/comments` create + region-aware delete), mounted only when
+	// KUN_RESOURCE_COMMENTS_COMMUNITY is on. Post-addressed edit / like / flag are
+	// NOT re-registered here — those reuse the galgame `/galgame/comments/:postId*`
+	// routes above (region-agnostic; charter deliverable C).
+	a.ResourceCommentHandler.RegisterWrites(authed, a.Config.Community.ResourceEnabled)
+
 	// Galgame resource (authenticated, local)
 	authed.Post("/galgame/:gid/resource", a.GalgameResourceHandler.CreateResource)
 	authed.Put("/galgame/:gid/resource", a.GalgameResourceHandler.UpdateResource)
@@ -449,9 +468,9 @@ func (a *App) setupRoutes() {
 	authed.Put("/galgame-rating/:id", a.GalgameRatingHandler.UpdateRating)
 	authed.Delete("/galgame-rating/:id", a.GalgameRatingHandler.DeleteRating)
 	authed.Put("/galgame-rating/:id/like", a.GalgameRatingHandler.ToggleLike)
-	authed.Post("/galgame-rating/:id/comment", a.GalgameRatingHandler.CreateComment)
-	authed.Put("/galgame-rating/:id/comment", a.GalgameRatingHandler.UpdateComment)
-	authed.Delete("/galgame-rating/:id/comment", a.GalgameRatingHandler.DeleteComment)
+	authed.Post("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.CreateComment)
+	authed.Put("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.UpdateComment)
+	authed.Delete("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.DeleteComment)
 
 	// Galgame quiz (答题): author / answer / rate-quality / delete + a self
 	// "answered" history. Publishing is open to anyone in MVP (no review gate).
@@ -544,9 +563,9 @@ func (a *App) setupRoutes() {
 	authed.Put("/toolset/:id", a.ToolsetHandler.Update)
 	authed.Delete("/toolset/:id", a.ToolsetHandler.Delete)
 	authed.Put("/toolset/:id/practicality", a.ToolsetPracticalityHandler.UpsertPracticality)
-	authed.Post("/toolset/:id/comment", a.ToolsetCommentHandler.CreateComment)
-	authed.Put("/toolset/:id/comment", a.ToolsetCommentHandler.UpdateComment)
-	authed.Delete("/toolset/:id/comment", a.ToolsetCommentHandler.DeleteComment)
+	authed.Post("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.CreateComment)
+	authed.Put("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.UpdateComment)
+	authed.Delete("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.DeleteComment)
 	authed.Post("/toolset/:id/resource", a.ToolsetResourceHandler.CreateResource)
 	authed.Put("/toolset/:id/resource", a.ToolsetResourceHandler.UpdateResource)
 	authed.Delete("/toolset/:id/resource", a.ToolsetResourceHandler.DeleteResource)

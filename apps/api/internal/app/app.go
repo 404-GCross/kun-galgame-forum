@@ -124,6 +124,7 @@ type App struct {
 	GalgameCollectionHandler       *galgameHandler.GalgameCollectionHandler
 	GalgameCommentHandler          *galgameHandler.CommentHandler
 	GalgameCommunityCommentHandler *galgameHandler.CommunityCommentHandler
+	ResourceCommentHandler         *galgameHandler.ResourceCommentHandler
 	GalgameResourceHandler         *galgameHandler.ResourceHandler
 	GalgameRatingHandler           *galgameHandler.RatingHandler
 	GalgameQuizHandler             *galgameHandler.QuizHandler
@@ -315,6 +316,11 @@ func New(cfg *config.Config) *App {
 	} else if cfg.Community.Enabled {
 		slog.Warn("KUN_GALGAME_COMMENTS_COMMUNITY on but community client NOT configured; new comment routes will degrade — set KUN_COMMUNITY_API_BASE + OAuth creds")
 	}
+	if cfg.Community.ResourceEnabled && communityCli.Configured() {
+		slog.Info("resource comment migration ON", "base_url", cfg.Community.BaseURL, "readonly_freeze", cfg.Community.ResourceReadonly)
+	} else if cfg.Community.ResourceEnabled {
+		slog.Warn("KUN_RESOURCE_COMMENTS_COMMUNITY on but community client NOT configured; new resource comment routes will degrade — set KUN_COMMUNITY_API_BASE + OAuth creds")
+	}
 	// Login-time trust Boost reporter (staff/veteran). Self-gates on the migration
 	// flag + client config, so no Boost fires with the flag off.
 	communityBooster := communitytrust.New(communityCli, rdb, db, cfg.Community.Enabled)
@@ -370,6 +376,11 @@ func New(cfg *config.Config) *App {
 	// map (migration 057).
 	galgameCommunityPostRepo := galgameRepo.NewCommunityPostRepository(db)
 	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
+	// Resource comment BFF (charter step 07) — the rating / website / toolset
+	// `/comments` routes, mounted only when KUN_RESOURCE_COMMENTS_COMMUNITY is on
+	// (router.go). Reuses the SAME community client + local galgame_post_like repo
+	// (post-addressed likes are region-agnostic); the old three areas are untouched.
+	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
 	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
@@ -557,6 +568,7 @@ func New(cfg *config.Config) *App {
 		GalgameCollectionHandler:       galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
 		GalgameCommentHandler:          galgameHandler.NewCommentHandler(galgameCommentSvc),
 		GalgameCommunityCommentHandler: galgameHandler.NewCommunityCommentHandler(galgameCommunityCommentSvc),
+		ResourceCommentHandler:         galgameHandler.NewResourceCommentHandler(resourceCommentSvc),
 		GalgameResourceHandler:         galgameHandler.NewResourceHandler(galgameResourceSvc),
 		GalgameRatingHandler:           galgameHandler.NewRatingHandler(galgameRatingSvc),
 		GalgameQuizHandler:             galgameHandler.NewQuizHandler(galgameQuizSvc),

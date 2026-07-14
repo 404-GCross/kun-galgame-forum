@@ -128,14 +128,19 @@ type ResolveCommentsRequest struct {
 	ContentRating int32  `json:"content_rating"`
 }
 
-// ReplyRequest appends a post. The BFF passes only reply_to_post_id; the
-// primitive derives root_post_id (the sub-thread's top ancestor) and
+// ReplyRequest appends a post. For a REPLY the BFF passes only reply_to_post_id
+// and the primitive derives root_post_id (the sub-thread's top ancestor) and
 // target_user_id (the parent's author) from the parent row (verified against
-// service/post.go Reply). An explicit value would win, but the BFF sends none.
+// service/post.go Reply). TargetUserID is an explicit override the primitive
+// accepts (json:"target_user_id,omitempty") — the galgame comment path never
+// sets it (0 = omitted, so its behavior is unchanged), but the FLAT rating
+// comment area carries an explicit "A → B" target with no parent post, so it
+// passes TargetUserID through directly (charter ruling 19).
 type ReplyRequest struct {
 	AuthorID      int64  `json:"author_id"`
 	Body          string `json:"body"`
 	ReplyToPostID int64  `json:"reply_to_post_id,omitempty"`
+	TargetUserID  int64  `json:"target_user_id,omitempty"`
 }
 
 // EditPostRequest edits a post (re-cooked + edited_at stamped). author_id must
