@@ -60,7 +60,7 @@ This is a **pnpm workspace monorepo** with a Go backend and a Nuxt frontend. It 
 | Cache | Redis |
 | Search | [Meilisearch](https://www.meilisearch.com/) |
 | Authentication | JWT (dual token — access + refresh) + OAuth (`kun-galgame-infra`) |
-| Object Storage | S3-compatible (Cloudflare R2 image bed + Backblaze B2 for toolset uploads) |
+| Object Storage | Images via `image_service` (kun-galgame-infra); Backblaze B2 (S3-compatible) for toolset archive uploads |
 | Scheduler | [robfig/cron](https://github.com/robfig/cron) (daily resets, stats) |
 | Validation | [Zod](https://zod.dev/) (web) |
 | Deployment | Docker → GHCR → [Dokploy](https://dokploy.com/) (or PM2 via `scripts/`) |

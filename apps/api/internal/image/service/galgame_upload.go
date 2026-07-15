@@ -12,7 +12,7 @@ import (
 
 // galgame_upload.go — U2 cover/screenshot upload path.
 //
-// Distinct from UploadTopicImage (legacy S3, no hash, no image_service):
+// Distinct from UploadTopicImage (returns a `/image/<hash>` inline token):
 // galgame covers/screenshots reference image_service by `image_hash`,
 // which means we MUST upload through image_service first to obtain the
 // hash before the user can submit a PUT/PR carrying that hash.

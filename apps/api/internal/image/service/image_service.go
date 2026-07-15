@@ -6,7 +6,6 @@ import (
 
 	galgameclient "kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/image/repository"
-	"kun-galgame-api/internal/infrastructure/storage"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
 )
@@ -18,10 +17,6 @@ const (
 
 type ImageService struct {
 	repo *repository.ImageRepository
-	// s3 is no longer used for image uploads — ALL uploads go through
-	// image_service (imgCli) now. Kept only so the constructor wiring is
-	// unchanged; safe to drop with its app.go wiring in a later cleanup.
-	s3 *storage.S3Client
 	// imgCli is the image_service client for forum's OWN content images —
 	// topic + message inline images (site=kungal). Galgame covers/screenshots
 	// no longer go through it: they proxy to the wiki (see wikiClient) so the
@@ -36,11 +31,10 @@ type ImageService struct {
 
 func NewImageService(
 	repo *repository.ImageRepository,
-	s3 *storage.S3Client,
 	imgCli *imageclient.Client,
 	wikiClient *galgameclient.GalgameClient,
 ) *ImageService {
-	return &ImageService{repo: repo, s3: s3, imgCli: imgCli, wikiClient: wikiClient}
+	return &ImageService{repo: repo, imgCli: imgCli, wikiClient: wikiClient}
 }
 
 // UploadCoverResult is the image_service result returned to cover/banner/icon

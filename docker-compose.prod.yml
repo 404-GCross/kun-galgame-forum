@@ -11,7 +11,7 @@
 #
 # Set in kungal's Dokploy Environment:
 #   POSTGRES_PASSWORD  OAUTH_CLIENT_SECRET  JWT_SECRET  MEILI_MASTER_KEY
-#   (optional) KUN_IMAGE_CLIENT_ID/SECRET  FILE_STORAGE_* (B2 工具集)  MAIL_*  S3_*
+#   (optional) KUN_IMAGE_CLIENT_ID/SECRET  FILE_STORAGE_* (B2 工具集)  MAIL_*
 # These MUST match infra's: POSTGRES_PASSWORD = infra POSTGRES_PASSWORD;
 # MEILI_MASTER_KEY = infra MEILI_MASTER_KEY; OAUTH_CLIENT_SECRET = 注册论坛 client 的明文.
 # (JWT_SECRET here is kungal's OWN session secret — need NOT match infra.)
@@ -63,13 +63,8 @@ x-kungal-api-env: &kungal-api-env
   KUN_RESOURCE_COMMENT_READONLY: "true"
   KUN_RESOURCE_COMMENTS_COMMUNITY: "true"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
-  # inline image bed (Cloudflare R2 in prod; blank → disabled)
-  S3_ENDPOINT: ${S3_ENDPOINT:-}
-  S3_REGION: ${S3_REGION:-}
-  S3_BUCKET: ${S3_BUCKET:-}
-  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
   # toolset archive uploads (Backblaze B2). 空则上传路由仍注册、调用 500(应用只 warn 不拦);要开 toolset 上传就填全 5 个
+  # (内嵌/内容图不走这里 — 全部经 image_service,详见 KUN_IMAGE_CLIENT_*)
   FILE_STORAGE_ENDPOINT: ${FILE_STORAGE_ENDPOINT:-}
   FILE_STORAGE_REGION: ${FILE_STORAGE_REGION:-}
   FILE_STORAGE_BUCKET: ${FILE_STORAGE_BUCKET:-}

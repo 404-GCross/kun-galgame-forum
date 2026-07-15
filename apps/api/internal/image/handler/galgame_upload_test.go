@@ -46,7 +46,7 @@ func newTestApp(t *testing.T) *fiber.App {
 		c.Locals(string(middleware.UserInfoKey), &middleware.UserInfo{ID: 1})
 		return c.Next()
 	})
-	svc := service.NewImageService(&repository.ImageRepository{}, nil, nil, nil)
+	svc := service.NewImageService(&repository.ImageRepository{}, nil, nil)
 	h := NewImageHandler(svc)
 	app.Post("/image/galgame", h.UploadGalgameImage)
 	return app

@@ -12,7 +12,6 @@ type Config struct {
 	Database       DatabaseConfig
 	Redis          RedisConfig
 	OAuth          OAuthConfig
-	S3             S3Config // image bed (R2) — stickers, small inline images
 	FileStorage    S3Config // file storage (B2) — toolset archive uploads
 	Mail           MailConfig
 	Search         SearchConfig
@@ -242,19 +241,9 @@ func Load() (*Config, error) {
 			RedirectURI:  oauthRedirectURI,
 			JWTSecret:    envOrDefault("JWT_SECRET", ""),
 		},
-		S3: S3Config{
-			Endpoint:  envOrDefault("S3_ENDPOINT", ""),
-			Region:    envOrDefault("S3_REGION", ""),
-			Bucket:    envOrDefault("S3_BUCKET", ""),
-			AccessKey: envOrDefault("S3_ACCESS_KEY", ""),
-			SecretKey: envOrDefault("S3_SECRET_KEY", ""),
-		},
-		// Separate bucket for archive uploads (Backblaze B2 in production).
-		// Toolset .7z/.zip/.rar files live here; the image bed (R2) above
-		// is dedicated to small images. Falls back to the image-bed config
-		// so a dev box without B2 still serves a single bucket — but the
-		// CORS rules of the two buckets are usually different, so prod
-		// must set FILE_STORAGE_* explicitly.
+		// Archive uploads (Backblaze B2 in production): toolset .7z/.zip/.rar
+		// files. This is the only S3-API bucket the forum still uses — inline /
+		// content images all go through image_service now, not a local bucket.
 		FileStorage: S3Config{
 			Endpoint:  envOrDefault("FILE_STORAGE_ENDPOINT", ""),
 			Region:    envOrDefault("FILE_STORAGE_REGION", ""),

@@ -86,7 +86,6 @@ type App struct {
 	Fiber       *fiber.App
 	DB          *gorm.DB
 	Redis       *redis.Client
-	S3          *storage.S3Client
 	Mailer      *mail.Mailer
 	Config      *config.Config
 	OAuthClient *oauth.Client
@@ -150,15 +149,10 @@ func New(cfg *config.Config) *App {
 	// Infrastructure
 	db := database.NewPostgres(cfg.Database, cfg.Server.Mode)
 	rdb := cache.NewRedis(cfg.Redis)
-	// Two distinct buckets:
-	// - s3Client: image bed (R2). Stickers / inline images / image_service
-	//   fallbacks. Configured via S3_* env vars.
-	// - fileStorageClient: archive storage (B2). Toolset .7z/.zip/.rar
-	//   uploads via presigned URLs. Configured via FILE_STORAGE_* env
-	//   vars. B2 has different CORS rules from R2 (B2 supports browser
-	//   PUT preflight cleanly), so it must be a separate client even
-	//   though both implement the S3 API.
-	s3Client := storage.NewS3(cfg.S3)
+	// fileStorageClient: archive storage (B2). Toolset .7z/.zip/.rar uploads
+	// via presigned URLs, configured via FILE_STORAGE_* env vars. This is the
+	// only S3-API bucket left — inline / content images all go through
+	// image_service now, so there is no separate image bed (R2) client.
 	fileStorageClient := storage.NewS3(cfg.FileStorage)
 	if fileStorageClient == nil {
 		slog.Warn("FILE_STORAGE_* 未配置, 工具集上传将不可用")
@@ -535,7 +529,7 @@ func New(cfg *config.Config) *App {
 
 	// Handlers
 	app := &App{
-		DB: db, Redis: rdb, S3: s3Client, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
+		DB: db, Redis: rdb, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
 		UserState:                      userStateRepo,
 		UserClient:                     uc,
 		OAuthHandler:                   handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod", communityBooster),
@@ -582,7 +576,7 @@ func New(cfg *config.Config) *App {
 		GalgameMessageHandler:      galgameHandler.NewWikiMessageHandler(galgameMessageSvc),
 		GalgameCrossSourceHandler:  galgameHandler.NewCrossSourceHandler(galgameCrossSourceSvc),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
-		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), s3Client, imgCli, gc)),
+		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, gc)),
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),
 		ToolsetHandler:             toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
 		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
