@@ -89,6 +89,18 @@ This is a **pnpm workspace monorepo** with a Go backend and a Nuxt frontend. It 
 
 **Prerequisites:** Node.js 22+ (with Corepack/pnpm), Go 1.26+, PostgreSQL, Redis, and (optionally) Meilisearch. Full functionality also needs the `kun-galgame-infra` services (OAuth, image, Galgame-wiki).
 
+> **Local platform in one command.** The whole nextmoe platform (OAuth / image /
+> galgame-wiki / catalog / community / trust + MinIO / Mailpit / Meili / Redis)
+> comes up from `kun-galgame-infra`, so onboarding is three steps:
+>
+> 1. `cd ../kun-galgame-infra && docker compose -f docker-compose.dev.yml up -d`
+> 2. (optional) `./scripts/refresh-dev-db.sh` — real-shaped, desensitised data
+> 3. back here: `cp apps/api/.env.example apps/api/.env` (+ the web one), `pnpm dev`
+>
+> The checked-in `.env.example` files are already wired to that stack (127.0.0.1
+> at the prod ports, public dev OAuth credentials). See
+> [`kun-galgame-infra/docs/dev-environment.md`](../kun-galgame-infra/docs/dev-environment.md).
+
 ```bash
 # Install workspace dependencies
 pnpm install
