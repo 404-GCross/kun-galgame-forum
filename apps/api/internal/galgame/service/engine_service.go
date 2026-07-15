@@ -12,11 +12,14 @@ import (
 
 type EngineService struct {
 	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
+	// over the engine's member ids (the wiki can't filter by kungal-local
+	// resource data). See GetDetail.
+	galgameSvc *GalgameService
 }
 
-func NewEngineService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *EngineService {
-	return &EngineService{wikiClient: wikiClient, enricher: enricher}
+func NewEngineService(wikiClient *client.GalgameClient, galgameSvc *GalgameService) *EngineService {
+	return &EngineService{wikiClient: wikiClient, galgameSvc: galgameSvc}
 }
 
 type wikiEngineListItem struct {
@@ -73,11 +76,16 @@ func (s *EngineService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.EngineDetail, *errors.AppError) {
-	// Full wiki member catalogue (paginated, content_limit-aware, matching total),
-	// NOT the forum-local subset. The wiki /engine/:id response already carries
-	// the galgame page; the enricher overlays forum-local data + IsOnForum per
-	// card (wiki-only games → IsOnForum=false). See OfficialService.GetDetail.
+	// Entity detail lists the forum-LOCAL subset of the engine's catalogue, so
+	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
+	// engine's metadata is used from the wiki here (cheapest page); the galgame
+	// list is recomputed locally from the member ids below.
 	q := withSFWFilter(rawQuery, isSFW)
+	// Resolve by the engine_id QUERY param (the :name path is cosmetic — 04-taxonomy),
+	// sourced from the path so the lookup never depends on the FE echoing it.
+	q.Set("engine_id", name)
+	q.Set("page", "1")
+	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/engine/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -89,13 +97,24 @@ func (s *EngineService) GetDetail(
 
 	e := parsed.Engine
 
+	// Member ids from the wiki, then the SAME local filter/sort/paginate as
+	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
+	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "engine", e.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	if appErr != nil {
+		return nil, appErr
+	}
+
 	return &dto.EngineDetail{
 		ID:           e.ID,
 		Name:         e.Name,
 		Description:  e.Description,
 		Alias:        emptyStrSliceIfNil(e.Alias),
-		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
-		GalgameCount: parsed.Total,
+		Galgame:      listCardsToEntityCards(page.Galgames),
+		GalgameCount: page.Total,
 	}, nil
 }
 

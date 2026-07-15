@@ -12,11 +12,15 @@ import (
 
 type TagService struct {
 	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	// enricher hydrates the /tag list + /tag/multi results (wiki catalogue).
+	enricher *GalgameEnricher
+	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
+	// over a tag's member ids for the detail page. See GetDetail.
+	galgameSvc *GalgameService
 }
 
-func NewTagService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *TagService {
-	return &TagService{wikiClient: wikiClient, enricher: enricher}
+func NewTagService(wikiClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *TagService {
+	return &TagService{wikiClient: wikiClient, enricher: enricher, galgameSvc: galgameSvc}
 }
 
 type wikiTagListItem struct {
@@ -165,20 +169,22 @@ func (s *TagService) GetList(
 
 // GetDetail — GET /galgame-tag/:name
 //
-// In SFW mode we forward content_limit=sfw to the wiki so it filters the
-// galgame list server-side and returns a matching total; the local
-// FilterSFW call is kept as a defensive net.
+// Entity detail lists the forum-LOCAL subset of the tag's catalogue, so the
+// kungal filters (类型/语言/平台/作品类型) + every sort work. Only the tag's
+// metadata is used from the wiki here (cheapest page); the galgame list is
+// recomputed locally from the member ids below.
 func (s *TagService) GetDetail(
 	ctx context.Context,
 	name string,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagDetail, *errors.AppError) {
-	// Full wiki member catalogue (paginated, content_limit-aware, matching total),
-	// NOT the forum-local subset. The wiki /tag/:id response already carries the
-	// galgame page; the enricher overlays forum-local data + IsOnForum per card
-	// (wiki-only games → IsOnForum=false). See OfficialService.GetDetail.
 	q := withSFWFilter(rawQuery, isSFW)
+	// Resolve by the tag_id QUERY param (the :name path is cosmetic — 04-taxonomy),
+	// sourced from the path so the lookup never depends on the FE echoing it.
+	q.Set("tag_id", name)
+	q.Set("page", "1")
+	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/tag/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -190,13 +196,24 @@ func (s *TagService) GetDetail(
 
 	t := parsed.Tag
 
+	// Member ids from the wiki, then the SAME local filter/sort/paginate as
+	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
+	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "tag", t.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	if appErr != nil {
+		return nil, appErr
+	}
+
 	return &dto.TagDetail{
 		ID:           t.ID,
 		Name:         t.Name,
 		Category:     t.Category,
 		Description:  t.Description,
 		Alias:        aliasesToNames(t.Alias),
-		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
-		GalgameCount: parsed.Total,
+		Galgame:      listCardsToEntityCards(page.Galgames),
+		GalgameCount: page.Total,
 	}, nil
 }

@@ -400,9 +400,9 @@ func New(cfg *config.Config) *App {
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher)
-	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameEnricher)
-	galgameEngineSvc := galgameService.NewEngineService(gc, galgameEnricher)
-	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher)
+	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
+	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
+	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameWikiSvc := galgameService.NewWikiService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies

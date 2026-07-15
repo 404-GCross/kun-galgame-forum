@@ -13,11 +13,14 @@ import (
 
 type OfficialService struct {
 	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
+	// over the official's member ids (the wiki can't filter by kungal-local
+	// resource data). See GetDetail.
+	galgameSvc *GalgameService
 }
 
-func NewOfficialService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *OfficialService {
-	return &OfficialService{wikiClient: wikiClient, enricher: enricher}
+func NewOfficialService(wikiClient *client.GalgameClient, galgameSvc *GalgameService) *OfficialService {
+	return &OfficialService{wikiClient: wikiClient, galgameSvc: galgameSvc}
 }
 
 // ──────────────────────────────────────────
@@ -150,14 +153,17 @@ func (s *OfficialService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.OfficialDetail, *errors.AppError) {
-	// The galgame list is the wiki's FULL member catalogue — paginated,
-	// content_limit-aware, with a matching total — NOT the forum-local subset.
-	// The wiki /official/:id response already carries the galgame page, so we
-	// forward page/limit/sort + content_limit and use it directly. The enricher
-	// overlays forum-local data (view/like/platform/language + IsOnForum) per
-	// card; games the forum has never ingested come back IsOnForum=false so the
-	// frontend shows a "未收录" state instead of misleading zeros.
+	// Entity detail lists the forum-LOCAL subset of the official's catalogue, so
+	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
+	// official's metadata is used from the wiki here (cheapest page); the galgame
+	// list is recomputed locally from the member ids below.
 	q := withSFWFilter(rawQuery, isSFW)
+	// The wiki resolves the entity by the official_id QUERY param (the :name path
+	// segment is cosmetic — 04-taxonomy). Source it from the path so the lookup
+	// never depends on the FE echoing it in the query string.
+	q.Set("official_id", name)
+	q.Set("page", "1")
+	q.Set("limit", "1")
 	data, appErr := s.wikiClient.Get(ctx, "/official/"+name, q)
 	if appErr != nil {
 		return nil, appErr
@@ -174,6 +180,17 @@ func (s *OfficialService) GetDetail(
 		original = *o.Original
 	}
 
+	// Member ids from the wiki, then the SAME local filter/sort/paginate as
+	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
+	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "official", o.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	if appErr != nil {
+		return nil, appErr
+	}
+
 	return &dto.OfficialDetail{
 		ID:           o.ID,
 		Name:         o.Name,
@@ -183,8 +200,8 @@ func (s *OfficialService) GetDetail(
 		Lang:         o.Lang,
 		Description:  o.Description,
 		Alias:        aliasesToNames(o.Alias),
-		Galgame:      s.enricher.ToCards(ctx, parsed.Galgames),
-		GalgameCount: parsed.Total,
+		Galgame:      listCardsToEntityCards(page.Galgames),
+		GalgameCount: page.Total,
 	}, nil
 }
 

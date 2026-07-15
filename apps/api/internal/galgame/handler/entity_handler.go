@@ -87,7 +87,7 @@ func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 	detail, appErr := h.officialService.GetDetail(
 		c.Context(),
 		c.Params("name"),
-		collectQueryWithRenames(c, entityDetailRenames("officialId", "official_id")),
+		collectQuery(c),
 		utils.IsSFW(c),
 	)
 	if appErr != nil {
@@ -114,7 +114,7 @@ func (h *EntityHandler) GetEngineDetail(c fiber.Ctx) error {
 	detail, appErr := h.engineService.GetDetail(
 		c.Context(),
 		c.Params("name"),
-		collectQueryWithRenames(c, entityDetailRenames("engineId", "engine_id")),
+		collectQuery(c),
 		utils.IsSFW(c),
 	)
 	if appErr != nil {
@@ -159,7 +159,7 @@ func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 	detail, appErr := h.tagService.GetDetail(
 		c.Context(),
 		c.Params("name"),
-		collectQueryWithRenames(c, entityDetailRenames("tagId", "tag_id")),
+		collectQuery(c),
 		utils.IsSFW(c),
 	)
 	if appErr != nil {
@@ -181,32 +181,3 @@ func collectQuery(c fiber.Ctx) url.Values {
 	return q
 }
 
-// collectQueryWithRenames is like collectQuery but rewrites keys per the
-// supplied translation map on the way through. Used to bridge the
-// camelCase params the FE sends to the snake_case the wiki expects.
-//
-// Any key absent from `renames` passes through unchanged.
-func collectQueryWithRenames(c fiber.Ctx, renames map[string]string) url.Values {
-	q := make(url.Values)
-	for k, v := range c.Queries() {
-		if to, ok := renames[k]; ok {
-			q.Set(to, v)
-		} else {
-			q.Set(k, v)
-		}
-	}
-	return q
-}
-
-// entityDetailRenames returns the rename map for a wiki-backed entity detail
-// handler (tag / official / engine): only the FE's per-entity ID key →
-// snake_case so the wiki metadata lookup resolves the entity.
-//
-// sortField/sortOrder are deliberately NOT renamed/normalized: these pages now
-// filter+sort LOCALLY (the wiki's galgames are discarded), and list_repo speaks
-// the FE sort vocabulary (time/view/rating/…). The raw FE sortField must reach
-// buildEntityFilter unchanged — translating it to the wiki's vocabulary here
-// would make list_repo fall back to its default sort.
-func entityDetailRenames(idFrom, idTo string) map[string]string {
-	return map[string]string{idFrom: idTo}
-}
