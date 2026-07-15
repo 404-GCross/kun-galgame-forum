@@ -29,6 +29,15 @@ const openHistory = () => {
   activity.open = true
 }
 
+// Shared "未发布的游戏" modal (unclaimed VNDB drafts), owned by Galgame.vue.
+const drafts = inject<{ open: boolean }>('galgameDrafts')
+const openDrafts = () => {
+  if (!drafts) {
+    return
+  }
+  drafts.open = true
+}
+
 const getLanguageName = getGalgameOriginalLanguageName
 </script>
 
@@ -107,15 +116,28 @@ const getLanguageName = getGalgameOriginalLanguageName
       </div>
     </dl>
 
-    <KunButton
-      variant="flat"
-      color="primary"
-      size="sm"
-      full-width
-      @click="openHistory"
-    >
-      <KunIcon name="lucide:history" />
-      查看编辑历史与更新请求
-    </KunButton>
+    <div class="flex flex-col gap-2">
+      <KunButton
+        variant="flat"
+        color="primary"
+        size="sm"
+        full-width
+        @click="openHistory"
+      >
+        <KunIcon name="lucide:history" />
+        查看编辑历史与更新请求
+      </KunButton>
+
+      <KunButton
+        variant="flat"
+        color="default"
+        size="sm"
+        full-width
+        @click="openDrafts"
+      >
+        <KunIcon name="lucide:library-big" />
+        未发布的游戏
+      </KunButton>
+    </div>
   </KunCard>
 </template>

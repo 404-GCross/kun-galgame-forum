@@ -120,6 +120,16 @@ type GalgameListPage struct {
 	Total    int64             `json:"total"`
 }
 
+// DraftsPage is the {items, total} envelope for GET /galgame/drafts — the
+// unclaimed VNDB drafts (status=2) shown in the detail page's "未发布的游戏"
+// modal. Items are enriched GalgameCard[] (IsOnForum=false, Status=2), so the
+// shared frontend GalgameCard renders each as a "未在论坛发布" claim card that
+// links to the publish wizard — identical to the calendar's status=2 cards.
+type DraftsPage struct {
+	Items []GalgameCard `json:"items"`
+	Total int64         `json:"total"`
+}
+
 // ──────────────────────────────────────────
 // Response: detail
 // ──────────────────────────────────────────

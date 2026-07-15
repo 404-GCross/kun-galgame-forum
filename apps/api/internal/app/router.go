@@ -172,6 +172,10 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
 	api.Get("/galgame/calendar/tba", a.GalgameCalendarHandler.GetTBA)
 	api.Get("/galgame/calendar/upcoming", a.GalgameCalendarHandler.GetUpcoming)
+	// Unclaimed VNDB drafts (status=2) — powers the detail page's "未发布的游戏"
+	// modal. Public + SFW-default, paginated. Literal "drafts" segment, so it
+	// must precede the /galgame/:gid catch-all — same rule as /galgame/calendar.
+	api.Get("/galgame/drafts", a.GalgameDraftsHandler.GetDrafts)
 	// Cross-source site statistics (wiki passthrough, ETag/304 preserved). The
 	// literal "stats" segment must precede the /galgame/:gid catch-all (optAuth
 	// below) — same registration-order rule as /galgame/calendar above.

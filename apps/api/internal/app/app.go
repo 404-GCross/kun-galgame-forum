@@ -130,6 +130,7 @@ type App struct {
 	CreatorHandler                 *galgameHandler.CreatorHandler
 	GalgameEntityHandler           *galgameHandler.EntityHandler
 	GalgameCalendarHandler         *galgameHandler.CalendarHandler
+	GalgameDraftsHandler           *galgameHandler.DraftsHandler
 	GalgameWikiHandler             *galgameHandler.WikiHandler
 	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
 	GalgameMessageHandler          *galgameHandler.WikiMessageHandler
@@ -404,6 +405,7 @@ func New(cfg *config.Config) *App {
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
+	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
 	galgameWikiSvc := galgameService.NewWikiService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
@@ -571,6 +573,7 @@ func New(cfg *config.Config) *App {
 			galgameSeriesSvc, galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
 		),
 		GalgameCalendarHandler:     galgameHandler.NewCalendarHandler(galgameCalendarSvc),
+		GalgameDraftsHandler:       galgameHandler.NewDraftsHandler(galgameDraftsSvc),
 		GalgameWikiHandler:         galgameHandler.NewWikiHandler(galgameWikiSvc),
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameMessageHandler:      galgameHandler.NewWikiMessageHandler(galgameMessageSvc),

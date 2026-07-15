@@ -49,6 +49,12 @@ const activity = reactive<{ open: boolean; tab: 'history' | 'pr' }>({
 })
 provide('galgameActivity', activity)
 
+// One shared "未发布的游戏" modal (unclaimed VNDB drafts) for the whole detail
+// page — owned here alongside the activity modal so Info.vue's button just
+// flips `open` via the injected controller.
+const drafts = reactive<{ open: boolean }>({ open: false })
+provide('galgameDrafts', drafts)
+
 const ratings = ref([...props.galgame.ratings])
 const sortedRatings = computed(() => {
   return [...ratings.value].sort(
@@ -236,5 +242,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
     </div>
 
     <GalgameActivityModal v-model="activity.open" :initial-tab="activity.tab" />
+
+    <GalgameDraftsModal v-model="drafts.open" />
   </div>
 </template>

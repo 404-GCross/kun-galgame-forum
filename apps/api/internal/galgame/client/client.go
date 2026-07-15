@@ -359,6 +359,28 @@ func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, 
 	return resp.Galgames, resp.Total, nil
 }
 
+// Drafts fetches the wiki's unclaimed VNDB drafts (status=2, newest first,
+// paginated) — the source for the galgame detail page's "未发布的游戏" modal.
+// The response envelope is {items, total}; the raw data is forwarded to the
+// caller (the drafts service enriches the items into cards). NSFW gating is
+// done server-side by the wiki via content_limit, exactly like the calendar /
+// user-galgame reads:
+//
+//	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
+//	isSFW=false → content_limit=all
+func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool) (json.RawMessage, *errors.AppError) {
+	contentLimit := "all"
+	if isSFW {
+		contentLimit = "sfw"
+	}
+	query := url.Values{
+		"page":          {strconv.Itoa(page)},
+		"limit":         {strconv.Itoa(limit)},
+		"content_limit": {contentLimit},
+	}
+	return c.Get(ctx, "/galgame/drafts", query)
+}
+
 // WikiAdminStats is the admin stats response from wiki service.
 type WikiAdminStats struct {
 	Totals map[string]int64 `json:"totals"`
