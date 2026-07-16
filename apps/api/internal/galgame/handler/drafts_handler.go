@@ -34,6 +34,8 @@ func (h *DraftsHandler) GetDrafts(c fiber.Ctx) error {
 		OfficialID: fiber.Query(c, "official_id", 0),
 		TagID:      fiber.Query(c, "tag_id", 0),
 		EngineID:   fiber.Query(c, "engine_id", 0),
+
+		OriginalLanguages: fiber.Query(c, "original_language", ""),
 	}
 	pageData, appErr := h.draftsService.GetDrafts(c.Context(), page, limit, utils.IsSFW(c), filters)
 	if appErr != nil {

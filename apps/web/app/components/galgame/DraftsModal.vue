@@ -55,7 +55,10 @@ const fetchPage = async (more = false) => {
       query: {
         page: nextPage,
         limit: LIMIT,
-        [scopeParam.value]: props.entityId
+        [scopeParam.value]: props.entityId,
+        // Claim-funnel policy: only Japanese / Chinese originals — the raw
+        // VNDB pool is ~37% EN/RU/... originals nobody here will claim.
+        original_language: 'ja-jp,zh-cn,zh-tw'
       }
     }
   )

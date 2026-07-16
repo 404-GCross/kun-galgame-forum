@@ -372,6 +372,9 @@ type DraftFilters struct {
 	OfficialID int
 	TagID      int
 	EngineID   int
+	// OriginalLanguages is a CSV of original-language codes forwarded to the
+	// wiki (e.g. "ja-jp,zh-cn,zh-tw"); empty = all languages.
+	OriginalLanguages string
 }
 
 // Drafts fetches the wiki's unclaimed VNDB drafts (status=2, newest first,
@@ -403,6 +406,9 @@ func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool,
 	}
 	if f.EngineID > 0 {
 		query.Set("engine_id", strconv.Itoa(f.EngineID))
+	}
+	if f.OriginalLanguages != "" {
+		query.Set("original_language", f.OriginalLanguages)
 	}
 	return c.Get(ctx, "/galgame/drafts", query)
 }
