@@ -359,16 +359,31 @@ func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, 
 	return resp.Galgames, resp.Total, nil
 }
 
+// DraftFilters optionally scopes the unclaimed-draft list to one taxonomy
+// entity — the claim-funnel modal lives on the official / tag / engine detail
+// pages and shows only THAT entity's drafts. A zero id means "no filter on that
+// dimension" (0/absent = global), so an all-zero value reproduces the original
+// global list: the params are backward compatible. Drafts carry VNDB-synced
+// official + tag edges (both scopes well populated), but engine edges are
+// human-curated and empty on drafts today; the parameter is kept uniform across
+// the three entities regardless. Mirrors the wiki's official_id / tag_id /
+// engine_id query params (infra dbdd998).
+type DraftFilters struct {
+	OfficialID int
+	TagID      int
+	EngineID   int
+}
+
 // Drafts fetches the wiki's unclaimed VNDB drafts (status=2, newest first,
-// paginated) — the source for the galgame detail page's "未发布的游戏" modal.
-// The response envelope is {items, total}; the raw data is forwarded to the
-// caller (the drafts service enriches the items into cards). NSFW gating is
-// done server-side by the wiki via content_limit, exactly like the calendar /
-// user-galgame reads:
+// paginated) — the source for the entity detail pages' "未发布的游戏" modal,
+// optionally scoped to one taxonomy entity via f. The response envelope is
+// {items, total}; the raw data is forwarded to the caller (the drafts service
+// enriches the items into cards). NSFW gating is done server-side by the wiki
+// via content_limit, exactly like the calendar / user-galgame reads:
 //
 //	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
 //	isSFW=false → content_limit=all
-func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool) (json.RawMessage, *errors.AppError) {
+func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool, f DraftFilters) (json.RawMessage, *errors.AppError) {
 	contentLimit := "all"
 	if isSFW {
 		contentLimit = "sfw"
@@ -377,6 +392,17 @@ func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool)
 		"page":          {strconv.Itoa(page)},
 		"limit":         {strconv.Itoa(limit)},
 		"content_limit": {contentLimit},
+	}
+	// Forward only a non-zero entity id: a zero means "global", which the wiki
+	// also reads as absent — keeps the outgoing query clean and unambiguous.
+	if f.OfficialID > 0 {
+		query.Set("official_id", strconv.Itoa(f.OfficialID))
+	}
+	if f.TagID > 0 {
+		query.Set("tag_id", strconv.Itoa(f.TagID))
+	}
+	if f.EngineID > 0 {
+		query.Set("engine_id", strconv.Itoa(f.EngineID))
 	}
 	return c.Get(ctx, "/galgame/drafts", query)
 }

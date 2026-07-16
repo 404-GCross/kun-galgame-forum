@@ -11,15 +11,55 @@ import (
 
 // TestDraftsRequestAndPassthrough pins the /galgame/drafts client method: it
 // must hit the right path, forward page/limit, map the SFW flag to
-// content_limit, and pass the wiki's {items, total} data through verbatim.
+// content_limit, forward any entity scope (official_id / tag_id / engine_id)
+// only when non-zero, and pass the wiki's {items, total} data through verbatim.
 func TestDraftsRequestAndPassthrough(t *testing.T) {
 	cases := []struct {
 		name             string
 		isSFW            bool
+		filters          DraftFilters
 		wantContentLimit string
+		// wantParams: query params that must be present with the given value.
+		wantParams map[string]string
+		// absentParams: scope params that must NOT appear (0 = global).
+		absentParams []string
 	}{
-		{name: "sfw drops nsfw", isSFW: true, wantContentLimit: "sfw"},
-		{name: "nsfw includes all", isSFW: false, wantContentLimit: "all"},
+		{
+			name:             "sfw global drops nsfw + no scope",
+			isSFW:            true,
+			wantContentLimit: "sfw",
+			absentParams:     []string{"official_id", "tag_id", "engine_id"},
+		},
+		{
+			name:             "nsfw global includes all + no scope",
+			isSFW:            false,
+			wantContentLimit: "all",
+			absentParams:     []string{"official_id", "tag_id", "engine_id"},
+		},
+		{
+			name:             "scoped to official",
+			isSFW:            true,
+			filters:          DraftFilters{OfficialID: 88},
+			wantContentLimit: "sfw",
+			wantParams:       map[string]string{"official_id": "88"},
+			absentParams:     []string{"tag_id", "engine_id"},
+		},
+		{
+			name:             "scoped to tag",
+			isSFW:            false,
+			filters:          DraftFilters{TagID: 12},
+			wantContentLimit: "all",
+			wantParams:       map[string]string{"tag_id": "12"},
+			absentParams:     []string{"official_id", "engine_id"},
+		},
+		{
+			name:             "scoped to engine",
+			isSFW:            true,
+			filters:          DraftFilters{EngineID: 5},
+			wantContentLimit: "sfw",
+			wantParams:       map[string]string{"engine_id": "5"},
+			absentParams:     []string{"official_id", "tag_id"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -37,7 +77,7 @@ func TestDraftsRequestAndPassthrough(t *testing.T) {
 			// Empty imageCDNBase makes rewriteBanners a no-op, so the {items,total}
 			// bytes reach us untouched.
 			c := NewGalgameClient(srv.URL, "")
-			data, appErr := c.Drafts(context.Background(), 2, 24, tc.isSFW)
+			data, appErr := c.Drafts(context.Background(), 2, 24, tc.isSFW, tc.filters)
 			if appErr != nil {
 				t.Fatalf("Drafts returned error: %v", appErr)
 			}
@@ -53,6 +93,16 @@ func TestDraftsRequestAndPassthrough(t *testing.T) {
 			}
 			if got := gotQuery.Get("content_limit"); got != tc.wantContentLimit {
 				t.Errorf("content_limit = %q, want %q", got, tc.wantContentLimit)
+			}
+			for key, want := range tc.wantParams {
+				if got := gotQuery.Get(key); got != want {
+					t.Errorf("%s = %q, want %q", key, got, want)
+				}
+			}
+			for _, key := range tc.absentParams {
+				if gotQuery.Has(key) {
+					t.Errorf("%s = %q, want absent (0 = global)", key, gotQuery.Get(key))
+				}
 			}
 
 			var parsed struct {

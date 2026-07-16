@@ -33,14 +33,17 @@ type wikiDraftsResp struct {
 	Total int64                 `json:"total"`
 }
 
-// GetDrafts returns one page of unclaimed VNDB drafts as enriched cards.
-// page/limit are pre-clamped by the handler (parseCollectionPage).
+// GetDrafts returns one page of unclaimed VNDB drafts as enriched cards,
+// optionally scoped to one taxonomy entity via f (the modal lives on the
+// official / tag / engine detail pages). page/limit are pre-clamped by the
+// handler (parseCollectionPage).
 func (s *DraftsService) GetDrafts(
 	ctx context.Context,
 	page, limit int,
 	isSFW bool,
+	f client.DraftFilters,
 ) (*dto.DraftsPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Drafts(ctx, page, limit, isSFW)
+	data, appErr := s.wikiClient.Drafts(ctx, page, limit, isSFW, f)
 	if appErr != nil {
 		return nil, appErr
 	}

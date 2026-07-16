@@ -25,6 +25,10 @@ const editingOfficial = ref<UpdateGalgameOfficialPayload>(
   {} as UpdateGalgameOfficialPayload
 )
 
+// "未发布的游戏": this company's unclaimed VNDB drafts (status=2), scoped by
+// official_id. Public claim funnel — open to everyone, not just moderators.
+const showDraftsModal = ref(false)
+
 const { data, status } = await useKunFetch<GalgameOfficialDetail>(
   `/galgame-official/${official_id.value}`,
   {
@@ -167,6 +171,14 @@ if (data.value) {
             </KunChip>
           </div>
           <div class="flex flex-wrap justify-end gap-2">
+            <KunButton
+              variant="flat"
+              color="default"
+              @click="showDraftsModal = true"
+            >
+              <KunIcon name="lucide:library-big" />
+              未发布的游戏
+            </KunButton>
             <GalgameRevisionModal
               entity="official"
               :id="official_id"
@@ -202,6 +214,13 @@ if (data.value) {
       v-model="showOfficialModal"
       :initial-data="editingOfficial"
       @submit="handleUpdateOfficial"
+    />
+
+    <GalgameDraftsModal
+      v-model="showDraftsModal"
+      entity-type="official"
+      :entity-id="official_id"
+      :entity-name="data.name"
     />
 
     <GalgameCard

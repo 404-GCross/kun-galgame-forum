@@ -25,6 +25,13 @@ const editingEngine = ref<UpdateGalgameEnginePayload>(
   {} as UpdateGalgameEnginePayload
 )
 
+// "未发布的游戏": this engine's unclaimed VNDB drafts (status=2), scoped by
+// engine_id. Public claim funnel — open to everyone, not just moderators.
+// Engine edges are human-curated so drafts carry none today; the modal shows an
+// honest empty state, but the button stays for parity with the tag / official
+// detail pages.
+const showDraftsModal = ref(false)
+
 const { data, status } = await useKunFetch<GalgameEngineDetail>(
   `/galgame-engine/${engine_id.value}`,
   {
@@ -146,6 +153,14 @@ if (data.value) {
             </KunChip>
           </div>
           <div class="flex flex-wrap justify-end gap-2">
+            <KunButton
+              variant="flat"
+              color="default"
+              @click="showDraftsModal = true"
+            >
+              <KunIcon name="lucide:library-big" />
+              未发布的游戏
+            </KunButton>
             <GalgameRevisionModal
               entity="engine"
               :id="engine_id"
@@ -181,6 +196,13 @@ if (data.value) {
       v-model="showEngineModal"
       :initial-data="editingEngine"
       @submit="handleUpdateEngine"
+    />
+
+    <GalgameDraftsModal
+      v-model="showDraftsModal"
+      entity-type="engine"
+      :entity-id="engine_id"
+      :entity-name="data.name"
     />
 
     <GalgameCard

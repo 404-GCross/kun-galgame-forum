@@ -23,6 +23,10 @@ const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 const showTagModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
+// "未发布的游戏": this tag's unclaimed VNDB drafts (status=2), scoped by tag_id.
+// Public claim funnel — open to everyone, not just moderators.
+const showDraftsModal = ref(false)
+
 const { data, status } = await useKunFetch<GalgameTagDetail>(
   `/galgame-tag/${tag_id.value}`,
   {
@@ -132,6 +136,14 @@ if (data.value) {
             </KunChip>
           </div>
           <div class="flex flex-wrap justify-end gap-2">
+            <KunButton
+              variant="flat"
+              color="default"
+              @click="showDraftsModal = true"
+            >
+              <KunIcon name="lucide:library-big" />
+              未发布的游戏
+            </KunButton>
             <GalgameRevisionModal
               entity="tag"
               :id="tag_id"
@@ -159,6 +171,13 @@ if (data.value) {
       v-model="showTagModal"
       :initial-data="editingTag"
       @submit="handleUpdateTag"
+    />
+
+    <GalgameDraftsModal
+      v-model="showDraftsModal"
+      entity-type="tag"
+      :entity-id="tag_id"
+      :entity-name="data.name"
     />
 
     <GalgameCard
