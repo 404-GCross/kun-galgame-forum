@@ -2,7 +2,7 @@
 #
 # Downstream app: owns NO backing services. Joins the shared `dokploy-network`
 # and reaches infra by service name (postgres:5432, redis:6379, oauth:9277,
-# galgame:9280, image:9278). Bring infra up first.
+# catalog:9281, image:9278). Bring infra up first.
 #
 # vs docker-compose.yml (dev): `image:` not `build:`, `expose:` not `ports:`,
 # and **NO `env_file`** — all config is inline `environment:` so Dokploy needs no
@@ -79,7 +79,7 @@ x-kungal-api-env: &kungal-api-env
   # search — key MUST == infra MEILI_MASTER_KEY
   MEILISEARCH_URL: http://meilisearch:7700
   MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (= infra 的同名值)}
-  GALGAME_WIKI_BASE_URL: http://galgame:9280/api
+  GALGAME_WIKI_BASE_URL: http://catalog:9281/api
   # catalog read proxy (step 36): credits / entity reverse-lookups. Reuses the
   # OAuth client pair for S2S Basic auth; unset → those routes degrade to 503.
   KUN_CATALOG_API_BASE: http://catalog:9281
