@@ -51,17 +51,16 @@ x-kungal-api-env: &kungal-api-env
   OAUTH_CLIENT_ID: 4ed9bc99ec0a789a4796b83e22bd84c5
   OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?set OAUTH_CLIENT_SECRET in Dokploy (论坛 client 注册时的明文)}
   OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
-  # ── galgame comment migration onto the community primitive (track 03) ──
-  # Client creds fall back to OAUTH_CLIENT_ID/SECRET above (app.go). The cutover
-  # choreography is compose-literal on purpose (non-secret, auditable, rollback =
-  # revert): READONLY freezes the OLD write routes for the import window and then
-  # STAYS on after the flip so no direct API call can fork writes into the
-  # retired galgame_comment table (old-world removal is tracked as step 06a).
+  # ── comment areas on the community primitive (track 03) ──
+  # Community is now the UNCONDITIONAL backend for the galgame + resource
+  # (rating / website / toolset) comment areas: the legacy in-forum comment
+  # routes were retired (charter step 06a), so the per-area *_COMMENTS_COMMUNITY
+  # flags and the *_COMMENT_READONLY freeze switches are gone. Client creds fall
+  # back to OAUTH_CLIENT_ID/SECRET above (app.go); unconfigured = comments
+  # degrade (reads empty / writes 503). The frozen galgame_comment* / resource
+  # comment tables still back profile / admin / search reads and await a later
+  # deploy-then-drop migration.
   KUN_COMMUNITY_API_BASE: http://community:9282/api/v1/community
-  KUN_GALGAME_COMMENTS_COMMUNITY: "true"
-  KUN_GALGAME_COMMENT_READONLY: "true"
-  KUN_RESOURCE_COMMENT_READONLY: "true"
-  KUN_RESOURCE_COMMENTS_COMMUNITY: "true"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # toolset archive uploads (Backblaze B2). 空则上传路由仍注册、调用 500(应用只 warn 不拦);要开 toolset 上传就填全 5 个
   # (内嵌/内容图不走这里 — 全部经 image_service,详见 KUN_IMAGE_CLIENT_*)
@@ -168,8 +167,6 @@ services:
       NUXT_PUBLIC_OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
       NUXT_PUBLIC_GALGAME_WIKI_URL: https://wiki.kungal.com/api
       NUXT_PUBLIC_KUN_GALGAME_URL: https://www.kungal.com
-      NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY: "true"
-      NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY: "true"
     expose: ["7777"]
     depends_on:
       kungal-api: { condition: service_healthy }
