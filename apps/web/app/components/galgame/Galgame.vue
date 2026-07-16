@@ -20,14 +20,6 @@ const patchLoading = ref(false)
 const commentLoading = ref(false)
 const quizLoading = ref(false)
 
-// Charter step 04: the community-primitive comment section is behind a public
-// flag (NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY). Off (default, empty) = the
-// legacy comment section renders byte-identically. This is the SINGLE fork
-// point — the two comment component sets never mix below here.
-const isCommunityComments = ['1', 'true', 'on', 'yes'].includes(
-  String(useRuntimeConfig().public.galgameCommentsCommunity ?? '').toLowerCase()
-)
-
 const contentTabs = computed<KunTabItem[]>(() => [
   { value: 'intro', textValue: '游戏介绍', icon: 'lucide:book-open' },
   { value: 'resource', textValue: '本体资源下载', icon: 'lucide:download' },
@@ -168,11 +160,6 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
 
             <KunTabPanel value="comment" :loading="commentLoading">
               <GalgameCommentCommunityContainer
-                v-if="isCommunityComments"
-                @update:loading="commentLoading = $event"
-              />
-              <GalgameCommentContainer
-                v-else
                 @update:loading="commentLoading = $event"
               />
             </KunTabPanel>

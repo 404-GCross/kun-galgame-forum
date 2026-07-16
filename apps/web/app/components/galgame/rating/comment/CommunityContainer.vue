@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// Community-primitive rating comment section (charter step 08). Mounted ONLY when
-// the NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY flag is on — the single fork lives in
-// GalgameRatingDetailDetail.vue, so with the flag off this never renders and the
-// legacy GalgameRatingCommentContainer is byte-identical.
+// Community-primitive rating comment section (charter step 08) — the
+// unconditional rating comment UI, rendered from GalgameRatingDetailDetail.vue
+// (the legacy comment components were retired in charter step 06a).
 //
 // The rating area is FLAT (no grouping): the read is a keyset "load more" growth
 // list and every post is a root with an explicit target_user. This mirrors the

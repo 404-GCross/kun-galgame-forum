@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// Community-primitive toolset comment section (charter step 08). Mounted ONLY when
-// the NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY flag is on — the single fork lives in
-// ToolsetDetail.vue, so with the flag off this never renders and the legacy
-// ToolsetCommentContainer is byte-identical.
+// Community-primitive toolset comment section (charter step 08) — the
+// unconditional toolset comment UI, rendered from ToolsetDetail.vue (the legacy
+// comment components were retired in charter step 06a).
 //
 // The read is a flat keyset "load more" growth list grouped into two tiers (root +
 // one flat reply group), mirroring the galgame community container. The toolset

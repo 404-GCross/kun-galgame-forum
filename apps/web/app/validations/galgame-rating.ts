@@ -112,21 +112,3 @@ export const getAllGalgameRatingsSchema = z.object({
 export const updateGalgameRatingLikeSchema = z.object({
   galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
 })
-
-export const createGalgameRatingCommentSchema = z.object({
-  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999),
-  target_user_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z
-    .string()
-    .min(1)
-    .max(1314, { message: '评分评论长度不能超过 1314 字符' })
-})
-
-export const deleteGalgameRatingCommentSchema = z.object({
-  galgame_rating_comment_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateGalgameRatingCommentSchema = z.object({
-  galgame_rating_comment_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z.string().min(1).max(1314, { message: '内容长度不能超过 1314 字' })
-})

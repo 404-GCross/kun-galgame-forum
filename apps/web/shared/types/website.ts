@@ -86,19 +86,3 @@ export interface WebsiteDetail {
   created: Date | string
   updated: Date | string
 }
-
-export interface WebsiteComment {
-  id: number
-  website_id: number
-  content: string
-  parent_id: number | null
-  user_id: number
-  created: Date | string
-  edited: Date | string | null
-  // Roots carry their full set of descendants flattened here (oldest-first, one
-  // visual tier); replies leave it empty. replyCount = reply.length.
-  reply: WebsiteComment[]
-  reply_count: number
-  user: KunUser
-  target_user?: KunUser | null
-}

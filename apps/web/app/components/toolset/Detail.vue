@@ -15,14 +15,6 @@ const props = defineProps<{
 const { id: userId } = usePersistUserStore()
 const { canModerate } = useRole()
 
-// Charter step 08: the community-primitive resource comment sections are behind a
-// public flag (NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY). Off (default, empty) = the
-// legacy comment section renders byte-identically. This is the SINGLE fork point
-// for the toolset area — the two comment component sets never mix below here.
-const isCommunityComments = ['1', 'true', 'on', 'yes'].includes(
-  String(useRuntimeConfig().public.resourceCommentsCommunity ?? '').toLowerCase()
-)
-
 const data = computed(() => props.toolset)
 const canManageToolset = computed(
   () => data.value.user.id === userId || canModerate.value
@@ -270,15 +262,7 @@ const handleResourceUpdated = (res: ToolsetResource) => {
       :is-transparent="false"
       content-class="space-y-3"
     >
-      <ToolsetCommentCommunityContainer
-        v-if="isCommunityComments"
-        :toolset-id="data.id"
-      />
-      <ToolsetCommentContainer
-        v-else
-        :toolset-id="data.id"
-        :owner-id="data.user.id"
-      />
+      <ToolsetCommentCommunityContainer :toolset-id="data.id" />
     </KunCard>
 
     <KunModal

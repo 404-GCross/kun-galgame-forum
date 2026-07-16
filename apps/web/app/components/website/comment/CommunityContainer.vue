@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// Community-primitive website comment section (charter step 08). Mounted ONLY when
-// the NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY flag is on — the single fork lives in
-// pages/website/[domain].vue, so with the flag off this never renders and the
-// legacy WebsiteCommentContainer is byte-identical.
+// Community-primitive website comment section (charter step 08) — the
+// unconditional website comment UI, rendered from pages/website/[domain].vue
+// (the legacy comment components were retired in charter step 06a).
 //
 // The read is a flat keyset "load more" growth list grouped into two tiers (root +
 // one flat reply group), mirroring the galgame community container. The addressing

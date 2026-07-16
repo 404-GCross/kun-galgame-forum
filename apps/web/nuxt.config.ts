@@ -95,24 +95,7 @@ export default defineNuxtConfig({
       // IPX (which 404s on the token) AND the /image 302 hop. Same literal default
       // as the server one; override at runtime with NUXT_PUBLIC_IMAGE_CDN_BASE.
       imageCdnBase:
-        process.env.IMAGE_CDN_BASE || 'https://image.kungal.iloveren.link',
-
-      // Charter step 04: gate the community-primitive galgame comment section.
-      // Empty (default) = OFF → the legacy comment UI + routes render byte-for-
-      // byte. Flip to a truthy value ('1'/'true'/'on'/'yes') in lockstep with the
-      // backend KUN_GALGAME_COMMENTS_COMMUNITY on the cutover deploy. Overridable
-      // at runtime via NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY.
-      galgameCommentsCommunity:
-        process.env.NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY || '',
-
-      // Charter step 08 (06b wave): gate the community-primitive comment sections
-      // for the THREE resource areas — rating / website / toolset — in lockstep
-      // (one flag, all three). Empty (default) = OFF → the legacy resource comment
-      // UIs + routes render byte-for-byte. Flip to a truthy value in lockstep with
-      // the backend KUN_RESOURCE_COMMENTS_COMMUNITY on the cutover deploy.
-      // Overridable at runtime via NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY.
-      resourceCommentsCommunity:
-        process.env.NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY || ''
+        process.env.IMAGE_CDN_BASE || 'https://image.kungal.iloveren.link'
     }
   },
 

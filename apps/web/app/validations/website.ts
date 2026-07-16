@@ -146,22 +146,3 @@ export const updateWebsiteCategorySchema = z.object({
     .max(30, '分类 label 最多 30 个字符'),
   description: z.string().max(300, '网站分类描述最多 300 个字符').optional()
 })
-
-/* comment */
-
-export const getCommentsSchema = z.object({
-  website_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const createCommentSchema = z.object({
-  website_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z
-    .string()
-    .min(1, '评论内容不能为空')
-    .max(1007, '评论内容最多 1007 个字符'),
-  parent_id: z.coerce.number<number>().min(1).max(9999999).optional()
-})
-
-export const deleteCommentSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999)
-})

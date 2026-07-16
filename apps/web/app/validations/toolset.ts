@@ -51,29 +51,6 @@ export const updateToolsetPracticalitySchema = z.object({
   rate: z.coerce.number<number>().min(1).max(5)
 })
 
-// Toolset comment
-export const getToolsetCommentSchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999),
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(30),
-  sort_order: z.enum(['asc', 'desc'])
-})
-
-export const createToolsetCommentSchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z.string().min(1).max(1007),
-  parent_id: z.coerce.number<number>().min(1).optional().nullable()
-})
-
-export const updateToolsetCommentSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z.string().min(1).max(1007)
-})
-
-export const deleteToolsetCommentSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
 // Toolset resource & upload
 export const getToolsetResourceDetailSchema = z.object({
   toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)

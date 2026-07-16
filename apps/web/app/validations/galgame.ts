@@ -542,46 +542,6 @@ export const deleteGalgameResourceSchema = z.object({
 })
 
 /*
- * Comment
- */
-
-export const getGalgameCommentSchema = z.object({
-  galgame_id: z.coerce.number<number>().min(1).max(9999999),
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(30),
-  sort_order: z.enum(SORT_ORDER_CONST)
-})
-
-export const createGalgameCommentSchema = z.object({
-  galgame_id: z.coerce.number<number>().min(1).max(9999999),
-  // A comment notifies a user by @-mentioning them in `content` (the legacy
-  // per-comment target_user_id was retired); only threading id remains.
-  parent_comment_id: z.coerce
-    .number<number>()
-    .min(1)
-    .max(9999999)
-    .optional()
-    .nullable(),
-  content: z
-    .string()
-    .min(1)
-    .max(5000, { message: 'Galgame 评论最多 5000 个字符' })
-})
-
-export const deleteGalgameCommentSchema = z.object({
-  galgame_comment_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-// Field is `commentId` not `galgameCommentId` — that matches the BE
-// CommentInteractionRequest DTO (`json:"commentId"`). The component
-// (galgame/comment/Like.vue) already sends `commentId`, but this schema
-// previously declared the wrong key so any reuse via safeParse would
-// silently strip the actual field.
-export const updateGalgameCommentLikeSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-/*
  * Pull requests
  */
 

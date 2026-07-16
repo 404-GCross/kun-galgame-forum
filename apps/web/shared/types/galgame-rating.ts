@@ -55,20 +55,9 @@ export interface GalgameRatingCard {
   }
 }
 
-export interface GalgameRatingComment {
-  id: number
-  content: string
-  user: KunUser
-  target_user: KunUser | null
-
-  created: Date | string
-  updated: Date | string
-}
-
 export interface GalgameRatingDetails extends GalgameRatingCard {
   is_liked: boolean
   liked_users: KunUser[]
-  comments: GalgameRatingComment[]
   galgame: GalgameRatingGalgameInfo
   galgame_series: GalgameSeries | null
 }

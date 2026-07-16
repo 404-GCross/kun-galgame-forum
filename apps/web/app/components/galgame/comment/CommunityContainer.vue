@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// Community-primitive comment section (charter step 04). Mounted ONLY when the
-// NUXT_PUBLIC_GALGAME_COMMENTS_COMMUNITY flag is on — the single fork lives in
-// Galgame.vue, so with the flag off this component never renders and the legacy
-// GalgameCommentContainer is byte-identical.
+// Community-primitive comment section (charter step 04) — the unconditional
+// galgame comment UI, rendered from Galgame.vue (the legacy comment components
+// were retired in charter step 06a).
 //
 // The list is a keyset "load more" growth list: page 1 comes from the resolve
 // (get-or-create), later pages from the cursor. Posts accumulate flat and are

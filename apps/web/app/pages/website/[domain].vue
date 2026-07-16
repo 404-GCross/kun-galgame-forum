@@ -19,14 +19,6 @@ const domain = computed(() => {
   return (route.params as { domain: string }).domain
 })
 
-// Charter step 08: the community-primitive resource comment sections are behind a
-// public flag (NUXT_PUBLIC_RESOURCE_COMMENTS_COMMUNITY). Off (default, empty) = the
-// legacy comment section renders byte-identically. This is the SINGLE fork point
-// for the website area — the two comment component sets never mix below here.
-const isCommunityComments = ['1', 'true', 'on', 'yes'].includes(
-  String(useRuntimeConfig().public.resourceCommentsCommunity ?? '').toLowerCase()
-)
-
 const { data, refresh } = await useKunFetch<WebsiteDetail>(
   `/website/${domain.value}`,
   {
@@ -171,11 +163,7 @@ if (data.value) {
         <WebsiteOperation :website="data" @refresh="refresh" />
       </KunCard>
 
-      <WebsiteCommentCommunityContainer
-        v-if="isCommunityComments"
-        :website-id="data.id"
-      />
-      <WebsiteCommentContainer v-else :website-id="data.id" />
+      <WebsiteCommentCommunityContainer :website-id="data.id" />
     </div>
 
     <div class="space-y-3">
