@@ -9,9 +9,10 @@ package service
 // identical. The primitive owns thread/post content over S2S; this service
 // assembles the response shapes kungal already renders plus the per-area side
 // effects each old area maintained: notifications (per-area parity), the website
-// display counter, and the materialized activity-feed row. It is only reachable
-// when KUN_RESOURCE_COMMENTS_COMMUNITY is on; the OLD rating/website/toolset
-// handler/service/repo are left untouched (steps 08/09 wire the UI + cutover).
+// display counter, and the materialized activity-feed row. It is the
+// unconditional rating/website/toolset comment backend: the OLD singular comment
+// routes were retired (charter step 06a); the frozen tables still back detail-
+// embedded / admin / search reads.
 //
 // Split across resource_comment_service.go (source strategy + read) and
 // resource_comment_write.go (create/delete + notifications + feed parity).

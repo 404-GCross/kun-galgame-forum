@@ -22,40 +22,19 @@ var resourceCommentRoutes = []struct{ method, path string }{
 	{http.MethodDelete, "/toolset/:id/comments/:postId"},
 }
 
-// TestResourceCommentRoutesGatedOffByFlag is the flag-off invariant probe: with
-// enabled=false NONE of the new resource comment routes are mounted, so a request
-// to one 404s — byte-identical to a build without the migration.
-func TestResourceCommentRoutesGatedOffByFlag(t *testing.T) {
+// TestResourceCommentRoutesMountedUnconditionally proves all nine resource
+// comment routes are registered. Community is the unconditional comment backend
+// since the legacy singular /comment routes were retired (charter step 06a) —
+// there is no longer a flag.
+func TestResourceCommentRoutesMountedUnconditionally(t *testing.T) {
 	app := fiber.New()
 	h := handler.NewResourceCommentHandler(nil)
-	h.RegisterReads(app, false)
-	h.RegisterWrites(app, false)
-
-	for _, rt := range resourceCommentRoutes {
-		if routeExists(app, rt.method, rt.path) {
-			t.Errorf("route %s %s registered when flag OFF (must be absent)", rt.method, rt.path)
-		}
-	}
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/galgame-rating/1/comments", nil))
-	if err != nil {
-		t.Fatalf("app.Test: %v", err)
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("GET /galgame-rating/1/comments = %d, want 404 when flag off", resp.StatusCode)
-	}
-}
-
-// TestResourceCommentRoutesRegisteredWhenEnabled proves all nine routes mount
-// when the flag is on (introspected, not invoked — the nil service is never hit).
-func TestResourceCommentRoutesRegisteredWhenEnabled(t *testing.T) {
-	app := fiber.New()
-	h := handler.NewResourceCommentHandler(nil)
-	h.RegisterReads(app, true)
-	h.RegisterWrites(app, true)
+	h.RegisterReads(app)
+	h.RegisterWrites(app)
 
 	for _, rt := range resourceCommentRoutes {
 		if !routeExists(app, rt.method, rt.path) {
-			t.Errorf("route %s %s NOT registered when flag on", rt.method, rt.path)
+			t.Errorf("route %s %s NOT registered", rt.method, rt.path)
 		}
 	}
 }
@@ -69,10 +48,10 @@ func TestResourceCommentReadsAnonymous(t *testing.T) {
 	app := fiber.New()
 	h := handler.NewResourceCommentHandler(nil)
 
-	h.RegisterReads(app, true)
+	h.RegisterReads(app)
 	// The mandatory-auth boundary, as in router.go — everything after is gated.
 	app.Use(func(c fiber.Ctx) error { return c.SendStatus(http.StatusUnauthorized) })
-	h.RegisterWrites(app, true)
+	h.RegisterWrites(app)
 
 	// Anonymous read reaches the handler: a non-numeric id fails parsing and 400s
 	// (proving the handler ran) rather than being intercepted as the boundary 401.

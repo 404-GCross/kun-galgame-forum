@@ -122,52 +122,9 @@ func (h *RatingHandler) ToggleLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// CreateComment — POST /api/galgame-rating/:id/comment
-func (h *RatingHandler) CreateComment(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	var req dto.CreateRatingCommentRequest
-	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	created, appErr := h.ratingService.CreateRatingComment(c.Context(), user.ID, &req)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, created)
-}
-
-// UpdateComment — PUT /api/galgame-rating/:id/comment
-func (h *RatingHandler) UpdateComment(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	var req dto.UpdateRatingCommentRequest
-	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	updated, appErr := h.ratingService.UpdateRatingComment(c.Context(), user.ID, &req)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, updated)
-}
-
-// DeleteComment — DELETE /api/galgame-rating/:id/comment
-func (h *RatingHandler) DeleteComment(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	var req dto.DeleteRatingCommentRequest
-	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	if appErr := h.ratingService.DeleteRatingComment(user.ID, role.CanModerate(user.Roles), req.GalgameRatingCommentID); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OKMessage(c, "评论已删除")
-}
+// The rating comment WRITE routes (POST/PUT/DELETE /galgame-rating/:id/comment)
+// were retired when the resource comment areas moved onto the community
+// primitive (charter step 06a). Comments are now created via the community-
+// backed /galgame-rating/:id/comments routes (ResourceCommentHandler); the
+// rating DETAIL response still embeds the legacy comment list for now (a later
+// wave adapts that reader).

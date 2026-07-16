@@ -14,10 +14,11 @@ import (
 )
 
 // CommunityCommentHandler serves the community-backed galgame comment routes
-// (the `/comments` plural prefix, mounted only when KUN_GALGAME_COMMENTS_COMMUNITY
-// is on). It coexists with the OLD `/comment` routes until step 04/05 retire
-// them. Post-addressed writes take the community post id in the path; a `?gid`
-// hint carries the galgame id for the LOCAL display counter + mention deep-links
+// (the `/comments` plural prefix). Community is now the unconditional comment
+// backend (the legacy `/comment` routes were retired in charter step 06a); an
+// unconfigured client degrades reads to empty pages and writes to 503.
+// Post-addressed writes take the community post id in the path; a `?gid` hint
+// carries the galgame id for the LOCAL display counter + mention deep-links
 // (the frontend always has it in context).
 type CommunityCommentHandler struct {
 	service *service.CommunityCommentService
@@ -27,9 +28,7 @@ func NewCommunityCommentHandler(svc *service.CommunityCommentService) *Community
 	return &CommunityCommentHandler{service: svc}
 }
 
-// RegisterReads / RegisterWrites mount the community comment routes when
-// enabled; no-ops when not, so with the flag off none of these paths exist
-// (404) — the byte-identical deployment invariant.
+// RegisterReads / RegisterWrites mount the community comment routes.
 //
 // The two halves MUST be mounted on opposite sides of the router's mandatory-
 // auth boundary: Fiber middleware is stack-ordered, so a route registered after
@@ -37,18 +36,12 @@ func NewCommunityCommentHandler(svc *service.CommunityCommentService) *Community
 // registered it. Mounting the public reads via the optAuth handle but after
 // that boundary silently made them login-only (anonymous 205) — the split keeps
 // the registration position explicit.
-func (h *CommunityCommentHandler) RegisterReads(optAuth fiber.Router, enabled bool) {
-	if !enabled {
-		return
-	}
+func (h *CommunityCommentHandler) RegisterReads(optAuth fiber.Router) {
 	optAuth.Get("/galgame/:gid/comments", h.List)
 	optAuth.Get("/galgame/:gid/comments/locate", h.Locate)
 }
 
-func (h *CommunityCommentHandler) RegisterWrites(authed fiber.Router, enabled bool) {
-	if !enabled {
-		return
-	}
+func (h *CommunityCommentHandler) RegisterWrites(authed fiber.Router) {
 	authed.Post("/galgame/:gid/comments", h.Create)
 	authed.Put("/galgame/comments/:postId", h.Update)
 	authed.Delete("/galgame/comments/:postId", h.Delete)

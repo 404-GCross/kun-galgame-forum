@@ -284,17 +284,17 @@ func (a *App) setupRoutes() {
 
 	// Galgame detail sub-routes (MUST be before /:gid to avoid shadowing)
 	optAuth.Get("/galgame/:gid/resource/all", a.GalgameResourceHandler.GetGalgameResources)
-	optAuth.Get("/galgame/:gid/comment/all", a.GalgameCommentHandler.GetComments)
-	optAuth.Get("/galgame/:gid/comment/thread/:rootId", a.GalgameCommentHandler.GetCommentThread)
-	// NEW community-backed comment READS (flag-gated, anonymous-readable). These
-	// must be mounted BEFORE the mandatory-auth boundary below — Fiber middleware
-	// is stack-ordered, so anything registered after it is login-gated regardless
-	// of the group handle. The write half mounts after the boundary.
-	a.GalgameCommunityCommentHandler.RegisterReads(optAuth, a.Config.Community.Enabled)
-	// NEW community-backed resource comment READS (rating / website / toolset),
-	// flag-gated + anonymous-readable. Same stack-position rule as above: mounted
-	// BEFORE the mandatory-auth boundary so anonymous reads reach the handler.
-	a.ResourceCommentHandler.RegisterReads(optAuth, a.Config.Community.ResourceEnabled)
+	// Community-backed comment READS (anonymous-readable). These MUST be mounted
+	// BEFORE the mandatory-auth boundary below — Fiber middleware is stack-ordered,
+	// so anything registered after it is login-gated regardless of the group
+	// handle. The write half mounts after the boundary. Community is now the
+	// unconditional comment backend (the legacy /comment reads were retired in
+	// charter step 06a); an unconfigured client degrades reads to empty pages.
+	a.GalgameCommunityCommentHandler.RegisterReads(optAuth)
+	// Community-backed resource comment READS (rating / website / toolset),
+	// anonymous-readable. Same stack-position rule as above: mounted BEFORE the
+	// mandatory-auth boundary so anonymous reads reach the handler.
+	a.ResourceCommentHandler.RegisterReads(optAuth)
 	optAuth.Get("/galgame/:gid/pr/all", a.GalgameWikiHandler.GetGalgamePRs)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameWikiHandler.GetGalgameLinks)
 	optAuth.Get("/galgame/:gid/history/all", a.GalgameWikiHandler.GetGalgameHistory)
@@ -308,14 +308,12 @@ func (a *App) setupRoutes() {
 
 	// Website (optional auth for like/favorite status)
 	optAuth.Get("/website", a.WebsiteHandler.GetWebsites)
-	optAuth.Get("/website/:domain/comment", a.WebsiteCommentHandler.GetComments)
 	optAuth.Get("/website/:domain", a.WebsiteHandler.GetWebsiteDetail)
 
 	// Toolset (optional auth for practicality "mine" field)
 	optAuth.Get("/toolset", a.ToolsetHandler.GetList)
 	optAuth.Get("/toolset/:id", a.ToolsetHandler.GetDetail)
 	optAuth.Get("/toolset/:id/practicality", a.ToolsetPracticalityHandler.GetPracticality)
-	optAuth.Get("/toolset/:id/comment/all", a.ToolsetCommentHandler.GetComments)
 
 	// ════════════════════════════════════════════
 	// AUTHENTICATED routes (require valid session)
@@ -391,19 +389,9 @@ func (a *App) setupRoutes() {
 	authed.Get("/report/reasons", a.TrustHandler.GetReasons)
 	authed.Post("/report/submit", a.TrustHandler.SubmitReport)
 
-	// OLD rating / website / toolset comment WRITE routes are guarded by a thin
-	// read-only pre-check for the resource-wave cutover freeze window
-	// (KUN_RESOURCE_COMMENT_READONLY, charter step 09). The guard is a pure
-	// passthrough when the flag is off (the default) — byte-identical to today —
-	// and reuses the same middleware as the galgame freeze (a content-agnostic 503
-	// gate). Reads are never mounted behind it; the old handlers are untouched.
-	resourceCommentReadonly := middleware.GalgameCommentReadonly(a.Config.Community.ResourceReadonly)
-
 	// Website interactions (authenticated)
 	authed.Put("/website/:domain/like", a.WebsiteHandler.ToggleLike)
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)
-	authed.Post("/website/:domain/comment", resourceCommentReadonly, a.WebsiteCommentHandler.CreateComment)
-	authed.Delete("/website/:domain/comment", resourceCommentReadonly, a.WebsiteCommentHandler.DeleteComment)
 
 	// Galgame submission flow (authenticated, any role) — see
 	// docs/galgame_wiki/07-submission.md. The wizard search forces
@@ -435,29 +423,18 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame/collection/:cid", a.GalgameCollectionHandler.Delete)
 	authed.Get("/galgame/:gid/collections/mine", a.GalgameCollectionHandler.MyCollectionsForGalgame)
 	authed.Put("/galgame/:gid/collections", a.GalgameCollectionHandler.SetMembership)
-	// OLD galgame comment WRITE routes, guarded by a thin read-only pre-check for
-	// the migration cutover freeze window (KUN_GALGAME_COMMENT_READONLY). The
-	// guard is a pure passthrough when the flag is off (the default), so this is
-	// byte-identical to today; reads (comment/all, comment/thread) are never
-	// mounted behind it. The old handlers are untouched.
-	commentReadonly := middleware.GalgameCommentReadonly(a.Config.Community.Readonly)
-	authed.Post("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.CreateComment)
-	authed.Put("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.UpdateComment)
-	authed.Delete("/galgame/:gid/comment", commentReadonly, a.GalgameCommentHandler.DeleteComment)
-	authed.Put("/galgame/:gid/comment/like", commentReadonly, a.GalgameCommentHandler.ToggleCommentLike)
 
-	// NEW community-backed comment WRITES (`/comments` plural), mounted only when
-	// KUN_GALGAME_COMMENTS_COMMUNITY is on — off means none of them exist (404),
-	// the byte-identical deployment invariant. Coexists with the old routes above;
-	// the anonymous read half is mounted before the auth boundary (see optAuth).
-	a.GalgameCommunityCommentHandler.RegisterWrites(authed, a.Config.Community.Enabled)
+	// Community-backed comment WRITES (`/comments` plural). Community is now the
+	// unconditional comment backend (the legacy /galgame/:gid/comment writes were
+	// retired in charter step 06a); an unconfigured client degrades writes to 503.
+	// The anonymous read half is mounted before the auth boundary (see optAuth).
+	a.GalgameCommunityCommentHandler.RegisterWrites(authed)
 
-	// NEW community-backed resource comment WRITES (rating / website / toolset
-	// `/comments` create + region-aware delete), mounted only when
-	// KUN_RESOURCE_COMMENTS_COMMUNITY is on. Post-addressed edit / like / flag are
-	// NOT re-registered here — those reuse the galgame `/galgame/comments/:postId*`
+	// Community-backed resource comment WRITES (rating / website / toolset
+	// `/comments` create + region-aware delete). Post-addressed edit / like / flag
+	// are NOT re-registered here — those reuse the galgame `/galgame/comments/:postId*`
 	// routes above (region-agnostic; charter deliverable C).
-	a.ResourceCommentHandler.RegisterWrites(authed, a.Config.Community.ResourceEnabled)
+	a.ResourceCommentHandler.RegisterWrites(authed)
 
 	// Galgame resource (authenticated, local)
 	authed.Post("/galgame/:gid/resource", a.GalgameResourceHandler.CreateResource)
@@ -472,9 +449,6 @@ func (a *App) setupRoutes() {
 	authed.Put("/galgame-rating/:id", a.GalgameRatingHandler.UpdateRating)
 	authed.Delete("/galgame-rating/:id", a.GalgameRatingHandler.DeleteRating)
 	authed.Put("/galgame-rating/:id/like", a.GalgameRatingHandler.ToggleLike)
-	authed.Post("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.CreateComment)
-	authed.Put("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.UpdateComment)
-	authed.Delete("/galgame-rating/:id/comment", resourceCommentReadonly, a.GalgameRatingHandler.DeleteComment)
 
 	// Galgame quiz (答题): author / answer / rate-quality / delete + a self
 	// "answered" history. Publishing is open to anyone in MVP (no review gate).
@@ -567,9 +541,6 @@ func (a *App) setupRoutes() {
 	authed.Put("/toolset/:id", a.ToolsetHandler.Update)
 	authed.Delete("/toolset/:id", a.ToolsetHandler.Delete)
 	authed.Put("/toolset/:id/practicality", a.ToolsetPracticalityHandler.UpsertPracticality)
-	authed.Post("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.CreateComment)
-	authed.Put("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.UpdateComment)
-	authed.Delete("/toolset/:id/comment", resourceCommentReadonly, a.ToolsetCommentHandler.DeleteComment)
 	authed.Post("/toolset/:id/resource", a.ToolsetResourceHandler.CreateResource)
 	authed.Put("/toolset/:id/resource", a.ToolsetResourceHandler.UpdateResource)
 	authed.Delete("/toolset/:id/resource", a.ToolsetResourceHandler.DeleteResource)

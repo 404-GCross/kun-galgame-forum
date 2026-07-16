@@ -4,9 +4,8 @@
 // the primitive owns promotion/demotion. Mirrors the letmoe consumer's
 // internal/community/trust, adapted to kungal's local account store.
 //
-// Gating: the whole reporter is inert unless the community migration flag is on
-// AND the S2S client is configured — so with the flag off no Boost ever fires
-// (the byte-identical deployment invariant).
+// Gating: the whole reporter is inert unless the S2S community client is
+// configured — so on a dev box without a community service no Boost ever fires.
 package trust
 
 import (
@@ -32,29 +31,28 @@ const boostOnceTTL = 90 * 24 * time.Hour
 
 // Reporter declares starter boosts to the community primitive.
 type Reporter struct {
-	cli     *communityclient.Client
-	rdb     *redis.Client
-	db      *gorm.DB
-	enabled bool // the community migration flag (KUN_GALGAME_COMMENTS_COMMUNITY)
+	cli *communityclient.Client
+	rdb *redis.Client
+	db  *gorm.DB
 }
 
-// New builds the reporter. enabled is the community migration flag; when false
-// (the default) every call is a no-op regardless of client/db.
-func New(cli *communityclient.Client, rdb *redis.Client, db *gorm.DB, enabled bool) *Reporter {
-	return &Reporter{cli: cli, rdb: rdb, db: db, enabled: enabled}
+// New builds the reporter. When the client is unconfigured every call is a
+// no-op regardless of rdb/db.
+func New(cli *communityclient.Client, rdb *redis.Client, db *gorm.DB) *Reporter {
+	return &Reporter{cli: cli, rdb: rdb, db: db}
 }
 
-// active reports whether the reporter should do anything: the migration flag is
-// on and the S2S client is configured.
+// active reports whether the reporter should do anything: the S2S community
+// client is configured.
 func (r *Reporter) active() bool {
-	return r != nil && r.enabled && r.cli != nil && r.cli.Configured()
+	return r != nil && r.cli != nil && r.cli.Configured()
 }
 
 // Boost declares the starter boost for a user from their roles + account age, at
 // most once per user (a Redis guard; the server is idempotent and only ever
 // raises the floor). Non-blocking: it returns immediately and does all work —
 // including the account-age DB read — in the background, so it never slows the
-// login path. A no-op when the reporter is inert (flag off / client unconfigured).
+// login path. A no-op when the reporter is inert (client unconfigured).
 func (r *Reporter) Boost(userID int, roles []string) {
 	if !r.active() || userID <= 0 {
 		return

@@ -112,7 +112,6 @@ type App struct {
 	DocCategoryHandler             *docHandler.CategoryHandler
 	DocTagHandler                  *docHandler.TagHandler
 	WebsiteHandler                 *websiteHandler.WebsiteHandler
-	WebsiteCommentHandler          *websiteHandler.CommentHandler
 	WebsiteCategoryHandler         *websiteHandler.CategoryHandler
 	WebsiteTagHandler              *websiteHandler.TagHandler
 	UpdateHandler                  *updateHandler.UpdateHandler
@@ -121,7 +120,6 @@ type App struct {
 	RSSHandler                     *rssHandler.RSSHandler
 	GalgameHandler                 *galgameHandler.GalgameHandler
 	GalgameCollectionHandler       *galgameHandler.GalgameCollectionHandler
-	GalgameCommentHandler          *galgameHandler.CommentHandler
 	GalgameCommunityCommentHandler *galgameHandler.CommunityCommentHandler
 	ResourceCommentHandler         *galgameHandler.ResourceCommentHandler
 	GalgameResourceHandler         *galgameHandler.ResourceHandler
@@ -140,7 +138,6 @@ type App struct {
 	SearchHandler                  *searchHandler.SearchHandler
 	ToolsetHandler                 *toolsetHandler.ToolsetHandler
 	ToolsetPracticalityHandler     *toolsetHandler.PracticalityHandler
-	ToolsetCommentHandler          *toolsetHandler.CommentHandler
 	ToolsetResourceHandler         *toolsetHandler.ResourceHandler
 	ToolsetUploadHandler           *toolsetHandler.UploadHandler
 	CronStop                       func()
@@ -306,19 +303,18 @@ func New(cfg *config.Config) *App {
 		ClientID:     commClientID,
 		ClientSecret: commClientSecret,
 	})
-	if cfg.Community.Enabled && communityCli.Configured() {
-		slog.Info("community comment migration ON", "base_url", cfg.Community.BaseURL, "readonly_freeze", cfg.Community.Readonly)
-	} else if cfg.Community.Enabled {
-		slog.Warn("KUN_GALGAME_COMMENTS_COMMUNITY on but community client NOT configured; new comment routes will degrade — set KUN_COMMUNITY_API_BASE + OAuth creds")
+	// Community is now the unconditional comment backend (galgame + the three
+	// resource areas). When the client is unconfigured, comment reads degrade to
+	// empty pages and writes to 503 — a dev box without a community service still
+	// boots.
+	if communityCli.Configured() {
+		slog.Info("community comment backend configured", "base_url", cfg.Community.BaseURL)
+	} else {
+		slog.Warn("community comment backend NOT configured; comments degrade (reads empty / writes 503) — set KUN_COMMUNITY_API_BASE + OAuth creds")
 	}
-	if cfg.Community.ResourceEnabled && communityCli.Configured() {
-		slog.Info("resource comment migration ON", "base_url", cfg.Community.BaseURL, "readonly_freeze", cfg.Community.ResourceReadonly)
-	} else if cfg.Community.ResourceEnabled {
-		slog.Warn("KUN_RESOURCE_COMMENTS_COMMUNITY on but community client NOT configured; new resource comment routes will degrade — set KUN_COMMUNITY_API_BASE + OAuth creds")
-	}
-	// Login-time trust Boost reporter (staff/veteran). Self-gates on the migration
-	// flag + client config, so no Boost fires with the flag off.
-	communityBooster := communitytrust.New(communityCli, rdb, db, cfg.Community.Enabled)
+	// Login-time trust Boost reporter (staff/veteran). Self-gates on client
+	// config, so no Boost fires when the community client is unconfigured.
+	communityBooster := communitytrust.New(communityCli, rdb, db)
 
 	// kungal-link-live-checker client — the "report resource expired" gate.
 	// Only construct when BOTH base URL + API key are set; otherwise the gate is
@@ -364,17 +360,20 @@ func New(cfg *config.Config) *App {
 
 	// Galgame
 	galgameCommentRepo := galgameRepo.NewCommentRepository(db)
+	// galgameCommentSvc + galgameCommentRepo are retained for the T&S enforcement
+	// adapter (galgame_comment subject_kind) + the shared UserObj/truncate helpers;
+	// their read/write methods are dead since the legacy /comment routes were
+	// retired (charter step 06a).
 	galgameCommentSvc := galgameService.NewCommentService(galgameCommentRepo, userStateRepo, uc)
-	// Community-backed comment BFF (charter step 03) — the new `/comments` routes,
-	// mounted only when the migration flag is on (router.go). Coexists with the
-	// old comment service; the local repo owns galgame_post_like + the legacy-id
-	// map (migration 057).
+	// Community-backed comment BFF (charter step 03) — the unconditional galgame
+	// comment backend on the `/comments` routes (router.go). The local repo owns
+	// galgame_post_like + the legacy-id map (migration 057).
 	galgameCommunityPostRepo := galgameRepo.NewCommunityPostRepository(db)
 	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
-	// Resource comment BFF (charter step 07) — the rating / website / toolset
-	// `/comments` routes, mounted only when KUN_RESOURCE_COMMENTS_COMMUNITY is on
-	// (router.go). Reuses the SAME community client + local galgame_post_like repo
-	// (post-addressed likes are region-agnostic); the old three areas are untouched.
+	// Resource comment BFF (charter step 07) — the unconditional rating / website /
+	// toolset comment backend on the `/comments` routes (router.go). Reuses the SAME
+	// community client + local galgame_post_like repo (post-addressed likes are
+	// region-agnostic).
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
 	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker)
@@ -434,7 +433,6 @@ func New(cfg *config.Config) *App {
 	websiteCoreSvc := websiteService.NewWebsiteService(
 		websiteRepository, websiteCategoryRepo, websiteTagRepo, websiteCommentRepo, uc, cfg.GalgameWiki.ImageCDNBase,
 	)
-	websiteCommentSvc := websiteService.NewCommentService(websiteCommentRepo, websiteRepository, notifier, uc)
 	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.GalgameWiki.ImageCDNBase)
 	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
 
@@ -553,7 +551,6 @@ func New(cfg *config.Config) *App {
 		DocCategoryHandler:             docHandler.NewCategoryHandler(docCategorySvc),
 		DocTagHandler:                  docHandler.NewTagHandler(docTagSvc),
 		WebsiteHandler:                 websiteHandler.NewWebsiteHandler(websiteCoreSvc),
-		WebsiteCommentHandler:          websiteHandler.NewCommentHandler(websiteCommentSvc),
 		WebsiteCategoryHandler:         websiteHandler.NewCategoryHandler(websiteCategorySvc),
 		WebsiteTagHandler:              websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
@@ -562,7 +559,6 @@ func New(cfg *config.Config) *App {
 		RSSHandler:                     rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:                 galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler:       galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
-		GalgameCommentHandler:          galgameHandler.NewCommentHandler(galgameCommentSvc),
 		GalgameCommunityCommentHandler: galgameHandler.NewCommunityCommentHandler(galgameCommunityCommentSvc),
 		ResourceCommentHandler:         galgameHandler.NewResourceCommentHandler(resourceCommentSvc),
 		GalgameResourceHandler:         galgameHandler.NewResourceHandler(galgameResourceSvc),
@@ -583,7 +579,6 @@ func New(cfg *config.Config) *App {
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),
 		ToolsetHandler:             toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
 		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
-		ToolsetCommentHandler:      toolsetHandler.NewCommentHandler(toolsetCommentSvc),
 		ToolsetResourceHandler:     toolsetHandler.NewResourceHandler(toolsetResourceSvc),
 		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
 		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameMessageSync.Run, galgameRevisionSync.Run),

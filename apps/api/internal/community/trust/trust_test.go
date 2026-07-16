@@ -53,15 +53,15 @@ func TestIsVeteranAge(t *testing.T) {
 	}
 }
 
-// TestInactiveReporterIsNoop proves an unconfigured / flag-off reporter never
-// acts (Boost returns without a client call — no panic on nil deps).
+// TestInactiveReporterIsNoop proves an unconfigured reporter never acts (Boost
+// returns without a client call — no panic on nil deps).
 func TestInactiveReporterIsNoop(t *testing.T) {
-	// flag off, no client → inactive.
-	off := New(nil, nil, nil, false)
+	// nil client → inactive.
+	off := New(nil, nil, nil)
 	off.Boost(1, []string{"admin"}) // must not panic / must be a no-op
 
-	// flag on but client unconfigured → still inactive.
-	unconfigured := New(communityclient.New(communityclient.Config{}), nil, nil, true)
+	// A client built from empty config is unconfigured → still inactive.
+	unconfigured := New(communityclient.New(communityclient.Config{}), nil, nil)
 	if unconfigured.active() {
 		t.Fatal("active() true with an unconfigured client")
 	}

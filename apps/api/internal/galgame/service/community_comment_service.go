@@ -7,10 +7,11 @@ package service
 // identity from OAuth (userclient), like_count + "我赞过" from the LOCAL
 // galgame_post_like table, content HTML from kungal's OWN markdown pipeline
 // (charter ruling 7: kungal reads content_raw, never the primitive's
-// content_html). It is only reachable when KUN_GALGAME_COMMENTS_COMMUNITY is on;
-// the OLD galgame_comment handler/service/repo is left untouched (step 04/05
-// retire it). Degradation is fail-closed to the face (empty read / 503 write),
-// never a local-table fallback.
+// content_html). It is the unconditional galgame comment backend: the OLD
+// galgame_comment routes were retired (charter step 06a); the frozen
+// galgame_comment table still backs profile / admin / search reads. Degradation
+// is fail-closed to the face (empty read / 503 write), never a local-table
+// fallback.
 //
 // Split across community_comment_service.go (read + shared) and
 // community_comment_write.go (create/edit/delete/like/flag/locate).

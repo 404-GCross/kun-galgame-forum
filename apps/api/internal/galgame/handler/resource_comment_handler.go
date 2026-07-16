@@ -12,15 +12,16 @@ import (
 )
 
 // ResourceCommentHandler serves the community-backed comment routes for the THREE
-// resource areas — rating / website / toolset (the `/comments` plural prefix,
-// mounted only when KUN_RESOURCE_COMMENTS_COMMUNITY is on). It coexists with the
-// OLD singular `/comment` routes until step 09 retires them. Reads are anonymous
-// (optAuth, registered BEFORE the mandatory-auth boundary); creates + the
-// region-aware delete are authenticated. Post-addressed edit / like / flag are
-// NOT here — they reuse the galgame `/galgame/comments/:postId*` routes verbatim
-// (region-agnostic; charter deliverable C). Only DELETE is region-specific
-// (owner authority + the website counter), so it carries the resource id in its
-// path and decides authority server-side.
+// resource areas — rating / website / toolset (the `/comments` plural prefix).
+// Community is now the unconditional comment backend (the legacy singular
+// `/comment` routes were retired in charter step 06a); an unconfigured client
+// degrades reads to empty pages and writes to 503. Reads are anonymous (optAuth,
+// registered BEFORE the mandatory-auth boundary); creates + the region-aware
+// delete are authenticated. Post-addressed edit / like / flag are NOT here — they
+// reuse the galgame `/galgame/comments/:postId*` routes verbatim (region-
+// agnostic; charter deliverable C). Only DELETE is region-specific (owner
+// authority + the website counter), so it carries the resource id in its path
+// and decides authority server-side.
 type ResourceCommentHandler struct {
 	service *service.ResourceCommentService
 }
@@ -29,26 +30,19 @@ func NewResourceCommentHandler(svc *service.ResourceCommentService) *ResourceCom
 	return &ResourceCommentHandler{service: svc}
 }
 
-// RegisterReads mounts the three anonymous list routes when enabled; a no-op when
-// not, so with the flag off none of these paths exist (404) — the byte-identical
-// deployment invariant. MUST be mounted on the optAuth (pre-auth-boundary) side:
-// Fiber middleware is stack-ordered, so a read registered after the mandatory-
-// auth `Use` would be silently login-gated (the step-03 7e7e3af6 lesson).
-func (h *ResourceCommentHandler) RegisterReads(optAuth fiber.Router, enabled bool) {
-	if !enabled {
-		return
-	}
+// RegisterReads mounts the three anonymous list routes. MUST be mounted on the
+// optAuth (pre-auth-boundary) side: Fiber middleware is stack-ordered, so a read
+// registered after the mandatory-auth `Use` would be silently login-gated (the
+// step-03 7e7e3af6 lesson).
+func (h *ResourceCommentHandler) RegisterReads(optAuth fiber.Router) {
 	optAuth.Get("/galgame-rating/:id/comments", h.RatingList)
 	optAuth.Get("/website/:domain/comments", h.WebsiteList)
 	optAuth.Get("/toolset/:id/comments", h.ToolsetList)
 }
 
-// RegisterWrites mounts the create + region-delete routes when enabled (a no-op
-// when not). These sit AFTER the mandatory-auth boundary.
-func (h *ResourceCommentHandler) RegisterWrites(authed fiber.Router, enabled bool) {
-	if !enabled {
-		return
-	}
+// RegisterWrites mounts the create + region-delete routes. These sit AFTER the
+// mandatory-auth boundary.
+func (h *ResourceCommentHandler) RegisterWrites(authed fiber.Router) {
 	authed.Post("/galgame-rating/:id/comments", h.RatingCreate)
 	authed.Delete("/galgame-rating/:id/comments/:postId", h.RatingDelete)
 	authed.Post("/website/:domain/comments", h.WebsiteCreate)
