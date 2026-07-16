@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strconv"
+
 	"kun-galgame-api/internal/user/dto"
 
 	"gorm.io/gorm"
@@ -38,17 +40,10 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_favorite ON galgame_favorite.galgame_id = galgame.id").
 			Where("galgame_favorite.user_id = ?", userID)
-	case "galgame_comment":
-		baseQuery = baseQuery.
-			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
-			Where("galgame_comment.user_id = ? AND galgame_comment.status = 0", userID).
-			Group("galgame.id")
-	case "galgame_comment_like":
-		baseQuery = baseQuery.
-			Joins("JOIN galgame_comment ON galgame_comment.galgame_id = galgame.id").
-			Joins("JOIN galgame_comment_like ON galgame_comment_like.galgame_comment_id = galgame_comment.id").
-			Where("galgame_comment_like.user_id = ? AND galgame_comment.status = 0", userID).
-			Group("galgame.id")
+	// NOTE: galgame_comment / galgame_comment_like are NOT card-list types
+	// anymore. The comment tabs render comment-cards from the community
+	// primitive via GetUserGalgameComments (charter step 06a), so those legacy-
+	// table JOINs were removed here.
 	default:
 		return []int{}, 0, nil
 	}
@@ -81,67 +76,35 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 }
 
 // ──────────────────────────────────────────
-// Galgame comments (3 sub-tabs on /user/:id/galgame/)
+// Liked galgame comments (点赞评论 tab on /user/:id/galgame/)
 // ──────────────────────────────────────────
 
-// UserGalgameCommentRow is the flat shape returned by
-// FindUserGalgameComments. Identity (author display name / avatar) is
-// hydrated by the service layer via userclient — we keep just the
-// user_id here so the row can come back from a single Postgres query
-// without needing an OAuth round-trip per row.
-type UserGalgameCommentRow struct {
-	ID        int    `gorm:"column:id"`
-	GalgameID int    `gorm:"column:galgame_id"`
-	Content   string `gorm:"column:content"`
-	UserID    int    `gorm:"column:user_id"`
-	CreatedAt string `gorm:"column:created"`
+// LikedPostRow is one row of the local galgame_post_like table (charter ruling
+// 8): the like-row id (keyset cursor) + the community post id it points at. The
+// post content itself lives in the primitive — the service hydrates it via
+// ResolvePosts.
+type LikedPostRow struct {
+	ID     int64 `gorm:"column:id"`
+	PostID int64 `gorm:"column:post_id"`
 }
 
-// FindUserGalgameComments returns galgame_comment rows for the two
-// "评论 / 点赞评论" tabs on /user/:id/galgame/. Each branch applies a
-// different join to scope the comment set:
-//
-//   - galgame_comment        — comments the user themself authored
-//   - galgame_comment_like   — comments this user has liked
-//
-// (The old "被评论" / galgame_comment_target tab was retired with the
-// target_user_id column — notifications now come from @-mentions.)
-//
-// The result is paginated by galgame_comment.created DESC so the
-// freshest activity sits at the top of each tab.
-func (r *UserContentRepository) FindUserGalgameComments(
-	userID int, queryType string, page, limit int,
-) ([]UserGalgameCommentRow, int64, error) {
-	offset := (page - 1) * limit
-	var total int64
-
-	baseQuery := r.db.Table("galgame_comment").
-		Select("galgame_comment.id, galgame_comment.galgame_id, galgame_comment.content, galgame_comment.user_id, galgame_comment.created").
-		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
-		Where("galgame_comment.status = 0")
-
-	switch queryType {
-	case "galgame_comment":
-		baseQuery = baseQuery.Where("galgame_comment.user_id = ?", userID)
-	case "galgame_comment_like":
-		baseQuery = baseQuery.
-			Joins("JOIN galgame_comment_like ON galgame_comment_like.galgame_comment_id = galgame_comment.id").
-			Where("galgame_comment_like.user_id = ?", userID)
-	default:
-		return []UserGalgameCommentRow{}, 0, nil
+// FindUserLikedPostIDs returns a keyset page of the community post ids a user
+// has liked, newest-like-first (descending like-row id). It reads the LIVE local
+// galgame_post_like table (NOT a frozen legacy table). `after` is the previous
+// page's cursor (the last like-row id, "" = first page); it fetches limit+1 rows
+// so the caller can tell whether a next page exists.
+func (r *UserContentRepository) FindUserLikedPostIDs(userID int, after string, limit int) ([]LikedPostRow, error) {
+	q := r.db.Table("galgame_post_like").
+		Select("id, post_id").
+		Where("user_id = ?", userID)
+	if after != "" {
+		if cursor, err := strconv.ParseInt(after, 10, 64); err == nil {
+			q = q.Where("id < ?", cursor)
+		}
 	}
-
-	if err := baseQuery.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	var rows []UserGalgameCommentRow
-	err := baseQuery.Order("galgame_comment.created DESC").
-		Offset(offset).Limit(limit).Scan(&rows).Error
-	if err != nil {
-		return nil, 0, err
-	}
-	return rows, total, nil
+	var rows []LikedPostRow
+	err := q.Order("id DESC").Limit(limit + 1).Scan(&rows).Error
+	return rows, err
 }
 
 // ──────────────────────────────────────────

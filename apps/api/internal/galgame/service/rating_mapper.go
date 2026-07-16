@@ -62,26 +62,6 @@ func ratingRowToCard(
 	}
 }
 
-// ratingCommentRowToDTO maps a comment row + hydrated identity map to the
-// response item. The userMap is keyed by user_id and produced via userclient.
-func ratingCommentRowToDTO(cm model.RatingCommentRow, userMap map[int]userclient.User) dto.RatingCommentItem {
-	u := userMap[cm.UserID]
-	item := dto.RatingCommentItem{
-		ID:      cm.ID,
-		Content: cm.Content,
-		User:    dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-		Created: cm.Created,
-		Updated: cm.Updated,
-	}
-	if cm.TargetUserID != nil {
-		t := userMap[*cm.TargetUserID]
-		item.TargetUser = &dto.UserBrief{
-			ID: t.ID, Name: t.Name, Avatar: t.Avatar,
-		}
-	}
-	return item
-}
-
 // wikiOfficialsToDTO maps wiki official relations into the response format.
 func wikiOfficialsToDTO(rels []dto.WikiOfficialRel) []dto.RatingOfficial {
 	out := make([]dto.RatingOfficial, len(rels))

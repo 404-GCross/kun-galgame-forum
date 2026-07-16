@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
+	"strconv"
 
 	galgameClient "kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
+	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 )
@@ -16,17 +19,20 @@ type UserContentService struct {
 	userContentRepo *repository.UserContentRepository
 	wikiClient      *galgameClient.GalgameClient
 	userClient      *userclient.Client
+	community       *communityclient.Client
 }
 
 func NewUserContentService(
 	userContentRepo *repository.UserContentRepository,
 	wikiClient *galgameClient.GalgameClient,
 	userClient *userclient.Client,
+	community *communityclient.Client,
 ) *UserContentService {
 	return &UserContentService{
 		userContentRepo: userContentRepo,
 		wikiClient:      wikiClient,
 		userClient:      userClient,
+		community:       community,
 	}
 }
 
@@ -198,69 +204,143 @@ func (s *UserContentService) GetUserComments(ctx context.Context, userID int, re
 	return items, total, nil
 }
 
-// GetUserGalgameComments returns the comment-card data for the
-// "评论 / 被评论 / 点赞评论" tabs under /user/:id/galgame/.
-// Author identity comes from userclient; content is rendered via the
-// project goldmark pipeline so the frontend can drop it into
-// <KunContent> consistently with the rest of the site.
+// GetUserGalgameComments returns the comment-card data for the "评论 / 点赞评论"
+// tabs under /user/:id/galgame/, now sourced from the community primitive
+// (charter step 06a). Keyset paginated (opaque `after` cursor); the envelope
+// carries the next cursor ("" = last page). Content is rendered via the forum's
+// own goldmark pipeline (charter ruling 7) so the frontend drops it into
+// <KunContent> consistently with the rest of the site. A down/unconfigured
+// community degrades to an empty page (fail-closed).
+//
+// isSFW is intentionally NOT applied here: keyset pagination cannot afford the
+// per-galgame wiki brief filter the old offset path used (it would yield ragged
+// pages), and both tabs only expose galgame_id + comment text — the click-
+// through /galgame/:id target is itself SFW-gated.
 func (s *UserContentService) GetUserGalgameComments(
 	ctx context.Context,
 	userID int,
 	req *dto.UserGalgameCommentsRequest,
-	isSFW bool,
-) ([]dto.UserGalgameComment, int64, *errors.AppError) {
+	_ bool, // isSFW: intentionally unused — see the note above
+) ([]dto.UserGalgameComment, string, *errors.AppError) {
 	if s.hideTarget(ctx, userID) {
-		return []dto.UserGalgameComment{}, 0, nil
+		return []dto.UserGalgameComment{}, "", nil
 	}
-	rows, total, err := s.userContentRepo.FindUserGalgameComments(userID, req.Type, req.Page, req.Limit)
+	if req.Type == "galgame_comment_like" {
+		return s.likedGalgameComments(ctx, userID, req.After, req.Limit)
+	}
+	return s.authoredGalgameComments(ctx, userID, req.After, req.Limit)
+}
+
+// authoredGalgameComments serves the 评论 tab: the profile owner's own visible
+// posts across every galgame comments thread, via the community by-author read.
+// The author of every row is the profile owner (one Hydrate call).
+func (s *UserContentService) authoredGalgameComments(ctx context.Context, userID int, after string, limit int) ([]dto.UserGalgameComment, string, *errors.AppError) {
+	resp, err := s.community.AuthorPosts(ctx, int64(userID), after, limit, communityclient.AnchorSiteGame)
 	if err != nil {
-		return nil, 0, errors.ErrInternal("获取用户 Galgame 评论列表失败")
+		if communityDown(err) {
+			return []dto.UserGalgameComment{}, "", nil
+		}
+		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
+	}
+	owner := s.userClient.Hydrate(ctx, []int{userID})[userID]
+	items := make([]dto.UserGalgameComment, 0, len(resp.Posts))
+	for _, av := range resp.Posts {
+		items = append(items, dto.UserGalgameComment{
+			ID:          av.Post.ID,
+			GalgameID:   anchorGalgameID(av.Thread),
+			Content:     av.Post.ContentRaw,
+			ContentHtml: markdown.Render(av.Post.ContentRaw),
+			User:        dto.UserBrief{ID: owner.ID, Name: owner.Name, Avatar: owner.Avatar},
+			Created:     av.Post.CreatedAt,
+			Deleted:     false, // by-author returns visible posts only
+		})
+	}
+	return items, resp.NextCursor, nil
+}
+
+// likedGalgameComments serves the 点赞评论 tab: the community posts this user
+// liked, in local like-recency order. It keyset-pages the LIVE local
+// galgame_post_like table, batch-hydrates the post content via ResolvePosts, and
+// emits a placeholder (deleted:true) for any liked post the primitive no longer
+// returns (hidden/deleted) so a keyset page never silently shrinks.
+func (s *UserContentService) likedGalgameComments(ctx context.Context, userID int, after string, limit int) ([]dto.UserGalgameComment, string, *errors.AppError) {
+	rows, err := s.userContentRepo.FindUserLikedPostIDs(userID, after, limit)
+	if err != nil {
+		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
+	}
+	nextCursor := ""
+	if len(rows) > limit {
+		nextCursor = strconv.FormatInt(rows[limit-1].ID, 10)
+		rows = rows[:limit]
 	}
 	if len(rows) == 0 {
-		return []dto.UserGalgameComment{}, total, nil
+		return []dto.UserGalgameComment{}, "", nil
 	}
 
-	uidSet := make(map[int]struct{}, len(rows))
-	gidSet := make(map[int]struct{}, len(rows))
-	for _, r := range rows {
-		uidSet[r.UserID] = struct{}{}
-		gidSet[r.GalgameID] = struct{}{}
+	postIDs := make([]int64, len(rows))
+	for i, r := range rows {
+		postIDs[i] = r.PostID
 	}
-	uids := make([]int, 0, len(uidSet))
-	for id := range uidSet {
-		uids = append(uids, id)
+	resolved, err := s.community.ResolvePosts(ctx, postIDs)
+	if err != nil {
+		if communityDown(err) {
+			return []dto.UserGalgameComment{}, "", nil
+		}
+		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
 	}
-	gids := make([]int, 0, len(gidSet))
-	for id := range gidSet {
-		gids = append(gids, id)
+	byID := make(map[int64]communityclient.AuthorPostView, len(resolved.Posts))
+	authorIDs := make([]int, 0, len(resolved.Posts))
+	for _, av := range resolved.Posts {
+		byID[av.Post.ID] = av
+		authorIDs = append(authorIDs, int(av.Post.AuthorID))
 	}
-	userMap := s.userClient.Hydrate(ctx, uids)
-	// SFW gate via wiki content_limit
-	// (docs/galgame_wiki/00-handbook §16). Comments whose galgame is
-	// filtered out won't have a brief returned and are dropped here.
-	briefMap, _ := s.wikiClient.GetBatchPublic(ctx, gids, isSFW)
+	userMap := s.userClient.Hydrate(ctx, authorIDs)
 
 	items := make([]dto.UserGalgameComment, 0, len(rows))
 	for _, r := range rows {
-		if _, ok := briefMap[r.GalgameID]; !ok {
-			continue
-		}
-		u := userMap[r.UserID]
-		// Drop comments authored by a banned user — the 被评论 / 点赞评论 tabs
-		// list third-party comments (flat list, no nesting).
-		if !userclient.IsRenderable(u) {
+		av, ok := byID[r.PostID]
+		author := userMap[int(av.Post.AuthorID)]
+		// Absent from resolve (hidden/deleted/unknown) OR authored by a banned
+		// user → a "已被删除" placeholder that keeps the page size stable.
+		if !ok || !userclient.IsRenderable(author) {
+			items = append(items, dto.UserGalgameComment{ID: r.PostID, Deleted: true, User: dto.UserBrief{}})
 			continue
 		}
 		items = append(items, dto.UserGalgameComment{
-			ID:          r.ID,
-			GalgameID:   r.GalgameID,
-			Content:     r.Content,
-			ContentHtml: markdown.Render(r.Content),
-			User:        dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-			Created:     r.CreatedAt,
+			ID:          av.Post.ID,
+			GalgameID:   anchorGalgameID(av.Thread),
+			Content:     av.Post.ContentRaw,
+			ContentHtml: markdown.Render(av.Post.ContentRaw),
+			User:        dto.UserBrief{ID: author.ID, Name: author.Name, Avatar: author.Avatar},
+			Created:     av.Post.CreatedAt,
+			Deleted:     false,
 		})
 	}
-	return items, total, nil
+	return items, nextCursor, nil
+}
+
+// communityDown reports whether a community error means the service is
+// unreachable / unconfigured / forbidden — the cases where a profile comment
+// read degrades to an empty page rather than a 500 (mirrors the galgame comment
+// BFF's isCommunityDown; a tiny local copy keeps the user package decoupled).
+func communityDown(err error) bool {
+	if stderrors.Is(err, communityclient.ErrNotConfigured) || stderrors.Is(err, communityclient.ErrForbidden) {
+		return true
+	}
+	var apiErr *communityclient.APIError
+	return err != nil && !stderrors.As(err, &apiErr) && !stderrors.Is(err, communityclient.ErrRateLimited)
+}
+
+// anchorGalgameID extracts the galgame id from a thread's anchor. It is only
+// meaningful for a site_game anchor (kind=1, anchor_id = galgame id text); any
+// other anchor (a resource comment the user liked — galgame_post_like is region-
+// agnostic, charter ruling 20) yields 0.
+func anchorGalgameID(thread communityclient.PostThreadContext) int {
+	if thread.AnchorKind != communityclient.AnchorSiteGame {
+		return 0
+	}
+	gid, _ := strconv.Atoi(thread.AnchorID)
+	return gid
 }
 
 // ──────────────────────────────────────────

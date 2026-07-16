@@ -112,6 +112,62 @@ type PostListResponse struct {
 	NextCursor string     `json:"next_cursor"`
 }
 
+// PostThreadContext is the minimal render context of a post's thread, projected
+// into the cross-thread by-author / resolve views so the consumer can render a
+// jump link (title for the label, anchor for the URL) without a per-post round
+// trip. ThreadID repeats the embedded post's thread_id. Title is empty for a
+// comments thread (null on the wire), set for topic/feedback threads.
+type PostThreadContext struct {
+	ThreadID   int64  `json:"thread_id"`
+	Title      string `json:"title"`
+	AnchorKind int32  `json:"anchor_kind"`
+	AnchorID   string `json:"anchor_id"`
+}
+
+// AuthorPostView is one post plus its thread render context — the unit of the
+// by-author profile list and the by-id resolve response. PostView is reused
+// verbatim (nested under post); no new field semantics.
+type AuthorPostView struct {
+	Post   PostView          `json:"post"`
+	Thread PostThreadContext `json:"thread"`
+}
+
+// AuthorPostsResponse is a keyset page of an author's visible posts (descending
+// post id). NextCursor = the post id to pass as `after` for the next (older)
+// page; empty = last page.
+type AuthorPostsResponse struct {
+	Posts      []AuthorPostView `json:"posts"`
+	NextCursor string           `json:"next_cursor"`
+}
+
+// PostsResolveResponse is the batch by-id hydration result: the VISIBLE posts
+// among the requested ids, in request order (post-dedupe). Hidden/deleted/
+// cross-site/unknown ids are SILENTLY absent — the caller diffs the request set
+// against the returned set to render placeholders (no per-id status leaks).
+type PostsResolveResponse struct {
+	Posts []AuthorPostView `json:"posts"`
+}
+
+// AuthorStat is one author's visible-post count in this site.
+type AuthorStat struct {
+	AuthorID     int64 `json:"author_id"`
+	VisiblePosts int64 `json:"visible_posts"`
+}
+
+// AuthorStatsResponse is the batch visible-post count — exactly one entry per
+// requested id (unknown ids report 0), in request order.
+type AuthorStatsResponse struct {
+	Stats []AuthorStat `json:"stats"`
+}
+
+// PurgeResult reports the effect of a compliance purge on the community side.
+// A second purge of the same author on the same site reports zero for both
+// (idempotent).
+type PurgeResult struct {
+	PostsPurged      int64 `json:"posts_purged"`
+	ReactionsDeleted int64 `json:"reactions_deleted"`
+}
+
 // TrustView is a user's trust row (setBoost returns it).
 type TrustView struct {
 	UserID                  int64 `json:"user_id"`
@@ -126,6 +182,14 @@ type ResolveCommentsRequest struct {
 	AnchorKind    int32  `json:"anchor_kind"`
 	AnchorID      string `json:"anchor_id"`
 	ContentRating int32  `json:"content_rating"`
+}
+
+// PostsResolveRequest hydrates a batch of posts by id (the like-tab read: kungal
+// stores only community post ids locally and needs their content back). ids is
+// capped at 100 server-side (422 over) and de-duplicated preserving first-seen
+// order; only visible posts return.
+type PostsResolveRequest struct {
+	IDs []int64 `json:"ids"`
 }
 
 // ReplyRequest appends a post. For a REPLY the BFF passes only reply_to_post_id

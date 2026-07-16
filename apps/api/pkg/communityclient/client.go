@@ -163,3 +163,12 @@ func query(pairs map[string]string) string {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+// joinInt64 renders an id slice as a comma-separated query value ("1,2,3").
+func joinInt64(ids []int64) string {
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = strconv.FormatInt(id, 10)
+	}
+	return strings.Join(parts, ",")
+}

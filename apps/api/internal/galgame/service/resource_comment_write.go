@@ -151,6 +151,7 @@ func (s *ResourceCommentService) afterCreate(src CommentSource, resourceID int, 
 		s.feedUpsert(src.feedType, post.ID, userID, content, "/website/"+slug, nsfw, post.CreatedAt)
 
 	case sourceToolset.key:
+		s.bumpToolsetCommentCount(resourceID, 1) // charter ruling 21 — toolset counter maintained (migration 059)
 		if notify {
 			s.notifyToolset(userID, plan.receiver, plan.msgType, content, resourceID)
 		}
@@ -191,8 +192,11 @@ func (s *ResourceCommentService) DeleteComment(ctx context.Context, src CommentS
 		return mapCommunityError(err)
 	}
 
-	if src.key == sourceWebsite.key {
+	switch src.key {
+	case sourceWebsite.key:
 		s.bumpWebsiteCommentCount(resourceID, -1)
+	case sourceToolset.key:
+		s.bumpToolsetCommentCount(resourceID, -1) // charter ruling 21 (migration 059)
 	}
 	s.feedDelete(src, postID)
 	return nil
@@ -297,6 +301,16 @@ func (s *ResourceCommentService) bumpWebsiteCommentCount(websiteID, delta int) {
 	if err := s.db.Table("galgame_website").Where("id = ?", websiteID).
 		Update("comment_count", gorm.Expr("GREATEST(comment_count + ?, 0)", delta)).Error; err != nil {
 		slog.Warn("website comment counter adjust failed (best-effort)", "website_id", websiteID, "delta", delta, "error", err)
+	}
+}
+
+// bumpToolsetCommentCount adjusts galgame_toolset.comment_count, floored at 0 (a
+// tolerated display counter — migration 059, mirroring the website counter).
+// Best-effort.
+func (s *ResourceCommentService) bumpToolsetCommentCount(toolsetID, delta int) {
+	if err := s.db.Table("galgame_toolset").Where("id = ?", toolsetID).
+		Update("comment_count", gorm.Expr("GREATEST(comment_count + ?, 0)", delta)).Error; err != nil {
+		slog.Warn("toolset comment counter adjust failed (best-effort)", "toolset_id", toolsetID, "delta", delta, "error", err)
 	}
 }
 

@@ -337,8 +337,8 @@ func New(cfg *config.Config) *App {
 
 	// Services
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
-	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, uc)
-	userContentService := service.NewUserContentService(userContentRepo, gc, uc)
+	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, uc, communityCli)
+	userContentService := service.NewUserContentService(userContentRepo, gc, uc, communityCli)
 	messageSvc := msgService.NewMessageService(messageRepository, userStateRepo, uc)
 	chatSvc := msgService.NewChatService(chatRepository, uc)
 	notifier := msgService.NewNotifier(messageRepository)
@@ -429,9 +429,8 @@ func New(cfg *config.Config) *App {
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
 	websiteTagRepo := websiteRepo.NewTagRepository(db)
-	websiteCommentRepo := websiteRepo.NewCommentRepository(db)
 	websiteCoreSvc := websiteService.NewWebsiteService(
-		websiteRepository, websiteCategoryRepo, websiteTagRepo, websiteCommentRepo, uc, cfg.GalgameWiki.ImageCDNBase,
+		websiteRepository, websiteCategoryRepo, websiteTagRepo, uc, communityCli, cfg.GalgameWiki.ImageCDNBase,
 	)
 	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.GalgameWiki.ImageCDNBase)
 	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
@@ -439,7 +438,7 @@ func New(cfg *config.Config) *App {
 	// Admin
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo, gc)
-	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc)
+	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
 
 	// Doc
 	docArticleRepo := docRepo.NewArticleRepository(db)
@@ -455,11 +454,11 @@ func New(cfg *config.Config) *App {
 	toolsetCommentRepo := toolsetRepo.NewCommentRepository(db)
 	toolsetPracticalityRepo := toolsetRepo.NewPracticalityRepository(db)
 	toolsetPracticalitySvc := toolsetService.NewPracticalityService(toolsetPracticalityRepo)
-	toolsetCommentSvc := toolsetService.NewCommentService(toolsetCommentRepo, toolsetRepository, uc)
+	toolsetCommentSvc := toolsetService.NewCommentService(toolsetCommentRepo, toolsetRepository, uc, communityCli)
 	toolsetResourceSvc := toolsetService.NewResourceService(toolsetResourceRepo, toolsetRepository, fileStorageClient, artCli, uc)
 	toolsetUploadSvc := toolsetService.NewUploadService(artCli, rdb, db)
 	toolsetCoreSvc := toolsetService.NewToolsetService(
-		toolsetRepository, toolsetResourceRepo, toolsetCommentRepo, toolsetPracticalityRepo,
+		toolsetRepository, toolsetResourceRepo, toolsetPracticalityRepo,
 		fileStorageClient, uc, toolsetPracticalitySvc, toolsetCommentSvc,
 	)
 

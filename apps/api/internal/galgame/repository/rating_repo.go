@@ -58,19 +58,6 @@ func (r *RatingRepository) FindLikerIDs(ratingID int) []int {
 	return out
 }
 
-// FindComments returns comments on a rating, oldest first. Identity is
-// hydrated at the service layer via userclient.
-func (r *RatingRepository) FindComments(ratingID int) []model.RatingCommentRow {
-	var rows []model.RatingCommentRow
-	r.db.Table("galgame_rating_comment c").
-		Select(`c.id, c.content, c.user_id, c.target_user_id,
-			c.created, c.updated`).
-		Where("c.galgame_rating_id = ?", ratingID).
-		Order("c.created ASC").
-		Scan(&rows)
-	return rows
-}
-
 // GalgameRatingStats returns SUM(overall) and COUNT(*) for a galgame.
 func (r *RatingRepository) GalgameRatingStats(galgameID int) (sum, count int64) {
 	r.db.Table("galgame_rating").Select("COALESCE(SUM(overall), 0)").

@@ -12,6 +12,7 @@ import (
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
+	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
@@ -30,6 +31,11 @@ type UserService struct {
 	rdb           *redis.Client
 	wikiClient    *galgameClient.GalgameClient
 	userClient    *userclient.Client
+	community     *communityclient.Client
+	// commentCache memoizes per-user community visible_posts for a few minutes so
+	// the floating hover card (fired on every hover) doesn't hit the S2S face each
+	// time. Best-effort: an S2S error serves the last good value or 0.
+	commentCache *visiblePostsCache
 }
 
 func NewUserService(
@@ -38,6 +44,7 @@ func NewUserService(
 	rdb *redis.Client,
 	wikiClient *galgameClient.GalgameClient,
 	userClient *userclient.Client,
+	community *communityclient.Client,
 ) *UserService {
 	return &UserService{
 		stateRepo:     stateRepo,
@@ -45,6 +52,8 @@ func NewUserService(
 		rdb:           rdb,
 		wikiClient:    wikiClient,
 		userClient:    userClient,
+		community:     community,
+		commentCache:  newVisiblePostsCache(),
 	}
 }
 
@@ -101,7 +110,9 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID int) (*dto.User
 	profile.TopicPoll = stats.TopicPoll
 	profile.ReplyCreated = stats.ReplyCreated
 	profile.CommentCreated = stats.CommentCreated
-	profile.GalgameComment = stats.GalgameComment
+	// galgame_comment now means "all community comment areas": sourced from the
+	// primitive's visible_posts (charter step 06a), not the frozen table.
+	profile.GalgameComment = s.communityVisiblePosts(ctx, userID)
 	profile.GalgameRating = stats.GalgameRating
 	profile.GalgameResource = stats.GalgameResource
 	profile.GalgameToolset = stats.GalgameToolset
@@ -255,6 +266,10 @@ func (s *UserService) GetFloatingCard(ctx context.Context, userID int) (*dto.Flo
 	}
 
 	stats := s.userStatsRepo.FindFloatingStats(userID)
+	// The comment count is local topic_comment + all community comment areas'
+	// visible_posts (charter step 06a), replacing the old frozen galgame_comment
+	// + galgame_website_comment terms. Cached ~7min so the on-hover card is cheap.
+	commentCount := stats.TopicCommentCount + s.communityVisiblePosts(ctx, userID)
 	return &dto.FloatingCardResponse{
 		ID:                   u.ID,
 		Name:                 u.Name,
@@ -262,7 +277,7 @@ func (s *UserService) GetFloatingCard(ctx context.Context, userID int) (*dto.Flo
 		Moemoepoint:          moe,
 		TopicCount:           stats.TopicCount,
 		TopicReplyCount:      stats.TopicReplyCount,
-		TopicCommentCount:    stats.TopicCommentCount,
+		TopicCommentCount:    commentCount,
 		GalgameResourceCount: stats.ResourceCount,
 	}, nil
 }

@@ -26,24 +26,25 @@ func (h *PurgeHandler) GetUserContentStats(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	return response.OK(c, h.purgeService.GetUserContentStats(userID))
+	return response.OK(c, h.purgeService.GetUserContentStats(c.Context(), userID))
 }
 
 // PurgeUserContent hard-deletes all of a user's kungal content + interactions.
 // DELETE /api/admin/user/:id/content
 func (h *PurgeHandler) PurgeUserContent(c fiber.Ctx) error {
-	if _, appErr := middleware.MustGetUser(c); appErr != nil {
+	operator, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 	userID, appErr := parseUserID(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	stats, appErr := h.purgeService.PurgeUserContent(c.Context(), userID)
+	result, appErr := h.purgeService.PurgeUserContent(c.Context(), operator.ID, userID)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	return response.OK(c, stats)
+	return response.OK(c, result)
 }
 
 func parseUserID(c fiber.Ctx) (int, *errors.AppError) {

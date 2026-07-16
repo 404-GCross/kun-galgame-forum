@@ -45,21 +45,27 @@ type UserGalgameCard struct {
 }
 
 // UserGalgameComment is an item in GET /api/user/:userID/galgame-comments —
-// the three "评论 / 被评论 / 点赞评论" sub-tabs on /user/:id/galgame/.
-// Mirrors the topic comment card shape: enough info to render content
-// + click-through to the parent galgame, no more.
+// the "评论 / 点赞评论" sub-tabs on /user/:id/galgame/, now sourced from the
+// community primitive (charter step 06a). ID is the community post id. Content
+// is the raw markdown; ContentHtml the forum-rendered HTML. Deleted marks a
+// placeholder row (liked comment since hidden/deleted upstream) so the tab
+// renders "已被删除" instead of silently shrinking a keyset page.
 type UserGalgameComment struct {
-	ID          int       `json:"id"`
+	ID          int64     `json:"id"`
 	GalgameID   int       `json:"galgame_id"`
 	Content     string    `json:"content"`
 	ContentHtml string    `json:"content_html"`
 	User        UserBrief `json:"user"`
 	Created     string    `json:"created"`
+	Deleted     bool      `json:"deleted"`
 }
 
 // UserGalgameCommentsRequest is the query for GET /api/user/:userID/galgame-comments.
+// Pagination is keyset (opaque `after` cursor) — the old offset `page` is gone
+// because the underlying reads are community by-author keyset + local like-table
+// keyset.
 type UserGalgameCommentsRequest struct {
 	Type  string `query:"type" validate:"required"`
-	Page  int    `query:"page" validate:"min=1"`
+	After string `query:"after"`
 	Limit int    `query:"limit" validate:"min=1,max=50"`
 }

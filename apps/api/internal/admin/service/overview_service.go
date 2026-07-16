@@ -29,8 +29,13 @@ func NewOverviewService(
 // Table catalog (DB side)
 // ──────────────────────────────────────────
 
+// localModel is a site-local overview metric. Table drives the row-count /
+// daily-series queries; FeedType, when set, redirects those to feed_activity
+// filtered by that activity type instead of the (now frozen) source table —
+// used for the two comment metrics that moved onto the community primitive
+// (charter step 06a). It counts LIVE comments and is near-complete historically.
 type localModel struct {
-	Name, Table, Label string
+	Name, Table, Label, FeedType string
 }
 
 func localModels() []localModel {
@@ -39,15 +44,17 @@ func localModels() []localModel {
 		// OAuth cutover (identity lives in OAuth; the forum only knows users who
 		// logged in here), so a registration count off it is misleading. Dropped
 		// on purpose; see the admin overview constants on the FE.
-		{"topic", "topic", "话题"},
-		{"topic_reply", "topic_reply", "话题回复"},
-		{"topic_comment", "topic_comment", "话题评论"},
-		{"galgame", "galgame", "Galgame"},
-		{"galgame_resource", "galgame_resource", "Galgame 资源"},
-		{"galgame_comment", "galgame_comment", "Galgame 评论"},
-		{"galgame_website", "galgame_website", "Galgame 网站"},
-		{"galgame_website_comment", "galgame_website_comment", "Galgame 网站评论"},
-		{"chat_message", "chat_message", "聊天消息"},
+		{Name: "topic", Table: "topic", Label: "话题"},
+		{Name: "topic_reply", Table: "topic_reply", Label: "话题回复"},
+		{Name: "topic_comment", Table: "topic_comment", Label: "话题评论"},
+		{Name: "galgame", Table: "galgame", Label: "Galgame"},
+		{Name: "galgame_resource", Table: "galgame_resource", Label: "Galgame 资源"},
+		// galgame_comment / galgame_website_comment: frozen tables since the
+		// community cutover — counted from feed_activity by type instead.
+		{Name: "galgame_comment", Label: "Galgame 评论", FeedType: "GALGAME_COMMENT_CREATION"},
+		{Name: "galgame_website", Table: "galgame_website", Label: "Galgame 网站"},
+		{Name: "galgame_website_comment", Label: "Galgame 网站评论", FeedType: "GALGAME_WEBSITE_COMMENT_CREATION"},
+		{Name: "chat_message", Table: "chat_message", Label: "聊天消息"},
 	}
 }
 
@@ -77,7 +84,15 @@ func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.
 
 	items := make([]dto.OverviewItem, 0, len(locals)+len(wikis))
 	for _, m := range locals {
-		count, err := s.overviewRepo.CountTable(m.Table)
+		var (
+			count int64
+			err   error
+		)
+		if m.FeedType != "" {
+			count, err = s.overviewRepo.CountFeedType(m.FeedType)
+		} else {
+			count, err = s.overviewRepo.CountTable(m.Table)
+		}
 		if err != nil {
 			return nil, errors.ErrInternal("获取统计概览失败")
 		}
@@ -129,7 +144,15 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 	dateMap := make(map[string]map[string]int64)
 
 	for _, t := range locals {
-		stats, err := s.overviewRepo.DailyCountsSince(t.Table, since)
+		var (
+			stats []repository.DailyStat
+			err   error
+		)
+		if t.FeedType != "" {
+			stats, err = s.overviewRepo.DailyFeedCountsSince(t.FeedType, since)
+		} else {
+			stats, err = s.overviewRepo.DailyCountsSince(t.Table, since)
+		}
 		if err != nil {
 			return nil, errors.ErrInternal("获取统计数据失败")
 		}

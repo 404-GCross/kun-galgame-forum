@@ -109,7 +109,7 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		// ── Capture surviving-parent id sets BEFORE deleting, for the
 		// post-delete counter recompute (these are bounded by the number of
 		// distinct parents the user touched — small, safe for an IN list). ──
-		var affTopics, affReplies, affGalgames, affRatings, affWebsites, affChatRooms []int
+		var affTopics, affReplies, affGalgames, affRatings, affChatRooms []int
 		captures := []struct {
 			dst *[]int
 			sql string
@@ -121,7 +121,8 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 				UNION SELECT DISTINCT galgame_id FROM galgame_comment WHERE user_id = ?
 				UNION SELECT DISTINCT galgame_id FROM galgame_resource WHERE user_id = ?`},
 			{&affRatings, `SELECT DISTINCT galgame_rating_id FROM galgame_rating_comment WHERE user_id = ?`},
-			{&affWebsites, `SELECT DISTINCT website_id FROM galgame_website_comment WHERE user_id = ?`},
+			// NOTE: galgame_website affected-set no longer captured — its
+			// comment_count is NOT recomputed here (see phase H).
 			// Rooms the user sent messages in OR merely joined — so the
 			// empty-room cleanup below also removes rooms they joined but
 			// never spoke in (otherwise their participant row is deleted yet
@@ -299,10 +300,16 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			{"topic", "comment_count", "topic_comment", "topic_id", affTopics},
 			{"topic_reply", "comment_count", "topic_comment", "topic_reply_id", affReplies},
 			{"galgame", "rating_count", "galgame_rating", "galgame_id", affGalgames},
-			{"galgame", "comment_count", "galgame_comment", "galgame_id", affGalgames},
 			{"galgame", "resource_count", "galgame_resource", "galgame_id", affGalgames},
 			{"galgame_rating", "comment_count", "galgame_rating_comment", "galgame_rating_id", affRatings},
-			{"galgame_website", "comment_count", "galgame_website_comment", "website_id", affWebsites},
+			// COUNTER-CLOBBER FIX (charter step 06a, ruling 11): galgame.comment_count
+			// and galgame_website.comment_count are LIVE display counters, maintained
+			// ±1 by the community BFF since the cutover. Recomputing them from the
+			// FROZEN galgame_comment / galgame_website_comment tables would overwrite
+			// the live value with a stale one, so those two recomputes were removed.
+			// Drift is tolerated (ruling 11). The galgame_rating.comment_count and
+			// galgame_comment.like_count recomputes stay — both columns are dormant/
+			// legacy-internal and purge-verify still asserts on them.
 		}
 		for _, rc := range recounts {
 			if err := recount(tx, rc.parentTable, rc.countCol, rc.childTable, rc.parentCol, rc.ids); err != nil {

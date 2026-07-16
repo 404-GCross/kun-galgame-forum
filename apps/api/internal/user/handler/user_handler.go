@@ -265,11 +265,11 @@ func (h *UserHandler) GetUserGalgameComments(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	items, total, appErr := h.userContentService.GetUserGalgameComments(c.Context(), userID, &req, utils.IsSFW(c))
+	items, nextCursor, appErr := h.userContentService.GetUserGalgameComments(c.Context(), userID, &req, utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	return response.OK(c, fiber.Map{"comments": items, "total": total})
+	return response.OK(c, fiber.Map{"comments": items, "next_cursor": nextCursor})
 }
 
 // GetUserRatings returns a user's galgame rating list.

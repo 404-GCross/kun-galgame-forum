@@ -78,3 +78,58 @@ func (c *Client) Boost(ctx context.Context, req SetBoostRequest) (*TrustView, er
 	err := c.do(ctx, http.MethodPost, "/trust/boost", req, &out)
 	return &out, err
 }
+
+// --- author read / purge face (charter step 06a; infra step 10 + 11) ---
+
+// AuthorPosts returns a keyset page of an author's visible posts across threads
+// (descending post id), each with its thread render context — the profile
+// comment tab read. after is the post-id cursor ("" = newest page); limit ≤0
+// defers to the server default (20, cap 100); anchorKind ≥0 filters to one kind
+// (e.g. AnchorSiteGame), <0 = all kinds.
+func (c *Client) AuthorPosts(ctx context.Context, authorID int64, after string, limit, anchorKind int) (*AuthorPostsResponse, error) {
+	var out AuthorPostsResponse
+	q := map[string]string{"after": after}
+	if limit > 0 {
+		q["limit"] = itoa(int64(limit))
+	}
+	if anchorKind >= 0 {
+		q["anchor_kind"] = itoa(int64(anchorKind))
+	}
+	err := c.do(ctx, http.MethodGet, "/authors/"+itoa(authorID)+"/posts"+query(q), nil, &out)
+	return &out, err
+}
+
+// AuthorStats returns the per-author visible-post count for a batch of user ids
+// (≤100; the server 422s over) — the profile / hover-card stat. Exactly one row
+// per requested id (unknown = 0), in request order. An empty id list short-
+// circuits to an empty result with no network hit.
+func (c *Client) AuthorStats(ctx context.Context, ids []int64) (*AuthorStatsResponse, error) {
+	if len(ids) == 0 {
+		return &AuthorStatsResponse{Stats: []AuthorStat{}}, nil
+	}
+	var out AuthorStatsResponse
+	err := c.do(ctx, http.MethodGet, "/authors/stats"+query(map[string]string{"ids": joinInt64(ids)}), nil, &out)
+	return &out, err
+}
+
+// AuthorPurge tombstones + scrubs every post the author left in this site and
+// deletes their reaction rows (compliance purge). No request body; idempotent
+// (a second run reports {0,0}).
+func (c *Client) AuthorPurge(ctx context.Context, authorID int64) (*PurgeResult, error) {
+	var out PurgeResult
+	err := c.do(ctx, http.MethodPost, "/authors/"+itoa(authorID)+"/purge", nil, &out)
+	return &out, err
+}
+
+// ResolvePosts hydrates a batch of posts by id (≤100). Only visible posts come
+// back, in request order; hidden/deleted/cross-site/unknown ids are silently
+// absent (the caller renders placeholders for the difference). An empty id list
+// short-circuits to an empty result with no network hit.
+func (c *Client) ResolvePosts(ctx context.Context, ids []int64) (*PostsResolveResponse, error) {
+	if len(ids) == 0 {
+		return &PostsResolveResponse{Posts: []AuthorPostView{}}, nil
+	}
+	var out PostsResolveResponse
+	err := c.do(ctx, http.MethodPost, "/posts/resolve", PostsResolveRequest{IDs: ids}, &out)
+	return &out, err
+}

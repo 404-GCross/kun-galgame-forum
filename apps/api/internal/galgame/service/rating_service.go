@@ -141,32 +141,19 @@ func (s *RatingService) GetRatingDetail(
 	likerIDs := s.ratingRepo.FindLikerIDs(ratingID)
 	isLiked := containsInt(likerIDs, currentUserID)
 
-	// Author + comments — collect all uids and hydrate in one batch.
-	commentRows := s.ratingRepo.FindComments(ratingID)
+	// Author + likers — collect uids and hydrate in one batch. The rating
+	// comment embed was dropped in charter step 06a: the comment area now reads
+	// from the community primitive via /galgame-rating/:id/comments, and the FE
+	// no longer consumes a `comments` field on the detail response.
 	uidSet := map[int]struct{}{row.UserID: {}}
 	for _, id := range likerIDs {
 		uidSet[id] = struct{}{}
-	}
-	for _, cm := range commentRows {
-		uidSet[cm.UserID] = struct{}{}
-		if cm.TargetUserID != nil {
-			uidSet[*cm.TargetUserID] = struct{}{}
-		}
 	}
 	uids := make([]int, 0, len(uidSet))
 	for id := range uidSet {
 		uids = append(uids, id)
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
-
-	comments := make([]dto.RatingCommentItem, 0, len(commentRows))
-	for _, cm := range commentRows {
-		// Hide comments authored by a banned user (flat list — no nesting).
-		if !userclient.IsRenderable(userMap[cm.UserID]) {
-			continue
-		}
-		comments = append(comments, ratingCommentRowToDTO(cm, userMap))
-	}
 
 	// Galgame detail from wiki + (when present) its parent series.
 	galgame, seriesBrief := s.buildRatingGalgame(ctx, row.GalgameID)
@@ -195,7 +182,6 @@ func (s *RatingService) GetRatingDetail(
 		LikeCount:     len(likerIDs),
 		IsLiked:       isLiked,
 		LikedUsers:    authorBriefs,
-		Comments:      comments,
 		Created:       row.Created,
 		Updated:       row.Updated,
 		Galgame:       galgame,

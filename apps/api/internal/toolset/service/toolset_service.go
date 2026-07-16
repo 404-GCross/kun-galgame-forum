@@ -24,7 +24,6 @@ import (
 type ToolsetService struct {
 	toolsetRepo      *repository.ToolsetRepository
 	resourceRepo     *repository.ResourceRepository
-	commentRepo      *repository.CommentRepository
 	practicalityRepo *repository.PracticalityRepository
 	s3               *storage.S3Client
 	userClient       *userclient.Client
@@ -37,7 +36,6 @@ type ToolsetService struct {
 func NewToolsetService(
 	toolsetRepo *repository.ToolsetRepository,
 	resourceRepo *repository.ResourceRepository,
-	commentRepo *repository.CommentRepository,
 	practicalityRepo *repository.PracticalityRepository,
 	s3 *storage.S3Client,
 	userClient *userclient.Client,
@@ -47,7 +45,6 @@ func NewToolsetService(
 	return &ToolsetService{
 		toolsetRepo:      toolsetRepo,
 		resourceRepo:     resourceRepo,
-		commentRepo:      commentRepo,
 		practicalityRepo: practicalityRepo,
 		s3:               s3,
 		userClient:       userClient,
@@ -93,7 +90,13 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 
 	avgMap := s.practicalityRepo.AveragesForToolsets(toolsetIDs)
 	dlMap := s.resourceRepo.DownloadSumsForToolsets(toolsetIDs)
-	ccMap := s.commentRepo.CountsForToolsets(toolsetIDs)
+	// Comment counts come from the LIVE galgame_toolset.comment_count column
+	// (migration 059), maintained by the community BFF — the frozen
+	// galgame_toolset_comment table is no longer scanned (charter step 06a).
+	ccMap := make(map[int]int, len(toolsets))
+	for _, t := range toolsets {
+		ccMap[t.ID] = t.CommentCount
+	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 
 	cards := make([]dto.ToolsetCard, 0, len(toolsets))
@@ -171,7 +174,8 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 
 	practicality := s.practicalitySvc.Summary(id)
 	downloadSum := s.resourceRepo.DownloadSum(id)
-	commentCount := s.commentRepo.CountByToolset(id)
+	// Live display counter (migration 059); community-maintained (charter 06a).
+	commentCount := int64(toolset.CommentCount)
 	comments := s.commentSvc.GetLatestForDetail(ctx, id, 5)
 	contributorIDs := s.toolsetRepo.FindContributorIDs(id)
 	resources := s.resourceRepo.FindByToolset(id)

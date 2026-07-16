@@ -10,11 +10,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
 
 	"kun-galgame-api/internal/admin/repository"
+	"kun-galgame-api/pkg/communityclient"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -104,7 +106,10 @@ var counterChecks = []counterCheck{
 	{"topic_reply", "dislike_count", "topic_reply_dislike", "topic_reply_id"},
 	{"topic_poll_option", "vote_count", "topic_poll_vote", "option_id"},
 	{"galgame", "rating_count", "galgame_rating", "galgame_id"},
-	{"galgame", "comment_count", "galgame_comment", "galgame_id"},
+	// galgame.comment_count is NOT reconciled here: since the community cutover it
+	// is a LIVE counter maintained by the community BFF, and the purge no longer
+	// recomputes it from the frozen galgame_comment table (counter-clobber fix,
+	// charter step 06a / ruling 11). Same for galgame_website.comment_count below.
 	{"galgame", "resource_count", "galgame_resource", "galgame_id"},
 	{"galgame", "like_count", "galgame_like", "galgame_id"},
 	{"galgame", "favorite_count", "galgame_favorite", "galgame_id"},
@@ -112,7 +117,6 @@ var counterChecks = []counterCheck{
 	{"galgame_rating", "like_count", "galgame_rating_like", "galgame_rating_id"},
 	{"galgame_resource", "like_count", "galgame_resource_like", "galgame_resource_id"},
 	{"galgame_comment", "like_count", "galgame_comment_like", "galgame_comment_id"},
-	{"galgame_website", "comment_count", "galgame_website_comment", "website_id"},
 	{"galgame_website", "like_count", "galgame_website_like", "website_id"},
 	{"galgame_website", "favorite_count", "galgame_website_favorite", "website_id"},
 }
@@ -274,8 +278,63 @@ func main() {
 		fmt.Println("    OK — second run found nothing and errored not")
 	}
 
+	// ── Community compliance purge: the local PurgeRepository is local-only, so
+	// mirror what PurgeService does (AuthorPurge) and assert the author has no
+	// visible community posts left. Skipped (with a warning) when the community
+	// S2S face isn't configured via env. ──
+	fmt.Println("\n[7] community purge — author has 0 visible posts:")
+	verifyCommunityPurge(fail, userID)
+
 	fmt.Printf("\nRESULT: %s\n", map[bool]string{true: "PASS", false: "FAIL"}[pass])
 	if !pass {
 		os.Exit(1)
 	}
+}
+
+// verifyCommunityPurge mirrors PurgeService's community step against the S2S
+// face configured via env (KUN_COMMUNITY_API_BASE + KUN_COMMUNITY_CLIENT_ID/
+// SECRET, falling back to OAUTH_CLIENT_ID/SECRET), then asserts the author has
+// zero visible community posts. When unconfigured it prints a warning and skips
+// (does not fail — a dev box without the community service still validates the
+// local purge).
+func verifyCommunityPurge(fail func(string, ...any), userID int) {
+	base := os.Getenv("KUN_COMMUNITY_API_BASE")
+	clientID := firstNonEmpty(os.Getenv("KUN_COMMUNITY_CLIENT_ID"), os.Getenv("OAUTH_CLIENT_ID"))
+	clientSecret := firstNonEmpty(os.Getenv("KUN_COMMUNITY_CLIENT_SECRET"), os.Getenv("OAUTH_CLIENT_SECRET"))
+	if base == "" || clientID == "" || clientSecret == "" {
+		fmt.Println("    SKIP — community S2S not configured (set KUN_COMMUNITY_API_BASE + client creds)")
+		return
+	}
+
+	cli := communityclient.New(communityclient.Config{BaseURL: base, ClientID: clientID, ClientSecret: clientSecret})
+	ctx := context.Background()
+	if _, err := cli.AuthorPurge(ctx, int64(userID)); err != nil {
+		fail("community AuthorPurge errored: %v", err)
+		return
+	}
+	stats, err := cli.AuthorStats(ctx, []int64{int64(userID)})
+	if err != nil {
+		fail("community AuthorStats errored: %v", err)
+		return
+	}
+	var visible int64
+	for _, st := range stats.Stats {
+		if st.AuthorID == int64(userID) {
+			visible = st.VisiblePosts
+		}
+	}
+	if visible != 0 {
+		fail("community author %d still has %d visible posts after purge", userID, visible)
+		return
+	}
+	fmt.Println("    OK — author has 0 visible community posts")
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

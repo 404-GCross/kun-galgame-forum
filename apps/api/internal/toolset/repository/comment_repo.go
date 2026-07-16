@@ -22,36 +22,9 @@ func (r *CommentRepository) DB() *gorm.DB { return r.db }
 // Reads
 // ──────────────────────────────────────────
 
-// CountByToolset returns total comment count for a toolset.
-func (r *CommentRepository) CountByToolset(toolsetID int) int64 {
-	var total int64
-	r.db.Model(&model.GalgameToolsetComment{}).
-		Where("toolset_id = ?", toolsetID).
-		Count(&total)
-	return total
-}
-
-// CountsForToolsets returns a map[toolsetID]count for a batch.
-func (r *CommentRepository) CountsForToolsets(toolsetIDs []int) map[int]int {
-	if len(toolsetIDs) == 0 {
-		return map[int]int{}
-	}
-	type row struct {
-		ToolsetID int
-		Count     int
-	}
-	var rows []row
-	r.db.Model(&model.GalgameToolsetComment{}).
-		Select("toolset_id, COUNT(*) AS count").
-		Where("toolset_id IN ?", toolsetIDs).
-		Group("toolset_id").
-		Scan(&rows)
-	out := make(map[int]int, len(rows))
-	for _, row := range rows {
-		out[row.ToolsetID] = row.Count
-	}
-	return out
-}
+// NOTE: CountByToolset / CountsForToolsets were retired in charter step 06a —
+// the toolset comment counts now come from the LIVE galgame_toolset.comment_count
+// column (migration 059), not a count(*) over this frozen table.
 
 // FindPaginated returns the paginated comments for a toolset ordered by
 // created in the requested direction. `sortOrder` accepts "asc" / "desc";
@@ -78,16 +51,6 @@ func (r *CommentRepository) FindAllByToolset(toolsetID int) []model.GalgameTools
 	var comments []model.GalgameToolsetComment
 	r.db.Where("toolset_id = ?", toolsetID).
 		Order("created ASC").
-		Find(&comments)
-	return comments
-}
-
-// FindLatest returns the N most recent comments for a toolset.
-func (r *CommentRepository) FindLatest(toolsetID, limit int) []model.GalgameToolsetComment {
-	var comments []model.GalgameToolsetComment
-	r.db.Where("toolset_id = ?", toolsetID).
-		Order("created DESC").
-		Limit(limit).
 		Find(&comments)
 	return comments
 }

@@ -201,16 +201,6 @@ type RatingGalgameDetail struct {
 	Name                     KunLanguage      `json:"name"`
 }
 
-// RatingCommentItem is a reply on a rating.
-type RatingCommentItem struct {
-	ID         int        `json:"id"`
-	Content    string     `json:"content"`
-	User       UserBrief  `json:"user"`
-	TargetUser *UserBrief `json:"target_user"`
-	Created    string     `json:"created"`
-	Updated    string     `json:"updated"`
-}
-
 // RatingDetail is the full response for GET /galgame-rating/:id.
 type RatingDetail struct {
 	ID           int                 `json:"id"`
@@ -226,7 +216,6 @@ type RatingDetail struct {
 	LikeCount    int                 `json:"like_count"`
 	IsLiked      bool                `json:"is_liked"`
 	LikedUsers   []UserBrief         `json:"liked_users"`
-	Comments     []RatingCommentItem `json:"comments"`
 	Created      string              `json:"created"`
 	Updated      string              `json:"updated"`
 	Galgame      RatingGalgameDetail `json:"galgame"`

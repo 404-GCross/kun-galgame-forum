@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/infrastructure/markdown"
@@ -10,6 +12,8 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/model"
 	"kun-galgame-api/internal/toolset/repository"
+	userModel "kun-galgame-api/internal/user/model"
+	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 
@@ -20,14 +24,18 @@ type CommentService struct {
 	commentRepo *repository.CommentRepository
 	toolsetRepo *repository.ToolsetRepository
 	userClient  *userclient.Client
+	// community serves the detail-preview read off the primitive (charter step
+	// 06a); the frozen galgame_toolset_comment reads it replaced are retired.
+	community *communityclient.Client
 }
 
 func NewCommentService(
 	commentRepo *repository.CommentRepository,
 	toolsetRepo *repository.ToolsetRepository,
 	userClient *userclient.Client,
+	community *communityclient.Client,
 ) *CommentService {
-	return &CommentService{commentRepo: commentRepo, toolsetRepo: toolsetRepo, userClient: userClient}
+	return &CommentService{commentRepo: commentRepo, toolsetRepo: toolsetRepo, userClient: userClient, community: community}
 }
 
 // ──────────────────────────────────────────
@@ -159,24 +167,94 @@ func (s *CommentService) GetComments(
 	return &dto.ToolsetCommentListResponse{CommentData: items, Total: total}
 }
 
-// GetLatestForDetail returns the latest N comments with user info, shaped for
-// the toolset detail response.
+// GetLatestForDetail returns the first ≤limit toolset comments for the detail
+// preview, now sourced from the community primitive (charter step 06a). It
+// resolves the toolset's comments thread (get-or-create), skips held/tombstoned
+// and banned-author posts, and maps onto the existing CommentDetailItem shape.
+// BEST-EFFORT: any S2S error (or unconfigured client) yields an empty slice —
+// the detail page must always render.
 func (s *CommentService) GetLatestForDetail(ctx context.Context, toolsetID, limit int) []dto.CommentDetailItem {
-	rows := s.commentRepo.FindLatest(toolsetID, limit)
-	uids := make([]int, 0, len(rows))
-	for _, cm := range rows {
-		uids = append(uids, cm.UserID)
+	items := []dto.CommentDetailItem{}
+	thread, err := s.community.ResolveComments(ctx, communityclient.ResolveCommentsRequest{
+		AnchorKind:    communityclient.AnchorSiteResource,
+		AnchorID:      "toolset:" + strconv.Itoa(toolsetID),
+		ContentRating: communityclient.RatingAll,
+	})
+	if err != nil {
+		slog.Warn("toolset detail: community resolve failed (best-effort)", "toolset_id", toolsetID, "error", err)
+		return items
+	}
+
+	uids := make([]int, 0, len(thread.Posts))
+	for _, p := range thread.Posts {
+		uids = append(uids, int(p.AuthorID))
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
-	items := make([]dto.CommentDetailItem, 0, len(rows))
-	for _, cm := range rows {
-		// Hide detail-preview comments authored by a banned user.
-		if !userclient.IsRenderable(userMap[cm.UserID]) {
+
+	for _, p := range thread.Posts {
+		if len(items) >= limit {
+			break
+		}
+		if p.Status != communityclient.PostVisible {
 			continue
 		}
-		items = append(items, dto.NewCommentDetailItem(cm, userBriefFromClient(userMap[cm.UserID])))
+		u := userMap[int(p.AuthorID)]
+		if !userclient.IsRenderable(u) {
+			continue
+		}
+		items = append(items, toolsetDetailItemFromPost(p, toolsetID, userBriefFromClient(u)))
 	}
 	return items
+}
+
+// toolsetDetailItemFromPost maps a community post onto the toolset detail-preview
+// item shape. Content is the raw markdown (the FE renders it), parent_id mirrors
+// the community reply pointer, and the timestamps parse from the RFC3339 wire.
+func toolsetDetailItemFromPost(p communityclient.PostView, toolsetID int, user userModel.UserBrief) dto.CommentDetailItem {
+	var parentID *int
+	if p.ReplyToPostID != 0 {
+		pid := int(p.ReplyToPostID)
+		parentID = &pid
+	}
+	created := parseCommunityTime(p.CreatedAt)
+	updated := created
+	if edited := parseCommunityTime(p.EditedAt); !edited.IsZero() {
+		updated = edited
+	}
+	return dto.CommentDetailItem{
+		ID:        int(p.ID),
+		Content:   p.ContentRaw,
+		UserID:    int(p.AuthorID),
+		ToolsetID: toolsetID,
+		ParentID:  parentID,
+		Edited:    parseCommunityTimePtr(p.EditedAt),
+		Created:   created,
+		Updated:   updated,
+		User:      user,
+	}
+}
+
+// parseCommunityTime parses an RFC3339 community timestamp, returning the zero
+// time on any error (the wire format is RFC3339, but a robust fallback keeps a
+// preview from breaking on an odd row).
+func parseCommunityTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+// parseCommunityTimePtr returns *time.Time (nil when empty/invalid) for the
+// nullable edited_at.
+func parseCommunityTimePtr(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return &t
+	}
+	return nil
 }
 
 // ──────────────────────────────────────────

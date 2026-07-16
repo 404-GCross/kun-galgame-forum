@@ -22,6 +22,11 @@ type GalgameToolset struct {
 	ResourceUpdateTime time.Time       `gorm:"column:resource_update_time;autoCreateTime" json:"resource_update_time"`
 	Edited             *time.Time      `gorm:"" json:"edited"`
 	Version            string          `gorm:"type:varchar(233);default:''" json:"version"`
+	// CommentCount is the LIVE display counter for the toolset's community
+	// comments (charter step 06a, migration 059): maintained ±1 by the community
+	// BFF (resource_comment_write.go), replacing the old count(*) over the frozen
+	// galgame_toolset_comment table. Drift tolerated (charter ruling 11).
+	CommentCount int `gorm:"column:comment_count;not null;default:0" json:"comment_count"`
 
 	UserID int `gorm:"column:user_id;not null" json:"user_id"`
 
