@@ -21,5 +21,12 @@ export interface AdminUserContentStats {
   chat_messages: number
   messages: number
   interactions: number
+  // Live community comment posts across all areas (galgame / rating / website /
+  // toolset), backed by the community primitive.
+  community_posts: number
   total: number
+  // Purge-result only (DELETE /admin/user/:id/content): how many community
+  // posts / reactions the purge actually removed. Absent on the preview.
+  community_posts_purged?: number
+  community_reactions_deleted?: number
 }

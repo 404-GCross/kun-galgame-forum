@@ -43,6 +43,9 @@ interface UserGalgameCommentItem {
   content_html: string
   user: { id: number; name: string; avatar: string }
   created: string
+  // The liked tab surfaces placeholder rows for comments that were since
+  // deleted/hidden — render a tombstone instead of the (blanked) body.
+  deleted: boolean
 }
 
 // Two parallel fetches gated by `isCommentMode`. We swap the endpoint
@@ -70,15 +73,64 @@ const { data: galgameData, status: galgameStatus } = await useKunFetch<{
   server: !isCommentMode.value
 })
 
-const { data: commentData, status: commentStatus } = await useKunFetch<{
+// Comment mode uses keyset (cursor) pagination: the first page renders on the
+// server, then `加载更多` appends pages via `after=<next_cursor>` until the
+// cursor comes back empty (galgame-card mode above keeps numbered pages).
+const comments = ref<UserGalgameCommentItem[]>([])
+const commentCursor = ref('')
+const commentHasMore = ref(true)
+const isLoadingMoreComments = ref(false)
+
+const { data: commentData } = await useKunFetch<{
   comments: UserGalgameCommentItem[]
-  total: number
+  next_cursor: string
 }>(() => `/user/${props.userId}/galgame-comments`, {
-  query: pageData,
-  watch: [() => pageData.page, () => pageData.type],
+  query: computed(() => ({ type: props.type, limit: pageData.limit })),
+  watch: [() => props.type],
   immediate: isCommentMode.value,
   server: isCommentMode.value
 })
+
+watch(
+  commentData,
+  (page) => {
+    if (!page) {
+      return
+    }
+    comments.value = page.comments
+    commentCursor.value = page.next_cursor
+    commentHasMore.value = !!page.next_cursor
+  },
+  { immediate: true }
+)
+
+const loadMoreComments = async () => {
+  if (
+    isLoadingMoreComments.value ||
+    !commentHasMore.value ||
+    !commentCursor.value
+  ) {
+    return
+  }
+  isLoadingMoreComments.value = true
+  const next = await kunFetch<{
+    comments: UserGalgameCommentItem[]
+    next_cursor: string
+  }>(`/user/${props.userId}/galgame-comments`, {
+    query: {
+      type: props.type,
+      limit: pageData.limit,
+      after: commentCursor.value
+    }
+  })
+  isLoadingMoreComments.value = false
+  if (!next) {
+    return
+  }
+  comments.value.push(...next.comments)
+  commentCursor.value = next.next_cursor
+  commentHasMore.value = !!next.next_cursor
+}
 </script>
 
 <template>
@@ -115,35 +167,46 @@ const { data: commentData, status: commentStatus } = await useKunFetch<{
 
     <!-- Comment-card mode (galgame_comment / galgame_comment_like) -->
     <template v-else>
-      <div
-        v-if="commentData && commentData.comments.length"
-        class="flex flex-col space-y-3"
-      >
+      <div v-if="comments.length" class="flex flex-col space-y-3">
         <KunCard
-          v-for="c in commentData.comments"
+          v-for="c in comments"
           :key="c.id"
-          :href="`/galgame/${c.galgame_id}`"
+          :href="c.galgame_id ? `/galgame/${c.galgame_id}?comment=${c.id}` : ''"
+          :is-hoverable="!!c.galgame_id"
           content-class="space-y-2"
         >
-          <KunContent compact :content="renderKatex(c.content_html)" />
+          <!-- Tombstone: keep the row, gray the body (matches the community
+               comment view's [已删除]). -->
+          <p v-if="c.deleted" class="text-default-400 text-sm italic">
+            [已删除]
+          </p>
+          <KunContent v-else compact :content="renderKatex(c.content_html)" />
+
           <div
             class="text-default-500 flex items-center justify-between text-sm"
           >
-            <span>评论于 Galgame #{{ c.galgame_id }}</span>
+            <span>
+              {{ c.galgame_id ? `评论于 Galgame #${c.galgame_id}` : '评论' }}
+            </span>
             <KunTime :time="c.created" type="date" show-year />
           </div>
         </KunCard>
 
-        <KunPagination
-          v-if="commentData.total > pageData.limit"
-          v-model:current-page="pageData.page"
-          :total-page="Math.ceil(commentData.total / pageData.limit)"
-          :is-loading="commentStatus === 'pending'"
-        />
+        <div class="flex justify-center pt-1">
+          <KunButton
+            v-if="commentHasMore"
+            variant="light"
+            :loading="isLoadingMoreComments"
+            @click="loadMoreComments"
+          >
+            加载更多
+          </KunButton>
+          <span v-else class="text-default-400 text-sm">没有更多评论了</span>
+        </div>
       </div>
 
       <KunNull
-        v-if="commentData && !commentData.comments.length"
+        v-if="!comments.length"
         description="这只笨蛋萝莉在 Galgame 下没有相关的评论"
       />
     </template>
