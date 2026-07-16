@@ -251,7 +251,7 @@ func Load() (*Config, error) {
 			),
 		},
 		GalgameWiki: GalgameWikiConfig{
-			BaseURL: envOrDefault("GALGAME_WIKI_BASE_URL", "http://127.0.0.1:9280/api"),
+			BaseURL: envOrDefault("GALGAME_WIKI_BASE_URL", "http://127.0.0.1:9281/api"),
 			// Must match the wiki's KUN_IMAGE_PUBLIC_BASE_URL exactly —
 			// both build the same {base}/{hh}/{hh}/{hash}.webp layout.
 			ImageCDNBase: envOrDefault("KUN_IMAGE_PUBLIC_BASE_URL", "https://image.kungal.iloveren.link"),
