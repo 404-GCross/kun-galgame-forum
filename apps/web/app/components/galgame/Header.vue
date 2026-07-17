@@ -199,6 +199,19 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 
             <GalgameRewrite :galgame="galgame" />
 
+            <!-- E3a: the schema-driven proposal editor (the engine review
+                 queue), alongside the legacy rewrite editor until E3b. -->
+            <KunButton
+              variant="light"
+              color="default"
+              size="sm"
+              @click="navigateTo(`/galgame/${galgame.id}/edit`)"
+            >
+              <span class="flex items-center gap-1">
+                <KunIcon name="lucide:file-pen-line" />编辑资料
+              </span>
+            </KunButton>
+
             <KunPopover v-if="galgame.user.id !== id" position="bottom-end">
               <template #trigger>
                 <KunButton :is-icon-only="true" variant="light" color="default" size="sm">

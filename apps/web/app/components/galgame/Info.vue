@@ -21,6 +21,9 @@ defineProps<{
 const activity = inject<{ open: boolean; tab: 'history' | 'pr' }>(
   'galgameActivity'
 )
+// E3a: the engine-backed history page link needs the gid; the detail object
+// is provided at the page root.
+const galgame = inject<GalgameDetail>('galgame')
 const openHistory = () => {
   if (!activity) {
     return
@@ -116,6 +119,20 @@ const getLanguageName = getGalgameOriginalLanguageName
     >
       <KunIcon name="lucide:history" />
       查看编辑历史与更新请求
+    </KunButton>
+
+    <!-- E3a: the engine-backed revision history page (includes the migrated
+         pre-engine history + any-two-versions diff). -->
+    <KunButton
+      v-if="galgame"
+      variant="flat"
+      color="default"
+      size="sm"
+      full-width
+      @click="navigateTo(`/galgame/${galgame.id}/history`)"
+    >
+      <KunIcon name="lucide:git-compare-arrows" />
+      修订历史（新版）
     </KunButton>
   </KunCard>
 </template>
