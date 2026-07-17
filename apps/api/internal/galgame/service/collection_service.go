@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
+	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 
@@ -31,6 +34,8 @@ type CollectionService struct {
 	galgameService *GalgameService
 	wikiClient     *client.GalgameClient
 	userClient     *userclient.Client
+	check          *gate.CheckService
+	scan           *gate.ScanService
 	helpers        InteractionHelpers
 }
 
@@ -39,12 +44,16 @@ func NewCollectionService(
 	galgameService *GalgameService,
 	wikiClient *client.GalgameClient,
 	userClient *userclient.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *CollectionService {
 	return &CollectionService{
 		collectionRepo: collectionRepo,
 		galgameService: galgameService,
 		wikiClient:     wikiClient,
 		userClient:     userClient,
+		check:          check,
+		scan:           scan,
 	}
 }
 
@@ -53,13 +62,22 @@ func NewCollectionService(
 // ──────────────────────────────────────────
 
 // Create makes a new collection for userID.
-func (s *CollectionService) Create(userID int, req *dto.CreateCollectionRequest) (int, *errors.AppError) {
+func (s *CollectionService) Create(ctx context.Context, userID int, req *dto.CreateCollectionRequest) (int, *errors.AppError) {
 	count, err := s.collectionRepo.CountByUser(userID)
 	if err != nil {
 		return 0, errors.ErrInternal("读取收藏夹数量失败")
 	}
 	if count >= MaxCollectionsPerUser {
 		return 0, errors.ErrBadRequest("收藏夹数量已达上限")
+	}
+
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): name + description.
+	// deny blocks (nothing persisted); hold publishes+logs; fail-open on error.
+	moderationText := gate.ComposeText(req.Name, req.Description)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return 0, gate.ErrContentBlocked()
 	}
 
 	c := &model.GalgameCollection{
@@ -80,12 +98,17 @@ func (s *CollectionService) Create(userID int, req *dto.CreateCollectionRequest)
 	if txErr != nil {
 		return 0, errors.ErrInternal("创建收藏夹失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameCollection, "subject_id", c.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameCollection, strconv.Itoa(c.ID), moderationText, int64(userID))
 	return c.ID, nil
 }
 
 // Update mutates an owner's collection (partial). The default collection can be
 // renamed / re-described / re-privacied, but not deleted (see Delete).
-func (s *CollectionService) Update(userID, cid int, req *dto.UpdateCollectionRequest) *errors.AppError {
+func (s *CollectionService) Update(ctx context.Context, userID, cid int, req *dto.UpdateCollectionRequest) *errors.AppError {
 	c, err := s.collectionRepo.GetByIDForUser(cid, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -102,6 +125,16 @@ func (s *CollectionService) Update(userID, cid int, req *dto.UpdateCollectionReq
 	}
 	if req.Visibility != nil {
 		c.Visibility = *req.Visibility
+	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). PATCH is partial, so compose from the EFFECTIVE new name +
+	// description (post-override). author_id is the owner (userID).
+	moderationText := gate.ComposeText(c.Name, c.Description)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return gate.ErrContentBlocked()
 	}
 
 	txErr := s.collectionRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -123,6 +156,11 @@ func (s *CollectionService) Update(userID, cid int, req *dto.UpdateCollectionReq
 	if txErr != nil {
 		return errors.ErrInternal("更新收藏夹失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameCollection, "subject_id", cid, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameCollection, strconv.Itoa(cid), moderationText, int64(userID))
 	return nil
 }
 

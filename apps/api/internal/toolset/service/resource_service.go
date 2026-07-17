@@ -11,6 +11,7 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/model"
 	"kun-galgame-api/internal/toolset/repository"
+	"kun-galgame-api/internal/trust/gate"
 	userModel "kun-galgame-api/internal/user/model"
 	"kun-galgame-api/pkg/artifactclient"
 	"kun-galgame-api/pkg/errors"
@@ -25,6 +26,8 @@ type ResourceService struct {
 	s3           *storage.S3Client
 	art          *artifactclient.Client
 	userClient   *userclient.Client
+	check        *gate.CheckService
+	scan         *gate.ScanService
 }
 
 func NewResourceService(
@@ -33,6 +36,8 @@ func NewResourceService(
 	s3 *storage.S3Client,
 	art *artifactclient.Client,
 	userClient *userclient.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *ResourceService {
 	return &ResourceService{
 		resourceRepo: resourceRepo,
@@ -40,6 +45,8 @@ func NewResourceService(
 		s3:           s3,
 		art:          art,
 		userClient:   userClient,
+		check:        check,
+		scan:         scan,
 	}
 }
 
@@ -91,12 +98,22 @@ func (s *ResourceService) GetResourceDetail(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) CreateResource(
+	ctx context.Context,
 	userID, toolsetID int,
 	req *dto.CreateResourceRequest,
 ) (*dto.CreatedResourceResponse, *errors.AppError) {
 	// Verify toolset exists
 	if _, err := s.toolsetRepo.FindByID(toolsetID); err != nil {
 		return nil, errors.ErrNotFound("未找到该工具")
+	}
+
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): content + note.
+	// deny blocks (nothing persisted); hold publishes+logs; fail-open on error.
+	moderationText := gate.ComposeText(req.Content, req.Note)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, gate.ErrContentBlocked()
 	}
 
 	var resource model.GalgameToolsetResource
@@ -134,6 +151,11 @@ func (s *ResourceService) CreateResource(
 		return nil, errors.ErrInternal("创建资源失败")
 	}
 
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindToolsetResource, "subject_id", resource.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindToolsetResource, strconv.Itoa(resource.ID), moderationText, int64(userID))
+
 	return &resource, nil
 }
 
@@ -142,6 +164,7 @@ func (s *ResourceService) CreateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) UpdateResource(
+	ctx context.Context,
 	userID int, canModerate bool,
 	req *dto.UpdateResourceRequest,
 ) (*model.GalgameToolsetResource, *errors.AppError) {
@@ -152,6 +175,15 @@ func (s *ResourceService) UpdateResource(
 
 	if resource.UserID != userID && !canModerate {
 		return nil, errors.ErrForbidden("您没有权限编辑此资源")
+	}
+
+	// Synchronous word-list gate BEFORE the write (deny blocks, hold publishes+
+	// logs, fail-open). author_id is the content author (resource.UserID).
+	moderationText := gate.ComposeText(req.Content, req.Note)
+	authorID := int64(resource.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, gate.ErrContentBlocked()
 	}
 
 	now := time.Now()
@@ -180,6 +212,11 @@ func (s *ResourceService) UpdateResource(
 	if refreshErr != nil {
 		return nil, errors.ErrInternal("读取更新后的资源失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindToolsetResource, "subject_id", req.ResourceID, "author_id", resource.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindToolsetResource, strconv.Itoa(req.ResourceID), moderationText, int64(resource.UserID))
 	return refreshed, nil
 }
 

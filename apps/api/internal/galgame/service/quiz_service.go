@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/moemoepoint"
+	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 
@@ -24,6 +26,8 @@ type QuizService struct {
 	quizRepo   *repository.QuizRepository
 	wikiClient *client.GalgameClient
 	userClient *userclient.Client
+	check      *gate.CheckService
+	scan       *gate.ScanService
 	helpers    InteractionHelpers
 }
 
@@ -31,12 +35,23 @@ func NewQuizService(
 	quizRepo *repository.QuizRepository,
 	wikiClient *client.GalgameClient,
 	userClient *userclient.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *QuizService {
 	return &QuizService{
 		quizRepo:   quizRepo,
 		wikiClient: wikiClient,
 		userClient: userClient,
+		check:      check,
+		scan:       scan,
 	}
+}
+
+// quizAuthoringModerationText composes the RAW text the trust gate sees for an
+// authored quiz (create + edit): question + description + explanation + every
+// free-text fragment inside the content JSONB.
+func quizAuthoringModerationText(question, description, explanation, qtype string, content json.RawMessage) string {
+	return gate.ComposeText(question, description, explanation, quizContentModerationText(qtype, content))
 }
 
 // quizCreateReward: flat authoring reward (被采纳), granted at create time and
@@ -218,6 +233,16 @@ func (s *QuizService) CreateQuiz(
 		return nil, appErr
 	}
 
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): question +
+	// description + explanation + the content's free text. deny blocks (nothing
+	// persisted); hold publishes+logs; fail-open on error/timeout.
+	moderationText := quizAuthoringModerationText(req.Question, req.Description, req.Explanation, req.Type, req.Content)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, gate.ErrContentBlocked()
+	}
+
 	spoiler := req.SpoilerLevel
 	if spoiler == "" {
 		spoiler = "none"
@@ -260,6 +285,11 @@ func (s *QuizService) CreateQuiz(
 		return nil, errors.ErrInternal("创建题目失败")
 	}
 
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameQuiz, "subject_id", quiz.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameQuiz, strconv.Itoa(quiz.ID), moderationText, int64(userID))
+
 	author, _, _ := s.userClient.User(ctx, userID)
 	return &dto.CreatedQuiz{
 		ID:           quiz.ID,
@@ -282,6 +312,7 @@ func (s *QuizService) CreateQuiz(
 // ──────────────────────────────────────────
 
 func (s *QuizService) AnswerQuiz(
+	ctx context.Context,
 	userID int,
 	req *dto.AnswerQuizRequest,
 ) (*dto.QuizAnswerResult, *errors.AppError) {
@@ -300,6 +331,21 @@ func (s *QuizService) AnswerQuiz(
 	if appErr != nil {
 		return nil, appErr
 	}
+
+	// Synchronous word-list gate BEFORE the tx — but ONLY when the submission
+	// carries user free text (fill values / essay). Choice/judge answers are
+	// indexes/booleans, so both check AND scan are skipped entirely for them.
+	moderationText := quizAnswerModerationText(quiz.Type, req.Submitted)
+	decision := gate.DecisionAllow
+	var matched []string
+	if moderationText != "" {
+		authorID := int64(userID)
+		decision, matched = s.check.Decision(ctx, moderationText, &authorID)
+		if decision == gate.DecisionDeny {
+			return nil, gate.ErrContentBlocked()
+		}
+	}
+
 	correct := grade != nil && *grade
 	reward := 0
 	if correct {
@@ -341,6 +387,15 @@ func (s *QuizService) AnswerQuiz(
 	})
 	if txErr != nil {
 		return nil, errors.ErrInternal("提交答案失败")
+	}
+
+	// Off-request shadow scan (only when the submission carried free text). The
+	// subject id is the answer row id.
+	if moderationText != "" {
+		if decision == gate.DecisionHold {
+			slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameQuizAnswer, "subject_id", row.ID, "author_id", userID, "matched", matched)
+		}
+		s.scan.ScanBg(gate.SubjectKindGalgameQuizAnswer, strconv.Itoa(row.ID), moderationText, int64(userID))
 	}
 
 	return &dto.QuizAnswerResult{
@@ -470,6 +525,7 @@ func (s *QuizService) ToggleQuizFavorite(userID, quizID int) *errors.AppError {
 // ──────────────────────────────────────────
 
 func (s *QuizService) UpdateQuiz(
+	ctx context.Context,
 	userID int, canModerate bool, req *dto.UpdateQuizRequest,
 ) (int, *errors.AppError) {
 	quiz, ok := s.quizRepo.FindByID(req.QuizID)
@@ -482,6 +538,16 @@ func (s *QuizService) UpdateQuiz(
 	if appErr := validateQuizContent(req.Type, req.Content); appErr != nil {
 		return 0, appErr
 	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (quiz.UserID).
+	moderationText := quizAuthoringModerationText(req.Question, req.Description, req.Explanation, req.Type, req.Content)
+	authorID := int64(quiz.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return 0, gate.ErrContentBlocked()
+	}
+
 	spoiler := req.SpoilerLevel
 	if spoiler == "" {
 		spoiler = "none"
@@ -528,6 +594,11 @@ func (s *QuizService) UpdateQuiz(
 	if txErr != nil {
 		return 0, errors.ErrInternal("更新题目失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameQuiz, "subject_id", req.QuizID, "author_id", quiz.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameQuiz, strconv.Itoa(req.QuizID), moderationText, int64(quiz.UserID))
 	return regraded, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/model"
 	"kun-galgame-api/internal/toolset/repository"
+	"kun-galgame-api/internal/trust/gate"
 	userModel "kun-galgame-api/internal/user/model"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
@@ -27,6 +28,8 @@ type ToolsetService struct {
 	practicalityRepo *repository.PracticalityRepository
 	s3               *storage.S3Client
 	userClient       *userclient.Client
+	check            *gate.CheckService
+	scan             *gate.ScanService
 
 	// Service-level helpers
 	practicalitySvc *PracticalityService
@@ -41,6 +44,8 @@ func NewToolsetService(
 	userClient *userclient.Client,
 	practicalitySvc *PracticalityService,
 	commentSvc *CommentService,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *ToolsetService {
 	return &ToolsetService{
 		toolsetRepo:      toolsetRepo,
@@ -48,9 +53,21 @@ func NewToolsetService(
 		practicalityRepo: practicalityRepo,
 		s3:               s3,
 		userClient:       userClient,
+		check:            check,
+		scan:             scan,
 		practicalitySvc:  practicalitySvc,
 		commentSvc:       commentSvc,
 	}
+}
+
+// toolsetModerationText composes the RAW text the trust gate sees for a toolset:
+// name + description + aliases + version, blank fragments skipped.
+func toolsetModerationText(name, description string, aliases []string, version string) string {
+	parts := make([]string, 0, 3+len(aliases))
+	parts = append(parts, name, description)
+	parts = append(parts, aliases...)
+	parts = append(parts, version)
+	return gate.ComposeText(parts...)
 }
 
 // userBriefFromClient maps a userclient.User to the UserBrief shape used
@@ -118,9 +135,20 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 // ──────────────────────────────────────────
 
 func (s *ToolsetService) Create(
+	ctx context.Context,
 	userID int,
 	req *dto.CreateToolsetRequest,
 ) (*dto.CreatedToolsetResponse, *errors.AppError) {
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): name + description
+	// + aliases + version. deny blocks (nothing persisted); hold publishes+logs;
+	// fail-open on error/timeout.
+	moderationText := toolsetModerationText(req.Name, req.Description, req.Aliases, req.Version)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, gate.ErrContentBlocked()
+	}
+
 	homepageJSON, _ := json.Marshal(req.Homepage)
 
 	var toolset model.GalgameToolset
@@ -155,6 +183,11 @@ func (s *ToolsetService) Create(
 	if txErr != nil {
 		return nil, errors.ErrInternal("创建工具失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindToolset, "subject_id", toolset.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindToolset, strconv.Itoa(toolset.ID), moderationText, int64(userID))
 
 	return &toolset, nil
 }
@@ -267,6 +300,7 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 // ──────────────────────────────────────────
 
 func (s *ToolsetService) Update(
+	ctx context.Context,
 	userID int, canModerate bool, id int,
 	req *dto.UpdateToolsetRequest,
 ) *errors.AppError {
@@ -276,6 +310,15 @@ func (s *ToolsetService) Update(
 	}
 	if toolset.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限编辑此工具")
+	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (toolset.UserID).
+	moderationText := toolsetModerationText(req.Name, req.Description, req.Aliases, req.Version)
+	authorID := int64(toolset.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return gate.ErrContentBlocked()
 	}
 
 	homepageJSON, _ := json.Marshal(req.Homepage)
@@ -298,6 +341,11 @@ func (s *ToolsetService) Update(
 	if txErr != nil {
 		return errors.ErrInternal("更新工具失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindToolset, "subject_id", id, "author_id", toolset.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindToolset, strconv.Itoa(id), moderationText, int64(toolset.UserID))
 	return nil
 }
 

@@ -33,7 +33,7 @@ func (h *GalgameCollectionHandler) Create(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	id, appErr := h.collectionService.Create(user.ID, &req)
+	id, appErr := h.collectionService.Create(c.Context(), user.ID, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -54,7 +54,7 @@ func (h *GalgameCollectionHandler) Update(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.collectionService.Update(user.ID, cid, &req); appErr != nil {
+	if appErr := h.collectionService.Update(c.Context(), user.ID, cid, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "收藏夹已更新")

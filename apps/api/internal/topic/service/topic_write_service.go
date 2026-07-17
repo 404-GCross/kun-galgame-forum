@@ -64,10 +64,11 @@ func topicModerationText(title, content string) string {
 }
 
 // errContentBlocked is the 422-class, user-visible response when the synchronous
-// trust word-list gate DENIES a write (a banned term). Nothing is persisted. The
-// message stays deliberately vague so the exact banned lexicon isn't probed.
+// trust word-list gate DENIES a write (a banned term). Nothing is persisted.
+// Delegates to gate.ErrContentBlocked so every write surface (wave 1 + 2) shares
+// one copy of the deliberately vague message.
 func errContentBlocked() *errors.AppError {
-	return errors.New(errors.CodeBiz, "内容包含违禁词，无法发布", 422)
+	return gate.ErrContentBlocked()
 }
 
 // anyConsumeSection reports whether any section name is a paid

@@ -53,7 +53,7 @@ func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	resource, appErr := h.resourceService.CreateResource(user.ID, id, &req)
+	resource, appErr := h.resourceService.CreateResource(c.Context(), user.ID, id, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -73,7 +73,7 @@ func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	updated, appErr := h.resourceService.UpdateResource(user.ID, role.CanModerate(user.Roles), &req)
+	updated, appErr := h.resourceService.UpdateResource(c.Context(), user.ID, role.CanModerate(user.Roles), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

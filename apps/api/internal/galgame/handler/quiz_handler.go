@@ -119,7 +119,7 @@ func (h *QuizHandler) AnswerQuiz(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	result, appErr := h.quizService.AnswerQuiz(user.ID, &req)
+	result, appErr := h.quizService.AnswerQuiz(c.Context(), user.ID, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -185,7 +185,7 @@ func (h *QuizHandler) UpdateQuiz(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	regraded, appErr := h.quizService.UpdateQuiz(user.ID, role.CanModerate(user.Roles), &req)
+	regraded, appErr := h.quizService.UpdateQuiz(c.Context(), user.ID, role.CanModerate(user.Roles), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

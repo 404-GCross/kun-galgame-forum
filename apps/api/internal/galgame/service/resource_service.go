@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"strconv"
 
 	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/galgame/client"
@@ -9,6 +11,7 @@ import (
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
+	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/userclient"
@@ -22,6 +25,8 @@ type ResourceService struct {
 	resourceRepo *repository.ResourceRepository
 	wikiClient   *client.GalgameClient
 	userClient   *userclient.Client
+	check        *gate.CheckService
+	scan         *gate.ScanService
 	helpers      InteractionHelpers
 	// linkChecker gates "report expired" on an objective netdisk-API verdict.
 	// nil when unconfigured → MarkExpired falls back to the legacy flow.
@@ -33,13 +38,26 @@ func NewResourceService(
 	wikiClient *client.GalgameClient,
 	userClient *userclient.Client,
 	linkChecker *linkcheck.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *ResourceService {
 	return &ResourceService{
 		resourceRepo: resourceRepo,
 		wikiClient:   wikiClient,
 		userClient:   userClient,
+		check:        check,
+		scan:         scan,
 		linkChecker:  linkChecker,
 	}
+}
+
+// resourceModerationText composes the RAW text the trust gate sees for a galgame
+// resource: the uploader note + every share link, blank fragments skipped.
+func resourceModerationText(note string, links []string) string {
+	parts := make([]string, 0, 1+len(links))
+	parts = append(parts, note)
+	parts = append(parts, links...)
+	return gate.ComposeText(parts...)
 }
 
 // ──────────────────────────────────────────
@@ -218,9 +236,19 @@ func (s *ResourceService) GetGalgameResources(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) CreateResource(
+	ctx context.Context,
 	userID int,
 	req *dto.CreateGalgameResourceRequest,
 ) *errors.AppError {
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): note + links. deny
+	// blocks (nothing persisted); hold publishes+logs; fail-open on error/timeout.
+	moderationText := resourceModerationText(req.Note, req.Link)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return gate.ErrContentBlocked()
+	}
+
 	providers := utils.DetectProvidersFromURLs(req.Link)
 	providerNames := utils.DetectProviderNamesFromURLs(req.Link)
 	res := &model.GalgameResource{
@@ -269,6 +297,11 @@ func (s *ResourceService) CreateResource(
 	if txErr != nil {
 		return errors.ErrInternal("创建 Galgame 资源失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameResource, "subject_id", res.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameResource, strconv.Itoa(res.ID), moderationText, int64(userID))
 	return nil
 }
 
@@ -278,6 +311,7 @@ func (s *ResourceService) CreateResource(
 // ──────────────────────────────────────────
 
 func (s *ResourceService) UpdateResource(
+	ctx context.Context,
 	userID int, canModerate bool,
 	req *dto.UpdateGalgameResourceRequest,
 ) *errors.AppError {
@@ -287,6 +321,15 @@ func (s *ResourceService) UpdateResource(
 	}
 	if row.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限更新这个 Galgame 资源")
+	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (row.UserID).
+	moderationText := resourceModerationText(req.Note, req.Link)
+	authorID := int64(row.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return gate.ErrContentBlocked()
 	}
 
 	providers := utils.DetectProvidersFromURLs(req.Link)
@@ -323,6 +366,11 @@ func (s *ResourceService) UpdateResource(
 	if txErr != nil {
 		return errors.ErrInternal("更新 Galgame 资源失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameResource, "subject_id", req.GalgameResourceID, "author_id", row.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameResource, strconv.Itoa(req.GalgameResourceID), moderationText, int64(row.UserID))
 	return nil
 }
 

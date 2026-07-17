@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -10,6 +12,7 @@ import (
 	"kun-galgame-api/internal/topic/dto"
 	topicModel "kun-galgame-api/internal/topic/model"
 	"kun-galgame-api/internal/topic/repository"
+	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/role"
@@ -25,6 +28,8 @@ type PollService struct {
 	stateRepo  *userRepo.StateRepository
 	userClient *userclient.Client
 	rdb        *redis.Client
+	check      *gate.CheckService
+	scan       *gate.ScanService
 }
 
 func NewPollService(
@@ -33,11 +38,24 @@ func NewPollService(
 	stateRepo *userRepo.StateRepository,
 	userClient *userclient.Client,
 	rdb *redis.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *PollService {
 	return &PollService{
 		pollRepo: pollRepo, topicRepo: topicRepo,
 		stateRepo: stateRepo, userClient: userClient, rdb: rdb,
+		check: check, scan: scan,
 	}
+}
+
+// pollModerationText composes the RAW text the trust gate sees for a poll:
+// title + description + each option's text, blank fragments skipped. Used by
+// both create (all options) and update (the options being added/updated).
+func pollModerationText(title, description string, optionTexts []string) string {
+	parts := make([]string, 0, 2+len(optionTexts))
+	parts = append(parts, title, description)
+	parts = append(parts, optionTexts...)
+	return gate.ComposeText(parts...)
 }
 
 // ──────────────────────────────────────────
@@ -70,6 +88,21 @@ func (s *PollService) CreatePoll(
 		}
 	}
 
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): title + description
+	// + every option text. deny blocks (nothing persisted); hold publishes+logs;
+	// fail-open on any error/timeout.
+	optionTexts := make([]string, len(req.Options))
+	for i, opt := range req.Options {
+		optionTexts[i] = opt.Text
+	}
+	moderationText := pollModerationText(req.Title, req.Description, optionTexts)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return errContentBlocked()
+	}
+
+	var newPollID int
 	txErr := s.pollRepo.DB().Transaction(func(tx *gorm.DB) error {
 		poll := &topicModel.TopicPoll{
 			Title:            req.Title,
@@ -87,6 +120,7 @@ func (s *PollService) CreatePoll(
 		if err := s.pollRepo.CreatePoll(tx, poll); err != nil {
 			return err
 		}
+		newPollID = poll.ID
 
 		for _, opt := range req.Options {
 			if err := s.pollRepo.CreatePollOption(tx, &topicModel.TopicPollOption{
@@ -103,6 +137,11 @@ func (s *PollService) CreatePoll(
 	if txErr != nil {
 		return errors.ErrInternal("创建投票失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopicPoll, "subject_id", newPollID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindTopicPoll, strconv.Itoa(newPollID), moderationText, int64(userID))
 	return nil
 }
 
@@ -252,6 +291,23 @@ func (s *PollService) UpdatePoll(
 		"can_change_vote":   req.CanChangeVote,
 	}
 
+	// Synchronous word-list gate BEFORE any write: title + description + the option
+	// texts being added/updated (deletions carry no new text). author_id is the
+	// content author (poll.UserID), not the editor. Gates BOTH write paths below.
+	optionTexts := make([]string, 0, len(req.Options.Add)+len(req.Options.Update))
+	for _, opt := range req.Options.Add {
+		optionTexts = append(optionTexts, opt.Text)
+	}
+	for _, opt := range req.Options.Update {
+		optionTexts = append(optionTexts, opt.Text)
+	}
+	moderationText := pollModerationText(req.Title, req.Description, optionTexts)
+	authorID := int64(poll.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return errContentBlocked()
+	}
+
 	totalOptionOps := len(req.Options.Add) + len(req.Options.Update) + len(req.Options.Delete)
 
 	// No option diff — just patch scalars and return.
@@ -259,6 +315,7 @@ func (s *PollService) UpdatePoll(
 		if err := s.pollRepo.UpdatePollFields(s.pollRepo.DB(), req.PollID, scalarFields); err != nil {
 			return errors.ErrInternal("更新投票失败")
 		}
+		s.afterPollModeration(decision, matched, req.PollID, poll.UserID, moderationText)
 		return nil
 	}
 
@@ -317,7 +374,18 @@ func (s *PollService) UpdatePoll(
 	if txErr != nil {
 		return errors.ErrInternal("更新投票失败")
 	}
+	s.afterPollModeration(decision, matched, req.PollID, poll.UserID, moderationText)
 	return nil
+}
+
+// afterPollModeration runs the post-commit trust wiring shared by UpdatePoll's
+// two success paths: a suspect hold leaves one greppable audit line, then the
+// RAW text is fed into the async shadow scan off the request path.
+func (s *PollService) afterPollModeration(decision string, matched []string, pollID, authorID int, text string) {
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopicPoll, "subject_id", pollID, "author_id", authorID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindTopicPoll, strconv.Itoa(pollID), text, int64(authorID))
 }
 
 // collectOptionIDs returns the union of update.option_id + delete IDs — needed

@@ -84,7 +84,7 @@ func (h *RatingHandler) UpdateRating(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.ratingService.UpdateRating(user.ID, &req); appErr != nil {
+	if appErr := h.ratingService.UpdateRating(c.Context(), user.ID, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "评分更新成功")

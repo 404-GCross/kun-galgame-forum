@@ -18,7 +18,7 @@ export const createGalgameRatingSchema = z
       .array(z.enum(KUN_GALGAME_RATING_GAME_TYPE_CONST))
       .min(1, { message: '请至少选择一个' }),
     play_status: z.enum(KUN_GALGAME_RATING_PLAY_STATUS_CONST),
-    short_summary: z.string().default(''),
+    short_summary: z.string().max(1314, { message: '评价最多 1314 个字符' }).default(''),
     spoiler_level: z.enum(KUN_GALGAME_RATING_SPOILER_CONST).default('none'),
 
     art: z.coerce.number<number>().int().min(0).max(10).default(0),
@@ -52,7 +52,7 @@ export const updateGalgameRatingSchema = z
       .array(z.enum(KUN_GALGAME_RATING_GAME_TYPE_CONST))
       .min(1, { message: '请至少选择一个' }),
     play_status: z.enum(KUN_GALGAME_RATING_PLAY_STATUS_CONST),
-    short_summary: z.string(),
+    short_summary: z.string().max(1314, { message: '评价最多 1314 个字符' }),
     spoiler_level: z.enum(KUN_GALGAME_RATING_SPOILER_CONST),
 
     art: z.coerce.number<number>().int().min(0).max(10),

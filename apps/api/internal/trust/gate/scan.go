@@ -14,6 +14,21 @@ import (
 const (
 	SubjectKindTopic = "forum_topic"
 	SubjectKindReply = "forum_reply"
+
+	// Wave 2 — the remaining forum user-text write surfaces. Topic comments
+	// REUSE the already-registered forum_comment kind (shared with the report +
+	// enforcement paths and the FE report button); the rest are new kinds that
+	// infra must register before scan stops 422-ing them (harmless warn-log until
+	// then; the global flags are off in prod anyway).
+	SubjectKindTopicComment      = "forum_comment"
+	SubjectKindTopicPoll         = "forum_topic_poll"
+	SubjectKindGalgameRating     = "galgame_rating"
+	SubjectKindGalgameResource   = "galgame_resource"
+	SubjectKindGalgameCollection = "galgame_collection"
+	SubjectKindGalgameQuiz       = "galgame_quiz"
+	SubjectKindGalgameQuizAnswer = "galgame_quiz_answer"
+	SubjectKindToolset           = "galgame_toolset"
+	SubjectKindToolsetResource   = "galgame_toolset_resource"
 )
 
 // scanTimeout bounds a single off-request scan call so stray goroutines can't

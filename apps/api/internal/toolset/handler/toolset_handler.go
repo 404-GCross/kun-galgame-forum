@@ -78,7 +78,7 @@ func (h *ToolsetHandler) Create(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	toolset, appErr := h.toolsetService.Create(user.ID, &req)
+	toolset, appErr := h.toolsetService.Create(c.Context(), user.ID, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -118,7 +118,7 @@ func (h *ToolsetHandler) Update(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.toolsetService.Update(user.ID, role.CanModerate(user.Roles), id, &req); appErr != nil {
+	if appErr := h.toolsetService.Update(c.Context(), user.ID, role.CanModerate(user.Roles), id, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "工具更新成功")

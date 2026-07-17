@@ -268,8 +268,10 @@ func New(cfg *config.Config) *App {
 		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
 	}
 
-	// Trust moderation gates for the forum write surface (topic + reply
-	// create/edit — trust wave 1). TWO INDEPENDENT switches, both default OFF
+	// Trust moderation gates for the forum write surface. Wave 1 = topic + reply
+	// create/edit; wave 2 = the remaining user-text writes (topic comment/poll,
+	// galgame rating/resource/collection/quiz/quiz-answer, toolset + its
+	// resources). TWO INDEPENDENT switches, both default OFF
 	// (KUN_TRUST_CHECK_ENABLED / KUN_TRUST_SCAN_ENABLED) AND gated on the trust
 	// client being configured — never keyed off client presence alone, so a
 	// reports-configured production forum does not auto-enable check/scan on
@@ -283,7 +285,7 @@ func New(cfg *config.Config) *App {
 	}
 	trustCheck := gate.NewCheckService(trustChecker)
 	if trustCheck.Enabled() {
-		slog.Info("trust check gate enabled (synchronous word-list gate on topic/reply writes)")
+		slog.Info("trust check gate enabled (synchronous word-list gate on all forum user-text writes)")
 	} else {
 		slog.Info("trust check gate disabled (KUN_TRUST_CHECK_ENABLED off or trust client unconfigured)")
 	}
@@ -294,7 +296,7 @@ func New(cfg *config.Config) *App {
 	}
 	trustScan := gate.NewScanService(trustScanner)
 	if trustScan.Enabled() {
-		slog.Info("trust shadow scan enabled (async post-commit scan on topic/reply writes)")
+		slog.Info("trust shadow scan enabled (async post-commit scan on all forum user-text writes)")
 	} else {
 		slog.Info("trust shadow scan disabled (KUN_TRUST_SCAN_ENABLED off or trust client unconfigured)")
 	}
@@ -386,8 +388,8 @@ func New(cfg *config.Config) *App {
 	topicSvc := topicService.NewTopicService(topicRepository, topicListRepo, topicTaxonomyRepo, rdb, uc, userStateRepo)
 	topicWriteSvc := topicService.NewTopicWriteService(topicRepository, topicTaxonomyRepo, replyRepository, userStateRepo, rdb, notifier, trustCheck, trustScan)
 	replySvc := topicService.NewReplyService(replyRepository, topicCommentRepo, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
-	commentSvc := topicService.NewCommentService(replyRepository, topicCommentRepo, userStateRepo, uc, rdb)
-	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb)
+	commentSvc := topicService.NewCommentService(replyRepository, topicCommentRepo, userStateRepo, uc, rdb, trustCheck, trustScan)
+	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
 	draftSvc := topicService.NewDraftService(draftRepository)
 
 	// Galgame
@@ -402,11 +404,11 @@ func New(cfg *config.Config) *App {
 	// region-agnostic).
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
-	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker)
+	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker, trustCheck, trustScan)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
-	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc)
+	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc, trustCheck, trustScan)
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)
-	galgameQuizSvc := galgameService.NewQuizService(galgameQuizRepo, gc, uc)
+	galgameQuizSvc := galgameService.NewQuizService(galgameQuizRepo, gc, uc, trustCheck, trustScan)
 	creatorSvc := galgameService.NewCreatorService(galgameRatingRepo, gc, uc)
 	galgameLocalRepo := galgameRepo.NewGalgameRepository(db)
 	galgameInteractionRepo := galgameRepo.NewGalgameInteractionRepository(db)
@@ -424,7 +426,7 @@ func New(cfg *config.Config) *App {
 	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
 	// owner-name lookup to galgameCoreSvc so nothing is duplicated.
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
-	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc)
+	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
@@ -482,11 +484,12 @@ func New(cfg *config.Config) *App {
 	// Detail-page comment preview reads the community primitive (charter step 06a);
 	// the full toolset comment area is served by the shared resource-comment BFF.
 	toolsetCommentSvc := toolsetService.NewCommentService(uc, communityCli)
-	toolsetResourceSvc := toolsetService.NewResourceService(toolsetResourceRepo, toolsetRepository, fileStorageClient, artCli, uc)
+	toolsetResourceSvc := toolsetService.NewResourceService(toolsetResourceRepo, toolsetRepository, fileStorageClient, artCli, uc, trustCheck, trustScan)
 	toolsetUploadSvc := toolsetService.NewUploadService(artCli, rdb, db)
 	toolsetCoreSvc := toolsetService.NewToolsetService(
 		toolsetRepository, toolsetResourceRepo, toolsetPracticalityRepo,
 		fileStorageClient, uc, toolsetPracticalitySvc, toolsetCommentSvc,
+		trustCheck, trustScan,
 	)
 
 	// Trust & Safety enforcement adapters — the "thin adapter" half of the

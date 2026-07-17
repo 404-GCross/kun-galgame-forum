@@ -39,3 +39,25 @@ func TestCreateTopicDeniedNothingPersisted(t *testing.T) {
 		t.Fatalf("deny must persist nothing, got id %d", id)
 	}
 }
+
+// A denied topic-comment create (trust wave 2) returns the 422-class blocked
+// error and touches no DB: with a nil parent the gate sits strictly before any
+// repo call, so nil repos are never dereferenced (an allow would have panicked
+// dialing the repo — proof the write was never reached).
+func TestCreateCommentDeniedNothingPersisted(t *testing.T) {
+	svc := NewCommentService(
+		nil, nil, nil, nil, nil,
+		gate.NewCheckService(scriptedChecker{decision: gate.DecisionDeny}),
+		gate.NewScanService(nil),
+	)
+	resp, appErr := svc.CreateComment(context.Background(), 7, 1, 1, 2, nil, "违禁内容")
+	if appErr == nil {
+		t.Fatal("deny must return an error")
+	}
+	if appErr.StatusCode != 422 {
+		t.Fatalf("deny status = %d, want 422", appErr.StatusCode)
+	}
+	if resp != nil {
+		t.Fatalf("deny must persist nothing, got %+v", resp)
+	}
+}

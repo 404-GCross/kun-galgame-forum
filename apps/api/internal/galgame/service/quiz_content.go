@@ -51,6 +51,9 @@ type (
 	quizFillSubmit struct {
 		Values []string `json:"values"`
 	}
+	quizEssaySubmit struct {
+		Text string `json:"text"`
+	}
 )
 
 // Quiz type constants.
@@ -230,6 +233,57 @@ func quizAnswerSummary(qtype string, content, submitted json.RawMessage) string 
 		return "提交了作答"
 	}
 	return ""
+}
+
+// quizContentModerationText extracts every AUTHORED free-text fragment from a
+// quiz's stored `content` JSONB (trust wave 2, surface 6): single/multiple option
+// texts, each fill blank's accepted answers, and the essay reference. judge
+// carries no free text. Malformed JSON yields "" (best-effort). The answer key
+// (indexes/booleans) is intentionally not text and is skipped.
+func quizContentModerationText(qtype string, raw json.RawMessage) string {
+	switch qtype {
+	case quizTypeSingle:
+		var c quizSingleContent
+		_ = json.Unmarshal(raw, &c)
+		return strings.Join(c.Options, "\n")
+	case quizTypeMultiple:
+		var c quizMultipleContent
+		_ = json.Unmarshal(raw, &c)
+		return strings.Join(c.Options, "\n")
+	case quizTypeFill:
+		var c quizFillContent
+		_ = json.Unmarshal(raw, &c)
+		parts := []string{}
+		for _, b := range c.Blanks {
+			parts = append(parts, b.Accepted...)
+		}
+		return strings.Join(parts, "\n")
+	case quizTypeEssay:
+		var c quizEssayContent
+		_ = json.Unmarshal(raw, &c)
+		return c.Reference
+	default: // judge — no free text
+		return ""
+	}
+}
+
+// quizAnswerModerationText extracts the free-text a user SUBMITTED (trust wave 2,
+// surface 7): fill blank values + the essay answer. Choice/judge submissions are
+// indexes/booleans (no text) → "". An empty result means the answer carries no
+// user text and both check + scan are skipped by the caller.
+func quizAnswerModerationText(qtype string, submitted json.RawMessage) string {
+	switch qtype {
+	case quizTypeFill:
+		var s quizFillSubmit
+		_ = json.Unmarshal(submitted, &s)
+		return strings.TrimSpace(strings.Join(s.Values, "\n"))
+	case quizTypeEssay:
+		var s quizEssaySubmit
+		_ = json.Unmarshal(submitted, &s)
+		return strings.TrimSpace(s.Text)
+	default: // single / multiple / judge — index/boolean answers, no free text
+		return ""
+	}
 }
 
 // quizOptionLabel renders "A. <text>" for the i-th option (out-of-range → "?").

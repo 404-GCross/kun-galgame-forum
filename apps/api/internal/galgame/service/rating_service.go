@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/url"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -13,6 +15,7 @@ import (
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
+	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 
@@ -24,6 +27,8 @@ type RatingService struct {
 	ratingRepo *repository.RatingRepository
 	wikiClient *client.GalgameClient
 	userClient *userclient.Client
+	check      *gate.CheckService
+	scan       *gate.ScanService
 	helpers    InteractionHelpers
 }
 
@@ -31,11 +36,15 @@ func NewRatingService(
 	ratingRepo *repository.RatingRepository,
 	wikiClient *client.GalgameClient,
 	userClient *userclient.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *RatingService {
 	return &RatingService{
 		ratingRepo: ratingRepo,
 		wikiClient: wikiClient,
 		userClient: userClient,
+		check:      check,
+		scan:       scan,
 	}
 }
 
@@ -204,6 +213,15 @@ func (s *RatingService) CreateRating(
 		return nil, errors.ErrBadRequest("您已经发布过该 Galgame 的评分了")
 	}
 
+	// Synchronous word-list gate BEFORE the tx (trust wave 2): the rating's free
+	// text is its short_summary. deny blocks (nothing persisted); hold publishes+
+	// logs; fail-open on any error/timeout.
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, req.ShortSummary, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, gate.ErrContentBlocked()
+	}
+
 	galgameTypeJSON, _ := json.Marshal(req.GalgameType)
 	rating := &model.GalgameRating{
 		Recommend:    req.Recommend,
@@ -239,6 +257,11 @@ func (s *RatingService) CreateRating(
 	if txErr != nil {
 		return nil, errors.ErrInternal("创建评分失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameRating, "subject_id", rating.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameRating, strconv.Itoa(rating.ID), req.ShortSummary, int64(userID))
 
 	user, _, _ := s.userClient.User(ctx, userID)
 	briefMap := s.fetchWikiBriefs(ctx, []int{req.GalgameID})
@@ -281,6 +304,7 @@ func (s *RatingService) CreateRating(
 // ──────────────────────────────────────────
 
 func (s *RatingService) UpdateRating(
+	ctx context.Context,
 	userID int,
 	req *dto.UpdateRatingRequest,
 ) *errors.AppError {
@@ -290,6 +314,14 @@ func (s *RatingService) UpdateRating(
 	}
 	if rating.UserID != userID {
 		return errors.ErrForbidden("您无权限修改他人评分")
+	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (rating.UserID).
+	authorID := int64(rating.UserID)
+	decision, matched := s.check.Decision(ctx, req.ShortSummary, &authorID)
+	if decision == gate.DecisionDeny {
+		return gate.ErrContentBlocked()
 	}
 
 	pointDiff := ratingReward(len(req.ShortSummary)) - ratingReward(len(rating.ShortSummary))
@@ -317,6 +349,11 @@ func (s *RatingService) UpdateRating(
 	if txErr != nil {
 		return errors.ErrInternal("更新评分失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameRating, "subject_id", req.GalgameRatingID, "author_id", rating.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindGalgameRating, strconv.Itoa(req.GalgameRatingID), req.ShortSummary, int64(rating.UserID))
 	return nil
 }
 

@@ -24,7 +24,7 @@ type CreateRatingRequest struct {
 	Overall      int      `json:"overall" validate:"required,min=1,max=10"`
 	GalgameType  []string `json:"galgame_type" validate:"required,min=1"`
 	PlayStatus   string   `json:"play_status" validate:"required"`
-	ShortSummary string   `json:"short_summary"`
+	ShortSummary string   `json:"short_summary" validate:"max=1314"`
 	SpoilerLevel string   `json:"spoiler_level"`
 	Art          int      `json:"art" validate:"min=0,max=10"`
 	Story        int      `json:"story" validate:"min=0,max=10"`
@@ -43,7 +43,7 @@ type UpdateRatingRequest struct {
 	Overall         int      `json:"overall" validate:"required,min=1,max=10"`
 	GalgameType     []string `json:"galgame_type" validate:"required,min=1"`
 	PlayStatus      string   `json:"play_status" validate:"required"`
-	ShortSummary    string   `json:"short_summary"`
+	ShortSummary    string   `json:"short_summary" validate:"max=1314"`
 	SpoilerLevel    string   `json:"spoiler_level" validate:"required"`
 	Art             int      `json:"art" validate:"min=0,max=10"`
 	Story           int      `json:"story" validate:"min=0,max=10"`
