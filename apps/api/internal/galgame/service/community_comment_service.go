@@ -8,10 +8,10 @@ package service
 // galgame_post_like table, content HTML from kungal's OWN markdown pipeline
 // (charter ruling 7: kungal reads content_raw, never the primitive's
 // content_html). It is the unconditional galgame comment backend: the OLD
-// galgame_comment routes were retired (charter step 06a); the frozen
-// galgame_comment table still backs profile / admin / search reads. Degradation
-// is fail-closed to the face (empty read / 503 write), never a local-table
-// fallback.
+// galgame_comment routes were retired and the frozen galgame_comment table was
+// dropped (charter step 06a; migration 060) — every reader now reads the
+// primitive. Degradation is fail-closed to the face (empty read / 503 write),
+// never a local-table fallback.
 //
 // Split across community_comment_service.go (read + shared) and
 // community_comment_write.go (create/edit/delete/like/flag/locate).
@@ -51,6 +51,15 @@ func NewCommunityCommentService(
 // ──────────────────────────────────────────
 // Wire shapes
 // ──────────────────────────────────────────
+
+// UserObj is the minimal author identity embedded in every comment wire shape
+// (galgame community + resource comments). Relocated here from the retired
+// legacy galgame comment service (charter step 06a).
+type UserObj struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}
 
 // CommunityPostItem is one flat comment. root/reply pointers are exposed
 // (parent_comment_id = the community reply_to_post_id, root_comment_id = the
@@ -243,6 +252,17 @@ func nzPtr64(id int64) *int64 {
 
 func emptyCommentPage() *CommunityCommentPage {
 	return &CommunityCommentPage{Posts: []*CommunityPostItem{}}
+}
+
+// truncate clamps a string to maxLen runes (CJK-safe). Package-shared preview
+// helper (notification/feed bodies); relocated here from the retired legacy
+// galgame comment service (charter step 06a).
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen])
 }
 
 // ──────────────────────────────────────────

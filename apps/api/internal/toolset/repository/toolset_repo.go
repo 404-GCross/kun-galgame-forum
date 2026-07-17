@@ -198,6 +198,7 @@ func (r *ToolsetRepository) DeleteAllRelated(tx *gorm.DB, toolsetID int) {
 	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetContributor{})
 	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetPracticality{})
 	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetResource{})
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetComment{})
+	// galgame_toolset_comment moved to the community primitive (charter step 06a)
+	// and its table was dropped (migration 060) — no local cascade to run.
 	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetCategoryRelation{})
 }

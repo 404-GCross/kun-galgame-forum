@@ -47,23 +47,20 @@ var colChecks = []colCheck{
 	{"topic_reply_dislike", "user_id", "zero", ""},
 	{"topic_poll", "user_id", "zero", ""},
 	{"topic_poll_vote", "user_id", "zero", ""},
-	{"galgame_comment", "user_id", "zero", ""},
-	{"galgame_comment_like", "user_id", "zero", ""},
+	// galgame_post_like = the LIVE community-comment like footprint (charter step
+	// 06a); the frozen galgame_comment* / *_comment tables were dropped (migration 060).
+	{"galgame_post_like", "user_id", "zero", ""},
 	{"galgame_favorite", "user_id", "zero", ""},
 	{"galgame_like", "user_id", "zero", ""},
 	{"galgame_rating", "user_id", "zero", ""},
-	{"galgame_rating_comment", "user_id", "zero", ""},
-	{"galgame_rating_comment", "target_user_id", "zero", "NULLed by purge"},
 	{"galgame_rating_like", "user_id", "zero", ""},
 	{"galgame_resource", "user_id", "zero", ""},
 	{"galgame_resource_like", "user_id", "zero", ""},
 	{"galgame_toolset", "user_id", "zero", ""},
-	{"galgame_toolset_comment", "user_id", "zero", ""},
 	{"galgame_toolset_contributor", "user_id", "zero", ""},
 	{"galgame_toolset_practicality", "user_id", "zero", ""},
 	{"galgame_toolset_resource", "user_id", "zero", ""},
 	{"galgame_website", "user_id", "zero", ""},
-	{"galgame_website_comment", "user_id", "zero", ""},
 	{"galgame_website_favorite", "user_id", "zero", ""},
 	{"galgame_website_like", "user_id", "zero", ""},
 	{"chat_message", "sender_id", "zero", ""},
@@ -106,17 +103,17 @@ var counterChecks = []counterCheck{
 	{"topic_reply", "dislike_count", "topic_reply_dislike", "topic_reply_id"},
 	{"topic_poll_option", "vote_count", "topic_poll_vote", "option_id"},
 	{"galgame", "rating_count", "galgame_rating", "galgame_id"},
-	// galgame.comment_count is NOT reconciled here: since the community cutover it
-	// is a LIVE counter maintained by the community BFF, and the purge no longer
-	// recomputes it from the frozen galgame_comment table (counter-clobber fix,
-	// charter step 06a / ruling 11). Same for galgame_website.comment_count below.
+	// galgame.comment_count / galgame_website.comment_count are NOT reconciled here:
+	// since the community cutover they are LIVE counters maintained by the community
+	// BFF, and the frozen galgame_comment / galgame_website_comment source tables
+	// were dropped (charter step 06a / ruling 11; migration 060). The
+	// galgame_rating.comment_count + galgame_comment.like_count reconciliations are
+	// likewise retired with their now-dropped tables.
 	{"galgame", "resource_count", "galgame_resource", "galgame_id"},
 	{"galgame", "like_count", "galgame_like", "galgame_id"},
 	{"galgame", "favorite_count", "galgame_favorite", "galgame_id"},
-	{"galgame_rating", "comment_count", "galgame_rating_comment", "galgame_rating_id"},
 	{"galgame_rating", "like_count", "galgame_rating_like", "galgame_rating_id"},
 	{"galgame_resource", "like_count", "galgame_resource_like", "galgame_resource_id"},
-	{"galgame_comment", "like_count", "galgame_comment_like", "galgame_comment_id"},
 	{"galgame_website", "like_count", "galgame_website_like", "website_id"},
 	{"galgame_website", "favorite_count", "galgame_website_favorite", "website_id"},
 }
@@ -204,8 +201,8 @@ func main() {
 		fmt.Println("\nRESULT: FAIL")
 		os.Exit(1)
 	}
-	fmt.Printf("    reported preview Total=%d (topics=%d replies=%d topicComments=%d galgameComments=%d ratings=%d resources=%d websites=%d toolsets=%d chat=%d msgs=%d interactions=%d)\n",
-		stats.Total, stats.Topics, stats.Replies, stats.TopicComments, stats.GalgameComments,
+	fmt.Printf("    reported preview Total=%d (topics=%d replies=%d topicComments=%d ratings=%d resources=%d websites=%d toolsets=%d chat=%d msgs=%d interactions=%d)\n",
+		stats.Total, stats.Topics, stats.Replies, stats.TopicComments,
 		stats.Ratings, stats.Resources, stats.Websites, stats.Toolsets, stats.ChatMessages, stats.Messages, stats.Interactions)
 
 	// ── Completeness assertions ──
@@ -253,8 +250,6 @@ func main() {
 	}
 	orphan("topic_reply without topic", "SELECT COUNT(*) FROM topic_reply r WHERE NOT EXISTS (SELECT 1 FROM topic t WHERE t.id=r.topic_id)")
 	orphan("topic_comment without reply", "SELECT COUNT(*) FROM topic_comment c WHERE NOT EXISTS (SELECT 1 FROM topic_reply r WHERE r.id=c.topic_reply_id)")
-	orphan("galgame_comment child without parent", "SELECT COUNT(*) FROM galgame_comment c WHERE c.parent_comment_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM galgame_comment p WHERE p.id=c.parent_comment_id)")
-	orphan("galgame_comment child without root", "SELECT COUNT(*) FROM galgame_comment c WHERE c.root_comment_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM galgame_comment p WHERE p.id=c.root_comment_id)")
 	orphan("chat_message in deleted room", "SELECT COUNT(*) FROM chat_message m WHERE NOT EXISTS (SELECT 1 FROM chat_room cr WHERE cr.id=m.chat_room_id)")
 	orphan("chat_room_participant in deleted room", "SELECT COUNT(*) FROM chat_room_participant p WHERE NOT EXISTS (SELECT 1 FROM chat_room cr WHERE cr.id=p.chat_room_id)")
 	if pass {

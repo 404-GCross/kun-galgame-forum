@@ -11,7 +11,7 @@
 //
 // Scope (content columns that can embed `image.kungal.com` URLs):
 //
-//	topic.content · topic_reply.content · chat_message.content · galgame_comment.content
+//	topic.content · topic_reply.content · chat_message.content
 //
 // galgame cover/screenshot already moved to image_service (image_hash); doc
 // banners are repo static assets; website icons are external favicons — none here.
@@ -86,7 +86,6 @@ var targets = []target{
 	{"topic", "content"},
 	{"topic_reply", "content"},
 	{"chat_message", "content"},
-	{"galgame_comment", "content"},
 	{"doc_article", "content_markdown"},
 	{"galgame_toolset", "description"},
 	{"message", "content"},

@@ -86,23 +86,8 @@ type GalgameWebsiteTagRelation struct {
 
 func (GalgameWebsiteTagRelation) TableName() string { return "galgame_website_tag_relation" }
 
-// ──────────────────────────────────────────
-// Comment (self-referencing tree)
-// ──────────────────────────────────────────
-
-type GalgameWebsiteComment struct {
-	ID        int        `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content   string     `gorm:"default:''" json:"content"`
-	Edited    *time.Time `gorm:"" json:"edited"`
-	UserID    int        `gorm:"column:user_id;not null;index" json:"user_id"`
-	WebsiteID int        `gorm:"column:website_id;not null;index" json:"website_id"`
-	ParentID  *int       `gorm:"column:parent_id" json:"parent_id"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (GalgameWebsiteComment) TableName() string { return "galgame_website_comment" }
+// The legacy galgame_website_comment model was retired in charter step 06a
+// (comments moved to the infra community primitive) and dropped by migration 060.
 
 // ──────────────────────────────────────────
 // Like & Favorite (composite primary keys)

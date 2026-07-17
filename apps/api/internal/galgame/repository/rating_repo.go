@@ -146,7 +146,8 @@ func (r *RatingRepository) Update(tx *gorm.DB, ratingID int, fields map[string]a
 	return tx.Table("galgame_rating").Where("id = ?", ratingID).Updates(fields).Error
 }
 
-// DeleteByID removes a rating (cascade clears likes & comments).
+// DeleteByID removes a rating (cascade clears its likes; comments moved to the
+// community primitive in charter step 06a).
 func (r *RatingRepository) DeleteByID(tx *gorm.DB, ratingID int) error {
 	return tx.Where("id = ?", ratingID).Delete(&model.GalgameRating{}).Error
 }
@@ -191,39 +192,7 @@ func (r *RatingRepository) AdjustLikeCount(tx *gorm.DB, ratingID, delta int) err
 		Update("like_count", gorm.Expr("like_count + ?", delta)).Error
 }
 
-// ──────────────────────────────────────────
-// Writes — rating comment
-// ──────────────────────────────────────────
-
-// CreateComment inserts a new comment row.
-func (r *RatingRepository) CreateComment(tx *gorm.DB, c *model.GalgameRatingComment) error {
-	return tx.Create(c).Error
-}
-
-// FindCommentByID returns a comment for permission checks.
-func (r *RatingRepository) FindCommentByID(id int) (*model.GalgameRatingComment, error) {
-	var c model.GalgameRatingComment
-	err := r.db.First(&c, id).Error
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-// UpdateCommentContent patches the content field.
-func (r *RatingRepository) UpdateCommentContent(tx *gorm.DB, commentID int, content string) error {
-	return tx.Table("galgame_rating_comment").Where("id = ?", commentID).
-		Update("content", content).Error
-}
-
-// DeleteCommentByID removes a comment.
-func (r *RatingRepository) DeleteCommentByID(tx *gorm.DB, commentID int) error {
-	return tx.Where("id = ?", commentID).Delete(&model.GalgameRatingComment{}).Error
-}
-
-// FindRatingGalgameID returns the galgame_id for a rating (used by comment notifications).
-func (r *RatingRepository) FindRatingGalgameID(ratingID int) int {
-	var gid int
-	r.db.Table("galgame_rating").Select("galgame_id").Where("id = ?", ratingID).Scan(&gid)
-	return gid
-}
+// The rating-comment repo methods (CreateComment / FindCommentByID /
+// UpdateCommentContent / DeleteCommentByID / FindRatingGalgameID) were retired in
+// charter step 06a — comments moved to the community primitive and the
+// galgame_rating_comment table was dropped (migration 060).

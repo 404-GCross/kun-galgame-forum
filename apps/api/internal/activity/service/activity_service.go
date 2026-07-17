@@ -394,7 +394,6 @@ func decodeCursor(cursor string) *repository.Cursor {
 func (s *ActivityService) enrichAndHydrate(ctx context.Context, rows []repository.ActivityRow, isSFW bool) []dto.ActivityItem {
 	items := rowsToItems(rows)
 	items = s.enrichGalgameItems(ctx, rows, items, isSFW)
-	s.enrichGalgameCommentParents(items)
 	s.enrichGalgameResourceDetails(items)
 	s.enrichTopicItems(ctx, items)
 	s.enrichTopicCommentItems(ctx, items)
@@ -450,42 +449,28 @@ func (s *ActivityService) enrichSolutionItems(items []dto.ActivityItem) {
 	}
 }
 
-// enrichEntityRefItems attaches the parent entity name to the toolset / website
-// cards whose Content is a resource note or a comment: the owning toolset
-// (TOOLSET_RESOURCE_CREATION / TOOLSET_COMMENT_CREATION) or the commented website
-// (GALGAME_WEBSITE_COMMENT_CREATION). The creation cards carry the name in
-// Content directly, so they need no enrichment. Best-effort.
+// enrichEntityRefItems attaches the parent entity name to the toolset resource
+// card (TOOLSET_RESOURCE_CREATION), whose Content is a resource note: the owning
+// toolset's name. The creation cards carry the name in Content directly, so they
+// need no enrichment. The toolset / website COMMENT cards no longer get a parent
+// name — their comments moved onto the community primitive (charter step 06a) and
+// the historical frozen-table enrichment was retired (accepted loss). Best-effort.
 func (s *ActivityService) enrichEntityRefItems(items []dto.ActivityItem) {
-	var resIDs, toolsetCommentIDs, websiteCommentIDs []int
+	var resIDs []int
 	for _, it := range items {
-		switch it.Type {
-		case "TOOLSET_RESOURCE_CREATION":
+		if it.Type == "TOOLSET_RESOURCE_CREATION" {
 			resIDs = append(resIDs, it.ID)
-		case "TOOLSET_COMMENT_CREATION":
-			toolsetCommentIDs = append(toolsetCommentIDs, it.ID)
-		case "GALGAME_WEBSITE_COMMENT_CREATION":
-			websiteCommentIDs = append(websiteCommentIDs, it.ID)
 		}
 	}
-	if len(resIDs)+len(toolsetCommentIDs)+len(websiteCommentIDs) == 0 {
+	if len(resIDs) == 0 {
 		return
 	}
 	resParents, _ := s.repo.FetchToolsetResourceParents(resIDs)
-	toolsetCommentParents, _ := s.repo.FetchToolsetCommentParents(toolsetCommentIDs)
-	websiteCommentParents, _ := s.repo.FetchWebsiteCommentParents(websiteCommentIDs)
-	set := func(i int, name string) {
-		if name != "" {
-			items[i].Data = dto.EntityRefActivityData{ParentName: name}
-		}
-	}
 	for i := range items {
-		switch items[i].Type {
-		case "TOOLSET_RESOURCE_CREATION":
-			set(i, resParents[items[i].ID])
-		case "TOOLSET_COMMENT_CREATION":
-			set(i, toolsetCommentParents[items[i].ID])
-		case "GALGAME_WEBSITE_COMMENT_CREATION":
-			set(i, websiteCommentParents[items[i].ID])
+		if items[i].Type == "TOOLSET_RESOURCE_CREATION" {
+			if name := resParents[items[i].ID]; name != "" {
+				items[i].Data = dto.EntityRefActivityData{ParentName: name}
+			}
 		}
 	}
 }
@@ -651,34 +636,6 @@ func (s *ActivityService) enrichTopicCommentItems(ctx context.Context, items []d
 		for _, i := range idxs {
 			items[i].Content = renderReplyTokens(items[i].Content, names)
 			items[i].Data = payload
-		}
-	}
-}
-
-// enrichGalgameCommentParents attaches the parent comment (被评论的评论) to
-// GALGAME_COMMENT_CREATION rows that have one, patching the galgame payload.
-func (s *ActivityService) enrichGalgameCommentParents(items []dto.ActivityItem) {
-	ids := []int{}
-	for _, it := range items {
-		if it.Type == "GALGAME_COMMENT_CREATION" {
-			ids = append(ids, it.ID)
-		}
-	}
-	parents, err := s.repo.FetchGalgameCommentParents(ids)
-	if err != nil || len(parents) == 0 {
-		return
-	}
-	for i := range items {
-		if items[i].Type != "GALGAME_COMMENT_CREATION" {
-			continue
-		}
-		content, ok := parents[items[i].ID]
-		if !ok {
-			continue
-		}
-		if ga, ok := items[i].Data.(dto.GalgameActivityData); ok {
-			ga.ParentComment = &dto.CommentContext{Content: content}
-			items[i].Data = ga
 		}
 	}
 }

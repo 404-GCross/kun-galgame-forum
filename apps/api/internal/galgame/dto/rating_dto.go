@@ -65,23 +65,9 @@ type ToggleRatingLikeRequest struct {
 	GalgameRatingID int `json:"galgame_rating_id" validate:"required,min=1"`
 }
 
-// CreateRatingCommentRequest is the body of POST /galgame-rating/:id/comment.
-type CreateRatingCommentRequest struct {
-	GalgameRatingID int    `json:"galgame_rating_id" validate:"required,min=1"`
-	TargetUserID    int    `json:"target_user_id" validate:"required,min=1"`
-	Content         string `json:"content" validate:"required,min=1,max=1314"`
-}
-
-// UpdateRatingCommentRequest is the body of PUT /galgame-rating/:id/comment.
-type UpdateRatingCommentRequest struct {
-	GalgameRatingCommentID int    `json:"galgame_rating_comment_id" validate:"required,min=1"`
-	Content                string `json:"content" validate:"required,min=1,max=1314"`
-}
-
-// DeleteRatingCommentRequest is the query for DELETE /galgame-rating/:id/comment.
-type DeleteRatingCommentRequest struct {
-	GalgameRatingCommentID int `query:"galgame_rating_comment_id" validate:"required,min=1"`
-}
+// The rating comment CRUD (POST/PUT/DELETE /galgame-rating/:id/comment) was
+// retired in charter step 06a — comments moved to the community primitive and
+// the galgame_rating_comment table was dropped (migration 060).
 
 // CreatedRating is the response shape for POST /galgame-rating — matches
 // GalgameRatingCardOnGalgamePage in the frontend types.
@@ -101,16 +87,6 @@ type CreatedRating struct {
 	Created      string             `json:"created"`
 	Updated      string             `json:"updated"`
 	Galgame      RatingGalgameBrief `json:"galgame"`
-}
-
-// CreatedRatingComment is the response shape for POST/PUT comment.
-type CreatedRatingComment struct {
-	ID         int        `json:"id"`
-	Content    string     `json:"content"`
-	User       UserBrief  `json:"user"`
-	TargetUser *UserBrief `json:"target_user"`
-	Created    string     `json:"created"`
-	Updated    string     `json:"updated"`
 }
 
 // ──────────────────────────────────────────

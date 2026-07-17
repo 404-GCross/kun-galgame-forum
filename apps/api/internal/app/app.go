@@ -359,12 +359,6 @@ func New(cfg *config.Config) *App {
 	draftSvc := topicService.NewDraftService(draftRepository)
 
 	// Galgame
-	galgameCommentRepo := galgameRepo.NewCommentRepository(db)
-	// galgameCommentSvc + galgameCommentRepo are retained for the T&S enforcement
-	// adapter (galgame_comment subject_kind) + the shared UserObj/truncate helpers;
-	// their read/write methods are dead since the legacy /comment routes were
-	// retired (charter step 06a).
-	galgameCommentSvc := galgameService.NewCommentService(galgameCommentRepo, userStateRepo, uc)
 	// Community-backed comment BFF (charter step 03) — the unconditional galgame
 	// comment backend on the `/comments` routes (router.go). The local repo owns
 	// galgame_post_like + the legacy-id map (migration 057).
@@ -451,10 +445,11 @@ func New(cfg *config.Config) *App {
 	// Toolset
 	toolsetRepository := toolsetRepo.NewToolsetRepository(db)
 	toolsetResourceRepo := toolsetRepo.NewResourceRepository(db)
-	toolsetCommentRepo := toolsetRepo.NewCommentRepository(db)
 	toolsetPracticalityRepo := toolsetRepo.NewPracticalityRepository(db)
 	toolsetPracticalitySvc := toolsetService.NewPracticalityService(toolsetPracticalityRepo)
-	toolsetCommentSvc := toolsetService.NewCommentService(toolsetCommentRepo, toolsetRepository, uc, communityCli)
+	// Detail-page comment preview reads the community primitive (charter step 06a);
+	// the full toolset comment area is served by the shared resource-comment BFF.
+	toolsetCommentSvc := toolsetService.NewCommentService(uc, communityCli)
 	toolsetResourceSvc := toolsetService.NewResourceService(toolsetResourceRepo, toolsetRepository, fileStorageClient, artCli, uc)
 	toolsetUploadSvc := toolsetService.NewUploadService(artCli, rdb, db)
 	toolsetCoreSvc := toolsetService.NewToolsetService(
@@ -466,6 +461,12 @@ func New(cfg *config.Config) *App {
 	// pipeline: each subject_kind wires hide/remove/author-lookup to existing
 	// services/repos. galgame + user are ABSENT (human-only: galgame moderation
 	// is wiki-side, user bans are IdP-side), so their callbacks no-op locally.
+	//
+	// galgame_comment is a legacy subject_kind: its rows migrated to community
+	// posts (charter step 06a), so enforcement resolves the legacy id through the
+	// map and tombstones the migrated post (hide == remove == tombstone; the
+	// primitive has no S2S hide).
+	galgameCommentEnforcer := galgameService.NewGalgameCommentEnforcer(communityCli, galgameCommunityPostRepo)
 	trustRegistry := enforce.Registry{
 		"forum_topic": {
 			// No hard delete exists for topics → hide == remove (status=1).
@@ -506,20 +507,10 @@ func New(cfg *config.Config) *App {
 			},
 		},
 		"galgame_comment": {
-			Hide: func(_ context.Context, id int) error { return galgameCommentRepo.SetStatus(id, 1) },
-			Remove: func(_ context.Context, id int) error {
-				if appErr := galgameCommentSvc.DeleteComment(0, true, id); appErr != nil {
-					return appErr
-				}
-				return nil
-			},
-			AuthorID: func(_ context.Context, id int) (int, error) {
-				c, err := galgameCommentRepo.FindByID(id)
-				if err != nil {
-					return 0, nil
-				}
-				return c.UserID, nil
-			},
+			// hide == remove == tombstone the migrated community post (via the map).
+			Hide:     galgameCommentEnforcer.Tombstone,
+			Remove:   galgameCommentEnforcer.Tombstone,
+			AuthorID: galgameCommentEnforcer.AuthorID,
 		},
 	}
 	// warn_user is record-only for now (no system-sender user for a targeted

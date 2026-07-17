@@ -55,19 +55,9 @@ type GalgameRatingLike struct {
 
 func (GalgameRatingLike) TableName() string { return "galgame_rating_like" }
 
-// GalgameRatingComment is the writable model for rating-comment rows.
-type GalgameRatingComment struct {
-	ID              int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content         string `gorm:"type:varchar(1314)" json:"content"`
-	GalgameRatingID int    `gorm:"column:galgame_rating_id;not null" json:"galgame_rating_id"`
-	UserID          int    `gorm:"column:user_id;not null" json:"user_id"`
-	TargetUserID    *int   `gorm:"column:target_user_id" json:"target_user_id"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (GalgameRatingComment) TableName() string { return "galgame_rating_comment" }
+// The rating comment model (GalgameRatingComment) + its read row (RatingCommentRow)
+// were retired in charter step 06a — comments moved to the community primitive and
+// the galgame_rating_comment table was dropped (migration 060).
 
 // GalgameRatingRow is a flat projection of galgame_rating for read queries.
 type GalgameRatingRow struct {
@@ -92,17 +82,6 @@ type GalgameRatingRow struct {
 	Updated      string `gorm:"column:updated"`
 	UserID       int    `gorm:"column:user_id"`
 	GalgameID    int    `gorm:"column:galgame_id"`
-}
-
-// RatingCommentRow is a comment row for a rating. Identity is hydrated by
-// the service layer via userclient.
-type RatingCommentRow struct {
-	ID           int    `gorm:"column:id"`
-	Content      string `gorm:"column:content"`
-	UserID       int    `gorm:"column:user_id"`
-	TargetUserID *int   `gorm:"column:target_user_id"`
-	Created      string `gorm:"column:created"`
-	Updated      string `gorm:"column:updated"`
 }
 
 // RatingFilter carries the list-query filters to the repository.

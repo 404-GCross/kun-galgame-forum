@@ -67,46 +67,7 @@ type GalgameFavorite struct {
 
 func (GalgameFavorite) TableName() string { return "galgame_favorite" }
 
-// ──────────────────────────────────────────
-// Comment (local)
-// ──────────────────────────────────────────
-
-type GalgameComment struct {
-	ID        int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content   string `gorm:"type:varchar(5000);not null" json:"content"`
-	GalgameID int    `gorm:"column:galgame_id;not null" json:"galgame_id"`
-	UserID    int    `gorm:"column:user_id;not null" json:"user_id"`
-	// ParentCommentID: direct reply parent. NULL = top-level (root)
-	// comment. Self-referencing FK with ON DELETE CASCADE; deleting a
-	// parent removes all descendants.
-	ParentCommentID *int `gorm:"column:parent_comment_id" json:"parent_comment_id"`
-	// RootCommentID: thread anchor. NULL for roots; for replies always
-	// equals the top-most ancestor's ID. Lets us fetch a full thread
-	// with a single indexed WHERE root_comment_id = ?.
-	RootCommentID *int `gorm:"column:root_comment_id" json:"root_comment_id"`
-	LikeCount     int  `gorm:"column:like_count;default:0" json:"like_count"`
-
-	// Edited: set on every author-driven content rewrite via the PUT
-	// endpoint. Nil = never edited. Distinct from `updated`, which
-	// ticks on any row-level write (e.g. like_count bumps).
-	Edited *time.Time `gorm:"column:edited" json:"edited"`
-
-	// Status: 0=normal, 1=hidden by a T&S `hide` enforcement (migration 055).
-	Status int `gorm:"column:status;default:0" json:"-"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (GalgameComment) TableName() string { return "galgame_comment" }
-
-type GalgameCommentLike struct {
-	ID        int `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID    int `gorm:"column:user_id;not null;uniqueIndex:idx_comment_like" json:"user_id"`
-	CommentID int `gorm:"column:galgame_comment_id;not null;uniqueIndex:idx_comment_like" json:"galgame_comment_id"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (GalgameCommentLike) TableName() string { return "galgame_comment_like" }
+// The legacy local comment tables (galgame_comment + galgame_comment_like) were
+// retired in charter step 06a — galgame comments now live on the infra community
+// primitive (see community_comment_service.go). The frozen tables are dropped by
+// migration 060; the community post-like table lives in model/community_post.go.

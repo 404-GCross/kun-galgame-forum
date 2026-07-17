@@ -45,7 +45,6 @@ var targets = []target{
 	{"topic", "content"},
 	{"topic_reply", "content"},
 	{"chat_message", "content"},
-	{"galgame_comment", "content"},
 }
 
 func main() {

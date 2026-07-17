@@ -233,31 +233,8 @@ func (r *ActivityRepository) FetchTopicCommentContext(ids []int) (map[int]TopicC
 	return out, nil
 }
 
-// FetchGalgameCommentParents loads, per comment id, the parent comment's content
-// (被评论的评论). Only comments WITH a parent appear in the result.
-func (r *ActivityRepository) FetchGalgameCommentParents(ids []int) (map[int]string, error) {
-	out := map[int]string{}
-	if len(ids) == 0 {
-		return out, nil
-	}
-	var rows []struct {
-		CommentID int    `gorm:"column:comment_id"`
-		Content   string `gorm:"column:content"`
-	}
-	if err := r.db.Table("galgame_comment c").
-		Select("c.id AS comment_id, p.content AS content").
-		Joins("JOIN galgame_comment p ON p.id = c.parent_comment_id").
-		Where("c.id IN ?", ids).Scan(&rows).Error; err != nil {
-		return out, err
-	}
-	for _, row := range rows {
-		out[row.CommentID] = row.Content
-	}
-	return out, nil
-}
-
-// fetchParentNames is the shared id→parent-name lookup for the toolset / website
-// cards: `childTable c JOIN parentTable p ON p.id = c.<fk>` selecting p.name.
+// fetchParentNames is the shared id→parent-name lookup for the toolset resource
+// card: `childTable c JOIN parentTable p ON p.id = c.<fk>` selecting p.name.
 func (r *ActivityRepository) fetchParentNames(childTable, parentTable, fk string, ids []int) (map[int]string, error) {
 	out := map[int]string{}
 	if len(ids) == 0 {
@@ -282,16 +259,6 @@ func (r *ActivityRepository) fetchParentNames(childTable, parentTable, fk string
 // FetchToolsetResourceParents maps each toolset-resource id → its toolset name.
 func (r *ActivityRepository) FetchToolsetResourceParents(ids []int) (map[int]string, error) {
 	return r.fetchParentNames("galgame_toolset_resource", "galgame_toolset", "toolset_id", ids)
-}
-
-// FetchToolsetCommentParents maps each toolset-comment id → its toolset name.
-func (r *ActivityRepository) FetchToolsetCommentParents(ids []int) (map[int]string, error) {
-	return r.fetchParentNames("galgame_toolset_comment", "galgame_toolset", "toolset_id", ids)
-}
-
-// FetchWebsiteCommentParents maps each website-comment id → its website name.
-func (r *ActivityRepository) FetchWebsiteCommentParents(ids []int) (map[int]string, error) {
-	return r.fetchParentNames("galgame_website_comment", "galgame_website", "website_id", ids)
 }
 
 // GalgameResourceRow is one resource's feed-card spec (no download link / codes).

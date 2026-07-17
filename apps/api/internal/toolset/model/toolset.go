@@ -134,20 +134,5 @@ type GalgameToolsetCategoryRelation struct {
 
 func (GalgameToolsetCategoryRelation) TableName() string { return "galgame_toolset_category_relation" }
 
-// ──────────────────────────────────────────
-// Comment (self-referencing tree)
-// ──────────────────────────────────────────
-
-type GalgameToolsetComment struct {
-	ID        int        `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content   string     `gorm:"default:''" json:"content"`
-	Edited    *time.Time `gorm:"" json:"edited"`
-	UserID    int        `gorm:"column:user_id;not null;index" json:"user_id"`
-	ToolsetID int        `gorm:"column:toolset_id;not null;index" json:"toolset_id"`
-	ParentID  *int       `gorm:"column:parent_id" json:"parent_id"`
-
-	CreatedAt time.Time `gorm:"column:created" json:"created"`
-	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
-}
-
-func (GalgameToolsetComment) TableName() string { return "galgame_toolset_comment" }
+// The legacy galgame_toolset_comment table was retired in charter step 06a
+// (comments moved to the infra community primitive) and dropped by migration 060.

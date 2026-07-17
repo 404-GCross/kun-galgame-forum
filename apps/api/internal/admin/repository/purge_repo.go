@@ -62,27 +62,27 @@ func (r *PurgeRepository) counts(q *gorm.DB, userID int) dto.UserContentStats {
 	s.Topics = countBy("topic", "user_id")
 	s.Replies = countBy("topic_reply", "user_id")
 	s.TopicComments = countBy("topic_comment", "user_id")
-	s.GalgameComments = countBy("galgame_comment", "user_id")
 	s.Ratings = countBy("galgame_rating", "user_id")
-	s.RatingComments = countBy("galgame_rating_comment", "user_id")
 	s.Resources = countBy("galgame_resource", "user_id")
 	s.Websites = countBy("galgame_website", "user_id")
-	s.WebsiteComments = countBy("galgame_website_comment", "user_id")
 	s.Toolsets = countBy("galgame_toolset", "user_id")
 	s.ToolsetResources = countBy("galgame_toolset_resource", "user_id")
-	s.ToolsetComments = countBy("galgame_toolset_comment", "user_id")
 	s.ChatMessages = countBy("chat_message", "sender_id")
 	// Notifications the user generated for others + their own inbox.
 	s.Messages = countBy("message", "sender_id") + countBy("message", "receiver_id")
 
+	// The four legacy comment tables (galgame_comment / galgame_rating_comment /
+	// galgame_website_comment / galgame_toolset_comment) were dropped in charter
+	// step 06a — comments moved to the community primitive; their live count is
+	// surfaced separately via CommunityPosts (set by the purge service).
 	for _, t := range interactionTables {
 		s.Interactions += countBy(t, "user_id")
 	}
 
-	s.Total = s.Topics + s.Replies + s.TopicComments + s.GalgameComments +
-		s.Ratings + s.RatingComments + s.Resources + s.Websites +
-		s.WebsiteComments + s.Toolsets + s.ToolsetResources +
-		s.ToolsetComments + s.ChatMessages + s.Messages + s.Interactions
+	s.Total = s.Topics + s.Replies + s.TopicComments +
+		s.Ratings + s.Resources + s.Websites +
+		s.Toolsets + s.ToolsetResources +
+		s.ChatMessages + s.Messages + s.Interactions
 	return s
 }
 
@@ -93,7 +93,10 @@ var interactionTables = []string{
 	"topic_like", "topic_dislike", "topic_favorite", "topic_upvote",
 	"topic_reply_like", "topic_reply_dislike", "topic_comment_like",
 	"topic_poll_vote",
-	"galgame_like", "galgame_favorite", "galgame_comment_like",
+	"galgame_like", "galgame_favorite",
+	// galgame_post_like = the LIVE community-comment like footprint (charter step
+	// 06a); replaces the dropped frozen galgame_comment_like.
+	"galgame_post_like",
 	"galgame_rating_like", "galgame_resource_like",
 	"galgame_website_like", "galgame_website_favorite",
 	"galgame_toolset_practicality", "galgame_toolset_contributor",
@@ -109,7 +112,7 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		// ── Capture surviving-parent id sets BEFORE deleting, for the
 		// post-delete counter recompute (these are bounded by the number of
 		// distinct parents the user touched — small, safe for an IN list). ──
-		var affTopics, affReplies, affGalgames, affRatings, affChatRooms []int
+		var affTopics, affReplies, affGalgames, affChatRooms []int
 		captures := []struct {
 			dst *[]int
 			sql string
@@ -118,9 +121,7 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 				UNION SELECT DISTINCT topic_id FROM topic_comment WHERE user_id = ?`},
 			{&affReplies, `SELECT DISTINCT topic_reply_id FROM topic_comment WHERE user_id = ?`},
 			{&affGalgames, `SELECT DISTINCT galgame_id FROM galgame_rating WHERE user_id = ?
-				UNION SELECT DISTINCT galgame_id FROM galgame_comment WHERE user_id = ?
 				UNION SELECT DISTINCT galgame_id FROM galgame_resource WHERE user_id = ?`},
-			{&affRatings, `SELECT DISTINCT galgame_rating_id FROM galgame_rating_comment WHERE user_id = ?`},
 			// NOTE: galgame_website affected-set no longer captured — its
 			// comment_count is NOT recomputed here (see phase H).
 			// Rooms the user sent messages in OR merely joined — so the
@@ -144,9 +145,11 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		// ── A. Owned ROOT entities — CASCADE removes their whole subtree. ──
 		// topic → replies, comments, likes/dislikes/favorites/upvotes, polls
 		//   (+options+votes), tag/section relations.
-		// galgame_website → comments(+subtree), likes, favorites, tag relations.
-		// galgame_toolset → resources, comments(+subtree), contributors,
-		//   practicality, aliases, category relations.
+		// galgame_website → likes, favorites, tag relations.
+		// galgame_toolset → resources, contributors, practicality, aliases,
+		//   category relations.
+		// (website / toolset comments moved to the community primitive in charter
+		//   step 06a and are purged via the community AuthorPurge, not by cascade.)
 		// topic_poll WHERE user_id: polls the user created on OTHER users'
 		//   topics (own-topic polls already went with the topic above).
 		for _, q := range []string{
@@ -161,18 +164,15 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		}
 
 		// ── B. The user's content on OTHER users' entities. Each row's own
-		// children (likes, targets, sub-replies, links, providers) cascade;
-		// galgame_comment / *_comment subtrees cascade via parent/root FKs. ──
+		// children (likes, targets, sub-replies, links, providers) cascade. The
+		// four legacy comment tables are gone (charter step 06a; migration 060) —
+		// community comments are purged separately via the community AuthorPurge. ──
 		for _, q := range []string{
 			"DELETE FROM topic_reply WHERE user_id = ?", // SET NULL clears any topic best_answer/pin pointing here
 			"DELETE FROM topic_comment WHERE user_id = ?",
 			"DELETE FROM galgame_rating WHERE user_id = ?",
-			"DELETE FROM galgame_rating_comment WHERE user_id = ?",
-			"DELETE FROM galgame_comment WHERE user_id = ?",
 			"DELETE FROM galgame_resource WHERE user_id = ?",
-			"DELETE FROM galgame_website_comment WHERE user_id = ?",
 			"DELETE FROM galgame_toolset_resource WHERE user_id = ?",
-			"DELETE FROM galgame_toolset_comment WHERE user_id = ?",
 		} {
 			if err := del(tx, q, userID); err != nil {
 				return err
@@ -277,21 +277,8 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			return err
 		}
 
-		// ── G. Back-pointers in OTHER users' surviving comments that named
-		// the purged user ("回复 @user"). NULL them so the mention disappears.
-		// (topic_comment.target_user_id is NOT NULL — left as-is rather than
-		// delete a third party's comment. galgame_comment.target_user_id was
-		// retired — its mentions live inline in content now.) ──
-		for _, q := range []string{
-			"UPDATE galgame_rating_comment SET target_user_id = NULL WHERE target_user_id = ?",
-		} {
-			if err := del(tx, q, userID); err != nil {
-				return err
-			}
-		}
-
-		// ── H. Recompute counters on SURVIVING parents whose children were
-		// removed in phases B above (interaction counters handled in C). ──
+		// ── G. Recompute counters on SURVIVING parents whose children were
+		// removed in phase B above (interaction counters handled in C). ──
 		recounts := []struct {
 			parentTable, countCol, childTable, parentCol string
 			ids                                          []int
@@ -301,15 +288,12 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			{"topic_reply", "comment_count", "topic_comment", "topic_reply_id", affReplies},
 			{"galgame", "rating_count", "galgame_rating", "galgame_id", affGalgames},
 			{"galgame", "resource_count", "galgame_resource", "galgame_id", affGalgames},
-			{"galgame_rating", "comment_count", "galgame_rating_comment", "galgame_rating_id", affRatings},
-			// COUNTER-CLOBBER FIX (charter step 06a, ruling 11): galgame.comment_count
-			// and galgame_website.comment_count are LIVE display counters, maintained
-			// ±1 by the community BFF since the cutover. Recomputing them from the
-			// FROZEN galgame_comment / galgame_website_comment tables would overwrite
-			// the live value with a stale one, so those two recomputes were removed.
-			// Drift is tolerated (ruling 11). The galgame_rating.comment_count and
-			// galgame_comment.like_count recomputes stay — both columns are dormant/
-			// legacy-internal and purge-verify still asserts on them.
+			// The four legacy comment tables are gone (migration 060), so the
+			// galgame_rating.comment_count recompute (and the galgame_comment
+			// like_count recompute, via the removed galgame_comment_like interaction)
+			// are retired. galgame.comment_count / galgame_website.comment_count stay
+			// LIVE display counters maintained ±1 by the community BFF (ruling 11) —
+			// never recomputed here, so the purge can't clobber them with a stale value.
 		}
 		for _, rc := range recounts {
 			if err := recount(tx, rc.parentTable, rc.countCol, rc.childTable, rc.parentCol, rc.ids); err != nil {
@@ -343,7 +327,11 @@ var interactionDeletes = []interactionDelete{
 	{"topic_poll_vote", "option_id", "topic_poll_option", "vote_count"},
 	{"galgame_like", "galgame_id", "galgame", "like_count"},
 	{"galgame_favorite", "galgame_id", "galgame", "favorite_count"},
-	{"galgame_comment_like", "galgame_comment_id", "galgame_comment", "like_count"},
+	// galgame_post_like: the purged user's OWN like footprint on community comments
+	// (charter step 06a — mirrors infra's reactions_deleted). No parent counter to
+	// recompute (the display count is derived live), so no counter clobber. Likes
+	// RECEIVED on their tombstoned posts stay, matching infra's GDPR reading.
+	{"galgame_post_like", "post_id", "", ""},
 	{"galgame_rating_like", "galgame_rating_id", "galgame_rating", "like_count"},
 	{"galgame_resource_like", "galgame_resource_id", "galgame_resource", "like_count"},
 	{"galgame_website_like", "website_id", "galgame_website", "like_count"},
