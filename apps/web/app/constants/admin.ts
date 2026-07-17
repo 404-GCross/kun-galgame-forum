@@ -55,6 +55,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'user',
   'submissions',
   'moderation',
+  'taxonomy',
   'friend-link',
   'doc',
   'setting'
@@ -93,6 +94,12 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     label: '内容审核',
     icon: 'lucide:shield-alert',
     router: 'moderation'
+  },
+  {
+    name: 'taxonomy',
+    label: 'Wiki 条目管理',
+    icon: 'lucide:tags',
+    router: 'taxonomy'
   },
   {
     name: 'friend-link',
