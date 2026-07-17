@@ -15,10 +15,12 @@ type GalgameLink struct {
 }
 
 // ──────────────────────────────────────────
-// Galgame History (/galgame/:gid/history/all)
+// Taxonomy revision history (/galgame-{tag,official,engine,series}/:id/revisions)
 // ──────────────────────────────────────────
 
-// GalgameRevision is a single edit history entry.
+// GalgameRevision is a single edit history entry. Since E3b it serves the
+// taxonomy revision reads only — the galgame history/PR list shapes retired
+// with the old wire (kungal reads the editing engine now).
 type GalgameRevision struct {
 	ID       int       `json:"id"`
 	Revision int       `json:"revision"`
@@ -32,28 +34,4 @@ type GalgameRevision struct {
 type GalgameRevisionListPage struct {
 	Items []GalgameRevision `json:"items"`
 	Total int64             `json:"total"`
-}
-
-// ──────────────────────────────────────────
-// Galgame PRs (/galgame/:gid/pr/all)
-// ──────────────────────────────────────────
-
-// GalgamePR is a pending/completed pull request on a galgame. PRs carry
-// title + message (the old single `note` was retired for PRs; revisions
-// still use note). See docs/galgame_wiki/02-revisions-and-prs.md.
-type GalgamePR struct {
-	ID            int       `json:"id"`
-	GalgameID     int       `json:"galgame_id"`
-	Status        int       `json:"status"`
-	Title         string    `json:"title"`
-	Message       string    `json:"message"`
-	BaseRevision  int       `json:"base_revision"`
-	User          UserBrief `json:"user"`
-	CompletedTime *string   `json:"completed_time"`
-	Created       string    `json:"created"`
-}
-
-type GalgamePRListPage struct {
-	Items []GalgamePR `json:"items"`
-	Total int64       `json:"total"`
 }

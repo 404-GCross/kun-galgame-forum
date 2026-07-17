@@ -110,6 +110,8 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/amendments":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"galgame.game.name_zh_cn":"修正"}}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/revert":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["galgame.game.name_zh_cn"],"snapshot":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/55":
 			// A proposal OUTSIDE kungal's tenant — the BFF must 404 it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"galgame.game","entity_id":1,"site":"galgame_wiki","status":"open","patch":{}}}`))
@@ -167,6 +169,7 @@ func editTestAppFull(t *testing.T, catalogURL, wikiURL string, user *middleware.
 	authed.Post("/galgame-edit/proposals/:id/amend", h.Amend)
 	authed.Post("/galgame-edit/proposals/:id/merge", h.Merge)
 	authed.Post("/galgame-edit/proposals/:id/decline", h.Decline)
+	authed.Post("/galgame/:gid/edit/revert", h.Revert)
 	return app
 }
 
@@ -404,6 +407,45 @@ func TestEditDeclineNotification(t *testing.T) {
 	}
 	if !strings.Contains(n.Content, "资料来源不可靠，请补充出处") {
 		t.Fatalf("declined notice must carry the reason in full: %q", n.Content)
+	}
+}
+
+// TestEditRevertEntry (E3b): revert admits moderators and the game's creator
+// — a plain non-owner 403s locally, the owner's revert reaches the S2S face
+// with the ownership assertion.
+func TestEditRevertEntry(t *testing.T) {
+	fake := &fakeEditFace{}
+	wiki := fakeWiki(t)
+
+	nonOwner := &middleware.UserInfo{ID: 8, Name: "bystander", Roles: nil}
+	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, nonOwner, nil)
+	status, _ := doJSON(t, app, "POST", "/api/galgame/1/edit/revert", `{"to_seq":3}`)
+	if status != http.StatusForbidden {
+		t.Fatalf("non-owner revert: status = %d, want 403", status)
+	}
+	for _, r := range fake.requests {
+		if r.Method == "POST" {
+			t.Fatalf("non-owner revert must not reach a write op, got %s %s", r.Method, r.Path)
+		}
+	}
+
+	owner := editTestAppFull(t, fake.server(t).URL, wiki.URL, plainUser, nil) // uid 7 = creator
+	status, raw := doJSON(t, owner, "POST", "/api/galgame/1/edit/revert", `{"to_seq":3,"note":"回滚测试"}`)
+	if status != http.StatusOK {
+		t.Fatalf("owner revert: status = %d body %s", status, raw)
+	}
+	var revertBody map[string]any
+	for _, r := range fake.requests {
+		if r.Method == "POST" && strings.HasSuffix(r.Path, "/revert") {
+			revertBody = r.Body
+		}
+	}
+	if revertBody == nil || revertBody["to_seq"] != float64(3) || revertBody["site"] != "kungal" {
+		t.Fatalf("revert body: %v", revertBody)
+	}
+	actor, _ := revertBody["actor"].(map[string]any)
+	if actor == nil || actor["is_entity_owner"] != true {
+		t.Fatalf("owner assertion missing from the revert actor: %v", revertBody)
 	}
 }
 

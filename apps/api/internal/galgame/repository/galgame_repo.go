@@ -75,7 +75,7 @@ func (r *GalgameRepository) IncrementView(id int) {
 }
 
 // ──────────────────────────────────────────
-// Side-effect helpers used by Create / MergePR
+// Side-effect helpers used by Create
 // ──────────────────────────────────────────
 
 // CreateLocalStub creates the empty galgame row on the local side after wiki

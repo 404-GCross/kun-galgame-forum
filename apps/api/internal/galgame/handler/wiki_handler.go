@@ -25,15 +25,6 @@ func NewWikiHandler(wikiService *service.WikiService) *WikiHandler {
 // Generic proxy
 // ──────────────────────────────────────────
 
-// ProxyGet forwards a GET request to wiki service.
-func (h *WikiHandler) ProxyGet(c fiber.Ctx) error {
-	data, appErr := h.wikiService.ProxyGet(c.Context(), c.Path(), collectQuery(c))
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return c.JSON(fiber.Map{"code": 0, "message": "成功", "data": data})
-}
-
 // ProxyGetWithToken forwards a GET to wiki WITH the caller's session OAuth
 // token (attached by OptionalAuth — empty for anonymous callers). Needed for
 // endpoints the wiki gates behind auth even on read (taxonomy revision
@@ -104,24 +95,6 @@ func (h *WikiHandler) GetGalgameLinks(c fiber.Ctx) error {
 	return response.OK(c, links)
 }
 
-// GetGalgameHistory — GET /galgame/:gid/history/all
-func (h *WikiHandler) GetGalgameHistory(c fiber.Ctx) error {
-	page, appErr := h.wikiService.GetGalgameHistory(
-		c.Context(), c.Params("gid"), collectQuery(c),
-	)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.Paginated(c, page.Items, page.Total)
-}
-
-// GetGalgamePRs — GET /galgame/:gid/pr/all
-func (h *WikiHandler) GetGalgamePRs(c fiber.Ctx) error {
-	page, appErr := h.wikiService.GetGalgamePRs(
-		c.Context(), c.Params("gid"), collectQuery(c),
-	)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.Paginated(c, page.Items, page.Total)
-}
+// The old-wire revision/PR reads (GetGalgameHistory / GetGalgamePRs and the
+// bare ProxyGet they rode with) retired in E3b — kungal's history, diff and
+// proposal reads all flow through the editing-engine BFF (edit_handler.go).

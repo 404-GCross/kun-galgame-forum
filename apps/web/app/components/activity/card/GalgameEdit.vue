@@ -1,28 +1,26 @@
 <script setup lang="ts">
 // GALGAME_EDIT — the actor edited a galgame; shows the embedded galgame preview
-// plus the wiki revision diff (same renderer as the history page), lazily loaded
-// and collapsed to 100px with a 显示更多 toggle (mirrors the resource-note card).
+// plus the revision's field diff (the editing engine's read — same renderer as
+// the /galgame/:gid/history page), lazily loaded and collapsed to 100px with a
+// 显示更多 toggle (mirrors the resource-note card).
 //
-// SnapshotDiff mirrors the GET /galgame/:gid/revisions/:rev/diff payload (the
-// type isn't exported from useRevisionHistory, so it's redeclared here).
-interface SnapshotDiff {
-  changed_keys: Record<string, boolean>
-  old: Record<string, unknown>
-  new: Record<string, unknown>
-  names?: {
-    tags?: Record<string, string>
-    officials?: Record<string, string>
-    engines?: Record<string, string>
-    series?: Record<string, string>
-  }
-}
+// E3b: this card rode the old-wire diff proxy; it now reads the engine. The
+// wiki revision NUMBER the activity row carries IS the engine seq (the E2
+// transform adopted the per-galgame revision numbers as seqs, and the feed
+// keeps emitting them 1:1), so the diff is seq-1 → seq. Legacy activity rows
+// carrying only the revision ROW id resolve it through the engine list's
+// legacy_id (wire id = COALESCE(legacy_id, id)).
+import {
+  galgameEditFieldConfig,
+  galgameEditLabel
+} from '~/constants/galgameEdit'
 
 const props = defineProps<{ activity: ActivityItem }>()
 const data = computed(
   () => props.activity.data as GalgameActivityData | undefined
 )
 
-const diff = ref<SnapshotDiff | null>(null)
+const diff = ref<GalgameEditDiff | null>(null)
 const isLoading = ref(false)
 
 const loadDiff = async () => {
@@ -30,22 +28,21 @@ const loadDiff = async () => {
   if (!gid || diff.value || isLoading.value) return
   isLoading.value = true
   try {
-    // The diff endpoint keys on the per-galgame revision NUMBER. The activity now
-    // carries it directly (revision_number). Legacy rows synced before the wiki
-    // feed exposed it have only the revision ROW id, so fall back to resolving
-    // id → number via the history list (newest-first — a recent edit is page 1).
-    let number = data.value?.revision_number
-    if (!number) {
+    let seq = data.value?.revision_number
+    if (!seq) {
       const rowId = data.value?.revision_id
       if (!rowId) return
-      const history = await kunFetch<{
-        items?: { id: number; revision: number }[]
-      }>(`/galgame/${gid}/history/all?page=1&limit=100`)
-      number = history?.items?.find((r) => r.id === rowId)?.revision
+      const history = await kunFetch<GalgameEditRevisionList>(
+        `/galgame/${gid}/edit/revisions?limit=200`
+      )
+      seq = history?.items?.find(
+        (r) => (r.legacy_id ?? r.id) === rowId
+      )?.seq
     }
-    if (!number) return
-    const res = await kunFetch<SnapshotDiff>(
-      `/galgame/${gid}/revisions/${number}/diff`
+    // seq 1 is the entity's birth — there is no previous version to diff.
+    if (!seq || seq <= 1) return
+    const res = await kunFetch<GalgameEditDiff>(
+      `/galgame/${gid}/edit/diff?from=${seq - 1}&to=${seq}`
     )
     if (res) diff.value = res
   } finally {
@@ -104,15 +101,18 @@ onBeforeUnmount(() => {
         加载编辑内容…
       </div>
       <div
-        v-else-if="diff"
+        v-else-if="diff && diff.fields.length"
         class="border-default-200 rounded-lg border p-2 text-sm"
       >
-        <div ref="diffRef" :style="diffStyle">
-          <GalgameSnapshotDiff
-            :changed-keys="diff.changed_keys"
-            :old-snap="diff.old"
-            :new-snap="diff.new"
-            :names="diff.names"
+        <div ref="diffRef" :style="diffStyle" class="space-y-3">
+          <EditkitFieldDiff
+            v-for="row in diff.fields"
+            :key="row.key"
+            :label="galgameEditLabel(row.key)"
+            :diff-hint="row.diff_hint"
+            :from="row.from"
+            :to="row.to"
+            :config="galgameEditFieldConfig(row.key)"
           />
         </div>
         <button

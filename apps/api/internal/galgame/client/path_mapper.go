@@ -10,15 +10,11 @@ var wikiPathPrefixes = []string{
 	"/galgame-resource",
 }
 
-// wikiSuffixMap maps frontend detail sub-route suffixes to their wiki equivalent.
-//
-//	/pr/all       → /prs
-//	/link/all     → /links
-//	/history/all  → /revisions
+// wikiSuffixMap maps frontend detail sub-route suffixes to their wiki
+// equivalent. (The /pr/all and /history/all entries retired in E3b with the
+// old-wire reads — only the detail page's links section remains.)
 var wikiSuffixMap = map[string]string{
-	"/pr/all":      "/prs",
-	"/link/all":    "/links",
-	"/history/all": "/revisions",
+	"/link/all": "/links",
 }
 
 // ToWikiPath converts a gateway request path (e.g. "/api/galgame-tag/foo") to

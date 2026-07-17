@@ -1,27 +1,18 @@
 // Parameterised revision-history hook. Drives the GalgameRevisionList
-// component for ALL five entity types (galgame + 4 taxonomy entities)
-// so the UI logic lives in one place; entity-specific routing is the
-// only differentiator and it folds into a tiny lookup table.
+// component for the FOUR taxonomy entity types so the UI logic lives in
+// one place. (The galgame branch retired in E3b — galgame history reads
+// the editing engine via /galgame/:gid/edit/revisions + the /history page.)
 //
 // Endpoints (kungal proxy paths — kungal's path_mapper handles the
-// /galgame/ vs bare /tag namespace difference; see path_mapper.go):
+// /galgame-<entity> namespace rewrite):
 //
-//   galgame: GET /galgame/:gid/history/all    → list (kungal-mapped to camelCase)
-//            GET /galgame/:gid/revisions/:rev/diff  → diff
-//            POST /galgame/:gid/revert        → revert
+//   GET /galgame-<entity>/:id/revisions[/:rev] → list / single
+//   POST /galgame-<entity>/:id/revert
 //
-//   taxonomy: GET /galgame-<entity>/:id/revisions[/:rev] → list / single
-//             POST /galgame-<entity>/:id/revert
-//
-// Note the asymmetry: galgame already exposed a kungal-mapped list
-// endpoint (history/all → revisions, camelCase via GetGalgameHistory)
-// AND a server-side diff endpoint (/revisions/:rev/diff). The taxonomy
-// path is ProxyGet for list/snapshot — there's no diff endpoint on
-// wiki for taxonomies in U3, so the FE computes the diff client-side
-// by pulling two adjacent snapshots (or current vs picked) and feeding
-// them to GalgameSnapshotDiff. List/snapshot routes are camelCase for
-// galgame (kungal handler) but snake_case verbatim for taxonomies
-// (ProxyGet) — `Revision` is normalised to a shared shape for the UI.
+// The list route is hydrated camelCase ({items,total}); the single-revision
+// snapshot is a verbatim snake_case wiki row. There's no server-side diff
+// endpoint for taxonomies, so the FE synthesises the diff from two adjacent
+// snapshots and feeds it to GalgameSnapshotDiff.
 
 // All four taxonomy entities (tag / official / engine / series) support
 // revision history. Series surfaces only its own name/alias/description
@@ -29,12 +20,7 @@
 // galgame-side revisions, not here — but that's still useful history, so
 // series is included (an earlier version excluded it; that decision is
 // removed).
-export type RevisionEntity =
-  | 'galgame'
-  | 'tag'
-  | 'official'
-  | 'engine'
-  | 'series'
+export type RevisionEntity = 'tag' | 'official' | 'engine' | 'series'
 
 export interface GalgameRevisionListItem {
   id: number
@@ -68,15 +54,7 @@ interface EndpointSet {
 }
 
 const endpointsFor = (entity: RevisionEntity, id: number): EndpointSet => {
-  if (entity === 'galgame') {
-    return {
-      list: `/galgame/${id}/history/all`,
-      rev: (n) => `/galgame/${id}/revisions/${n}`,
-      diff: (n) => `/galgame/${id}/revisions/${n}/diff`,
-      revert: `/galgame/${id}/revert`
-    }
-  }
-  // taxonomy: kungal's suffix-aware path_mapper takes care of the
+  // kungal's suffix-aware path_mapper takes care of the
   // /galgame/<entity>/ namespace rewrite.
   return {
     list: `/galgame-${entity}/${id}/revisions`,
@@ -186,14 +164,6 @@ export const useRevisionHistory = (
     if (diffCache[rev]) return diffCache[rev]!
     diffLoading.value = rev
     try {
-      if (ep.value.diff) {
-        // galgame: server-side diff endpoint returns the canonical shape.
-        const res = await kunFetch<SnapshotDiff>(ep.value.diff(rev), {
-          method: 'GET'
-        })
-        if (res) diffCache[rev] = res
-        return res ?? null
-      }
       // taxonomy: no server-side diff endpoint, so synthesise "what THIS
       // revision changed" = this revision's snapshot vs the PREVIOUS
       // revision's snapshot (the next-older entry in the newest-first list).

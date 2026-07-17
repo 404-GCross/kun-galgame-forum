@@ -180,22 +180,15 @@ func (a *App) setupRoutes() {
 	// literal "stats" segment must precede the /galgame/:gid catch-all (optAuth
 	// below) — same registration-order rule as /galgame/calendar above.
 	api.Get("/galgame/stats", a.GalgameCrossSourceHandler.Stats)
-	api.Get("/galgame/:gid/revisions", a.GalgameWikiHandler.ProxyGet)
-	api.Get("/galgame/:gid/revisions/:rev", a.GalgameWikiHandler.ProxyGet)
-	api.Get("/galgame/:gid/revisions/:rev/diff", a.GalgameWikiHandler.ProxyGet)
 	// Editing-engine reads (E3a; public like the wiki revision history always
-	// was): the engine-backed history + any-two-versions diff for the
-	// /galgame/:gid/history page. The distinct /edit/ segment keeps the legacy
-	// old-wire proxies above byte-identical until E3b retires them.
-	api.Get("/galgame/:gid/edit/revisions", a.GalgameEditHandler.Revisions)
+	// was): the engine-backed history diff + per-game proposal list. The
+	// old-wire read proxies (/revisions*, /prs*, /links, /aliases) retired in
+	// E3b — every kungal consumer reads the engine now. /edit/revisions lives
+	// in the optAuth group below: a logged-in reviewer gets can_revert.
 	api.Get("/galgame/:gid/edit/diff", a.GalgameEditHandler.Diff)
 	// Per-game proposal list (E3b; public like the old wire's PR list) —
 	// the owner's per-game review surface and everyone's transparency read.
 	api.Get("/galgame/:gid/edit/proposals", a.GalgameEditHandler.GameProposals)
-	api.Get("/galgame/:gid/prs", a.GalgameWikiHandler.ProxyGet)
-	api.Get("/galgame/:gid/prs/:id", a.GalgameWikiHandler.ProxyGet)
-	api.Get("/galgame/:gid/links", a.GalgameWikiHandler.ProxyGet)
-	api.Get("/galgame/:gid/aliases", a.GalgameWikiHandler.ProxyGet)
 	// Three-source (VNDB / Bangumi / EG) rating snapshot (wiki passthrough,
 	// public + display-only). 3-segment, so it never collides with /galgame/:gid.
 	api.Get("/galgame/:gid/scores", a.GalgameCrossSourceHandler.Scores)
@@ -304,9 +297,10 @@ func (a *App) setupRoutes() {
 	// anonymous-readable. Same stack-position rule as above: mounted BEFORE the
 	// mandatory-auth boundary so anonymous reads reach the handler.
 	a.ResourceCommentHandler.RegisterReads(optAuth)
-	optAuth.Get("/galgame/:gid/pr/all", a.GalgameWikiHandler.GetGalgamePRs)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameWikiHandler.GetGalgameLinks)
-	optAuth.Get("/galgame/:gid/history/all", a.GalgameWikiHandler.GetGalgameHistory)
+	// Engine-backed revision history (E3a/E3b): public read, but a logged-in
+	// reviewer (moderator / the game's creator) additionally gets can_revert.
+	optAuth.Get("/galgame/:gid/edit/revisions", a.GalgameEditHandler.Revisions)
 	optAuth.Get("/galgame/:gid", a.GalgameHandler.GetDetail)
 
 	// Galgame collections (收藏夹) — public/restricted visibility resolved with
@@ -482,9 +476,9 @@ func (a *App) setupRoutes() {
 	// every wiki write must traverse kungal so the middleware can attach
 	// the session-stored bearer token; ProxyWriteWithToken is the thin
 	// shim that does that. Endpoints with kungal-local side effects
-	// (Create/MergePR + PR submit/decline, which emit local "requested"/
-	// "declined"/"merged" notifications the wiki doesn't) go through
-	// GalgameHandler instead.
+	// (Create, which seeds the kungal-local stub) go through GalgameHandler
+	// instead; the old-wire PR writes retired in E3b (the editing-engine BFF
+	// carries their side effects now).
 	// POST /galgame is the "admin direct publish" bypass — wiki gates it
 	// to admin/moderator (see docs/galgame_wiki/01-galgame.md §POST). Most
 	// users go through POST /galgame/submit instead. We mirror the gate
@@ -510,16 +504,13 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame-edit/proposals/:id/amend", a.GalgameEditHandler.Amend)
 	authed.Post("/galgame-edit/proposals/:id/merge", a.GalgameEditHandler.Merge)
 	authed.Post("/galgame-edit/proposals/:id/decline", a.GalgameEditHandler.Decline)
-	authed.Put("/galgame/:gid", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	authed.Put("/galgame/:gid/prs/:id/merge", a.GalgameHandler.MergePR)
-	authed.Post("/galgame/:gid/revert", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame/:gid/prs", a.GalgameHandler.SubmitPR)
-	authed.Put("/galgame/:gid/prs/:id/decline", a.GalgameHandler.DeclinePR)
-	authed.Post("/galgame/:gid/links", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Delete("/galgame/:gid/links", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
-	authed.Post("/galgame/:gid/aliases", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Delete("/galgame/:gid/aliases", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
-	authed.Delete("/galgame/:gid/contributors/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	// Engine-backed revert (E3b — the old wire's owner-or-admin revert moved
+	// onto the new chain; the engine gates every restored field).
+	authed.Post("/galgame/:gid/edit/revert", a.GalgameEditHandler.Revert)
+	// The old-wire editor write proxies (PUT /galgame/:gid, PR
+	// submit/merge/decline, revert, links/aliases, contributors) retired in
+	// E3b — every kungal edit write flows through the editing engine above.
+	// The galgame face still serves them for apps/wiki until 07 retires it.
 	authed.Put("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
 	authed.Put("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
 	authed.Put("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))

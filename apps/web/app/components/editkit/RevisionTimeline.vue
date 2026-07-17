@@ -141,6 +141,9 @@ const userName = (uid?: number) => {
               · 审核修正：{{ userName(revision.amender_uid) }}
             </template>
           </p>
+
+          <!-- Host-supplied per-revision actions (e.g. revert) -->
+          <slot name="actions" :revision="revision" />
         </div>
       </div>
     </div>

@@ -63,6 +63,8 @@ export interface GalgameEditRevision {
   legacy_action?: string
   legacy_note?: string
   legacy_minor?: boolean
+  /** The migrated row's source (old-wire) revision row id. */
+  legacy_id?: number
 }
 
 export interface GalgameEditUser {
@@ -117,6 +119,13 @@ export interface GalgameEditRevisionList {
   gid: number
   items: GalgameEditRevision[]
   users: Record<number, GalgameEditUser>
+  /** E3b: the session user may revert (moderator or the game's creator). */
+  can_revert?: boolean
+}
+
+export interface GalgameEditRevertResult {
+  proposal: GalgameEditProposal
+  revision: GalgameEditRevision
 }
 
 export interface GalgameEditFieldDiff {

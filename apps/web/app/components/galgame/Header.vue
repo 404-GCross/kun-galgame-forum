@@ -197,10 +197,8 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               添加评分
             </KunButton>
 
-            <GalgameRewrite :galgame="galgame" />
-
-            <!-- E3a: the schema-driven proposal editor (the engine review
-                 queue), alongside the legacy rewrite editor until E3b. -->
+            <!-- The schema-driven proposal editor (the engine review queue).
+                 The legacy rewrite editor retired in E3b. -->
             <KunButton
               variant="light"
               color="default"

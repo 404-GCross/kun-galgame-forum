@@ -177,36 +177,9 @@ export const kunGalgameSortFieldOptions: KunSelectOption[] = [
   { value: 'created', label: '创建顺序' }
 ]
 
-export const KUN_GALGAME_RESOURCE_PULL_REQUEST_STATUS_MAP: Record<
-  number,
-  string
-> = {
-  0: '进行中',
-  1: '已合并',
-  2: '已拒绝'
-}
-
-export const KUN_GALGAME_RESOURCE_PULL_REQUEST_ACTION_MAP: Record<
-  string,
-  string
-> = {
-  created: '创建了',
-  updated: '更新了',
-  deleted: '删除了',
-  merged: '合并了',
-  declined: '拒绝了'
-}
-
-export const KUN_GALGAME_RESOURCE_PULL_REQUEST_TYPE_MAP: Record<
-  string,
-  string
-> = {
-  galgame: 'Galgame',
-  banner: '预览图',
-  link: '相关链接',
-  pr: '更新请求'
-}
-
+// The old PR status/action/type maps retired with the old-wire editor (E3b);
+// the field-label map below stays — SnapshotDiff (taxonomy history + the
+// activity feed's edit cards) still renders snapshot keys through it.
 export const KUN_GALGAME_RESOURCE_PULL_REQUEST_I18N_FIELD_MAP: Record<
   string,
   string | KunLanguage

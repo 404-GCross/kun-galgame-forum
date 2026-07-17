@@ -86,6 +86,16 @@ type EditRevision struct {
 	LegacyAction  string         `json:"legacy_action,omitempty"`
 	LegacyNote    string         `json:"legacy_note,omitempty"`
 	LegacyMinor   bool           `json:"legacy_minor,omitempty"`
+	// LegacyID is the migrated row's source galgame_revision id (the old
+	// wire's row id) — resolves pre-engine revision-row ids to seqs.
+	LegacyID *int64 `json:"legacy_id,omitempty"`
+}
+
+// EditRevertResult is the revert reply: the sugar proposal + the produced
+// revision (action=reverted; history is never deleted).
+type EditRevertResult struct {
+	Proposal EditProposal `json:"proposal"`
+	Revision EditRevision `json:"revision"`
 }
 
 // EditSchemaField is one field of the edit-schema projection: shape + the
@@ -206,6 +216,17 @@ func (c *Client) DeclineEditProposal(ctx context.Context, id int64, note string,
 func (c *Client) WithdrawEditProposal(ctx context.Context, id int64, actor EditActor) (*EditProposal, error) {
 	return editPost[EditProposal](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10)+"/withdraw",
 		map[string]any{"actor": actor})
+}
+
+// RevertEditEntity restores an entity's registered fields to a historical
+// revision through the engine's merge path (a NEW revision, action=reverted;
+// the log is append-only). Field-level authorization is the engine's: the
+// review rule per restored field (owners pass on kungal's default keys).
+func (c *Client) RevertEditEntity(ctx context.Context, site, entityType string, entityID int64, toSeq int, note string, actor EditActor) (*EditRevertResult, error) {
+	return editPost[EditRevertResult](ctx, c, editBase+"/revert", map[string]any{
+		"entity_type": entityType, "entity_id": entityID, "to_seq": toSeq,
+		"site": site, "note": note, "actor": actor,
+	})
 }
 
 // ListEditProposals lists proposals newest-first (the review queue and the

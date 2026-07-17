@@ -80,23 +80,35 @@ func NewWikiService(
 // Generic proxy
 // ──────────────────────────────────────────
 
-// ProxyGet forwards a GET request to the wiki service and returns the raw body.
-// The gateway path is translated to the wiki path via client.ToWikiPath.
-func (s *WikiService) ProxyGet(
-	ctx context.Context,
-	gatewayPath string,
-	query url.Values,
-) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.Get(ctx, client.ToWikiPath(gatewayPath), query)
+// The bare ProxyGet (the old-wire revision/PR/links/aliases read proxies'
+// vehicle) retired in E3b with its routes; ProxyGetWithToken below stays for
+// the taxonomy revision reads.
+
+// wikiRevisionRow / wikiRevisionListResp mirror the wiki's revision list
+// shape (shared by the four taxonomy entities).
+type wikiRevisionRow struct {
+	ID        int    `json:"id"`
+	GalgameID int    `json:"galgame_id"`
+	Revision  int    `json:"revision"`
+	UserID    int    `json:"user_id"`
+	Action    string `json:"action"`
+	Note      string `json:"note"`
+	IsMinor   bool   `json:"is_minor"`
+	Created   string `json:"created"`
+}
+
+type wikiRevisionListResp struct {
+	Items []wikiRevisionRow `json:"items"`
+	Total int64             `json:"total"`
 }
 
 // GetTaxonomyRevisions lists a taxonomy entity's (tag/official/engine)
-// revision history, hydrating each row's user_id into a full user object —
-// exactly like GetGalgameHistory does for galgame revisions, so the FE sees
-// one camelCase {items,total} shape with a real name/avatar instead of a raw
-// snake_case wiki row (whose missing `user` field otherwise crashed the list
-// renderer). `entity` is the wiki resource name (tag/official/engine); the
-// bearer is forwarded because the wiki gates these GETs behind auth.
+// revision history, hydrating each row's user_id into a full user object,
+// so the FE sees one camelCase {items,total} shape with a real name/avatar
+// instead of a raw snake_case wiki row (whose missing `user` field otherwise
+// crashed the list renderer). `entity` is the wiki resource name
+// (tag/official/engine); the bearer is forwarded because the wiki gates
+// these GETs behind auth.
 func (s *WikiService) GetTaxonomyRevisions(
 	ctx context.Context,
 	entity, id, token string,
@@ -244,128 +256,6 @@ func (s *WikiService) GetGalgameLinks(
 	return out, nil
 }
 
-// ──────────────────────────────────────────
-// Galgame History (revisions)
-// ──────────────────────────────────────────
-
-type wikiRevisionRow struct {
-	ID        int    `json:"id"`
-	GalgameID int    `json:"galgame_id"`
-	Revision  int    `json:"revision"`
-	UserID    int    `json:"user_id"`
-	Action    string `json:"action"`
-	Note      string `json:"note"`
-	IsMinor   bool   `json:"is_minor"`
-	Created   string `json:"created"`
-}
-
-type wikiRevisionListResp struct {
-	Items []wikiRevisionRow `json:"items"`
-	Total int64             `json:"total"`
-}
-
-// GetGalgameHistory fetches revision history for a galgame and resolves users.
-func (s *WikiService) GetGalgameHistory(
-	ctx context.Context,
-	gid string,
-	query url.Values,
-) (*dto.GalgameRevisionListPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/"+gid+"/revisions", query)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	var parsed wikiRevisionListResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return &dto.GalgameRevisionListPage{Items: []dto.GalgameRevision{}, Total: 0}, nil
-	}
-
-	ids := make([]int, len(parsed.Items))
-	for i, r := range parsed.Items {
-		ids[i] = r.UserID
-	}
-	userMap := s.userClient.Hydrate(ctx, ids)
-
-	// Drop revisions authored by a banned user.
-	items := make([]dto.GalgameRevision, 0, len(parsed.Items))
-	for _, r := range parsed.Items {
-		if !userclient.IsRenderable(userMap[r.UserID]) {
-			continue
-		}
-		items = append(items, dto.GalgameRevision{
-			ID:       r.ID,
-			Revision: r.Revision,
-			Action:   r.Action,
-			Note:     r.Note,
-			User:     userBriefToDTO(userMap[r.UserID]),
-			IsMinor:  r.IsMinor,
-			Created:  r.Created,
-		})
-	}
-	return &dto.GalgameRevisionListPage{Items: items, Total: parsed.Total}, nil
-}
-
-// ──────────────────────────────────────────
-// Galgame PRs
-// ──────────────────────────────────────────
-
-type wikiPRRow struct {
-	ID            int     `json:"id"`
-	GalgameID     int     `json:"galgame_id"`
-	Status        int     `json:"status"`
-	Title         string  `json:"title"`
-	Message       string  `json:"message"`
-	BaseRevision  int     `json:"base_revision"`
-	UserID        int     `json:"user_id"`
-	CompletedTime *string `json:"completed_time"`
-	Created       string  `json:"created"`
-}
-
-type wikiPRListResp struct {
-	Items []wikiPRRow `json:"items"`
-	Total int64       `json:"total"`
-}
-
-// GetGalgamePRs fetches the PR list for a galgame and resolves submitter users.
-func (s *WikiService) GetGalgamePRs(
-	ctx context.Context,
-	gid string,
-	query url.Values,
-) (*dto.GalgamePRListPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/"+gid+"/prs", query)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	var parsed wikiPRListResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return &dto.GalgamePRListPage{Items: []dto.GalgamePR{}, Total: 0}, nil
-	}
-
-	ids := make([]int, len(parsed.Items))
-	for i, r := range parsed.Items {
-		ids[i] = r.UserID
-	}
-	userMap := s.userClient.Hydrate(ctx, ids)
-
-	// Drop PRs submitted by a banned user.
-	items := make([]dto.GalgamePR, 0, len(parsed.Items))
-	for _, r := range parsed.Items {
-		if !userclient.IsRenderable(userMap[r.UserID]) {
-			continue
-		}
-		items = append(items, dto.GalgamePR{
-			ID:            r.ID,
-			GalgameID:     r.GalgameID,
-			Status:        r.Status,
-			Title:         r.Title,
-			Message:       r.Message,
-			BaseRevision:  r.BaseRevision,
-			User:          userBriefToDTO(userMap[r.UserID]),
-			CompletedTime: r.CompletedTime,
-			Created:       r.Created,
-		})
-	}
-	return &dto.GalgamePRListPage{Items: items, Total: parsed.Total}, nil
-}
-
+// The old-wire galgame revision/PR list reads (GetGalgameHistory /
+// GetGalgamePRs and their row shapes) retired in E3b — kungal reads the
+// editing engine now (edit_handler.go).

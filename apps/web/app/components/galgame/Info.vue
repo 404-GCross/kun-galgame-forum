@@ -15,22 +15,10 @@ defineProps<{
   releaseDateTBA?: boolean
 }>()
 
-// Merged "编辑历史 + 更新请求" launcher. The modal itself now lives once at the
-// page root (Galgame.vue) so the pending-PR banner can share the same instance;
-// this button just opens it on the 编辑历史 tab via the injected controller.
-const activity = inject<{ open: boolean; tab: 'history' | 'pr' }>(
-  'galgameActivity'
-)
-// E3a: the engine-backed history page link needs the gid; the detail object
-// is provided at the page root.
+// E3b: the legacy 编辑历史/更新请求 modal retired — history lives on the
+// engine-backed /galgame/:gid/history page. The detail object is provided
+// at the page root (the link needs the gid).
 const galgame = inject<GalgameDetail>('galgame')
-const openHistory = () => {
-  if (!activity) {
-    return
-  }
-  activity.tab = 'history'
-  activity.open = true
-}
 
 const getLanguageName = getGalgameOriginalLanguageName
 </script>
@@ -110,29 +98,18 @@ const getLanguageName = getGalgameOriginalLanguageName
       </div>
     </dl>
 
-    <KunButton
-      variant="flat"
-      color="primary"
-      size="sm"
-      full-width
-      @click="openHistory"
-    >
-      <KunIcon name="lucide:history" />
-      查看编辑历史与更新请求
-    </KunButton>
-
-    <!-- E3a: the engine-backed revision history page (includes the migrated
+    <!-- The engine-backed revision history page (includes the migrated
          pre-engine history + any-two-versions diff). -->
     <KunButton
       v-if="galgame"
       variant="flat"
-      color="default"
+      color="primary"
       size="sm"
       full-width
       @click="navigateTo(`/galgame/${galgame.id}/history`)"
     >
-      <KunIcon name="lucide:git-compare-arrows" />
-      修订历史（新版）
+      <KunIcon name="lucide:history" />
+      修订历史
     </KunButton>
   </KunCard>
 </template>

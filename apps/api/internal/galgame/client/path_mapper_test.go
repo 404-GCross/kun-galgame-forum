@@ -31,12 +31,11 @@ func TestToWikiPath(t *testing.T) {
 		{"series modal untouched", "/api/galgame-series/modal", "/series/modal"},
 		{"resource untouched", "/api/galgame-resource/3", "/resource/3"},
 
-		// Regression: galgame's own revisions / revert paths are NOT under
-		// the /galgame-<entity>/ prefix (different shape) and must keep
-		// flowing through the existing as-is / suffix routes.
-		{"galgame :gid revisions", "/api/galgame/8/revisions", "/galgame/8/revisions"},
-		{"galgame :gid revert", "/api/galgame/8/revert", "/galgame/8/revert"},
-		{"galgame :gid /history/all → /revisions", "/api/galgame/8/history/all", "/galgame/8/revisions"},
+		// Regression: galgame's own detail sub-routes are NOT under the
+		// /galgame-<entity>/ prefix (different shape) and must keep flowing
+		// through the as-is / suffix routes. (The /history/all and /pr/all
+		// suffixes retired in E3b with the old-wire reads.)
+		{"galgame :gid link/all → /links", "/api/galgame/8/link/all", "/galgame/8/links"},
 
 		// Negative: junk suffixes on taxonomy entities still fall through
 		// the namespace rule (only revisions/revert keep the namespace).

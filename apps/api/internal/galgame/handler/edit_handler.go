@@ -364,8 +364,10 @@ func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient
 	}
 }
 
-// Revisions — GET /galgame/:gid/edit/revisions (public — the wiki's revision
-// history has always been a public read). Includes the E2-migrated history.
+// Revisions — GET /galgame/:gid/edit/revisions (optional auth; public like
+// the wiki's revision history always was). Includes the E2-migrated history.
+// A logged-in reviewer — moderator or the game's creator (E3b) — additionally
+// gets can_revert so the history page can offer the revert control.
 func (h *EditHandler) Revisions(c fiber.Ctx) error {
 	gid, appErr := parseGid(c)
 	if appErr != nil {
@@ -382,9 +384,56 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 			uids[int(*items[i].AmenderUID)] = true
 		}
 	}
+	canRevert := false
+	if user := middleware.GetUser(c); user != nil {
+		canRevert = role.CanModerate(user.Roles) ||
+			h.isGameOwner(c.Context(), gid, int64(user.ID))
+	}
 	return response.OK(c, fiber.Map{
 		"gid": gid, "items": items, "users": h.userMap(c.Context(), uids),
+		"can_revert": canRevert,
 	})
+}
+
+// editRevertRequest restores the game to a historical revision.
+type editRevertRequest struct {
+	ToSeq int    `json:"to_seq"`
+	Note  string `json:"note"`
+}
+
+// Revert — POST /galgame/:gid/edit/revert (auth; moderator or the game's
+// creator — parity with the old wire's owner-or-admin revert). The engine
+// enforces the field-level review rule on every restored field, so an owner
+// can only revert what they may adjudicate (the kungal default keys).
+func (h *EditHandler) Revert(c fiber.Ctx) error {
+	gid, appErr := parseGid(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	actor, appErr := editActor(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	var req editRevertRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.Error(c, errors.ErrBadRequest("请求格式错误"))
+	}
+	if req.ToSeq < 1 {
+		return response.Error(c, errors.ErrBadRequest("需要目标版本号"))
+	}
+	if len(req.Note) > 2000 {
+		return response.Error(c, errors.ErrValidation("说明过长"))
+	}
+	ctx := c.Context()
+	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
+	if !role.CanModerate(actor.Roles) && !actor.IsEntityOwner {
+		return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
+	}
+	result, err := h.catalog.RevertEditEntity(ctx, catalogSite, entityTypeGame, gid, req.ToSeq, req.Note, actor)
+	if err != nil {
+		return editError(c, err)
+	}
+	return response.OK(c, result)
 }
 
 // Diff — GET /galgame/:gid/edit/diff?from=&to= (public).

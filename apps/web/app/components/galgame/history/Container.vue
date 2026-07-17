@@ -13,7 +13,7 @@ const gid = computed(() => parseInt((route.params as { gid: string }).gid))
 
 useKunDisableSeo('Galgame 修订历史')
 
-const { data, status } = await useKunFetch<GalgameEditRevisionList>(
+const { data, status, refresh } = await useKunFetch<GalgameEditRevisionList>(
   `/galgame/${gid.value}/edit/revisions`,
   { method: 'GET', watch: false, query: { limit: 200 } }
 )
@@ -30,6 +30,38 @@ const handleDiff = async (fromSeq: number, toSeq: number) => {
     { method: 'GET', query: { from: fromSeq, to: toSeq } }
   )
   diffLoading.value = false
+}
+
+// Revert (E3b — the old wire's owner-or-admin revert, engine-backed): shown
+// only when the BFF says the session user may revert (moderator or the
+// game's creator); the engine still gates every restored field.
+const latestSeq = computed(() => data.value?.items?.[0]?.seq ?? 0)
+const revertTarget = ref<number | null>(null)
+const revertOpen = computed({
+  get: () => revertTarget.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      revertTarget.value = null
+    }
+  }
+})
+const reverting = ref(false)
+
+const handleRevert = async () => {
+  if (revertTarget.value === null || reverting.value) {
+    return
+  }
+  reverting.value = true
+  const result = await kunFetch<GalgameEditRevertResult>(
+    `/galgame/${gid.value}/edit/revert`,
+    { method: 'POST', body: { to_seq: revertTarget.value } }
+  )
+  reverting.value = false
+  revertTarget.value = null
+  if (result) {
+    useMessage('回滚成功（已生成一条新的修订记录）', 'success')
+    await refresh()
+  }
 }
 </script>
 
@@ -75,13 +107,44 @@ const handleDiff = async (fromSeq: number, toSeq: number) => {
         :label-for="galgameEditLabel"
         :legacy-action-labels="GALGAME_EDIT_LEGACY_ACTION_LABELS"
         @diff="handleDiff"
-      />
+      >
+        <template #actions="{ revision }">
+          <KunButton
+            v-if="data.can_revert && revision.seq < latestSeq"
+            variant="light"
+            color="warning"
+            size="sm"
+            @click="revertTarget = revision.seq"
+          >
+            <KunIcon name="lucide:undo-2" />
+            回滚到此版本
+          </KunButton>
+        </template>
+      </EditkitRevisionTimeline>
     </KunCard>
 
     <KunNull
       v-else-if="status !== 'pending'"
       description="无法加载修订历史（条目不存在或编辑服务暂不可用）"
     />
+
+    <KunModal v-model="revertOpen">
+      <div class="space-y-4">
+        <KunHeader
+          :name="`回滚到版本 #${revertTarget}`"
+          description="回滚会把条目恢复到该版本的字段值，并生成一条新的修订记录（历史不会被删除）"
+          scale="h3"
+        />
+        <div class="flex justify-end gap-2">
+          <KunButton variant="light" color="default" @click="revertTarget = null">
+            取消
+          </KunButton>
+          <KunButton color="warning" :loading="reverting" @click="handleRevert">
+            确认回滚
+          </KunButton>
+        </div>
+      </div>
+    </KunModal>
 
     <KunModal v-model="diffOpen" size="lg">
       <div class="space-y-4">

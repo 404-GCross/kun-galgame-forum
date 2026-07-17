@@ -306,13 +306,6 @@ type WikiSeriesBrief struct {
 	Updated     string             `json:"updated"`
 }
 
-// WikiPRDetail is the shape returned by /galgame/:gid/prs/:id (inside "pr").
-type WikiPRDetail struct {
-	PR struct {
-		UserID int `json:"user_id"`
-	} `json:"pr"`
-}
-
 // WikiCreatedResp is the shape returned by POST /galgame (just the ID).
 type WikiCreatedResp struct {
 	ID int `json:"id"`

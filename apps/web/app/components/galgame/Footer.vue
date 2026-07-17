@@ -26,7 +26,18 @@ const galgame = inject<GalgameDetail>('galgame')
         :is-favorited="galgame.is_favorited"
       />
 
-      <GalgameRewrite :galgame="galgame" />
+      <!-- E3b: the legacy rewrite entry retired — editing lives on the
+           engine-backed /galgame/:gid/edit page (header button). -->
+      <KunButton
+        variant="light"
+        color="default"
+        size="sm"
+        @click="navigateTo(`/galgame/${galgame.id}/edit`)"
+      >
+        <span class="flex items-center gap-1">
+          <KunIcon name="lucide:file-pen-line" />编辑资料
+        </span>
+      </KunButton>
     </div>
   </div>
 </template>
