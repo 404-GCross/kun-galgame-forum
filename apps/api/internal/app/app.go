@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	activityHandler "kun-galgame-api/internal/activity/handler"
 	activityRepo "kun-galgame-api/internal/activity/repository"
@@ -266,6 +267,38 @@ func New(cfg *config.Config) *App {
 		slog.Info("trust service client configured", "base_url", cfg.Trust.BaseURL)
 	} else {
 		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
+	}
+
+	// Best-effort declarative subject-kind registration (onboarding §5). The
+	// forum's COMPLETE kind universe is declared in code (gate.CanonicalSubjectKinds)
+	// and self-reported to the trust registry on boot — key-only + idempotent, so
+	// a re-run converges to all-`unchanged` and never clobbers admin-configured
+	// callbacks. This is registration hygiene, NOT a moderation feature, so it is
+	// deliberately NOT gated on KUN_TRUST_CHECK/SCAN_ENABLED — only on the client
+	// being wired. Fire-and-forget in a goroutine with a short timeout: any
+	// failure warns and moves on, never blocking boot.
+	if trustCli.Configured() {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			results, err := trustCli.EnsureSubjectKinds(ctx, gate.CanonicalSubjectKindItems())
+			if err != nil {
+				slog.Warn("trust subject-kind ensure failed (non-fatal)", "err", err)
+				return
+			}
+			// Steady state is quiet: surface only the kinds that actually changed.
+			changed := make([]string, 0, len(results))
+			for _, r := range results {
+				if r.Result != "unchanged" {
+					changed = append(changed, r.Key+"="+r.Result)
+				}
+			}
+			if len(changed) > 0 {
+				slog.Info("trust subject-kind ensure applied", "changed", changed, "total", len(results))
+			} else {
+				slog.Info("trust subject-kind ensure: all kinds already registered", "total", len(results))
+			}
+		}()
 	}
 
 	// Trust moderation gates for the forum write surface. Wave 1 = topic + reply
