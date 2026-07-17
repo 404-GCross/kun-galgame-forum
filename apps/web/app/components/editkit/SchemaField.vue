@@ -23,8 +23,8 @@ const emit = defineEmits<{
 const control = computed(() => resolveControl(props.field, props.config))
 const label = computed(() => props.config?.label ?? props.field.key)
 
-// Image kinds are display-only this wave (upload pipelines are a later
-// wave); deprecated fields render but never edit.
+// Image kinds edit through the host's upload hook (E3b) — without one they
+// stay display-only; deprecated fields render but never edit.
 const readonlyReason = computed(() => {
   if (props.field.locked) {
     return '锁定字段'
@@ -36,10 +36,12 @@ const readonlyReason = computed(() => {
     return '无编辑权限'
   }
   if (
-    control.value === 'image' ||
-    control.value === 'image-list' ||
-    control.value === 'readonly'
+    (control.value === 'image' || control.value === 'image-list') &&
+    !props.config?.uploadImage
   ) {
+    return '本期只读'
+  }
+  if (control.value === 'readonly') {
     return '本期只读'
   }
   return ''
@@ -159,19 +161,104 @@ const selectOptions = computed(() =>
   (props.config?.options ?? []).map((o) => ({ value: o.value, label: o.label }))
 )
 
-// Readonly image rendering: single hash/URL or an item list.
+// Image rendering: single hash/URL or an item list.
+const resolveImageURL = (v: unknown) =>
+  props.config?.resolveImage ? props.config.resolveImage(v) : ''
+
 const imageURLs = computed(() => {
-  const resolve = props.config?.resolveImage
-  const toURL = (v: unknown) => (resolve ? resolve(v) : '')
   if (control.value === 'image') {
-    const url = toURL(props.modelValue)
+    const url = resolveImageURL(props.modelValue)
     return url ? [url] : []
   }
   if (control.value === 'image-list' && Array.isArray(props.modelValue)) {
-    return props.modelValue.map(toURL).filter((u) => u !== '')
+    return props.modelValue.map(resolveImageURL).filter((u) => u !== '')
   }
   return []
 })
+
+// ---- image editing (E3b: upload + add/remove/reorder through the host's
+// upload hook; the values stay opaque to the kit) -------------------------
+
+const imageItems = computed<unknown[]>(() =>
+  Array.isArray(props.modelValue) ? (props.modelValue as unknown[]) : []
+)
+
+const isUploading = ref(false)
+const uploadProgress = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+
+const pickFiles = () => fileInput.value?.click()
+
+const onFilesPicked = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? []).filter((f) =>
+    f.type.startsWith('image/')
+  )
+  input.value = ''
+  const upload = props.config?.uploadImage
+  if (!upload || files.length === 0 || isUploading.value) {
+    return
+  }
+  isUploading.value = true
+  try {
+    if (control.value === 'image') {
+      const file = files[0]
+      if (!file) {
+        return
+      }
+      uploadProgress.value = '上传中'
+      const value = await upload(file, [])
+      if (value !== null && value !== undefined) {
+        emit('update:modelValue', value)
+      }
+      return
+    }
+    // image-list: sequential uploads so the progress counter is honest.
+    let items = [...imageItems.value]
+    for (const [i, file] of files.entries()) {
+      uploadProgress.value =
+        files.length > 1 ? `上传中 ${i + 1}/${files.length}` : '上传中'
+      const item = await upload(file, items)
+      if (item !== null && item !== undefined) {
+        items = [...items, item]
+      }
+    }
+    emitImageItems(items)
+  } finally {
+    isUploading.value = false
+    uploadProgress.value = ''
+  }
+}
+
+const emitImageItems = (items: unknown[]) => {
+  const normalize = props.config?.normalizeItems
+  emit('update:modelValue', normalize ? normalize(items) : items)
+}
+
+const clearImage = () => emit('update:modelValue', '')
+
+const removeImageItem = (index: number) => {
+  emitImageItems(imageItems.value.filter((_, i) => i !== index))
+}
+
+const moveImageItem = (index: number, delta: number) => {
+  const items = [...imageItems.value]
+  const target = index + delta
+  const a = items[index]
+  const b = items[target]
+  if (a === undefined || b === undefined) {
+    return
+  }
+  items[index] = b
+  items[target] = a
+  emitImageItems(items)
+}
+
+const pinImageItem = (index: number) => {
+  const items = [...imageItems.value]
+  const picked = items.splice(index, 1)
+  emitImageItems([...picked, ...items])
+}
 </script>
 
 <template>
@@ -266,6 +353,126 @@ const imageURLs = computed(() => {
           {{ config.description }}
         </p>
       </div>
+      <!-- Single image (E3b): preview + replace/clear through the host's
+           upload hook. The stored value stays opaque to the kit. -->
+      <div v-else-if="control === 'image'" class="space-y-2">
+        <img
+          v-if="imageURLs[0]"
+          :src="imageURLs[0]"
+          loading="lazy"
+          class="max-h-32 max-w-full rounded object-cover"
+        />
+        <div class="flex items-center gap-2">
+          <KunButton
+            variant="flat"
+            color="default"
+            size="sm"
+            :disabled="isUploading"
+            @click="pickFiles"
+          >
+            <KunIcon name="lucide:upload" />
+            {{ isUploading ? uploadProgress : imageURLs[0] ? '更换图片' : '上传图片' }}
+          </KunButton>
+          <KunButton
+            v-if="imageURLs[0]"
+            variant="light"
+            color="danger"
+            size="sm"
+            :disabled="isUploading"
+            @click="clearImage"
+          >
+            移除
+          </KunButton>
+        </div>
+        <p v-if="config?.description" class="text-default-400 text-xs">
+          {{ config.description }}
+        </p>
+      </div>
+
+      <!-- Image list (E3b): upload/append, remove, reorder; item 0 renders
+           the host's pinned badge (e.g. the cover set's banner). -->
+      <div v-else-if="control === 'image-list'" class="space-y-2">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          <div
+            v-for="(item, index) in imageItems"
+            :key="index"
+            class="border-default-200 relative overflow-hidden rounded border"
+            :class="{
+              'ring-primary border-primary ring-2':
+                config?.pinFirstLabel && index === 0
+            }"
+          >
+            <img
+              :src="resolveImageURL(item)"
+              loading="lazy"
+              class="aspect-video w-full object-cover"
+            />
+            <KunChip
+              v-if="config?.pinFirstLabel && index === 0"
+              color="primary"
+              variant="solid"
+              size="sm"
+              class="pointer-events-none absolute top-1 left-1"
+            >
+              {{ config.pinFirstLabel }}
+            </KunChip>
+            <div class="absolute top-1 right-1 flex gap-1">
+              <KunButton
+                v-if="config?.pinFirstLabel && index > 0"
+                :is-icon-only="true"
+                size="sm"
+                variant="solid"
+                color="default"
+                @click="pinImageItem(index)"
+              >
+                <KunIcon name="lucide:pin" />
+              </KunButton>
+              <KunButton
+                v-if="index > 0"
+                :is-icon-only="true"
+                size="sm"
+                variant="solid"
+                color="default"
+                @click="moveImageItem(index, -1)"
+              >
+                <KunIcon name="lucide:arrow-left" />
+              </KunButton>
+              <KunButton
+                v-if="index < imageItems.length - 1"
+                :is-icon-only="true"
+                size="sm"
+                variant="solid"
+                color="default"
+                @click="moveImageItem(index, 1)"
+              >
+                <KunIcon name="lucide:arrow-right" />
+              </KunButton>
+              <KunButton
+                :is-icon-only="true"
+                size="sm"
+                variant="solid"
+                color="danger"
+                @click="removeImageItem(index)"
+              >
+                <KunIcon name="lucide:trash-2" />
+              </KunButton>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="border-default-200 text-default-400 hover:border-primary hover:text-primary flex aspect-video cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed text-sm"
+            :disabled="isUploading"
+            @click="pickFiles"
+          >
+            <KunIcon :name="isUploading ? 'lucide:loader' : 'lucide:plus'" />
+            {{ isUploading ? uploadProgress : '添加图片' }}
+          </button>
+        </div>
+        <p v-if="config?.description" class="text-default-400 text-xs">
+          {{ config.description }}
+        </p>
+      </div>
+
       <KunInput
         v-else
         :model-value="textBuffer"
@@ -273,6 +480,16 @@ const imageURLs = computed(() => {
         :placeholder="config?.placeholder"
         :description="config?.description"
         @update:model-value="emitText"
+      />
+
+      <input
+        v-if="control === 'image' || control === 'image-list'"
+        ref="fileInput"
+        type="file"
+        accept="image/*"
+        :multiple="control === 'image-list'"
+        class="hidden"
+        @change="onFilesPicked"
       />
     </template>
   </div>

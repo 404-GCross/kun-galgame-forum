@@ -16,6 +16,10 @@ const proposalId = computed(() => parseInt((route.params as { id: string }).id))
 
 useKunDisableSeo('审阅提案')
 
+// Entry authorization lives in the BFF (E3b: moderators AND the game's
+// creator pass) — the page trusts the fetch outcome instead of duplicating
+// the policy client-side. Only the exit destination branches: moderators go
+// back to the site-wide queue, owners to their game's edit page.
 const { canModerate } = useRole()
 
 const { data, status, refresh } = await useKunFetch<GalgameEditProposalDetail>(
@@ -25,6 +29,11 @@ const { data, status, refresh } = await useKunFetch<GalgameEditProposalDetail>(
 
 const proposal = computed(() => data.value?.proposal)
 const isOpen = computed(() => proposal.value?.status === 'open')
+const exitTo = computed(() =>
+  canModerate.value
+    ? '/galgame-edit/review'
+    : `/galgame/${proposal.value?.entity_id ?? ''}/edit`
+)
 const effective = computed(
   () => proposal.value?.effective_patch ?? proposal.value?.patch ?? {}
 )
@@ -119,7 +128,7 @@ const handleMerge = async () => {
       hasAmendment.value ? '已修正并合并（双方署名）' : '提案已合并',
       'success'
     )
-    await navigateTo('/galgame-edit/review')
+    await navigateTo(exitTo.value)
   }
 }
 
@@ -140,7 +149,7 @@ const handleDecline = async () => {
   declineOpen.value = false
   if (declined) {
     useMessage('提案已拒绝', 'success')
-    await navigateTo('/galgame-edit/review')
+    await navigateTo(exitTo.value)
   }
 }
 
@@ -154,9 +163,7 @@ const userName = (uid?: number) => {
 
 <template>
   <div class="mx-auto flex max-w-3xl flex-col gap-3">
-    <KunNull v-if="!canModerate" description="需要管理权限" />
-
-    <template v-else-if="data && proposal">
+    <template v-if="data && proposal">
       <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
         <KunHeader :name="`审阅提案 #${proposal.id}`" scale="h2" />
         <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -172,10 +179,10 @@ const userName = (uid?: number) => {
             color="default"
             size="sm"
             class-name="ml-auto"
-            @click="navigateTo('/galgame-edit/review')"
+            @click="navigateTo(exitTo)"
           >
             <KunIcon name="lucide:arrow-left" />
-            返回队列
+            {{ canModerate ? '返回队列' : '返回编辑页' }}
           </KunButton>
         </div>
         <KunInfo

@@ -26,6 +26,27 @@ const { data: mine, refresh: refreshMine } =
     query: { gid: gid.value }
   })
 
+// Open proposals on this game (public read). For a reviewer — a moderator OR
+// the game's creator (owner-review, E3b) — the ones from other users render
+// as an inline review surface linking to the workbench.
+const { data: pending, refresh: refreshPending } =
+  await useKunFetch<GalgameEditProposalList>(
+    `/galgame/${gid.value}/edit/proposals`,
+    { method: 'GET', watch: false }
+  )
+
+const userStore = usePersistUserStore()
+const reviewable = computed(() => {
+  if (!bootstrap.value?.can_review) {
+    return []
+  }
+  return (pending.value?.items ?? []).filter(
+    (p) => p.status === 'open' && p.proposer_uid !== userStore.id
+  )
+})
+
+const { canModerate } = useRole()
+
 const gameName = computed(() => {
   const values = bootstrap.value?.values ?? {}
   const name: KunLanguage = {
@@ -62,7 +83,7 @@ const handleSubmit = async () => {
     useMessage('提案已提交，等待审核', 'success')
   }
   note.value = ''
-  await refreshMine()
+  await Promise.all([refreshMine(), refreshPending()])
 }
 
 const withdrawing = ref(false)
@@ -112,7 +133,7 @@ const handleWithdraw = async (id: number) => {
             修订历史
           </KunButton>
           <KunButton
-            v-if="bootstrap.can_review"
+            v-if="canModerate"
             variant="light"
             color="primary"
             size="sm"
@@ -123,6 +144,34 @@ const handleWithdraw = async (id: number) => {
           </KunButton>
         </div>
       </KunCard>
+
+      <!-- Open proposals from OTHER users, for reviewers: moderators and the
+           game's creator (owner-review, E3b) adjudicate in the workbench -->
+      <div v-if="reviewable.length" class="space-y-2">
+        <EditkitProposalCard
+          v-for="item in reviewable"
+          :key="item.id"
+          :proposal="item"
+          :label-for="galgameEditLabel"
+          :proposer="pending?.users?.[item.proposer_uid]"
+        >
+          <template #title>
+            <span class="text-default-700 text-sm font-medium">
+              待审提案 #{{ item.id }}
+            </span>
+          </template>
+          <template #actions>
+            <KunButton
+              variant="flat"
+              color="primary"
+              size="sm"
+              @click="navigateTo(`/galgame-edit/review/${item.id}`)"
+            >
+              审阅
+            </KunButton>
+          </template>
+        </EditkitProposalCard>
+      </div>
 
       <!-- Pending proposals of MINE on this galgame -->
       <div v-if="mine?.items.length" class="space-y-2">

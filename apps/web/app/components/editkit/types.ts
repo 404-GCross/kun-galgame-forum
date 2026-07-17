@@ -60,6 +60,18 @@ export interface EditFieldConfig {
   formatItem?: (item: unknown) => string
   /** Resolve an image field value / list item to a renderable URL. */
   resolveImage?: (value: unknown) => string
+  /** Host-supplied upload for image / image-list controls (E3b): uploads
+   * the file and resolves to the VALUE to store (image control) or the LIST
+   * ITEM to append (image-list) — null when the upload failed (the host
+   * surfaces its own error toast). Absent = the field renders read-only. */
+  uploadImage?: (file: File, currentItems: unknown[]) => Promise<unknown | null>
+  /** image-list: renormalize item-internal order after the list changes
+   * (e.g. stamp sort_order = index). Runs on every add/remove/reorder. */
+  normalizeItems?: (items: unknown[]) => unknown[]
+  /** image-list: the first item is semantically pinned (e.g. the cover set's
+   * banner). Renders a badge with this label on item 0 plus a pin-to-front
+   * control on the rest. */
+  pinFirstLabel?: string
 }
 
 export type EditFieldConfigMap = Record<string, EditFieldConfig>
@@ -111,6 +123,7 @@ export interface EditRevision {
   legacy_action?: string
   legacy_note?: string
   legacy_minor?: boolean
+  legacy_id?: number
 }
 
 export interface EditFieldDiffRow {

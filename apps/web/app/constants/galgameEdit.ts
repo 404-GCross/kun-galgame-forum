@@ -45,6 +45,82 @@ const imageRow = (value: unknown): string => {
   return ''
 }
 
+// ---- image upload hooks (E3b ruling 3) -------------------------------------
+// Uploads ride the existing galgame image proxy (POST /image/galgame →
+// wiki → image_service under site=galgame_wiki, the byte-owner iron rule);
+// the editor only carries the returned hash/URL in the patch. Item shapes
+// mirror the engine's SnapshotCover / SnapshotScreenshot STRICT key sets —
+// never add render-only keys (e.g. cdn_url), the engine rejects unknown keys.
+
+interface EditImageItem {
+  image_hash: string
+  sort_order: number
+  [key: string]: unknown
+}
+
+/** Stamp sort_order = index — item 0 is the pinned cover (the wiki's
+ * "at most one sort_order=0" invariant holds by construction). */
+const normalizeImageItems = (items: unknown[]): unknown[] =>
+  items.map((item, index) => ({
+    ...(item as EditImageItem),
+    sort_order: index
+  }))
+
+const uploadBanner = async (file: File): Promise<unknown | null> => {
+  const res = await uploadGalgameImage(file, 'galgame_banner', file.name)
+  return res ? res.url : null
+}
+
+const uploadCoverItem = async (
+  file: File,
+  current: unknown[]
+): Promise<unknown | null> => {
+  const res = await uploadGalgameImage(file, 'galgame_banner', file.name)
+  if (!res) {
+    return null
+  }
+  if (
+    current.some((item) => (item as EditImageItem).image_hash === res.hash)
+  ) {
+    useMessage('已跳过重复图片', 'warn')
+    return null
+  }
+  return {
+    image_hash: res.hash,
+    sort_order: current.length,
+    sexual: 0,
+    violence: 0,
+    source: '',
+    source_key: '',
+    kind: ''
+  }
+}
+
+const uploadScreenshotItem = async (
+  file: File,
+  current: unknown[]
+): Promise<unknown | null> => {
+  const res = await uploadGalgameImage(file, 'galgame_screenshot', file.name)
+  if (!res) {
+    return null
+  }
+  if (
+    current.some((item) => (item as EditImageItem).image_hash === res.hash)
+  ) {
+    useMessage('已跳过重复图片', 'warn')
+    return null
+  }
+  return {
+    image_hash: res.hash,
+    sort_order: current.length,
+    caption: '',
+    sexual: 0,
+    violence: 0,
+    source: '',
+    source_key: ''
+  }
+}
+
 export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
   [K('name_en_us')]: { label: '英语标题', group: GROUP_TITLES },
   [K('name_ja_jp')]: { label: '日语标题', group: GROUP_TITLES },
@@ -141,19 +217,26 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
   [K('banner')]: {
     label: '横幅图',
     group: GROUP_IMAGES,
-    resolveImage: imageRow
+    resolveImage: imageRow,
+    uploadImage: uploadBanner
   },
   [K('covers')]: {
     label: '封面',
     group: GROUP_IMAGES,
     resolveImage: imageRow,
-    formatItem: (item) => imageRow(item) || JSON.stringify(item)
+    formatItem: (item) => imageRow(item) || JSON.stringify(item),
+    uploadImage: uploadCoverItem,
+    normalizeItems: normalizeImageItems,
+    pinFirstLabel: '封面',
+    description: '第一张为详情页头图（钉住的封面），其余为备选'
   },
   [K('screenshots')]: {
     label: '画廊',
     group: GROUP_IMAGES,
     resolveImage: imageRow,
-    formatItem: (item) => imageRow(item) || JSON.stringify(item)
+    formatItem: (item) => imageRow(item) || JSON.stringify(item),
+    uploadImage: uploadScreenshotItem,
+    normalizeItems: normalizeImageItems
   },
 
   [K('vndb_id')]: {
