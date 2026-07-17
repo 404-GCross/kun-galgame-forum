@@ -212,7 +212,9 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
     group: GROUP_EXTRAS,
     placeholder: '输入别名后回车添加'
   },
-  [K('links')]: { label: '相关链接', group: GROUP_EXTRAS },
+  // control pinned explicitly: the generic list derivation would render a
+  // tag input and stringify the {name, link} rows to "[object Object]".
+  [K('links')]: { label: '相关链接', group: GROUP_EXTRAS, control: 'link-list' },
 
   [K('banner')]: {
     label: '横幅图',
