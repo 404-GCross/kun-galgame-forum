@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -12,6 +14,7 @@ import (
 	"kun-galgame-api/internal/topic/dto"
 	topicModel "kun-galgame-api/internal/topic/model"
 	"kun-galgame-api/internal/topic/repository"
+	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
 
@@ -26,6 +29,8 @@ type TopicWriteService struct {
 	stateRepo    *userRepo.StateRepository
 	rdb          *redis.Client
 	notifier     msgService.Notifier
+	check        *gate.CheckService
+	scan         *gate.ScanService
 	helpers      InteractionHelpers
 }
 
@@ -36,6 +41,8 @@ func NewTopicWriteService(
 	stateRepo *userRepo.StateRepository,
 	rdb *redis.Client,
 	notifier msgService.Notifier,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *TopicWriteService {
 	return &TopicWriteService{
 		topicRepo:    topicRepo,
@@ -44,7 +51,23 @@ func NewTopicWriteService(
 		stateRepo:    stateRepo,
 		rdb:          rdb,
 		notifier:     notifier,
+		check:        check,
+		scan:         scan,
 	}
+}
+
+// topicModerationText composes the RAW text the trust check + scan see for a
+// topic: title + blank line + body (onboarding §3.1 convention for titled
+// content). Sent RAW, never rendered HTML.
+func topicModerationText(title, content string) string {
+	return title + "\n\n" + content
+}
+
+// errContentBlocked is the 422-class, user-visible response when the synchronous
+// trust word-list gate DENIES a write (a banned term). Nothing is persisted. The
+// message stays deliberately vague so the exact banned lexicon isn't probed.
+func errContentBlocked() *errors.AppError {
+	return errors.New(errors.CodeBiz, "内容包含违禁词，无法发布", 422)
 }
 
 // anyConsumeSection reports whether any section name is a paid
@@ -123,6 +146,17 @@ func (s *TopicWriteService) Create(
 		return 0, coverErr
 	}
 
+	// Synchronous Tier0 word-list gate (trust wave 1), strictly BEFORE the tx —
+	// the HTTP check never runs inside a transaction. deny blocks the write
+	// outright (nothing persisted); hold publishes normally + logs (below). A
+	// disabled gate / any error / timeout is a fail-open allow.
+	moderationText := topicModerationText(req.Title, req.Content)
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return 0, errContentBlocked()
+	}
+
 	var newTopicID int
 
 	err := s.topicRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -192,6 +226,14 @@ func (s *TopicWriteService) Create(
 		return 0, errors.ErrInternal("创建话题失败")
 	}
 
+	// Published. A suspect hold publishes normally but leaves one greppable audit
+	// line (v1 builds no local queue entry — scan records it). Then feed the RAW
+	// text into the async shadow scan, off the request path, after commit.
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopic, "subject_id", newTopicID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindTopic, strconv.Itoa(newTopicID), moderationText, int64(userID))
+
 	return newTopicID, nil
 }
 
@@ -230,6 +272,15 @@ func (s *TopicWriteService) Update(
 	covers, coverErr := normalizeCoverImages(req.CoverImages)
 	if coverErr != nil {
 		return coverErr
+	}
+
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (topic.UserID), not the editor.
+	moderationText := topicModerationText(req.Title, req.Content)
+	authorID := int64(topic.UserID)
+	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
+	if decision == gate.DecisionDeny {
+		return errContentBlocked()
 	}
 
 	now := time.Now()
@@ -282,6 +333,12 @@ func (s *TopicWriteService) Update(
 	if txErr != nil {
 		return errors.ErrInternal("更新话题失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopic, "subject_id", topicID, "author_id", topic.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindTopic, strconv.Itoa(topicID), moderationText, int64(topic.UserID))
+
 	return nil
 }
 

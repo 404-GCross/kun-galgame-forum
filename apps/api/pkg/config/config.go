@@ -67,6 +67,15 @@ type TrustConfig struct {
 	// sites'. Must match the oauth_clients.catalog_site binding; a wrong value
 	// yields an empty (but safe) inbox.
 	Site string
+	// CheckEnabled / ScanEnabled are the TWO INDEPENDENT wave-1 moderation
+	// switches (topic + reply create/edit), both default OFF. CheckEnabled gates
+	// the SYNCHRONOUS pre-write word-list gate (deny blocks, hold publishes+logs,
+	// fail-open); ScanEnabled gates the ASYNC post-commit shadow scan. Each is
+	// keyed off its own env var, NEVER off client presence — so a reports-
+	// configured production forum does not auto-enable check/scan on deploy. Both
+	// additionally require the trust client to be configured (wired in app.go).
+	CheckEnabled bool // KUN_TRUST_CHECK_ENABLED
+	ScanEnabled  bool // KUN_TRUST_SCAN_ENABLED
 }
 
 // ArtifactClientConfig holds the credentials kungal uses to call the centralized
@@ -276,6 +285,8 @@ func Load() (*Config, error) {
 			BaseURL:        envOrDefault("KUN_TRUST_BASE_URL", "http://127.0.0.1:9283"),
 			CallbackSecret: envOrDefault("KUN_TRUST_CALLBACK_SECRET", ""),
 			Site:           envOrDefault("KUN_TRUST_SITE", "kungal"),
+			CheckEnabled:   envOrDefaultBool("KUN_TRUST_CHECK_ENABLED", false),
+			ScanEnabled:    envOrDefaultBool("KUN_TRUST_SCAN_ENABLED", false),
 		},
 		Catalog: CatalogClientConfig{
 			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:9281"),
@@ -310,6 +321,15 @@ func envOrDefaultInt(key string, fallback int) int {
 	if val := os.Getenv(key); val != "" {
 		if n, err := strconv.Atoi(val); err == nil {
 			return n
+		}
+	}
+	return fallback
+}
+
+func envOrDefaultBool(key string, fallback bool) bool {
+	if val := os.Getenv(key); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			return b
 		}
 	}
 	return fallback

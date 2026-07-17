@@ -54,6 +54,7 @@ import (
 	topicRepo "kun-galgame-api/internal/topic/repository"
 	topicService "kun-galgame-api/internal/topic/service"
 	"kun-galgame-api/internal/trust/enforce"
+	"kun-galgame-api/internal/trust/gate"
 	trustHandler "kun-galgame-api/internal/trust/handler"
 	trustService "kun-galgame-api/internal/trust/service"
 	updateHandler "kun-galgame-api/internal/update/handler"
@@ -267,6 +268,37 @@ func New(cfg *config.Config) *App {
 		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
 	}
 
+	// Trust moderation gates for the forum write surface (topic + reply
+	// create/edit — trust wave 1). TWO INDEPENDENT switches, both default OFF
+	// (KUN_TRUST_CHECK_ENABLED / KUN_TRUST_SCAN_ENABLED) AND gated on the trust
+	// client being configured — never keyed off client presence alone, so a
+	// reports-configured production forum does not auto-enable check/scan on
+	// deploy. Assign the concrete client to the interface only when live, to
+	// avoid a typed-nil interface. check = synchronous pre-write word-list gate
+	// (deny blocks, hold publishes+logs, fail-open ≤500ms); scan = async
+	// post-commit shadow scan (best-effort, no retry).
+	var trustChecker gate.Checker
+	if cfg.Trust.CheckEnabled && trustCli.Configured() {
+		trustChecker = trustCli
+	}
+	trustCheck := gate.NewCheckService(trustChecker)
+	if trustCheck.Enabled() {
+		slog.Info("trust check gate enabled (synchronous word-list gate on topic/reply writes)")
+	} else {
+		slog.Info("trust check gate disabled (KUN_TRUST_CHECK_ENABLED off or trust client unconfigured)")
+	}
+
+	var trustScanner gate.Scanner
+	if cfg.Trust.ScanEnabled && trustCli.Configured() {
+		trustScanner = trustCli
+	}
+	trustScan := gate.NewScanService(trustScanner)
+	if trustScan.Enabled() {
+		slog.Info("trust shadow scan enabled (async post-commit scan on topic/reply writes)")
+	} else {
+		slog.Info("trust shadow scan disabled (KUN_TRUST_SCAN_ENABLED off or trust client unconfigured)")
+	}
+
 	// Catalog read client — the galgame detail page's credits + name/character
 	// reverse lookups (step 36). GET-only S2S; Basic auth reuses the OAuth
 	// client_id/secret (the catalog read face imposes no site binding). Degrades
@@ -352,8 +384,8 @@ func New(cfg *config.Config) *App {
 	pollRepository := topicRepo.NewPollRepository(db)
 	draftRepository := topicRepo.NewTopicDraftRepository(db)
 	topicSvc := topicService.NewTopicService(topicRepository, topicListRepo, topicTaxonomyRepo, rdb, uc, userStateRepo)
-	topicWriteSvc := topicService.NewTopicWriteService(topicRepository, topicTaxonomyRepo, replyRepository, userStateRepo, rdb, notifier)
-	replySvc := topicService.NewReplyService(replyRepository, topicCommentRepo, topicRepository, userStateRepo, uc, rdb)
+	topicWriteSvc := topicService.NewTopicWriteService(topicRepository, topicTaxonomyRepo, replyRepository, userStateRepo, rdb, notifier, trustCheck, trustScan)
+	replySvc := topicService.NewReplyService(replyRepository, topicCommentRepo, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
 	commentSvc := topicService.NewCommentService(replyRepository, topicCommentRepo, userStateRepo, uc, rdb)
 	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb)
 	draftSvc := topicService.NewDraftService(draftRepository)

@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"kun-galgame-api/internal/topic/dto"
 	topicModel "kun-galgame-api/internal/topic/model"
 	"kun-galgame-api/internal/topic/repository"
+	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
@@ -28,6 +31,8 @@ type ReplyService struct {
 	stateRepo   *userRepo.StateRepository
 	userClient  *userclient.Client
 	rdb         *redis.Client
+	check       *gate.CheckService
+	scan        *gate.ScanService
 	helpers     InteractionHelpers
 }
 
@@ -38,6 +43,8 @@ func NewReplyService(
 	stateRepo *userRepo.StateRepository,
 	userClient *userclient.Client,
 	rdb *redis.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
 ) *ReplyService {
 	return &ReplyService{
 		replyRepo:   replyRepo,
@@ -46,6 +53,8 @@ func NewReplyService(
 		stateRepo:   stateRepo,
 		userClient:  userClient,
 		rdb:         rdb,
+		check:       check,
+		scan:        scan,
 	}
 }
 
@@ -173,6 +182,15 @@ func (s *ReplyService) CreateReply(
 		return nil, errors.ErrBadRequest("回复内容不能为空")
 	}
 
+	// Synchronous word-list gate BEFORE the tx (trust wave 1). A reply's
+	// moderation text is its RAW body (no title). deny blocks (nothing persisted);
+	// hold publishes normally + logs; fail-open on any error/timeout.
+	authorID := int64(userID)
+	decision, matched := s.check.Decision(ctx, req.Content, &authorID)
+	if decision == gate.DecisionDeny {
+		return nil, errContentBlocked()
+	}
+
 	var newReply *topicModel.TopicReply
 
 	txErr := s.replyRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -221,6 +239,11 @@ func (s *ReplyService) CreateReply(
 		return nil, errors.ErrInternal("创建回复失败")
 	}
 
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindReply, "subject_id", newReply.ID, "author_id", userID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindReply, strconv.Itoa(newReply.ID), req.Content, int64(userID))
+
 	rows, _ := s.replyRepo.FindRepliesByIDs([]int{newReply.ID})
 	if len(rows) == 0 {
 		return nil, errors.ErrInternal("创建回复失败")
@@ -250,6 +273,14 @@ func (s *ReplyService) UpdateReply(
 		return errors.ErrBadRequest("回复内容不能为空")
 	}
 
+	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
+	// fail-open). author_id is the content author (reply.UserID).
+	authorID := int64(reply.UserID)
+	decision, matched := s.check.Decision(ctx, req.Content, &authorID)
+	if decision == gate.DecisionDeny {
+		return errContentBlocked()
+	}
+
 	now := time.Now()
 	txErr := s.replyRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.replyRepo.UpdateReplyContent(tx, req.ReplyID, map[string]any{
@@ -269,6 +300,12 @@ func (s *ReplyService) UpdateReply(
 	if txErr != nil {
 		return errors.ErrInternal("更新回复失败")
 	}
+
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindReply, "subject_id", req.ReplyID, "author_id", reply.UserID, "matched", matched)
+	}
+	s.scan.ScanBg(gate.SubjectKindReply, strconv.Itoa(req.ReplyID), req.Content, int64(reply.UserID))
+
 	return nil
 }
 
