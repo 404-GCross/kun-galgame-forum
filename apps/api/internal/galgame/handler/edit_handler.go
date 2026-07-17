@@ -8,8 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/repository"
+	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/middleware"
+	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
@@ -37,14 +41,32 @@ import (
 //
 // Degradation: an unconfigured catalog client → 503 on every endpoint and
 // the frontend hides the entries. Never a local fallback.
+//
+// Owner-review (E3b): the review surfaces admit the game's CREATOR alongside
+// moderators — the BFF asserts is_entity_owner from the galgame row's uid and
+// the engine's kungal overlay grants owners the review rule on the
+// default-policy fields only (status/vndb_id stay perm-gated).
+//
+// Decision side effects (E3b ruling 1 — notifications are the product's job,
+// the engine stays notification-free): merge/decline notify the proposer via
+// the forum's own message system, merge additionally awards the contribution
+// moemoepoint and bumps the local resource_update_time; a submit notifies the
+// game owner and mirrors onto the activity timeline — all parity with the old
+// PR chain, all best-effort (a failure logs a warning, never rolls back the
+// decision).
 type EditHandler struct {
-	catalog *catalogclient.Client
-	wiki    *client.GalgameClient // best-effort brief enrichment for lists
-	users   *userclient.Client    // best-effort attribution enrichment
+	catalog  *catalogclient.Client
+	wiki     *client.GalgameClient // best-effort brief enrichment + owner lookup
+	users    *userclient.Client    // best-effort attribution enrichment
+	notifier msgService.Notifier   // best-effort decision notifications
+	repo     *repository.GalgameRepository
 }
 
-func NewEditHandler(catalog *catalogclient.Client, wiki *client.GalgameClient, users *userclient.Client) *EditHandler {
-	return &EditHandler{catalog: catalog, wiki: wiki, users: users}
+func NewEditHandler(
+	catalog *catalogclient.Client, wiki *client.GalgameClient, users *userclient.Client,
+	notifier msgService.Notifier, repo *repository.GalgameRepository,
+) *EditHandler {
+	return &EditHandler{catalog: catalog, wiki: wiki, users: users, notifier: notifier, repo: repo}
 }
 
 // editUser is the attribution shape lists carry (contribution attribution
@@ -119,6 +141,60 @@ func editActor(c fiber.Ctx) (catalogclient.EditActor, *errors.AppError) {
 	return catalogclient.EditActor{UserID: int64(user.ID), Roles: user.Roles, TrustTier: tier}, nil
 }
 
+// gameBrief reads one galgame brief (best-effort; nil = unknown). The S2S
+// batch read is short-TTL cached in the client, so per-request lookups for
+// owner assertion / notification naming stay cheap.
+func (h *EditHandler) gameBrief(ctx context.Context, gid int64) *client.GalgameBrief {
+	if h.wiki == nil || gid <= 0 {
+		return nil
+	}
+	briefs, appErr := h.wiki.GetBatch(ctx, []int{int(gid)})
+	if appErr != nil {
+		slog.Warn("galgame edit: brief lookup failed", "gid", gid, "error", appErr)
+		return nil
+	}
+	if b, ok := briefs[int(gid)]; ok {
+		return &b
+	}
+	return nil
+}
+
+// isGameOwner reports whether uid created the galgame row. Fail-closed: an
+// unreachable wiki degrades the owner assertion to false (moderators are
+// unaffected; the owner retries).
+func (h *EditHandler) isGameOwner(ctx context.Context, gid, uid int64) bool {
+	b := h.gameBrief(ctx, gid)
+	return b != nil && b.UserID > 0 && int64(b.UserID) == uid
+}
+
+func briefName(b *client.GalgameBrief) string {
+	if b == nil {
+		return ""
+	}
+	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
+		if n != "" {
+			return n
+		}
+	}
+	return ""
+}
+
+// notifyDecision sends the proposer a forum in-site message about a merge /
+// decline (E3b ruling 1). Best-effort and never rolls back the decision;
+// Emit itself swallows self-notifications.
+func (h *EditHandler) notifyDecision(prop *catalogclient.EditProposal, senderID int64, kind msgService.NotifyKind, content string) {
+	if h.notifier == nil {
+		return
+	}
+	if err := h.notifier.Emit(nil, msgService.Spec{
+		SenderID: int(senderID), ReceiverID: int(prop.ProposerUID),
+		Kind: kind, Content: content, GalgameID: int(prop.EntityID),
+	}); err != nil {
+		slog.Warn("galgame edit: decision notification failed",
+			"proposal", prop.ID, "kind", kind, "error", err)
+	}
+}
+
 // editError maps a catalogclient edit error onto the house envelope. The
 // edit face's 4xx replies carry actionable reasons (validation details,
 // policy denials, rebase conflicts) — surface them; transport failures and
@@ -182,6 +258,10 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	ctx := c.Context()
+	// Owner-review (E3b): the game's creator projects can_review on the
+	// default keys — the capability rides the schema projection, the UI
+	// holds zero policy logic.
+	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
 	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, gid)
 	if err != nil {
 		return editError(c, err)
@@ -247,11 +327,41 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
+	if !result.Merged {
+		h.submitSideEffects(c.Context(), &result.Proposal)
+	}
 	out := fiber.Map{"merged": result.Merged, "proposal": result.Proposal}
 	if result.Revision != nil {
 		out["revision"] = result.Revision
 	}
 	return response.OK(c, out)
+}
+
+// submitSideEffects mirrors the old SubmitPR chain onto a new open proposal
+// (best-effort): a "requested" notice to the game's owner and a
+// GALGAME_PR_CREATION row on the activity timeline. The proposal id continues
+// the old wiki PR id space (the E2 transform bumped the sequence past it), so
+// wiki_pr_id stays the idempotency key.
+func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient.EditProposal) {
+	brief := h.gameBrief(ctx, prop.EntityID)
+	if h.notifier != nil && brief != nil && brief.UserID > 0 {
+		if err := h.notifier.Emit(nil, msgService.Spec{
+			SenderID: int(prop.ProposerUID), ReceiverID: brief.UserID,
+			Kind: msgService.NotifyRequested, Content: briefName(brief),
+			GalgameID: int(prop.EntityID),
+		}); err != nil {
+			slog.Warn("galgame edit: requested notification failed", "proposal", prop.ID, "error", err)
+		}
+	}
+	if h.repo != nil {
+		if err := h.repo.DB().WithContext(ctx).Exec(`
+			INSERT INTO galgame_activity (wiki_pr_id, galgame_id, user_id, type, created)
+			VALUES (?, ?, ?, 'GALGAME_PR_CREATION', now())
+			ON CONFLICT (wiki_pr_id) DO NOTHING
+		`, prop.ID, prop.EntityID, prop.ProposerUID).Error; err != nil {
+			slog.Warn("galgame edit: activity timeline write failed", "proposal", prop.ID, "error", err)
+		}
+	}
 }
 
 // Revisions — GET /galgame/:gid/edit/revisions (public — the wiki's revision
@@ -395,10 +505,55 @@ func (h *EditHandler) proposalForReview(ctx context.Context, id int64) (*catalog
 	return prop, nil
 }
 
-// ProposalDetail — GET /galgame-edit/proposals/:id (auth + moderator entry).
-// The review workbench read: proposal + amendments + effective patch, the
-// entity's CURRENT values (per-field old→new compare), the reviewer's
-// capability projection, and the galgame brief.
+// reviewEntry authorizes the proposal-directed review surfaces (E3b
+// owner-review): the entry admits moderators AND the game's creator;
+// everyone else 403s. The owner assertion is stamped onto the actor — the
+// engine's kungal overlay holds the field-level policy (owners adjudicate
+// the default keys only; status/vndb_id stay perm-gated).
+func (h *EditHandler) reviewEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
+	prop, err := h.proposalForReview(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	actor.IsEntityOwner = h.isGameOwner(ctx, prop.EntityID, actor.UserID)
+	if !role.CanModerate(actor.Roles) && !actor.IsEntityOwner {
+		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
+	}
+	return prop, nil
+}
+
+// GameProposals — GET /galgame/:gid/edit/proposals (public — the old wire's
+// per-game PR list was a public read). One game's proposals, open by
+// default: the owner's per-game review surface and everyone's transparency
+// read.
+func (h *EditHandler) GameProposals(c fiber.Ctx) error {
+	gid, appErr := parseGid(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	status := c.Query("status", "open")
+	switch status {
+	case "open", "merged", "declined", "withdrawn", "":
+	default:
+		return response.Error(c, errors.ErrBadRequest("未知的提案状态"))
+	}
+	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
+		EntityType: entityTypeGame, EntityID: gid, Site: catalogSite,
+		Status: status, Limit: queryInt(c, "limit"),
+	})
+	if err != nil {
+		return editError(c, err)
+	}
+	return response.OK(c, fiber.Map{
+		"gid": gid, "items": items,
+		"users": h.userMap(c.Context(), collectProposalUIDs(items)),
+	})
+}
+
+// ProposalDetail — GET /galgame-edit/proposals/:id (auth; moderator or the
+// game's creator). The review workbench read: proposal + amendments +
+// effective patch, the entity's CURRENT values (per-field old→new compare),
+// the reviewer's capability projection, and the galgame brief.
 func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
@@ -409,12 +564,9 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	ctx := c.Context()
-	prop, err := h.catalog.GetEditProposal(ctx, id)
+	prop, err := h.reviewEntry(ctx, id, &actor)
 	if err != nil {
 		return editError(c, err)
-	}
-	if prop.Site != catalogSite || prop.EntityType != entityTypeGame {
-		return response.Error(c, errors.ErrNotFound("条目或提案不存在"))
 	}
 	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, prop.EntityID)
 	if err != nil {
@@ -441,9 +593,10 @@ type editAmendRequest struct {
 	Note  string         `json:"note"`
 }
 
-// Amend — POST /galgame-edit/proposals/:id/amend (auth + moderator entry).
-// The crown mechanism: correct a value / reject a field before merging;
-// the merged revision carries proposer + amender double attribution.
+// Amend — POST /galgame-edit/proposals/:id/amend (auth; moderator or the
+// game's creator). The crown mechanism: correct a value / reject a field
+// before merging; the merged revision carries proposer + amender double
+// attribution.
 func (h *EditHandler) Amend(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
@@ -469,7 +622,7 @@ func (h *EditHandler) Amend(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	if _, err := h.proposalForReview(ctx, id); err != nil {
+	if _, err := h.reviewEntry(ctx, id, &actor); err != nil {
 		return editError(c, err)
 	}
 	amendment, err := h.catalog.AmendEditProposal(ctx, id, req.Set, req.Unset, req.Note, actor)
@@ -483,7 +636,8 @@ type editDecisionRequest struct {
 	Note string `json:"note"`
 }
 
-// Merge — POST /galgame-edit/proposals/:id/merge (auth + moderator entry).
+// Merge — POST /galgame-edit/proposals/:id/merge (auth; moderator or the
+// game's creator).
 func (h *EditHandler) Merge(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
@@ -501,19 +655,47 @@ func (h *EditHandler) Merge(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	if _, err := h.proposalForReview(ctx, id); err != nil {
+	prop, err := h.reviewEntry(ctx, id, &actor)
+	if err != nil {
 		return editError(c, err)
 	}
 	rev, err := h.catalog.MergeEditProposal(ctx, id, req.Note, actor)
 	if err != nil {
 		return editError(c, err)
 	}
+	h.mergeSideEffects(ctx, prop, actor.UserID, rev)
 	return response.OK(c, rev)
 }
 
-// Decline — POST /galgame-edit/proposals/:id/decline (auth + moderator
-// entry). The reason is required — a silent decline was the old wiki's
-// worst reviewer habit.
+// mergeSideEffects mirrors the old MergePR chain (best-effort, never fails
+// the landed merge): the contribution moemoepoint (stable per-proposal
+// idempotency key — a merge is exactly-once per proposal; self-merges earn
+// nothing, matching the old chain), the local resource_update_time bump so
+// the game rises in the update-sorted list, and the "merged" notice to the
+// proposer — its content marks a reviewer correction when the merged
+// revision carries an amender (E3b ruling 1).
+func (h *EditHandler) mergeSideEffects(ctx context.Context, prop *catalogclient.EditProposal, mergerID int64, rev *catalogclient.EditRevision) {
+	if prop.ProposerUID != mergerID {
+		moemoepoint.Award(int(prop.ProposerUID), constants.RewardPRMerge,
+			moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame_pr", int(prop.EntityID)),
+			moemoepoint.Key("galgame_edit_merged", strconv.FormatInt(prop.ID, 10)))
+	}
+	if h.repo != nil {
+		if err := h.repo.Touch(h.repo.DB().WithContext(ctx), int(prop.EntityID)); err != nil {
+			slog.Warn("galgame edit: resource_update_time bump failed", "gid", prop.EntityID, "error", err)
+		}
+	}
+	content := briefName(h.gameBrief(ctx, prop.EntityID))
+	if rev != nil && rev.AmenderUID != nil {
+		content = strings.TrimSpace(content + "（审核时有修正）")
+	}
+	h.notifyDecision(prop, mergerID, msgService.NotifyMerged, content)
+}
+
+// Decline — POST /galgame-edit/proposals/:id/decline (auth; moderator or
+// the game's creator). The reason is required — a silent decline was the
+// old wiki's worst reviewer habit; it travels to the proposer in full on
+// the decline notice (E3b ruling 1).
 func (h *EditHandler) Decline(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
@@ -534,13 +716,19 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	if _, err := h.proposalForReview(ctx, id); err != nil {
+	target, err := h.reviewEntry(ctx, id, &actor)
+	if err != nil {
 		return editError(c, err)
 	}
 	prop, err := h.catalog.DeclineEditProposal(ctx, id, req.Note, actor)
 	if err != nil {
 		return editError(c, err)
 	}
+	content := req.Note
+	if name := briefName(h.gameBrief(ctx, target.EntityID)); name != "" {
+		content = name + "：" + req.Note
+	}
+	h.notifyDecision(target, actor.UserID, msgService.NotifyDeclined, content)
 	return response.OK(c, prop)
 }
 

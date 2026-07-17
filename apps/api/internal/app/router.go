@@ -189,6 +189,9 @@ func (a *App) setupRoutes() {
 	// old-wire proxies above byte-identical until E3b retires them.
 	api.Get("/galgame/:gid/edit/revisions", a.GalgameEditHandler.Revisions)
 	api.Get("/galgame/:gid/edit/diff", a.GalgameEditHandler.Diff)
+	// Per-game proposal list (E3b; public like the old wire's PR list) —
+	// the owner's per-game review surface and everyone's transparency read.
+	api.Get("/galgame/:gid/edit/proposals", a.GalgameEditHandler.GameProposals)
 	api.Get("/galgame/:gid/prs", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/prs/:id", a.GalgameWikiHandler.ProxyGet)
 	api.Get("/galgame/:gid/links", a.GalgameWikiHandler.ProxyGet)
@@ -492,18 +495,21 @@ func (a *App) setupRoutes() {
 	)
 	// Editing engine (E3a): the schema-driven editor + the kungal review
 	// queue over the generic edit face (S2S actor assertion — see
-	// galgame/handler/edit_handler.go). The moderator gates are the ENTRY;
-	// field-level adjudication rights come from the engine's own policy
-	// (admin/ren hold edit.galgame.game.review).
+	// galgame/handler/edit_handler.go). The entry gates are exactly that —
+	// entries; field-level adjudication rights come from the engine's own
+	// policy (admin/ren hold edit.galgame.game.review). The proposal-directed
+	// review surfaces are auth-only since E3b: the handler admits moderators
+	// AND the game's creator (owner-review — the engine's kungal overlay
+	// grants owners the default keys only).
 	authed.Get("/galgame/:gid/edit/bootstrap", a.GalgameEditHandler.Bootstrap)
 	authed.Post("/galgame/:gid/edit/proposals", a.GalgameEditHandler.Submit)
 	authed.Get("/galgame-edit/mine", a.GalgameEditHandler.Mine)
 	authed.Post("/galgame-edit/proposals/:id/withdraw", a.GalgameEditHandler.Withdraw)
 	authed.Get("/galgame-edit/queue", middleware.RequireModerator(), a.GalgameEditHandler.Queue)
-	authed.Get("/galgame-edit/proposals/:id", middleware.RequireModerator(), a.GalgameEditHandler.ProposalDetail)
-	authed.Post("/galgame-edit/proposals/:id/amend", middleware.RequireModerator(), a.GalgameEditHandler.Amend)
-	authed.Post("/galgame-edit/proposals/:id/merge", middleware.RequireModerator(), a.GalgameEditHandler.Merge)
-	authed.Post("/galgame-edit/proposals/:id/decline", middleware.RequireModerator(), a.GalgameEditHandler.Decline)
+	authed.Get("/galgame-edit/proposals/:id", a.GalgameEditHandler.ProposalDetail)
+	authed.Post("/galgame-edit/proposals/:id/amend", a.GalgameEditHandler.Amend)
+	authed.Post("/galgame-edit/proposals/:id/merge", a.GalgameEditHandler.Merge)
+	authed.Post("/galgame-edit/proposals/:id/decline", a.GalgameEditHandler.Decline)
 	authed.Put("/galgame/:gid", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
 	authed.Put("/galgame/:gid/prs/:id/merge", a.GalgameHandler.MergePR)
 	authed.Post("/galgame/:gid/revert", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))

@@ -26,10 +26,14 @@ import (
 )
 
 // EditActor is the asserted end-user identity (the community S2S posture).
+// IsEntityOwner (E3b) asserts the user owns the entity the operation targets
+// (kungal: the galgame row's creator uid) — it feeds the engine's
+// OwnerReview overlay capability on the default-policy fields.
 type EditActor struct {
-	UserID    int64    `json:"user_id"`
-	Roles     []string `json:"roles,omitempty"`
-	TrustTier int16    `json:"trust_tier,omitempty"`
+	UserID        int64    `json:"user_id"`
+	Roles         []string `json:"roles,omitempty"`
+	TrustTier     int16    `json:"trust_tier,omitempty"`
+	IsEntityOwner bool     `json:"is_entity_owner,omitempty"`
 }
 
 // EditProposal is the wire shape of a proposal (status: open / merged /
@@ -278,6 +282,9 @@ func (c *Client) GetEditSchema(ctx context.Context, site, entityType string, ent
 	}
 	if actor.TrustTier > 0 {
 		q.Set("trust_tier", strconv.FormatInt(int64(actor.TrustTier), 10))
+	}
+	if actor.IsEntityOwner {
+		q.Set("is_entity_owner", "true")
 	}
 	return editGet[EditSchema](ctx, c, editBase+"/schema/"+entityType+"?"+q.Encode())
 }

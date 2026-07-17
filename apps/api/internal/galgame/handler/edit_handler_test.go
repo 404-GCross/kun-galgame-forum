@@ -21,11 +21,51 @@ import (
 	"sync"
 	"testing"
 
+	"kun-galgame-api/internal/galgame/client"
+	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/catalogclient"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
+
+// fakeNotifier records every notification the BFF emits (E3b decision
+// notices) without touching a database.
+type fakeNotifier struct {
+	mu    sync.Mutex
+	specs []msgService.Spec
+}
+
+func (f *fakeNotifier) Emit(_ *gorm.DB, spec msgService.Spec) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.specs = append(f.specs, spec)
+	return nil
+}
+
+func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
+	for _, s := range specs {
+		_ = f.Emit(tx, s)
+	}
+	return nil
+}
+
+// fakeWiki serves the galgame batch read (owner lookup + naming): one game,
+// id 1, created by uid 7.
+func fakeWiki(t *testing.T) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/galgame/batch" {
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":[{"id":1,"user_id":7,"name_zh_cn":"测试游戏"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
 
 // fakeEditFace records every edit-face request and serves canned replies.
 type fakeEditFace struct {
@@ -60,6 +100,16 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 		switch {
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","patch":{}}}}`))
+		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/7":
+			// An open kungal proposal on game 1 by uid 9 — the review target.
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","proposer_uid":9,"patch":{"galgame.game.name_zh_cn":"新标题"}}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/merge":
+			// The merged revision carries an amender → the notice marks the correction.
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["galgame.game.name_zh_cn"],"snapshot":{}}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/decline":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/amendments":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"galgame.game.name_zh_cn":"修正"}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/55":
 			// A proposal OUTSIDE kungal's tenant — the BFF must 404 it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"galgame.game","entity_id":1,"site":"galgame_wiki","status":"open","patch":{}}}`))
@@ -81,9 +131,19 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 // editTestApp wires the edit routes exactly like router.go, with a stubbed
 // session user (nil = anonymous → the auth stub rejects like middleware.Auth).
 func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
+	return editTestAppFull(t, catalogURL, "", user, nil)
+}
+
+// editTestAppFull additionally wires a fake wiki (owner lookup / naming) and
+// a notifier sink (decision notices). Empty wikiURL / nil notifier = off.
+func editTestAppFull(t *testing.T, catalogURL, wikiURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
-	h := NewEditHandler(cc, nil, nil) // nil wiki/user clients = enrichment off (best-effort)
+	var wiki *client.GalgameClient
+	if wikiURL != "" {
+		wiki = client.NewGalgameClient(wikiURL, "")
+	}
+	h := NewEditHandler(cc, wiki, nil, notifier, nil) // nil user client/repo = best-effort off
 
 	app := fiber.New()
 	authStub := func(c fiber.Ctx) error {
@@ -96,16 +156,17 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 	api := app.Group("/api")
 	api.Get("/galgame/:gid/edit/revisions", h.Revisions)
 	api.Get("/galgame/:gid/edit/diff", h.Diff)
+	api.Get("/galgame/:gid/edit/proposals", h.GameProposals)
 	authed := api.Group("", authStub)
 	authed.Get("/galgame/:gid/edit/bootstrap", h.Bootstrap)
 	authed.Post("/galgame/:gid/edit/proposals", h.Submit)
 	authed.Get("/galgame-edit/mine", h.Mine)
 	authed.Post("/galgame-edit/proposals/:id/withdraw", h.Withdraw)
 	authed.Get("/galgame-edit/queue", middleware.RequireModerator(), h.Queue)
-	authed.Get("/galgame-edit/proposals/:id", middleware.RequireModerator(), h.ProposalDetail)
-	authed.Post("/galgame-edit/proposals/:id/amend", middleware.RequireModerator(), h.Amend)
-	authed.Post("/galgame-edit/proposals/:id/merge", middleware.RequireModerator(), h.Merge)
-	authed.Post("/galgame-edit/proposals/:id/decline", middleware.RequireModerator(), h.Decline)
+	authed.Get("/galgame-edit/proposals/:id", h.ProposalDetail)
+	authed.Post("/galgame-edit/proposals/:id/amend", h.Amend)
+	authed.Post("/galgame-edit/proposals/:id/merge", h.Merge)
+	authed.Post("/galgame-edit/proposals/:id/decline", h.Decline)
 	return app
 }
 
@@ -221,32 +282,145 @@ func TestEditSubmitLocalValidation(t *testing.T) {
 	}
 }
 
-// TestEditModeratorGates: the review surface 403s for a plain user at the
-// route layer; bootstrap stays open to any logged-in user and anonymous
-// callers are rejected by auth.
-func TestEditModeratorGates(t *testing.T) {
+// TestEditReviewEntryGates: the queue 403s for a plain user at the route
+// layer with zero S2S traffic; the proposal-directed review surfaces admit
+// moderators and the game's creator (E3b) — a plain NON-owner user 403s in
+// the handler after the entry check. Bootstrap stays open to any logged-in
+// user and anonymous callers are rejected by auth.
+func TestEditReviewEntryGates(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)
+	status, _ := doJSON(t, app, "GET", "/api/galgame-edit/queue", "")
+	if status != http.StatusForbidden {
+		t.Fatalf("queue as plain user: status = %d, want 403", status)
+	}
+	if len(fake.requests) != 0 {
+		t.Fatalf("the queue gate must not reach the S2S face, got %d calls", len(fake.requests))
+	}
+
+	// A plain user who does NOT own game 1 (fake wiki: creator uid 7, this
+	// user is 8): every proposal-directed surface 403s after the entry check
+	// and no write ever reaches the face.
+	nonOwner := &middleware.UserInfo{ID: 8, Name: "bystander", Roles: nil}
+	wiki := fakeWiki(t)
+	app = editTestAppFull(t, fake.server(t).URL, wiki.URL, nonOwner, nil)
 	for _, tc := range []struct{ method, path string }{
-		{"GET", "/api/galgame-edit/queue"},
 		{"GET", "/api/galgame-edit/proposals/7"},
 		{"POST", "/api/galgame-edit/proposals/7/amend"},
 		{"POST", "/api/galgame-edit/proposals/7/merge"},
 		{"POST", "/api/galgame-edit/proposals/7/decline"},
 	} {
-		status, _ := doJSON(t, app, tc.method, tc.path, `{"note":"x"}`)
+		status, _ := doJSON(t, app, tc.method, tc.path, `{"note":"x","set":{"galgame.game.name_zh_cn":"y"}}`)
 		if status != http.StatusForbidden {
-			t.Fatalf("%s %s as plain user: status = %d, want 403", tc.method, tc.path, status)
+			t.Fatalf("%s %s as non-owner: status = %d, want 403", tc.method, tc.path, status)
 		}
 	}
-	if len(fake.requests) != 0 {
-		t.Fatalf("gated routes must not reach the S2S face, got %d calls", len(fake.requests))
+	for _, r := range fake.requests {
+		if r.Method != "GET" {
+			t.Fatalf("non-owner must never reach a write op, got %s %s", r.Method, r.Path)
+		}
 	}
 
 	anon := editTestApp(t, fake.server(t).URL, nil)
-	status, _ := doJSON(t, anon, "GET", "/api/galgame/1/edit/bootstrap", "")
+	status, _ = doJSON(t, anon, "GET", "/api/galgame/1/edit/bootstrap", "")
 	if status != http.StatusUnauthorized {
 		t.Fatalf("anonymous bootstrap: status = %d, want 401", status)
+	}
+}
+
+// TestEditOwnerReview (E3b): the game's creator — a plain user, no roles —
+// passes the review entry, the owner assertion rides the S2S actor, the
+// merge lands, and the proposer is notified with the correction marker
+// (the merged revision carries an amender).
+func TestEditOwnerReview(t *testing.T) {
+	fake := &fakeEditFace{}
+	wiki := fakeWiki(t)
+	sink := &fakeNotifier{}
+	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, plainUser, sink) // uid 7 = the creator
+
+	status, raw := doJSON(t, app, "GET", "/api/galgame-edit/proposals/7", "")
+	if status != http.StatusOK {
+		t.Fatalf("owner workbench read: status = %d body %s", status, raw)
+	}
+	var schemaQuery string
+	for _, r := range fake.requests {
+		if strings.HasPrefix(r.Path, "/api/v1/catalog/edit/schema/") {
+			schemaQuery = r.Query
+		}
+	}
+	if !strings.Contains(schemaQuery, "is_entity_owner=true") {
+		t.Fatalf("owner assertion missing from the schema projection query: %q", schemaQuery)
+	}
+
+	status, raw = doJSON(t, app, "POST", "/api/galgame-edit/proposals/7/merge", `{"note":""}`)
+	if status != http.StatusOK {
+		t.Fatalf("owner merge: status = %d body %s", status, raw)
+	}
+	var mergeBody map[string]any
+	for _, r := range fake.requests {
+		if r.Method == "POST" && strings.HasSuffix(r.Path, "/merge") {
+			mergeBody = r.Body
+		}
+	}
+	actor, _ := mergeBody["actor"].(map[string]any)
+	if actor == nil || actor["is_entity_owner"] != true {
+		t.Fatalf("owner assertion missing from the merge actor: %v", mergeBody)
+	}
+
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if len(sink.specs) != 1 {
+		t.Fatalf("want exactly one merged notice, got %d", len(sink.specs))
+	}
+	n := sink.specs[0]
+	if n.Kind != msgService.NotifyMerged || n.ReceiverID != 9 || n.SenderID != 7 || n.GalgameID != 1 {
+		t.Fatalf("merged notice shape: %+v", n)
+	}
+	if !strings.Contains(n.Content, "测试游戏") || !strings.Contains(n.Content, "修正") {
+		t.Fatalf("merged notice content must name the game + mark the correction: %q", n.Content)
+	}
+}
+
+// TestEditDeclineNotification: the decline reason travels to the proposer in
+// full on the decline notice (E3b ruling 1).
+func TestEditDeclineNotification(t *testing.T) {
+	fake := &fakeEditFace{}
+	wiki := fakeWiki(t)
+	sink := &fakeNotifier{}
+	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, moderatorUser, sink)
+
+	status, raw := doJSON(t, app, "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"资料来源不可靠，请补充出处"}`)
+	if status != http.StatusOK {
+		t.Fatalf("decline: status = %d body %s", status, raw)
+	}
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if len(sink.specs) != 1 {
+		t.Fatalf("want exactly one declined notice, got %d", len(sink.specs))
+	}
+	n := sink.specs[0]
+	if n.Kind != msgService.NotifyDeclined || n.ReceiverID != 9 || n.SenderID != 42 || n.GalgameID != 1 {
+		t.Fatalf("declined notice shape: %+v", n)
+	}
+	if !strings.Contains(n.Content, "资料来源不可靠，请补充出处") {
+		t.Fatalf("declined notice must carry the reason in full: %q", n.Content)
+	}
+}
+
+// TestEditGameProposals: the per-game proposal list is a public read (the
+// old wire's PR list parity).
+func TestEditGameProposals(t *testing.T) {
+	fake := &fakeEditFace{}
+	app := editTestApp(t, fake.server(t).URL, nil) // anonymous
+	status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/proposals", "")
+	if status != http.StatusOK {
+		t.Fatalf("game proposals: status = %d body %s", status, raw)
+	}
+	if len(fake.requests) != 1 || !strings.Contains(fake.requests[0].Query, "entity_id=1") {
+		t.Fatalf("list must filter to the game: %+v", fake.requests)
+	}
+	if !strings.Contains(fake.requests[0].Query, "status=0") && !strings.Contains(fake.requests[0].Query, "status=open") {
+		t.Fatalf("list must default to open proposals: %q", fake.requests[0].Query)
 	}
 }
 
