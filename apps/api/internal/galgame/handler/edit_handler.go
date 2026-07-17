@@ -14,6 +14,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/role"
+	"kun-galgame-api/pkg/userclient"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -39,10 +40,57 @@ import (
 type EditHandler struct {
 	catalog *catalogclient.Client
 	wiki    *client.GalgameClient // best-effort brief enrichment for lists
+	users   *userclient.Client    // best-effort attribution enrichment
 }
 
-func NewEditHandler(catalog *catalogclient.Client, wiki *client.GalgameClient) *EditHandler {
-	return &EditHandler{catalog: catalog, wiki: wiki}
+func NewEditHandler(catalog *catalogclient.Client, wiki *client.GalgameClient, users *userclient.Client) *EditHandler {
+	return &EditHandler{catalog: catalog, wiki: wiki, users: users}
+}
+
+// editUser is the attribution shape lists carry (contribution attribution
+// is a parity hardline — bare uids would be a regression from the old wiki).
+type editUser struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}
+
+// userMap resolves uids to display users, best-effort: a failed OAuth batch
+// read degrades to an empty map and the UI falls back to "用户 #id".
+func (h *EditHandler) userMap(ctx context.Context, uids map[int]bool) map[int]editUser {
+	out := make(map[int]editUser, len(uids))
+	if h.users == nil || len(uids) == 0 {
+		return out
+	}
+	ids := make([]int, 0, len(uids))
+	for id := range uids {
+		if id > 0 {
+			ids = append(ids, id)
+		}
+	}
+	resolved, err := h.users.Users(ctx, ids)
+	if err != nil {
+		slog.Warn("galgame edit: user enrichment failed", "error", err)
+		return out
+	}
+	for id, u := range resolved {
+		out[id] = editUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
+	}
+	return out
+}
+
+func collectProposalUIDs(items []catalogclient.EditProposal) map[int]bool {
+	uids := make(map[int]bool)
+	for i := range items {
+		uids[int(items[i].ProposerUID)] = true
+		if items[i].DecidedByUID != nil {
+			uids[int(*items[i].DecidedByUID)] = true
+		}
+		for _, a := range items[i].Amendments {
+			uids[int(a.AmenderUID)] = true
+		}
+	}
+	return uids
 }
 
 // catalogSite is the tenant key kungal files edits under — must equal the
@@ -217,7 +265,16 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	return response.OK(c, fiber.Map{"gid": gid, "items": items})
+	uids := make(map[int]bool)
+	for i := range items {
+		uids[int(items[i].ActorUID)] = true
+		if items[i].AmenderUID != nil {
+			uids[int(*items[i].AmenderUID)] = true
+		}
+	}
+	return response.OK(c, fiber.Map{
+		"gid": gid, "items": items, "users": h.userMap(c.Context(), uids),
+	})
 }
 
 // Diff — GET /galgame/:gid/edit/diff?from=&to= (public).
@@ -296,7 +353,10 @@ func (h *EditHandler) Queue(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	return response.OK(c, fiber.Map{"items": h.enrich(c.Context(), items)})
+	return response.OK(c, fiber.Map{
+		"items": h.enrich(c.Context(), items),
+		"users": h.userMap(c.Context(), collectProposalUIDs(items)),
+	})
 }
 
 // Mine — GET /galgame-edit/mine (auth). The session user's proposals, all
@@ -315,7 +375,10 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	return response.OK(c, fiber.Map{"items": h.enrich(c.Context(), items)})
+	return response.OK(c, fiber.Map{
+		"items": h.enrich(c.Context(), items),
+		"users": h.userMap(c.Context(), collectProposalUIDs(items)),
+	})
 }
 
 // proposalForReview loads the proposal and pins it to kungal's own tenant +
@@ -366,6 +429,7 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 		"proposal": enriched[0],
 		"values":   values,
 		"fields":   schema.Fields,
+		"users":    h.userMap(ctx, collectProposalUIDs([]catalogclient.EditProposal{*prop})),
 	})
 }
 

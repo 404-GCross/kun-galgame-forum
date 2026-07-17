@@ -65,9 +65,9 @@ type EditAmendment struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
-// EditRevision is one row of the append-only revision log. legacy rows
-// (the E2 migration's 11,860) carry nothing special on this wire — the
-// action vocabulary is created/merged/direct/reverted either way.
+// EditRevision is one row of the append-only revision log. Migrated rows
+// (the E2 transform's 11,860) additionally carry honest provenance: the
+// original action word plus the old-wire note / minor-edit flag.
 type EditRevision struct {
 	ID            int64          `json:"id"`
 	Seq           int            `json:"seq"`
@@ -79,6 +79,9 @@ type EditRevision struct {
 	ProposalID    *int64         `json:"proposal_id,omitempty"`
 	Site          string         `json:"site"`
 	CreatedAt     time.Time      `json:"created_at"`
+	LegacyAction  string         `json:"legacy_action,omitempty"`
+	LegacyNote    string         `json:"legacy_note,omitempty"`
+	LegacyMinor   bool           `json:"legacy_minor,omitempty"`
 }
 
 // EditSchemaField is one field of the edit-schema projection: shape + the

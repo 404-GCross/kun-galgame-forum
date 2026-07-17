@@ -83,7 +83,7 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
-	h := NewEditHandler(cc, nil) // nil wiki client = enrichment off (best-effort)
+	h := NewEditHandler(cc, nil, nil) // nil wiki/user clients = enrichment off (best-effort)
 
 	app := fiber.New()
 	authStub := func(c fiber.Ctx) error {
