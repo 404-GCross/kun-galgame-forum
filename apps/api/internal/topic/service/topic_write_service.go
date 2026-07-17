@@ -651,10 +651,16 @@ func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID int, canMo
 				return err
 			}
 		} else {
+			// best_answer_id always sets; only the status_update_time bump is gated
+			// on the bump window (necro-bump prevention) via an in-SQL CASE so the
+			// pair stays one race-free statement.
+			now := time.Now()
 			if err := tx.Model(&topicModel.Topic{}).Where("id = ?", topicID).
 				Updates(map[string]any{
-					"best_answer_id":     &replyID,
-					"status_update_time": time.Now(),
+					"best_answer_id": &replyID,
+					"status_update_time": gorm.Expr(
+						"CASE WHEN created > ? THEN ? ELSE status_update_time END",
+						topicModel.BumpCutoff(now), now),
 				}).Error; err != nil {
 				return err
 			}

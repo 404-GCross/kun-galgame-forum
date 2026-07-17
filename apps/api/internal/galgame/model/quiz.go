@@ -43,6 +43,22 @@ type GalgameQuiz struct {
 
 func (GalgameQuiz) TableName() string { return "galgame_quiz" }
 
+// quizBumpWindowDays is how long after a quiz's publish time (`created`) an
+// interaction still floats it up the last-activity list.
+//
+// Necro-bump prevention (product rule): once a quiz is older than this window,
+// nothing resets status_update_time anymore EXCEPT a re-edit of the quiz itself
+// — answering it no longer resurfaces it. Within the window every answer bumps
+// as before, and the edit path bumps regardless of age.
+const quizBumpWindowDays = 3
+
+// QuizBumpCutoff returns the publish-time boundary at instant `now`: a quiz whose
+// `created` is at or before this instant has aged out of its bump window. The
+// answer path gates its status_update_time bump on `created > QuizBumpCutoff(now)`.
+func QuizBumpCutoff(now time.Time) time.Time {
+	return now.AddDate(0, 0, -quizBumpWindowDays)
+}
+
 // GalgameQuizAnswer is one row per (quiz, user). It is at once the participant
 // roster and the quality-vote store — see the DDL header in migration 045.
 type GalgameQuizAnswer struct {

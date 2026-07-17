@@ -82,9 +82,13 @@ func (s *CommentService) CreateComment(
 			return err
 		}
 		// A new comment is topic activity → bump status_update_time so the topic
-		// resurfaces in the last-activity feeds (mirrors reply creation).
-		if err := tx.Model(&topicModel.Topic{}).Where("id = ?", topicID).
-			Update("status_update_time", time.Now()).Error; err != nil {
+		// resurfaces in the last-activity feeds (mirrors reply creation). Gated on
+		// the bump window in SQL: an aged-out topic is not matched, so comments no
+		// longer necro-bump it (only a re-edit does).
+		now := time.Now()
+		if err := tx.Model(&topicModel.Topic{}).
+			Where("id = ? AND created > ?", topicID, topicModel.BumpCutoff(now)).
+			Update("status_update_time", now).Error; err != nil {
 			return err
 		}
 

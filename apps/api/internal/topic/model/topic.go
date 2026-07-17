@@ -50,6 +50,23 @@ type Topic struct {
 
 func (Topic) TableName() string { return "topic" }
 
+// topicBumpWindowMonths is how long after a topic's publish time (`created`) an
+// interaction still floats it up the last-activity lists.
+//
+// Necro-bump prevention (product rule): once a topic is older than this window,
+// NOTHING resets status_update_time anymore EXCEPT a re-edit of the topic itself
+// — replies, comments, polls, upvotes and best-answer no longer resurface it.
+// Within the window every interaction bumps as before, and the edit path bumps
+// regardless of age.
+const topicBumpWindowMonths = 3
+
+// BumpCutoff returns the publish-time boundary at instant `now`: a topic whose
+// `created` is at or before this instant has aged out of its bump window.
+// Interaction writers gate their status_update_time bump on `created > BumpCutoff(now)`.
+func BumpCutoff(now time.Time) time.Time {
+	return now.AddDate(0, -topicBumpWindowMonths, 0)
+}
+
 // ──────────────────────────────────────────
 // Section
 // ──────────────────────────────────────────

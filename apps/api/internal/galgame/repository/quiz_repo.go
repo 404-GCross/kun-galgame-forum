@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/infrastructure/viewstats"
 
@@ -142,11 +144,15 @@ func (r *QuizRepository) CreateAnswer(tx *gorm.DB, a *model.GalgameQuizAnswer) e
 }
 
 // BumpAnswerStats increments answer_count (+1) and, when correct, correct_count.
+// answer_count / correct_count always update; only the status_update_time bump is
+// gated on the quiz bump window (necro-bump prevention) via an in-SQL CASE, so an
+// aged-out quiz keeps its old last-activity time (only a re-edit resurfaces it).
 func (r *QuizRepository) BumpAnswerStats(tx *gorm.DB, quizID int, correct bool) error {
 	fields := map[string]any{
 		"answer_count": gorm.Expr("answer_count + 1"),
-		// A new answer counts as activity → bump the last-activity time.
-		"status_update_time": gorm.Expr("now()"),
+		"status_update_time": gorm.Expr(
+			"CASE WHEN created > ? THEN now() ELSE status_update_time END",
+			model.QuizBumpCutoff(time.Now())),
 	}
 	if correct {
 		fields["correct_count"] = gorm.Expr("correct_count + 1")

@@ -132,9 +132,13 @@ func (r *PollRepository) CreatePollOption(tx *gorm.DB, opt *model.TopicPollOptio
 	return tx.Create(opt).Error
 }
 
-// TouchTopicStatusUpdateTime bumps topic.status_update_time for poll activity.
+// TouchTopicStatusUpdateTime bumps topic.status_update_time for poll activity —
+// but only while the topic is still inside its bump window (see model.BumpCutoff).
+// The `created > cutoff` guard is in SQL so an aged-out topic is not matched
+// (necro-bump prevention).
 func (r *PollRepository) TouchTopicStatusUpdateTime(tx *gorm.DB, topicID int, t time.Time) error {
-	return tx.Model(&model.Topic{}).Where("id = ?", topicID).
+	return tx.Model(&model.Topic{}).
+		Where("id = ? AND created > ?", topicID, model.BumpCutoff(t)).
 		Updates(map[string]any{"status_update_time": t}).Error
 }
 

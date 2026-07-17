@@ -170,9 +170,13 @@ func (r *TopicRepository) UpdateTopicFields(tx *gorm.DB, topicID int, fields map
 	return tx.Model(&model.Topic{}).Where("id = ?", topicID).Updates(fields).Error
 }
 
-// TouchStatusUpdateTime bumps status_update_time for a topic.
+// TouchStatusUpdateTime bumps status_update_time for a topic — but only while
+// the topic is still inside its bump window (see model.BumpCutoff). The
+// `created > cutoff` guard is in SQL so an aged-out topic is simply not matched
+// (necro-bump prevention: interactions no longer resurface old topics).
 func (r *TopicRepository) TouchStatusUpdateTime(tx *gorm.DB, topicID int, t time.Time) error {
-	return tx.Model(&model.Topic{}).Where("id = ?", topicID).
+	return tx.Model(&model.Topic{}).
+		Where("id = ? AND created > ?", topicID, model.BumpCutoff(t)).
 		Updates(map[string]any{"status_update_time": t}).Error
 }
 
@@ -300,12 +304,16 @@ func (r *TopicRepository) AdjustFavoriteCount(tx *gorm.DB, topicID, delta int) e
 		Update("favorite_count", gorm.Expr("favorite_count + ?", delta)).Error
 }
 
-// ApplyUpvoteCountAndTime bumps upvote_count and sets upvote_time / status_update_time.
+// ApplyUpvoteCountAndTime bumps upvote_count and sets upvote_time /
+// status_update_time. upvote_count and upvote_time always update; only the
+// status_update_time bump is gated on the bump window (necro-bump prevention),
+// via an in-SQL CASE so the whole thing stays one race-free statement.
 func (r *TopicRepository) ApplyUpvoteCountAndTime(tx *gorm.DB, topicID int, t time.Time) error {
 	return tx.Model(&model.Topic{}).Where("id = ?", topicID).Updates(map[string]any{
-		"upvote_count":       gorm.Expr("upvote_count + 1"),
-		"status_update_time": t,
-		"upvote_time":        &t,
+		"upvote_count": gorm.Expr("upvote_count + 1"),
+		"upvote_time":  &t,
+		"status_update_time": gorm.Expr(
+			"CASE WHEN created > ? THEN ? ELSE status_update_time END", model.BumpCutoff(t), t),
 	}).Error
 }
 
