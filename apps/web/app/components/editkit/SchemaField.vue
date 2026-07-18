@@ -5,8 +5,14 @@
 // a reason chip), and emits TYPED values upward. Extraction-ready boundary:
 // KunUI primitives + self-contained types only.
 import { computed, ref, watch } from 'vue'
+import { useSortable } from '@vueuse/integrations/useSortable'
 import type { EditFieldConfig, EditSchemaField } from './types'
-import { formatEditItem, formatEditValue, resolveControl } from './utils'
+import {
+  editValueEqual,
+  formatEditItem,
+  formatEditValue,
+  resolveControl
+} from './utils'
 
 const props = defineProps<{
   field: EditSchemaField
@@ -241,18 +247,28 @@ const removeImageItem = (index: number) => {
   emitImageItems(imageItems.value.filter((_, i) => i !== index))
 }
 
-const moveImageItem = (index: number, delta: number) => {
-  const items = [...imageItems.value]
-  const target = index + delta
-  const a = items[index]
-  const b = items[target]
-  if (a === undefined || b === undefined) {
-    return
+// Drag-to-reorder for the image list (sortablejs via @vueuse). useSortable
+// mutates the local `sortItems` mirror on drop; we push the new order up
+// through emitImageItems (which re-stamps sort_order). The editValueEqual
+// guards keep the mirror ↔ modelValue sync from looping (normalizeItems
+// restamps sort_order, so a reorder does change the emitted items).
+const gridRef = ref<HTMLElement | null>(null)
+const sortItems = ref<unknown[]>([...imageItems.value])
+watch(imageItems, (items) => {
+  if (!editValueEqual(items, sortItems.value)) {
+    sortItems.value = [...items]
   }
-  items[index] = b
-  items[target] = a
-  emitImageItems(items)
-}
+})
+watch(sortItems, (items) => {
+  if (!editValueEqual(items, imageItems.value)) {
+    emitImageItems([...items])
+  }
+})
+useSortable(gridRef, sortItems, {
+  animation: 150,
+  handle: '.ek-drag-handle',
+  draggable: '.ek-image-item'
+})
 
 const pinImageItem = (index: number) => {
   const items = [...imageItems.value]
@@ -270,8 +286,25 @@ const pinImageItem = (index: number) => {
       </KunChip>
     </div>
 
+    <!-- Entity picker: search + pick by NAME, store id(s). Renders read-only
+         too (names still resolve) via :disabled. -->
+    <template v-if="control === 'entity-picker' && config?.searchEntities">
+      <EditkitEntityPicker
+        :model-value="modelValue"
+        :multiple="config?.multiple"
+        :disabled="!editable"
+        :placeholder="config?.placeholder"
+        :search="config.searchEntities"
+        :resolve="config?.resolveEntities"
+        @update:model-value="(value) => emit('update:modelValue', value)"
+      />
+      <p v-if="config?.description" class="text-default-400 text-xs">
+        {{ config.description }}
+      </p>
+    </template>
+
     <!-- Readonly rendering: images as previews, everything else as text -->
-    <template v-if="!editable">
+    <template v-else-if="!editable">
       <div
         v-if="imageURLs.length"
         class="flex flex-wrap items-start gap-2"
@@ -392,11 +425,14 @@ const pinImageItem = (index: number) => {
       <!-- Image list (E3b): upload/append, remove, reorder; item 0 renders
            the host's pinned badge (e.g. the cover set's banner). -->
       <div v-else-if="control === 'image-list'" class="space-y-2">
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        <div
+          ref="gridRef"
+          class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4"
+        >
           <div
-            v-for="(item, index) in imageItems"
-            :key="index"
-            class="border-default-200 relative overflow-hidden rounded border"
+            v-for="(item, index) in sortItems"
+            :key="resolveImageURL(item) || index"
+            class="ek-image-item border-default-200 group relative overflow-hidden rounded border"
             :class="{
               'ring-primary border-primary ring-2':
                 config?.pinFirstLabel && index === 0
@@ -407,12 +443,19 @@ const pinImageItem = (index: number) => {
               loading="lazy"
               class="aspect-video w-full object-cover"
             />
+            <!-- Drag handle: grip to reorder (sortablejs). -->
+            <div
+              class="ek-drag-handle absolute top-1 left-1 flex cursor-move items-center rounded bg-black/50 p-1 text-white opacity-0 transition group-hover:opacity-100"
+              title="拖拽排序"
+            >
+              <KunIcon name="lucide:grip-vertical" class="h-4 w-4" />
+            </div>
             <KunChip
               v-if="config?.pinFirstLabel && index === 0"
               color="primary"
               variant="solid"
               size="sm"
-              class="pointer-events-none absolute top-1 left-1"
+              class="pointer-events-none absolute bottom-1 left-1"
             >
               {{ config.pinFirstLabel }}
             </KunChip>
@@ -423,51 +466,35 @@ const pinImageItem = (index: number) => {
                 size="sm"
                 variant="solid"
                 color="default"
+                title="设为封面"
                 @click="pinImageItem(index)"
               >
                 <KunIcon name="lucide:pin" />
-              </KunButton>
-              <KunButton
-                v-if="index > 0"
-                :is-icon-only="true"
-                size="sm"
-                variant="solid"
-                color="default"
-                @click="moveImageItem(index, -1)"
-              >
-                <KunIcon name="lucide:arrow-left" />
-              </KunButton>
-              <KunButton
-                v-if="index < imageItems.length - 1"
-                :is-icon-only="true"
-                size="sm"
-                variant="solid"
-                color="default"
-                @click="moveImageItem(index, 1)"
-              >
-                <KunIcon name="lucide:arrow-right" />
               </KunButton>
               <KunButton
                 :is-icon-only="true"
                 size="sm"
                 variant="solid"
                 color="danger"
+                title="移除"
                 @click="removeImageItem(index)"
               >
                 <KunIcon name="lucide:trash-2" />
               </KunButton>
             </div>
           </div>
-          <button
-            type="button"
-            class="border-default-200 text-default-400 hover:border-primary hover:text-primary flex aspect-video cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed text-sm"
-            :disabled="isUploading"
-            @click="pickFiles"
-          >
-            <KunIcon :name="isUploading ? 'lucide:loader' : 'lucide:plus'" />
-            {{ isUploading ? uploadProgress : '添加图片' }}
-          </button>
         </div>
+        <!-- Add button lives OUTSIDE the sortable grid so it never offsets the
+             drag indices. -->
+        <button
+          type="button"
+          class="border-default-200 text-default-400 hover:border-primary hover:text-primary flex w-full cursor-pointer items-center justify-center gap-1 rounded border border-dashed py-3 text-sm"
+          :disabled="isUploading"
+          @click="pickFiles"
+        >
+          <KunIcon :name="isUploading ? 'lucide:loader' : 'lucide:plus'" />
+          {{ isUploading ? uploadProgress : '添加图片' }}
+        </button>
         <p v-if="config?.description" class="text-default-400 text-xs">
           {{ config.description }}
         </p>

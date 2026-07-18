@@ -6,12 +6,97 @@
 
 import type {
   EditFieldConfig,
-  EditFieldConfigMap
+  EditFieldConfigMap,
+  EditSelectOption
 } from '~/components/editkit/types'
 
 export const GALGAME_EDIT_ENTITY_TYPE = 'galgame.game'
 
 const K = (name: string) => `galgame.game.${name}`
+
+// ---- taxonomy name pickers (entity-picker control) -------------------------
+// The relation fields store ids but the user searches + sees NAMES. Search
+// runs against the forum's taxonomy endpoints; the CURRENT ids are resolved
+// from the id→name maps the edit page builds off GET /galgame/:gid (which
+// already ships tag/official/engine/series resolved). tag/official have a
+// Meilisearch /search; engine has none (04-taxonomy.md — filter the full
+// list client-side); series proxies the wiki /series/search.
+
+/** id→name map (Map<number, string>) per taxonomy, built from the galgame
+ * detail on the edit page and passed into the config factory. */
+export interface GalgameEditNames {
+  tag?: Map<number, string>
+  official?: Map<number, string>
+  engine?: Map<number, string>
+  series?: Map<number, string>
+}
+
+const taxName = (name: unknown): string =>
+  typeof name === 'string' ? name : getPreferredLanguageText(name as never) || ''
+
+interface TaxonomyHit {
+  id: number
+  name: unknown
+}
+
+const searchTaxonomy =
+  (path: string) =>
+  async (keyword: string): Promise<EditSelectOption[]> => {
+    const data = await kunFetch<TaxonomyHit[]>(path, {
+      method: 'GET',
+      query: { keywords: keyword }
+    })
+    return (data ?? []).map((o) => ({ value: o.id, label: taxName(o.name) }))
+  }
+
+const searchTags = searchTaxonomy('/galgame-tag/search')
+const searchOfficials = searchTaxonomy('/galgame-official/search')
+
+// Engine + series have no Meilisearch endpoint (04-taxonomy.md) — load the
+// (small) full list once and filter it client-side. Keeps everything
+// forum-side with no new backend route.
+const listFilterSearch = (
+  fetchAll: () => Promise<TaxonomyHit[]>
+) => {
+  let cache: Promise<TaxonomyHit[]> | null = null
+  return async (keyword: string): Promise<EditSelectOption[]> => {
+    if (!cache) {
+      cache = fetchAll()
+    }
+    const kw = keyword.trim().toLowerCase()
+    return (await cache)
+      .filter((e) => taxName(e.name).toLowerCase().includes(kw))
+      .slice(0, 20)
+      .map((e) => ({ value: e.id, label: taxName(e.name) }))
+  }
+}
+
+const searchEngines = listFilterSearch(() =>
+  kunFetch<TaxonomyHit[]>('/galgame-engine', { method: 'GET' }).then(
+    (d) => d ?? []
+  )
+)
+
+const searchSeries = listFilterSearch(() =>
+  kunFetch<{ series: TaxonomyHit[]; total: number }>('/galgame-series', {
+    method: 'GET',
+    query: { page: 1, limit: 500 }
+  }).then((d) => d?.series ?? [])
+)
+
+/** Resolve current ids to {value,label} from a prebuilt map; ids absent from
+ * the map are dropped (the picker then shows them as `#id`). */
+const resolveFrom =
+  (map?: Map<number, string>) =>
+  (ids: (string | number)[]): EditSelectOption[] => {
+    if (!map) {
+      return []
+    }
+    return ids.flatMap((id) => {
+      const name = map.get(Number(id))
+      return name ? [{ value: Number(id), label: name }] : []
+    })
+  }
 
 const GROUP_TITLES = '标题'
 const GROUP_INTRO = '介绍'
@@ -121,7 +206,9 @@ const uploadScreenshotItem = async (
   }
 }
 
-export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
+export const createGalgameEditConfig = (
+  names: GalgameEditNames = {}
+): EditFieldConfigMap => ({
   [K('name_en_us')]: { label: '英语标题', group: GROUP_TITLES },
   [K('name_ja_jp')]: { label: '日语标题', group: GROUP_TITLES },
   [K('name_zh_cn')]: { label: '简体中文标题', group: GROUP_TITLES },
@@ -183,28 +270,40 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
   },
 
   [K('series_id')]: {
-    label: '所属系列 ID',
+    label: '所属系列',
     group: GROUP_RELATIONS,
-    nullable: true,
-    description: '留空表示不属于任何系列'
+    control: 'entity-picker',
+    multiple: false,
+    searchEntities: searchSeries,
+    resolveEntities: resolveFrom(names.series),
+    description: '搜索并选择所属系列；留空表示不属于任何系列'
   },
   [K('tag_ids')]: {
-    label: '标签 ID',
+    label: '标签',
     group: GROUP_RELATIONS,
-    control: 'number-list',
-    description: '输入标签数字 ID 后回车添加'
+    control: 'entity-picker',
+    multiple: true,
+    searchEntities: searchTags,
+    resolveEntities: resolveFrom(names.tag),
+    description: '搜索标签名称添加'
   },
   [K('official_ids')]: {
-    label: '会社 ID',
+    label: '会社',
     group: GROUP_RELATIONS,
-    control: 'number-list',
-    description: '输入会社数字 ID 后回车添加'
+    control: 'entity-picker',
+    multiple: true,
+    searchEntities: searchOfficials,
+    resolveEntities: resolveFrom(names.official),
+    description: '搜索会社名称添加'
   },
   [K('engine_ids')]: {
-    label: '引擎 ID',
+    label: '引擎',
     group: GROUP_RELATIONS,
-    control: 'number-list',
-    description: '输入引擎数字 ID 后回车添加'
+    control: 'entity-picker',
+    multiple: true,
+    searchEntities: searchEngines,
+    resolveEntities: resolveFrom(names.engine),
+    description: '搜索引擎名称添加'
   },
 
   [K('aliases')]: {
@@ -230,7 +329,7 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
     uploadImage: uploadCoverItem,
     normalizeItems: normalizeImageItems,
     pinFirstLabel: '封面',
-    description: '第一张为详情页头图（钉住的封面），其余为备选'
+    description: '拖拽排序；第一张为详情页头图，可点“设为封面”置顶'
   },
   [K('screenshots')]: {
     label: '画廊',
@@ -238,7 +337,8 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadScreenshotItem,
-    normalizeItems: normalizeImageItems
+    normalizeItems: normalizeImageItems,
+    description: '拖拽可调整展示顺序'
   },
 
   [K('vndb_id')]: {
@@ -258,7 +358,14 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap = {
       { value: 4, label: '已拒绝' }
     ]
   }
-}
+})
+
+/** Static config with NO taxonomy name maps — the edit page builds its own
+ * with createGalgameEditConfig(names) off the galgame detail; other consumers
+ * (review workbench, label lookups) use this, where relation pickers still
+ * search by name but show current ids as `#id`. */
+export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap =
+  createGalgameEditConfig()
 
 /** Field key → Chinese label (falls back to the bare key tail). */
 export const galgameEditLabel = (key: string): string =>

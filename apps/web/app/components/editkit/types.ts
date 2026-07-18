@@ -33,6 +33,7 @@ export type EditControl =
   | 'string-list'
   | 'number-list'
   | 'link-list'
+  | 'entity-picker'
   | 'image'
   | 'image-list'
   | 'readonly'
@@ -72,6 +73,18 @@ export interface EditFieldConfig {
    * banner). Renders a badge with this label on item 0 plus a pin-to-front
    * control on the rest. */
   pinFirstLabel?: string
+  /** entity-picker: the value is an entity id (single) or id array (multiple),
+   * but the user searches + sees NAMES. `multiple` picks the shape. */
+  multiple?: boolean
+  /** entity-picker: host-supplied async search for a keyword → {value:id,
+   * label:name} options (e.g. the site's taxonomy search endpoint). */
+  searchEntities?: (keyword: string) => Promise<EditSelectOption[]>
+  /** entity-picker: host-supplied batch resolve of the current id value(s) to
+   * {value:id, label:name} so pre-existing picks render as names on load. An
+   * id it cannot resolve is simply shown as its id. */
+  resolveEntities?: (
+    ids: (string | number)[]
+  ) => Promise<EditSelectOption[]> | EditSelectOption[]
 }
 
 export type EditFieldConfigMap = Record<string, EditFieldConfig>

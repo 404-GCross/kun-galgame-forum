@@ -3,23 +3,28 @@
 // by its kind + the host's presentation config, tracks a working copy, and
 // emits ONLY the dirty subset as the proposal patch (field key → new value).
 // Zero policy logic — capabilities come from the projection.
-import { computed, reactive, toRaw, watch } from 'vue'
-import type {
-  EditFieldConfigMap,
-  EditSchemaField
-} from './types'
+import { computed, reactive, ref, toRaw, watch } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
+import type { EditFieldConfigMap, EditSchemaField } from './types'
 import { editValueEqual } from './utils'
 
-const props = defineProps<{
-  fields: EditSchemaField[]
-  /** Current entity values keyed by eternal field keys. */
-  values: Record<string, unknown>
-  config: EditFieldConfigMap
-  /** Section order; fields whose config.group is absent land in the last
-   * unnamed section. */
-  groupOrder?: string[]
-  disabled?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    fields: EditSchemaField[]
+    /** Current entity values keyed by eternal field keys. */
+    values: Record<string, unknown>
+    config: EditFieldConfigMap
+    /** Section order; fields whose config.group is absent land in the last
+     * unnamed section. */
+    groupOrder?: string[]
+    disabled?: boolean
+    /** 'stack' (default) renders every section top-to-bottom. 'tabs' renders
+     * one section at a time behind a tab rail — vertical (left) on desktop,
+     * horizontal (top) on mobile — with a per-tab "edited" marker. */
+    layout?: 'stack' | 'tabs'
+  }>(),
+  { layout: 'stack' }
+)
 
 const emit = defineEmits<{
   'update:patch': [patch: Record<string, unknown>]
@@ -60,6 +65,7 @@ const dirtyCount = computed(() => Object.keys(patch.value).length)
 defineExpose({ dirtyCount })
 
 // Group fields into ordered sections.
+const UNGROUPED = '__ungrouped'
 const sections = computed(() => {
   const byGroup = new Map<string, EditSchemaField[]>()
   for (const field of props.fields) {
@@ -88,10 +94,82 @@ const sections = computed(() => {
   }
   return out
 })
+
+// ---- tabbed layout ---------------------------------------------------------
+// Vertical rail on desktop, horizontal on mobile. Panels stay mounted (v-show)
+// so entity-picker name lookups + dirty state survive tab switches.
+const isDesktop = useMediaQuery('(min-width: 768px)')
+const tabOrientation = computed(() => (isDesktop.value ? 'vertical' : 'horizontal'))
+
+const tabKey = (name: string) => name || UNGROUPED
+
+// patch-key → its section group, so a tab can flag "you edited this section".
+const dirtyBySection = computed<Record<string, number>>(() => {
+  const counts: Record<string, number> = {}
+  for (const key of Object.keys(patch.value)) {
+    const group = props.config[key]?.group ?? ''
+    counts[tabKey(group)] = (counts[tabKey(group)] ?? 0) + 1
+  }
+  return counts
+})
+
+const tabItems = computed(() =>
+  sections.value.map((section) => ({
+    value: tabKey(section.name),
+    textValue: section.name || '其他',
+    // A pencil marks a tab whose fields carry unsaved edits.
+    icon: dirtyBySection.value[tabKey(section.name)]
+      ? 'lucide:pencil-line'
+      : undefined
+  }))
+)
+
+const active = ref('')
+watch(
+  sections,
+  (list) => {
+    if (!list.some((s) => tabKey(s.name) === active.value)) {
+      active.value = list.length ? tabKey(list[0]!.name) : ''
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <!-- Tabbed layout: rail + one visible panel. -->
+  <div v-if="layout === 'tabs'" class="flex flex-col gap-4 md:flex-row md:gap-6">
+    <KunTab
+      :model-value="active"
+      :items="tabItems"
+      :orientation="tabOrientation"
+      variant="pills"
+      color="primary"
+      size="md"
+      class="md:w-44 md:shrink-0"
+      @update:model-value="(value) => (active = value)"
+    />
+    <div class="min-w-0 flex-1">
+      <section
+        v-for="section in sections"
+        v-show="tabKey(section.name) === active"
+        :key="section.name"
+        class="grid grid-cols-1 gap-5"
+      >
+        <EditkitSchemaField
+          v-for="field in section.fields"
+          :key="field.key"
+          v-model="working[field.key]"
+          :field="field"
+          :config="config[field.key]"
+          :disabled="disabled"
+        />
+      </section>
+    </div>
+  </div>
+
+  <!-- Stacked layout (default): every section top-to-bottom. -->
+  <div v-else class="space-y-6">
     <section v-for="section in sections" :key="section.name" class="space-y-3">
       <h3
         v-if="section.name"

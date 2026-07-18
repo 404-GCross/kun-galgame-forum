@@ -4,9 +4,10 @@
 // subset; submission files an edit proposal into the kungal review queue
 // (nothing automerges on kungal — the outcome message reflects both states).
 import {
-  GALGAME_EDIT_FIELD_CONFIG,
+  createGalgameEditConfig,
   GALGAME_EDIT_GROUP_ORDER,
-  galgameEditLabel
+  galgameEditLabel,
+  type GalgameEditNames
 } from '~/constants/galgameEdit'
 
 const route = useRoute()
@@ -18,6 +19,26 @@ const { data: bootstrap, status } = await useKunFetch<GalgameEditBootstrap>(
   `/galgame/${gid.value}/edit/bootstrap`,
   { method: 'GET', watch: false }
 )
+
+// The galgame detail already ships tag/official/engine/series resolved with
+// NAMES — we build id→name maps off it so the relation pickers show names for
+// the CURRENT values (new picks carry their own names from search).
+const { data: detail } = await useKunFetch<GalgameDetail>(
+  `/galgame/${gid.value}`,
+  { method: 'GET', watch: false }
+)
+const editNames = computed<GalgameEditNames>(() => {
+  const d = detail.value
+  const toMap = (arr?: { id: number; name: string }[]) =>
+    new Map((arr ?? []).map((x) => [x.id, x.name]))
+  return {
+    tag: toMap(d?.tag),
+    official: toMap(d?.official),
+    engine: toMap(d?.engine),
+    series: d?.series ? new Map([[d.series.id, d.series.name]]) : new Map()
+  }
+})
+const editConfig = computed(() => createGalgameEditConfig(editNames.value))
 
 const { data: mine, refresh: refreshMine } =
   await useKunFetch<GalgameEditProposalList>('/galgame-edit/mine', {
@@ -60,6 +81,7 @@ const gameName = computed(() => {
 
 const patch = ref<Record<string, unknown>>({})
 const note = ref('')
+const showNote = ref(false)
 const submitting = ref(false)
 
 const dirtyCount = computed(() => Object.keys(patch.value).length)
@@ -105,7 +127,7 @@ const handleWithdraw = async (id: number) => {
 </script>
 
 <template>
-  <div class="mx-auto flex max-w-3xl flex-col gap-3">
+  <div class="flex w-full flex-col gap-3">
     <template v-if="bootstrap">
       <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
         <KunHeader
@@ -200,38 +222,59 @@ const handleWithdraw = async (id: number) => {
         </EditkitProposalCard>
       </div>
 
-      <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-6">
+      <KunCard :is-hoverable="false" :is-transparent="false">
         <EditkitSchemaForm
           :fields="bootstrap.fields"
           :values="bootstrap.values"
-          :config="GALGAME_EDIT_FIELD_CONFIG"
+          :config="editConfig"
           :group-order="GALGAME_EDIT_GROUP_ORDER"
           :disabled="submitting"
+          layout="tabs"
           @update:patch="patch = $event"
         />
+      </KunCard>
 
-        <div class="space-y-2">
+      <!-- Sticky save bar: keeps submit reachable across the tabbed form, with
+           an optional edit note. -->
+      <div class="sticky bottom-0 z-20 pb-3">
+        <KunCard
+          :is-hoverable="false"
+          :is-transparent="false"
+          content-class="space-y-2"
+        >
           <KunTextarea
+            v-if="showNote"
             v-model="note"
             label="编辑说明（可选）"
             placeholder="说明这次修改的内容与依据，帮助审核人更快处理"
             :maxlength="2000"
           />
-          <div class="flex items-center justify-end gap-3">
-            <span v-if="dirtyCount" class="text-default-400 text-sm">
-              已修改 {{ dirtyCount }} 个字段
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-default-500 text-sm">
+              {{ dirtyCount ? `已修改 ${dirtyCount} 个字段` : '尚未修改' }}
             </span>
-            <KunButton
-              color="primary"
-              :disabled="!dirtyCount"
-              :loading="submitting"
-              @click="handleSubmit"
-            >
-              提交提案
-            </KunButton>
+            <div class="flex items-center gap-2">
+              <KunButton
+                variant="light"
+                color="default"
+                size="sm"
+                @click="showNote = !showNote"
+              >
+                <KunIcon name="lucide:pencil-line" />
+                编辑说明
+              </KunButton>
+              <KunButton
+                color="primary"
+                :disabled="!dirtyCount"
+                :loading="submitting"
+                @click="handleSubmit"
+              >
+                提交提案
+              </KunButton>
+            </div>
           </div>
-        </div>
-      </KunCard>
+        </KunCard>
+      </div>
     </template>
 
     <KunNull
