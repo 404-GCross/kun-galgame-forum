@@ -22,13 +22,6 @@ const adapters = useKunEditorAdapters()
 const headings = ref<KunHeading[]>([])
 const editorRef = ref<KunEditorExpose | null>(null)
 
-// The edit page uses its own image dialog (URL / multi-upload / recent history)
-// rendered beside the toolbar, so drop the built-in image button from this
-// toolbar's items. Reply/comment editors keep the built-in one (shared items).
-const editorToolbarItems = KUN_EDITOR_TOOLBAR_ITEMS.filter(
-  (item) => item !== 'image'
-)
-
 const isPublishOpen = ref(false)
 const openPublish = () => {
   isPublishOpen.value = true
@@ -184,12 +177,12 @@ onBeforeRouteLeave(async () => {
                 <template #toolbar="api">
                   <Teleport to="#et-toolbar" defer>
                     <template v-if="editorMode === 'wysiwyg'">
-                      <KunEditorToolbar v-bind="api" :items="editorToolbarItems" />
+                      <KunEditorToolbar v-bind="api" :items="KUN_EDITOR_TOOLBAR_ITEMS" />
                       <span
                         class="bg-default-200 mx-1 h-5 w-px"
                         aria-hidden="true"
                       />
-                      <EditTopicImageDialog v-bind="api" />
+                      <KunMilkdownImageDialog v-bind="api" />
                     </template>
                   </Teleport>
                 </template>

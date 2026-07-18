@@ -87,7 +87,16 @@ const textCount = computed(() => markdownToText(props.valueMarkdown).length)
         <KunEditorViewSwitch v-bind="api" />
       </template>
       <template #toolbar="api">
-        <KunEditorToolbar v-bind="api" :items="KUN_EDITOR_TOOLBAR_ITEMS" />
+        <div class="flex flex-wrap items-center gap-1">
+          <KunEditorToolbar v-bind="api" :items="KUN_EDITOR_TOOLBAR_ITEMS" />
+          <!-- Same rich image dialog as the topic editor (URL / multi-upload /
+               recent history), only when this instance allows images. Clipboard
+               paste + drag-drop are handled by <KunEditor> via the adapter. -->
+          <template v-if="disableImage !== true">
+            <span class="bg-default-200 mx-1 h-5 w-px" aria-hidden="true" />
+            <KunMilkdownImageDialog v-bind="api" />
+          </template>
+        </div>
       </template>
     </KunEditor>
 

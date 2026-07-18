@@ -1,10 +1,14 @@
 <script setup lang="ts">
-// Host-built image dialog for the topic editor. <KunEditor> ships only the
-// primitives (insert an image from a ready URL, or upload a File) — the dialog
-// UI is the host's job (the standard headless split, same as TipTap). Supports:
-// paste a URL, click/drag to upload one or many images, and re-insert from a
-// recent-images history. Dropped into the #toolbar slot in place of the built-in
-// image button (which is removed from that toolbar's `:items`).
+// Host-built image dialog shared by EVERY image-capable forum editor — the
+// topic-edit page AND the reply / comment / toolset editors (the latter via the
+// <KunMilkdownDualEditorProvider> shim). <KunEditor> ships only the primitives
+// (insert an image from a ready URL, or upload a File) — the dialog UI is the
+// host's job (the standard headless split, same as TipTap). Supports: paste a
+// URL, click/drag to upload one or many images, and re-insert from a recent-
+// images history. Rendered in the #toolbar slot in place of the built-in image
+// button (which is why KUN_EDITOR_TOOLBAR_ITEMS omits 'image'). Clipboard/drag
+// image PASTE into the doc is handled by <KunEditor> itself via the uploadImage
+// adapter — this dialog adds URL insert, multi-upload, and history on top.
 import type { KunEditorToolbarApi } from '@kungal/editor-vue'
 
 const props = defineProps<KunEditorToolbarApi>()
