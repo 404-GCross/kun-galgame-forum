@@ -85,6 +85,9 @@ export interface GalgameDetail {
   is_liked: boolean
   favorite_count: number
   is_favorited: boolean
+  // Moderators have forbidden publishing download resources under this game
+  // (copyright / third-party). The resource tab shows a notice + hides publish.
+  resource_publish_banned: boolean
   alias: string[]
   series: GalgameSeries | null
   engine: GalgameEngineItem[]

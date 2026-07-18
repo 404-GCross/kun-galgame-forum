@@ -14,6 +14,12 @@ const gid = computed(() => {
 // hasn't ingested, the parent already shows a 未收录 notice, so we suppress this
 // section's empty-state — but KEEP the 添加资源 CTA (the funnel that records it).
 const galgame = inject<GalgameDetail>('galgame')
+// Moderator resource-publish ban (live reactive flag from Galgame.vue): when set,
+// hide the publish entry + show a notice. Initialized from galgame on the server.
+const resourcePublishBanned = inject<Ref<boolean>>(
+  'galgameResourcePublishBanned',
+  ref(false)
+)
 
 // Publish-modal toggle is purely local to this page — no longer needs
 // the (now removed) tempGalgameResource Pinia store because no other
@@ -96,6 +102,12 @@ const activeBucket = computed(() =>
 
 <template>
   <div class="space-y-3">
+    <KunInfo
+      v-if="resourcePublishBanned"
+      color="danger"
+      title="本游戏已禁止发布下载资源"
+      description="部分游戏可能因为版权方通知，或者其余第三方原因导致不可用，已禁止在本游戏下发布任何下载资源。"
+    />
     <KunHeader name="Galgame 资源链接" scale="h2">
       <template #headerEndContent>
         <div class="ml-auto flex items-center gap-1">
@@ -107,7 +119,10 @@ const activeBucket = computed(() =>
           >
             批量更改已失效资源链接
           </KunButton>
-          <KunButton @click="isShowPublish = !isShowPublish">
+          <KunButton
+            v-if="!resourcePublishBanned"
+            @click="isShowPublish = !isShowPublish"
+          >
             添加资源
           </KunButton>
         </div>

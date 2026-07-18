@@ -606,6 +606,10 @@ func (a *App) setupRoutes() {
 		"/admin/galgame/:gid/status",
 		a.GalgameWikiHandler.ProxyWriteWithToken("PUT"),
 	)
+	galgameAdmin.Put(
+		"/admin/galgame/:gid/resource-publish-ban",
+		a.GalgameResourceHandler.SetResourcePublishBan,
+	)
 
 	// Doc admin (moderator+)
 	docAdmin := authed.Group("", middleware.RequireModerator())

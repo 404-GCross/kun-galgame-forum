@@ -85,6 +85,24 @@ func (r *ResourceRepository) FindByID(id int) (model.GalgameResourceRow, bool) {
 	return row, true
 }
 
+// IsResourcePublishBanned reports whether a moderator has forbidden publishing
+// download resources under this galgame (migration 061). No local row (a
+// never-ingested wiki game) ⇒ not banned.
+func (r *ResourceRepository) IsResourcePublishBanned(galgameID int) bool {
+	var banned []bool
+	r.db.Table("galgame").Where("id = ?", galgameID).Pluck("resource_publish_banned", &banned)
+	return len(banned) > 0 && banned[0]
+}
+
+// SetResourcePublishBanned upserts the local galgame row and sets the ban flag,
+// so a moderator can pre-ban a wiki game the forum has never ingested.
+func (r *ResourceRepository) SetResourcePublishBanned(galgameID int, banned bool) error {
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.Assignments(map[string]any{"resource_publish_banned": banned}),
+	}).Create(&model.GalgameLocal{ID: galgameID, ResourcePublishBanned: banned}).Error
+}
+
 // FindByGalgameID returns all resources for a galgame ordered so that valid
 // resources (status 0) come first in RANDOM order and expired ones (status 1)
 // always sink to the bottom. The detail page groups this list into provider

@@ -240,6 +240,11 @@ func (s *ResourceService) CreateResource(
 	userID int,
 	req *dto.CreateGalgameResourceRequest,
 ) *errors.AppError {
+	// Moderator kill-switch: no publishing under a banned game (copyright /
+	// third-party takedown — migration 061). Checked before anything else.
+	if s.resourceRepo.IsResourcePublishBanned(req.GalgameID) {
+		return errors.ErrForbidden("该游戏已被禁止发布下载资源")
+	}
 	// Synchronous word-list gate BEFORE the tx (trust wave 2): note + links. deny
 	// blocks (nothing persisted); hold publishes+logs; fail-open on error/timeout.
 	moderationText := resourceModerationText(req.Note, req.Link)
@@ -305,6 +310,16 @@ func (s *ResourceService) CreateResource(
 	return nil
 }
 
+// SetResourcePublishBan flips the moderator kill-switch (migration 061) that
+// forbids publishing / editing download resources under a galgame. Upserts the
+// local row so a not-yet-ingested wiki game can be pre-banned.
+func (s *ResourceService) SetResourcePublishBan(galgameID int, banned bool) *errors.AppError {
+	if err := s.resourceRepo.SetResourcePublishBanned(galgameID, banned); err != nil {
+		return errors.ErrInternal("更新资源发布禁止状态失败")
+	}
+	return nil
+}
+
 // ──────────────────────────────────────────
 // UpdateResource — PUT /galgame/:gid/resource
 // Replaces all links, recomputes providers, patches scalar fields.
@@ -321,6 +336,11 @@ func (s *ResourceService) UpdateResource(
 	}
 	if row.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限更新这个 Galgame 资源")
+	}
+	// Same ban kill-switch as create — an edit replaces links, so it can
+	// (re)introduce download links under a banned game.
+	if s.resourceRepo.IsResourcePublishBanned(row.GalgameID) {
+		return errors.ErrForbidden("该游戏已被禁止发布下载资源")
 	}
 
 	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,

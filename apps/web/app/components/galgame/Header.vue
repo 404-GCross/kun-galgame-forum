@@ -19,6 +19,41 @@ const emits = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
+const { canModerate } = useRole()
+
+// Resource-publish ban (moderator kill-switch): a live reactive flag shared with
+// the resource tab (provided by Galgame.vue), so the menu label + tab notice
+// update together after a toggle without a refetch.
+const resourcePublishBanned = inject<Ref<boolean>>(
+  'galgameResourcePublishBanned',
+  ref(false)
+)
+const banning = ref(false)
+const toggleResourceBan = async () => {
+  if (banning.value) {
+    return
+  }
+  const willBan = !resourcePublishBanned.value
+  const ok = await useComponentMessageStore().alert(
+    willBan ? '禁止在本游戏下发布资源' : '解除资源发布禁止',
+    willBan
+      ? '部分游戏可能因为版权方通知，或者其余第三方原因导致不可用，此时需要禁止发布任何下载资源。'
+      : '解除后，用户将可以重新在本游戏下发布下载资源。'
+  )
+  if (!ok) {
+    return
+  }
+  banning.value = true
+  const res = await kunFetch(
+    `/admin/galgame/${props.galgame.id}/resource-publish-ban`,
+    { method: 'PUT', body: { banned: willBan } }
+  )
+  banning.value = false
+  if (res) {
+    resourcePublishBanned.value = willBan
+    useMessage(willBan ? '已禁止发布资源' : '已解除禁止', 'success')
+  }
+}
 
 const galgameAliasArray = computed(() => {
   const nameArray = Object.entries(props.galgame.name)
@@ -210,20 +245,42 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               </span>
             </KunButton>
 
-            <KunPopover v-if="galgame.user.id !== id" position="bottom-end">
+            <KunPopover
+              v-if="galgame.user.id !== id || canModerate"
+              position="bottom-end"
+            >
               <template #trigger>
                 <KunButton :is-icon-only="true" variant="light" color="default" size="sm">
                   <KunIcon name="lucide:ellipsis" />
                 </KunButton>
               </template>
-              <div class="flex w-32 flex-col gap-1 p-2">
+              <div class="flex w-44 flex-col gap-1 p-2">
                 <ReportButton
+                  v-if="galgame.user.id !== id"
                   menu
                   subject-kind="galgame"
                   :subject-id="galgame.id"
                   :snapshot="getPreferredLanguageText(galgame.name)"
                   :subject-url="`${kungal.domain.main}/galgame/${galgame.id}`"
                 />
+                <!-- Moderator kill-switch: forbid / allow publishing download
+                     resources under this game (copyright / third-party). -->
+                <KunButton
+                  v-if="canModerate"
+                  variant="light"
+                  :color="resourcePublishBanned ? 'success' : 'danger'"
+                  size="sm"
+                  class-name="w-full justify-start gap-2"
+                  :loading="banning"
+                  @click="toggleResourceBan"
+                >
+                  <KunIcon
+                    :name="
+                      resourcePublishBanned ? 'lucide:circle-check' : 'lucide:ban'
+                    "
+                  />
+                  {{ resourcePublishBanned ? '解除资源发布禁止' : '禁止发布资源' }}
+                </KunButton>
               </div>
             </KunPopover>
 

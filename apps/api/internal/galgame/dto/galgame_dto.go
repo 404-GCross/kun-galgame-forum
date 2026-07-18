@@ -240,27 +240,31 @@ type GalgameDetail struct {
 	// own. covers/screenshots also receive a `cdn_url` per row from the
 	// same walker. banner_image_hash retired in wiki PR5 (K-PR6);
 	// covers[sort_order=0] is now the canonical banner source.
-	EffectiveBannerHash      string                  `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string                  `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int                     `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int                     `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string                  `json:"effective_banner_thumbhash,omitempty"`
-	Covers                   []GalgameCover          `json:"covers"`
-	Screenshots              []GalgameScreenshot     `json:"screenshots"`
-	Platform                 []string                `json:"platform"`
-	Language                 []string                `json:"language"`
-	Type                     []string                `json:"type"`
-	Contributor              []UserBrief             `json:"contributor"`
-	LikeCount                int                     `json:"like_count"`
-	IsLiked                  bool                    `json:"is_liked"`
-	FavoriteCount            int                     `json:"favorite_count"`
-	IsFavorited              bool                    `json:"is_favorited"`
-	Alias                    []string                `json:"alias"`
-	Series                   *GalgameDetailSeries    `json:"series"`
-	Engine                   []GalgameDetailEngine   `json:"engine"`
-	Official                 []GalgameDetailOfficial `json:"official"`
-	Tag                      []GalgameDetailTag      `json:"tag"`
-	Ratings                  []GalgameDetailRating   `json:"ratings"`
-	Created                  string                  `json:"created"`
-	Updated                  string                  `json:"updated"`
+	EffectiveBannerHash      string              `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string              `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int                 `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int                 `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string              `json:"effective_banner_thumbhash,omitempty"`
+	Covers                   []GalgameCover      `json:"covers"`
+	Screenshots              []GalgameScreenshot `json:"screenshots"`
+	Platform                 []string            `json:"platform"`
+	Language                 []string            `json:"language"`
+	Type                     []string            `json:"type"`
+	Contributor              []UserBrief         `json:"contributor"`
+	LikeCount                int                 `json:"like_count"`
+	IsLiked                  bool                `json:"is_liked"`
+	FavoriteCount            int                 `json:"favorite_count"`
+	IsFavorited              bool                `json:"is_favorited"`
+	// ResourcePublishBanned: moderators have forbidden publishing download
+	// resources under this galgame (copyright / third-party). The FE shows a
+	// notice and hides the publish entry.
+	ResourcePublishBanned bool                    `json:"resource_publish_banned"`
+	Alias                 []string                `json:"alias"`
+	Series                *GalgameDetailSeries    `json:"series"`
+	Engine                []GalgameDetailEngine   `json:"engine"`
+	Official              []GalgameDetailOfficial `json:"official"`
+	Tag                   []GalgameDetailTag      `json:"tag"`
+	Ratings               []GalgameDetailRating   `json:"ratings"`
+	Created               string                  `json:"created"`
+	Updated               string                  `json:"updated"`
 }

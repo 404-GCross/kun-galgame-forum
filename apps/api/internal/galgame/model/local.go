@@ -37,6 +37,11 @@ type GalgameLocal struct {
 	// move it, so engagement (like / favorite / comment / view) can't reorder
 	// the list.
 	ResourceUpdateTime time.Time `gorm:"column:resource_update_time;autoCreateTime" json:"resource_update_time"`
+	// ResourcePublishBanned is a moderator kill-switch (migration 061): while
+	// true, publishing / editing download resources under this galgame is
+	// forbidden (copyright-holder notice or other third-party takedown).
+	// Enforced in resource_service.go; toggled via the moderator ban endpoint.
+	ResourcePublishBanned bool `gorm:"column:resource_publish_banned;default:false" json:"resource_publish_banned"`
 }
 
 func (GalgameLocal) TableName() string { return "galgame" }

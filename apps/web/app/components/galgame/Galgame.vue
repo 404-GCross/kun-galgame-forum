@@ -7,10 +7,40 @@ const props = defineProps<{
 
 provide<GalgameDetail>('galgame', props.galgame)
 
-// A ?comment=<id> deep-link (from an @-mention notification) lands on the
-// comment tab; the comment section then opens the thread + scrolls to it.
+// Resource-publish ban (moderator kill-switch): a live reactive flag the Header
+// menu toggles and the resource tab reads for its notice — kept here so both
+// stay in sync without mutating the galgame prop.
+const resourcePublishBanned = ref(props.galgame.resource_publish_banned)
+provide<Ref<boolean>>('galgameResourcePublishBanned', resourcePublishBanned)
+
+// Tab selection is deep-linkable via ?tab=, but a ?comment=<id> notification
+// deep-link always wins (it lands on the comment tab + scrolls to the thread).
+// Only the always-present tabs are restorable from the URL (patch is async).
 const route = useRoute()
-const activeTab = ref(route.query.comment ? 'comment' : 'intro')
+const router = useRouter()
+const DEEP_LINK_TABS = ['intro', 'resource', 'comment', 'quiz']
+const initialTab = () => {
+  if (route.query.comment) {
+    return 'comment'
+  }
+  const tab = route.query.tab
+  return typeof tab === 'string' && DEEP_LINK_TABS.includes(tab) ? tab : 'intro'
+}
+const activeTab = ref(initialTab())
+
+// Reflect manual tab switches into the URL (replace, so the back button isn't
+// polluted), dropping the one-shot comment deep-link so a reload doesn't re-jump.
+watch(activeTab, (tab) => {
+  const query = { ...route.query }
+  delete query.comment
+  delete query.thread
+  if (tab !== 'intro' && DEEP_LINK_TABS.includes(tab)) {
+    query.tab = tab
+  } else {
+    delete query.tab
+  }
+  router.replace({ query })
+})
 const hasPatchResource = ref(false)
 
 // Per-tab loading, surfaced by each async child, so KunTabPanel :loading can dim
