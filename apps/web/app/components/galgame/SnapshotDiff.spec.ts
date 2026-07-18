@@ -32,7 +32,7 @@ describe('SnapshotDiff', () => {
     expect(html).toMatch(/<b>|<strong>/)
   })
 
-  it('array-of-scalars: tag_ids renders ➕/➖ badges, not raw JSON', async () => {
+  it('array-of-scalars: tag_ids renders +/- badges, not raw JSON', async () => {
     const w = await mountSuspended(SnapshotDiff, {
       props: {
         changedKeys: { tag_ids: true },
@@ -41,10 +41,9 @@ describe('SnapshotDiff', () => {
       }
     })
     const html = w.html()
-    expect(html).toContain('➕')
-    expect(html).toContain('4')
-    expect(html).toContain('➖')
-    expect(html).toContain('1')
+    // Added items render as "+ <value>" chips, removed as "- <value>".
+    expect(html).toContain('+ 4')
+    expect(html).toContain('- 1')
     // Critically: must NOT fall back to JSON-LCS garble.
     expect(html).not.toContain('[1,2,3]')
   })
@@ -109,8 +108,7 @@ describe('SnapshotDiff', () => {
         newSnap: { some_future_ids: [20, 30] }
       }
     })
-    expect(w.html()).toContain('➕')
-    expect(w.html()).toContain('30')
+    expect(w.html()).toContain('+ 30')
   })
 
   it('names dict resolves tag_ids to display names', async () => {
@@ -154,10 +152,8 @@ describe('SnapshotDiff', () => {
       }
     })
     const html = w.html()
-    expect(html).toContain('➖')
-    expect(html).toContain('1')
-    expect(html).toContain('➕')
-    expect(html).toContain('2')
+    expect(html).toContain('- 1')
+    expect(html).toContain('+ 2')
     // No fallback string should appear when names is absent.
     expect(html).not.toContain('已删除')
   })
