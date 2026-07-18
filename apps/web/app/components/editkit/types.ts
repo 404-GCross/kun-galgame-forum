@@ -49,6 +49,10 @@ export interface EditSelectOption {
  * not serialized data. */
 export interface EditFieldConfig {
   label: string
+  /** Short label used when this field is one tab of a tabbed group (see
+   * SchemaForm `tabbedGroups`, e.g. a language switch for the intro fields).
+   * Falls back to `label`. */
+  tabLabel?: string
   description?: string
   control?: EditControl
   options?: EditSelectOption[]

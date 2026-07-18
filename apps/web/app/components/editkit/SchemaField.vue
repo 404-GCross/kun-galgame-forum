@@ -114,6 +114,13 @@ const emitText = (raw: string | number) => {
   }
 }
 
+const onDatePicked = (
+  value: string | null | [string | null, string | null]
+) => {
+  const single = Array.isArray(value) ? (value[0] ?? null) : value
+  emit('update:modelValue', single || null)
+}
+
 const emitSelect = (value: string | number | (string | number)[] | null) => {
   // Single-select only in this form; unwrap a defensive array shape.
   emit('update:modelValue', Array.isArray(value) ? (value[0] ?? null) : value)
@@ -458,8 +465,8 @@ const pinImageItem = (index: number) => {
             />
             <!-- Drag handle: grip to reorder (sortablejs). -->
             <div
-              class="ek-drag-handle absolute top-1 left-1 flex cursor-move items-center rounded bg-black/50 p-1 text-white opacity-0 transition group-hover:opacity-100"
-              title="拖拽排序"
+              class="ek-drag-handle absolute top-1 left-1 flex cursor-move items-center rounded bg-black/50 p-1 text-white"
+              title="拖动排序"
             >
               <KunIcon name="lucide:grip-vertical" class="h-4 w-4" />
             </div>
@@ -508,15 +515,34 @@ const pinImageItem = (index: number) => {
           <KunIcon :name="isUploading ? 'lucide:loader' : 'lucide:plus'" />
           {{ isUploading ? uploadProgress : '添加图片' }}
         </button>
+        <p
+          v-if="sortItems.length > 1"
+          class="text-default-400 flex items-center gap-1 text-xs"
+        >
+          <KunIcon name="lucide:grip-vertical" class="h-3 w-3 shrink-0" />
+          拖动图片左上角的按钮可调整顺序
+        </p>
         <p v-if="config?.description" class="text-default-400 text-xs">
           {{ config.description }}
         </p>
       </div>
 
+      <template v-else-if="control === 'date'">
+        <KunDatePicker
+          :model-value="(modelValue as string | null) ?? null"
+          mode="single"
+          :placeholder="config?.placeholder"
+          @update:model-value="onDatePicked"
+        />
+        <p v-if="config?.description" class="text-default-400 text-xs">
+          {{ config.description }}
+        </p>
+      </template>
+
       <KunInput
         v-else
         :model-value="textBuffer"
-        :type="control === 'number' ? 'number' : control === 'date' ? 'date' : 'text'"
+        :type="control === 'number' ? 'number' : 'text'"
         :placeholder="config?.placeholder"
         :description="config?.description"
         @update:model-value="emitText"

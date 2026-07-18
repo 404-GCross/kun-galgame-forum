@@ -22,6 +22,11 @@ const props = withDefaults(
      * one section at a time behind a tab rail — vertical (left) on desktop,
      * horizontal (top) on mobile — with a per-tab "edited" marker. */
     layout?: 'stack' | 'tabs'
+    /** Group names (in the `tabs` layout) whose fields render behind their OWN
+     * horizontal sub-tab — one field at a time — instead of stacked. Handy for
+     * a language switch (e.g. the four intro fields as 英语/日语/… tabs). Each
+     * sub-tab uses the field's `tabLabel` (falling back to `label`). */
+    tabbedGroups?: string[]
   }>(),
   { layout: 'stack' }
 )
@@ -133,6 +138,39 @@ watch(
   },
   { immediate: true }
 )
+
+// ---- tabbed groups (a group's fields behind their own sub-tab) -------------
+const isTabbedGroup = (name: string) =>
+  props.tabbedGroups?.includes(name) ?? false
+
+// section name → the field key shown in its sub-tab.
+const activeField = reactive<Record<string, string>>({})
+watch(
+  sections,
+  (list) => {
+    for (const section of list) {
+      if (!isTabbedGroup(section.name)) {
+        continue
+      }
+      const keys = section.fields.map((f) => f.key)
+      if (!keys.includes(activeField[section.name] ?? '')) {
+        activeField[section.name] = keys[0] ?? ''
+      }
+    }
+  },
+  { immediate: true }
+)
+
+const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
+  section.fields.map((field) => ({
+    value: field.key,
+    textValue:
+      props.config[field.key]?.tabLabel ??
+      props.config[field.key]?.label ??
+      field.key,
+    // a dot marks a language/field with unsaved edits.
+    dirty: field.key in patch.value
+  }))
 </script>
 
 <template>
@@ -166,14 +204,49 @@ watch(
         :key="section.name"
         class="grid grid-cols-1 gap-5"
       >
-        <EditkitSchemaField
-          v-for="field in section.fields"
-          :key="field.key"
-          v-model="working[field.key]"
-          :field="field"
-          :config="config[field.key]"
-          :disabled="disabled"
-        />
+        <!-- Tabbed group: fields behind a horizontal sub-tab (e.g. intro
+             languages), one at a time. -->
+        <template v-if="isTabbedGroup(section.name)">
+          <KunTab
+            :model-value="activeField[section.name] ?? ''"
+            :items="subTabItems(section)"
+            orientation="horizontal"
+            variant="underlined"
+            color="primary"
+            size="sm"
+            @update:model-value="(value) => (activeField[section.name] = value)"
+          >
+            <template #tab="{ item }">
+              {{ item.textValue }}
+              <KunBadge
+                v-if="item.dirty"
+                variant="dot"
+                color="danger"
+                size="sm"
+              />
+            </template>
+          </KunTab>
+          <EditkitSchemaField
+            v-for="field in section.fields"
+            v-show="field.key === activeField[section.name]"
+            :key="field.key"
+            v-model="working[field.key]"
+            :field="field"
+            :config="config[field.key]"
+            :disabled="disabled"
+          />
+        </template>
+        <!-- Normal: fields stacked. -->
+        <template v-else>
+          <EditkitSchemaField
+            v-for="field in section.fields"
+            :key="field.key"
+            v-model="working[field.key]"
+            :field="field"
+            :config="config[field.key]"
+            :disabled="disabled"
+          />
+        </template>
       </section>
     </div>
   </div>

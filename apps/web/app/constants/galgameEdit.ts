@@ -117,6 +117,11 @@ export const GALGAME_EDIT_GROUP_ORDER = [
   GROUP_IDENTITY
 ]
 
+// Groups whose fields collapse behind a per-field sub-tab (SchemaForm
+// `tabbedGroups`): the intro group's four languages share one editor + a
+// language switch, keeping the page compact.
+export const GALGAME_EDIT_TABBED_GROUPS = [GROUP_INTRO]
+
 const imageRow = (value: unknown): string => {
   if (typeof value === 'string') {
     // The banner field is the legacy URL column — already renderable.
@@ -216,24 +221,29 @@ export const createGalgameEditConfig = (
   [K('name_zh_tw')]: { label: '繁体中文标题', group: GROUP_TITLES },
 
   // Intros use the image-free markdown editor (component escape hatch). Images
-  // are removed at the editor (disableImage) AND stripped by the backend.
+  // are removed at the editor (disableImage) AND stripped by the backend. The
+  // four languages share one sub-tab (tabLabel = the short language name).
   [K('intro_en_us')]: {
     label: '英语介绍',
+    tabLabel: '英语',
     group: GROUP_INTRO,
     component: GalgameEditIntroEditor
   },
   [K('intro_ja_jp')]: {
     label: '日语介绍',
+    tabLabel: '日语',
     group: GROUP_INTRO,
     component: GalgameEditIntroEditor
   },
   [K('intro_zh_cn')]: {
     label: '简体中文介绍',
+    tabLabel: '简中',
     group: GROUP_INTRO,
     component: GalgameEditIntroEditor
   },
   [K('intro_zh_tw')]: {
     label: '繁体中文介绍',
+    tabLabel: '繁中',
     group: GROUP_INTRO,
     component: GalgameEditIntroEditor
   },

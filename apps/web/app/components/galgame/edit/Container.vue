@@ -6,6 +6,7 @@
 import {
   createGalgameEditConfig,
   GALGAME_EDIT_GROUP_ORDER,
+  GALGAME_EDIT_TABBED_GROUPS,
   galgameEditLabel,
   type GalgameEditNames
 } from '~/constants/galgameEdit'
@@ -81,7 +82,8 @@ const gameName = computed(() => {
 
 const patch = ref<Record<string, unknown>>({})
 const note = ref('')
-const showNote = ref(false)
+// Expanded by default so users are nudged to describe their change.
+const showNote = ref(true)
 const submitting = ref(false)
 
 const dirtyCount = computed(() => Object.keys(patch.value).length)
@@ -228,6 +230,7 @@ const handleWithdraw = async (id: number) => {
           :values="bootstrap.values"
           :config="editConfig"
           :group-order="GALGAME_EDIT_GROUP_ORDER"
+          :tabbed-groups="GALGAME_EDIT_TABBED_GROUPS"
           :disabled="submitting"
           layout="tabs"
           @update:patch="patch = $event"
