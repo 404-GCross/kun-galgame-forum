@@ -7,6 +7,7 @@
 // (field configs, label maps, image resolvers, user chips). Entity-specific
 // knowledge (galgame field labels, option lists, image URL resolution) lives
 // on the HOST side and arrives as data.
+import type { Component } from 'vue'
 
 /** One field of the engine's edit-schema projection: shape + the current
  * user's evaluated capabilities. The UI holds ZERO policy logic. */
@@ -85,6 +86,11 @@ export interface EditFieldConfig {
   resolveEntities?: (
     ids: (string | number)[]
   ) => Promise<EditSelectOption[]> | EditSelectOption[]
+  /** Escape hatch: a host-supplied Vue component that renders this field's
+   * control instead of the built-ins. It receives `modelValue` + `disabled`
+   * and emits `update:modelValue`. Lets the host inject a rich editor (e.g. an
+   * image-free markdown editor for intro fields) without editkit importing it. */
+  component?: Component
 }
 
 export type EditFieldConfigMap = Record<string, EditFieldConfig>

@@ -9,6 +9,7 @@ import type {
   EditFieldConfigMap,
   EditSelectOption
 } from '~/components/editkit/types'
+import GalgameEditIntroEditor from '~/components/galgame/edit/IntroEditor.vue'
 
 export const GALGAME_EDIT_ENTITY_TYPE = 'galgame.game'
 
@@ -214,10 +215,28 @@ export const createGalgameEditConfig = (
   [K('name_zh_cn')]: { label: '简体中文标题', group: GROUP_TITLES },
   [K('name_zh_tw')]: { label: '繁体中文标题', group: GROUP_TITLES },
 
-  [K('intro_en_us')]: { label: '英语介绍', group: GROUP_INTRO },
-  [K('intro_ja_jp')]: { label: '日语介绍', group: GROUP_INTRO },
-  [K('intro_zh_cn')]: { label: '简体中文介绍', group: GROUP_INTRO },
-  [K('intro_zh_tw')]: { label: '繁体中文介绍', group: GROUP_INTRO },
+  // Intros use the image-free markdown editor (component escape hatch). Images
+  // are removed at the editor (disableImage) AND stripped by the backend.
+  [K('intro_en_us')]: {
+    label: '英语介绍',
+    group: GROUP_INTRO,
+    component: GalgameEditIntroEditor
+  },
+  [K('intro_ja_jp')]: {
+    label: '日语介绍',
+    group: GROUP_INTRO,
+    component: GalgameEditIntroEditor
+  },
+  [K('intro_zh_cn')]: {
+    label: '简体中文介绍',
+    group: GROUP_INTRO,
+    component: GalgameEditIntroEditor
+  },
+  [K('intro_zh_tw')]: {
+    label: '繁体中文介绍',
+    group: GROUP_INTRO,
+    component: GalgameEditIntroEditor
+  },
 
   [K('release_date')]: {
     label: '发售日期',

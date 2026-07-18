@@ -286,9 +286,22 @@ const pinImageItem = (index: number) => {
       </KunChip>
     </div>
 
+    <!-- Host escape hatch: a custom control component (e.g. a rich editor). -->
+    <template v-if="config?.component">
+      <component
+        :is="config.component"
+        :model-value="modelValue"
+        :disabled="!editable"
+        @update:model-value="(value: unknown) => emit('update:modelValue', value)"
+      />
+      <p v-if="config?.description" class="text-default-400 text-xs">
+        {{ config.description }}
+      </p>
+    </template>
+
     <!-- Entity picker: search + pick by NAME, store id(s). Renders read-only
          too (names still resolve) via :disabled. -->
-    <template v-if="control === 'entity-picker' && config?.searchEntities">
+    <template v-else-if="control === 'entity-picker' && config?.searchEntities">
       <EditkitEntityPicker
         :model-value="modelValue"
         :multiple="config?.multiple"
