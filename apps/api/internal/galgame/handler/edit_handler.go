@@ -294,8 +294,10 @@ type editSubmitRequest struct {
 	Note  string         `json:"note"`
 }
 
-// Submit — POST /galgame/:gid/edit/proposals (auth). Files the proposal; on
-// kungal nothing automerges, so the two-state outcome is normally "open".
+// Submit — POST /galgame/:gid/edit/proposals (auth). Files the proposal. On
+// kungal a reviewer's own edit direct-merges (automerge=review): admin/ren via
+// the review perm, and the game's owner via OwnerReview — result.Merged, the
+// change applies immediately. Everyone else's proposal stays open for the queue.
 func (h *EditHandler) Submit(c fiber.Ctx) error {
 	gid, appErr := parseGid(c)
 	if appErr != nil {
@@ -320,6 +322,13 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 	if len(req.Note) > 2000 {
 		return response.Error(c, errors.ErrValidation("编辑说明过长"))
 	}
+	// Owner direct-edit (automerge=review): the game's creator reviews the
+	// default keys, so — like admin/ren via perm — their own edit applies
+	// immediately instead of queuing a proposal against themselves. editActor
+	// asserts roles but not ownership; mirror Bootstrap's owner check so the
+	// engine sees the same capability. Only for a valid request (avoids the
+	// S2S brief lookup on rejected input; the brief is warm from Bootstrap).
+	actor.IsEntityOwner = h.isGameOwner(c.Context(), gid, actor.UserID)
 	result, err := h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
 		EntityType: entityTypeGame, EntityID: gid, Site: catalogSite,
 		Patch: req.Patch, Note: req.Note, Actor: actor,
@@ -386,7 +395,10 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 	}
 	canRevert := false
 	if user := middleware.GetUser(c); user != nil {
-		canRevert = role.CanModerate(user.Roles) ||
+		// Revert is review-grade: admin ⊂ ren, or the game's owner. Moderators
+		// are NOT included — they hold no edit.galgame.game.review, so the
+		// engine would reject their revert anyway.
+		canRevert = role.CanAdminister(user.Roles) ||
 			h.isGameOwner(c.Context(), gid, int64(user.ID))
 	}
 	return response.OK(c, fiber.Map{
@@ -426,7 +438,9 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 	}
 	ctx := c.Context()
 	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
-	if !role.CanModerate(actor.Roles) && !actor.IsEntityOwner {
+	// Review-grade gate: admin ⊂ ren, or the game's owner (mirrors can_revert
+	// and the engine's per-field review rule; moderators excluded).
+	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
 		return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
 	}
 	result, err := h.catalog.RevertEditEntity(ctx, catalogSite, entityTypeGame, gid, req.ToSeq, req.Note, actor)

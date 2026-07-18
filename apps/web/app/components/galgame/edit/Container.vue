@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // The schema-driven galgame editor (E3a): bootstrap = the entity-aware
 // capability projection + current values; the form emits only the dirty
-// subset; submission files an edit proposal into the kungal review queue
-// (nothing automerges on kungal — the outcome message reflects both states).
+// subset. Submission files an edit proposal; a reviewer's own change
+// (admin/ren via perm, or the game's owner via owner-review) automerges —
+// a direct edit — while everyone else's enters the kungal review queue. The
+// save bar + outcome message reflect whichever applies to this edit.
 import {
   createGalgameEditConfig,
   GALGAME_EDIT_GROUP_ORDER,
@@ -88,6 +90,24 @@ const submitting = ref(false)
 
 const dirtyCount = computed(() => Object.keys(patch.value).length)
 
+// The engine automerges a proposal only when EVERY changed field would
+// automerge for this user (all-or-nothing). Mirror that off the per-field
+// projection so the save bar promises exactly what will happen: a direct edit
+// (admin/ren, or the game's owner) applies immediately; a mixed or ordinary
+// edit enters the review queue.
+const automergeByKey = computed(() => {
+  const map: Record<string, boolean> = {}
+  for (const field of bootstrap.value?.fields ?? []) {
+    map[field.key] = field.would_automerge
+  }
+  return map
+})
+const willAutomerge = computed(
+  () =>
+    dirtyCount.value > 0 &&
+    Object.keys(patch.value).every((key) => automergeByKey.value[key])
+)
+
 const handleSubmit = async () => {
   if (!dirtyCount.value || submitting.value) {
     return
@@ -134,7 +154,7 @@ const handleWithdraw = async (id: number) => {
       <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
         <KunHeader
           :name="`编辑资料 · ${gameName}`"
-          description="提交的修改将进入审核队列，审核通过后生效；审核人可在合并前修正您的提案（双方都会署名）"
+          description="修改字段后保存：拥有直接编辑权限（管理员 / 游戏创建者）时立即生效，否则进入审核队列，由审核人处理（审核人可在合并前修正您的提案，双方都会署名）"
           scale="h2"
         />
         <div class="flex flex-wrap gap-2">
@@ -254,7 +274,13 @@ const handleWithdraw = async (id: number) => {
           />
           <div class="flex items-center justify-between gap-3">
             <span class="text-default-500 text-sm">
-              {{ dirtyCount ? `已修改 ${dirtyCount} 个字段` : '尚未修改' }}
+              <template v-if="dirtyCount">
+                已修改 {{ dirtyCount }} 个字段 ·
+                <span :class="willAutomerge ? 'text-success' : 'text-warning'">
+                  {{ willAutomerge ? '保存后立即生效' : '提交后需审核' }}
+                </span>
+              </template>
+              <template v-else>尚未修改</template>
             </span>
             <div class="flex items-center gap-2">
               <KunButton
@@ -272,7 +298,8 @@ const handleWithdraw = async (id: number) => {
                 :loading="submitting"
                 @click="handleSubmit"
               >
-                提交提案
+                <KunIcon :name="willAutomerge ? 'lucide:check' : 'lucide:send'" />
+                {{ willAutomerge ? '保存修改' : '提交提案' }}
               </KunButton>
             </div>
           </div>
