@@ -4,7 +4,7 @@
 // posture as the public engine list page.
 import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 
 const { data, refresh } = await useKunFetch<GalgameEngineItem[]>(
   `/galgame-engine`,
@@ -97,7 +97,9 @@ const handleDelete = async (engine: GalgameEngineItem) => {
         placeholder="输入引擎名或别名以筛选"
         class-name="flex-1"
       />
-      <KunButton @click="showCreateModal = true">新建引擎</KunButton>
+      <KunButton v-if="canAdminister" @click="showCreateModal = true">
+        新建引擎
+      </KunButton>
     </div>
 
     <p class="text-default-500 text-sm">
@@ -121,7 +123,7 @@ const handleDelete = async (engine: GalgameEngineItem) => {
             {{ engine.galgame_count }} 部
           </span>
         </div>
-        <div v-if="canModerate" class="flex shrink-0 gap-2">
+        <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(engine)">
             编辑
           </KunButton>

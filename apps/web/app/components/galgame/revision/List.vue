@@ -6,7 +6,7 @@
 // Permission gate: `canRevert` is calculated by the parent (the creator
 // match + capability check are entity-specific — for galgame it's
 // `galgame.user.id === currentUser || canModerate`; for taxonomies it's
-// just `canModerate` admin/mod). Parent decides, the list just renders the
+// `canAdminister` (admin ⊂ ren)). Parent decides, the list just renders the
 // button conditionally.
 import type { RevisionEntity } from '~/composables/useRevisionHistory'
 

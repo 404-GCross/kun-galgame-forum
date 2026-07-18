@@ -1,8 +1,12 @@
 <script setup lang="ts">
 // Staff console for the four wiki taxonomy entities (E3b: the minimal parity
-// transplant of apps/wiki's tag/official/engine/series management). CRUD
-// proxies + permission enforcement live on the wiki side (update/delete =
-// moderator+, create = any logged-in user); this UI is UX gating only.
+// transplant of apps/wiki's tag/official/engine/series management). The whole
+// console is admin-only — the /admin/taxonomy page is admin-gated (middleware),
+// so only admin ⊂ ren reach it. Editing / deleting / reverting existing entries
+// is additionally enforced by the API's RequireAdmin gate. CREATING entries is
+// open to any logged-in user at the API (the public /galgame-series page + the
+// "add a missing tag" contribution flow rely on it) — the create controls just
+// live inside this admin-only console.
 type TaxonomyTab = 'tag' | 'official' | 'engine' | 'series'
 
 const activeTab = ref<TaxonomyTab>('tag')
@@ -19,7 +23,7 @@ const tabItems = [
   <div class="w-full space-y-6">
     <KunHeader
       name="Wiki 条目管理"
-      description="集中管理 Galgame 的标签 / 会社 / 引擎 / 系列条目。编辑与删除需要管理员权限, 由 Wiki 服务端强制校验。"
+      description="集中管理 Galgame 的标签 / 会社 / 引擎 / 系列条目。仅管理员（admin / ren）可进入；编辑与删除由服务端强制校验。"
     />
 
     <KunTab

@@ -3,7 +3,7 @@
 // edit/delete actions on the taxonomy detail pages (tag / official / engine)
 // so the edit history is reachable on demand instead of always rendered at
 // the page bottom. Viewing history is public (the revision GETs are public);
-// reverting stays gated by `canRevert` (canModerate), enforced by the list.
+// reverting stays gated by `canRevert` (canAdminister), enforced by the list.
 import type { RevisionEntity } from '~/composables/useRevisionHistory'
 
 defineProps<{

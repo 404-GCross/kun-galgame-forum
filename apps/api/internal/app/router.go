@@ -511,20 +511,23 @@ func (a *App) setupRoutes() {
 	// submit/merge/decline, revert, links/aliases, contributors) retired in
 	// E3b — every kungal edit write flows through the editing engine above.
 	// The galgame face still serves them for apps/wiki until 07 retires it.
-	authed.Put("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	authed.Put("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	authed.Put("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	// Taxonomy create/delete (04-taxonomy.md, new). POST = any logged-in
-	// user (lets users add a tag/official/engine missing for an original
-	// /doujin work); PUT/DELETE = admin/moderator. Auth is enforced by
-	// wiki — kungal only forwards the token, never widens/narrows it
-	// (00-handbook §15.2). ToWikiPath maps /galgame-tag → /tag etc.
+	// Taxonomy CREATE (POST) is open to any logged-in user — the "add a missing
+	// tag / official / engine for a doujin work" contribution flow and the public
+	// series creation on /galgame-series. EDIT (PUT) / DELETE / REVERT of existing
+	// taxonomy is a site-administration capability, gated to admin ⊂ ren via
+	// RequireAdmin. Both proxy to the wiki with the caller's token (which the wiki
+	// re-checks, never widened/narrowed here — 00-handbook §15.2); ToWikiPath maps
+	// /galgame-tag → /tag etc.
 	authed.Post("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Delete("/galgame-tag/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
 	authed.Post("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Delete("/galgame-official/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
 	authed.Post("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Delete("/galgame-engine/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
+	taxonomyWrite.Put("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Put("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Put("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Delete("/galgame-tag/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Delete("/galgame-official/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Delete("/galgame-engine/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
 
 	// U3 taxonomy revisions + revert (K-PR5). ToWikiPath's kebab prefix
 	// rewrite (/galgame-tag → /tag, /galgame-series → /series) maps these
@@ -546,12 +549,15 @@ func (a *App) setupRoutes() {
 		// consumes the wiki's verbatim snake_case snapshot).
 		optAuth.Get("/"+ent+"/:id/revisions", a.GalgameWikiHandler.GetTaxonomyRevisions(wikiEnt))
 		optAuth.Get("/"+ent+"/:id/revisions/:rev", a.GalgameWikiHandler.ProxyGetWithToken)
-		authed.Post("/"+ent+"/:id/revert", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
+		taxonomyWrite.Post("/"+ent+"/:id/revert", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
 	}
+	// Series create (POST) + the modal's id→name resolver stay open — the public
+	// /galgame-series page lets any logged-in user create a series; edit / delete
+	// are admin-only.
 	authed.Post("/galgame-series", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
 	authed.Post("/galgame-series/modal", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Put("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	authed.Delete("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Put("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Delete("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
 
 	// Toolset (authenticated)
 	authed.Post("/toolset", a.ToolsetHandler.Create)

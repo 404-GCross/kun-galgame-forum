@@ -4,7 +4,7 @@
 // delete (series deletion only unbinds members — no force stage).
 import type { UpdateGalgameSeriesPayload } from '~/components/galgame/types'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 
 const pageData = reactive({ page: 1, limit: 24 })
 
@@ -84,7 +84,7 @@ const handleDelete = async (series: GalgameSeries) => {
       <p class="text-default-500 text-sm">
         {{ `共 ${data?.total ?? 0} 个系列` }}
       </p>
-      <KunButton @click="openCreate">创建系列</KunButton>
+      <KunButton v-if="canAdminister" @click="openCreate">创建系列</KunButton>
     </div>
 
     <div class="flex flex-col gap-2">
@@ -104,7 +104,7 @@ const handleDelete = async (series: GalgameSeries) => {
             {{ series.galgame_count }} 部
           </span>
         </div>
-        <div v-if="canModerate" class="flex shrink-0 gap-2">
+        <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(series)">
             编辑
           </KunButton>

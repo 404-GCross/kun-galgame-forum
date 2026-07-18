@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_OFFICIAL_TYPE
 } from '~/constants/galgameOfficial'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 const route = useRoute()
 const official_id = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -82,7 +82,7 @@ const handleUpdateOfficial = async (data: UpdateGalgameOfficialPayload) => {
 // Two-stage safe delete (docs 04-taxonomy / 00-handbook): plain DELETE
 // is rejected while still referenced (wiki toasts the count); only after
 // an explicit second confirm do we retry ?force=true to purge relations
-// + hard delete. admin/moderator only — wiki gates; UI canModerate (§15.2).
+// + hard delete. admin/moderator only — wiki gates; UI canAdminister (§15.2).
 const isDeleting = ref(false)
 const handleDeleteOfficial = async () => {
   const ok = await useComponentMessageStore().alert(
@@ -183,9 +183,9 @@ if (data.value) {
               entity="official"
               :id="official_id"
               :entity-label="`会社「${data.name}」`"
-              :can-revert="canModerate"
+              :can-revert="canAdminister"
             />
-            <template v-if="canModerate">
+            <template v-if="canAdminister">
               <KunButton @click="openEditOfficialModal">编辑会社</KunButton>
               <KunButton
                 variant="flat"

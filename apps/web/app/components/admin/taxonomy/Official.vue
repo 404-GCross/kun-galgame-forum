@@ -8,7 +8,7 @@ import {
 } from '~/constants/galgameOfficial'
 import type { UpdateGalgameOfficialPayload } from '~/components/galgame/types'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 
 const pageData = reactive({ page: 1, limit: 50 })
 
@@ -130,7 +130,9 @@ const handleDelete = async (official: GalgameOfficialItem) => {
         placeholder="输入将会自动搜索会社"
         class-name="flex-1"
       />
-      <KunButton @click="showCreateModal = true">新建会社</KunButton>
+      <KunButton v-if="canAdminister" @click="showCreateModal = true">
+        新建会社
+      </KunButton>
     </div>
 
     <p class="text-default-500 text-sm">
@@ -162,7 +164,7 @@ const handleDelete = async (official: GalgameOfficialItem) => {
             {{ official.galgame_count }} 部
           </span>
         </div>
-        <div v-if="canModerate" class="flex shrink-0 gap-2">
+        <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(official)">
             编辑
           </KunButton>

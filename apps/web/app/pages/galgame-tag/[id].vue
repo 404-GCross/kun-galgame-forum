@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_TAG_TYPE
 } from '~/constants/galgameTag'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 const route = useRoute()
 const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -148,9 +148,9 @@ if (data.value) {
               entity="tag"
               :id="tag_id"
               :entity-label="`标签「${data.name}」`"
-              :can-revert="canModerate"
+              :can-revert="canAdminister"
             />
-            <KunButton v-if="canModerate" @click="openEditTagModal">
+            <KunButton v-if="canAdminister" @click="openEditTagModal">
               编辑标签
             </KunButton>
           </div>

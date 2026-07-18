@@ -5,7 +5,7 @@ import { watchDebounced } from '@vueuse/core'
 import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 import type { UpdateGalgameTagPayload } from '~/components/galgame/types'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 
 const pageData = reactive({ page: 1, limit: 50 })
 
@@ -121,7 +121,9 @@ const handleDelete = async (tag: GalgameTagItem) => {
         placeholder="输入将会自动搜索标签"
         class-name="flex-1"
       />
-      <KunButton @click="showCreateModal = true">新建标签</KunButton>
+      <KunButton v-if="canAdminister" @click="showCreateModal = true">
+        新建标签
+      </KunButton>
     </div>
 
     <p class="text-default-500 text-sm">
@@ -157,7 +159,7 @@ const handleDelete = async (tag: GalgameTagItem) => {
             {{ tag.galgame_count }} 部
           </span>
         </div>
-        <div v-if="canModerate" class="flex shrink-0 gap-2">
+        <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(tag)">
             编辑
           </KunButton>

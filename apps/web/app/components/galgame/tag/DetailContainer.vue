@@ -5,7 +5,7 @@ import {
   type KUN_GALGAME_TAG_TYPE
 } from '~/constants/galgameTag'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 const route = useRoute()
 const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -59,7 +59,7 @@ const handleUpdateTag = async (data: UpdateGalgameTagPayload) => {
 // by any galgame (wiki returns the reference count, surfaced by
 // kunFetch as a toast). Only then, after an explicit second
 // confirmation, retry with ?force=true to purge all relations + hard
-// delete. admin/moderator only — wiki gates; UI gated canModerate (§15.2).
+// delete. admin/moderator only — wiki gates; UI gated canAdminister (§15.2).
 const isDeleting = ref(false)
 const handleDeleteTag = async () => {
   const ok = await useComponentMessageStore().alert(
@@ -139,7 +139,7 @@ const handleDeleteTag = async () => {
               {{ a }}
             </KunChip>
           </div>
-          <div v-if="canModerate" class="flex justify-end gap-2">
+          <div v-if="canAdminister" class="flex justify-end gap-2">
             <KunButton @click="openEditTagModal">编辑标签</KunButton>
             <KunButton
               variant="flat"
@@ -182,7 +182,7 @@ const handleDeleteTag = async () => {
       entity="tag"
       :id="tag_id"
       :entity-label="`标签「${data.name}」`"
-      :can-revert="canModerate"
+      :can-revert="canAdminister"
     />
   </div>
 </template>

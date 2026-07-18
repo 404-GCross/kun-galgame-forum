@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
-const { canModerate } = useRole()
+const { canAdminister } = useRole()
 const route = useRoute()
 const engine_id = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -78,7 +78,7 @@ const handleUpdateEngine = async (data: UpdateGalgameEnginePayload) => {
 // Two-stage safe delete (docs 04-taxonomy / 00-handbook): plain DELETE
 // is rejected while still referenced (wiki toasts the count); only after
 // an explicit second confirm do we retry ?force=true to purge relations
-// + hard delete. admin/moderator only — wiki gates; UI canModerate (§15.2).
+// + hard delete. admin/moderator only — wiki gates; UI canAdminister (§15.2).
 const isDeleting = ref(false)
 const handleDeleteEngine = async () => {
   const ok = await useComponentMessageStore().alert(
@@ -165,9 +165,9 @@ if (data.value) {
               entity="engine"
               :id="engine_id"
               :entity-label="`引擎「${data.name}」`"
-              :can-revert="canModerate"
+              :can-revert="canAdminister"
             />
-            <template v-if="canModerate">
+            <template v-if="canAdminister">
               <KunButton @click="openEditEngineModal">编辑引擎</KunButton>
               <KunButton
                 variant="flat"
