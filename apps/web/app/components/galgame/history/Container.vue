@@ -32,9 +32,9 @@ const handleDiff = async (fromSeq: number, toSeq: number) => {
   diffLoading.value = false
 }
 
-// Revert (E3b — the old wire's owner-or-admin revert, engine-backed): shown
-// only when the BFF says the session user may revert (moderator or the
-// game's creator); the engine still gates every restored field.
+// Revert (E3b — engine-backed): shown only when the BFF says the session user
+// may revert — admin ⊂ ren, or the game's owner (moderators excluded, matching
+// the engine's per-field review rule).
 const latestSeq = computed(() => data.value?.items?.[0]?.seq ?? 0)
 const revertTarget = ref<number | null>(null)
 const revertOpen = computed({
