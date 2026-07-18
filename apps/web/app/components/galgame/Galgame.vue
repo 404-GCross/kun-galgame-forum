@@ -82,15 +82,13 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
       <div class="order-1 flex flex-col gap-3 md:order-2 md:col-span-2">
-        <KunScrollShadow>
-          <KunTab
-            v-model="activeTab"
-            :items="contentTabs"
-            variant="solid"
-            size="md"
-            inner-class-name="bg-[oklch(var(--content1))]!"
-          />
-        </KunScrollShadow>
+        <KunTab
+          v-model="activeTab"
+          :items="contentTabs"
+          variant="solid"
+          size="md"
+          inner-class-name="bg-[oklch(var(--content1))]!"
+        />
 
         <KunCard
           :is-hoverable="false"

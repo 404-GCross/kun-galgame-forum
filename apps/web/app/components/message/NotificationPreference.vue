@@ -106,17 +106,13 @@ onMounted(async () => {
       </p>
     </div>
 
-    <!-- Wrap the tab strip so it scrolls (with edge fades) instead of
-         overflowing on narrow / mobile viewports. -->
-    <KunScrollShadow axis="horizontal" shadow-size="2rem">
-      <KunTab
-        v-model="activeTab"
-        :items="tabItems"
-        variant="underlined"
-        color="primary"
-        size="sm"
-      />
-    </KunScrollShadow>
+    <KunTab
+      v-model="activeTab"
+      :items="tabItems"
+      variant="underlined"
+      color="primary"
+      size="sm"
+    />
 
     <div class="divide-default-100 divide-y">
       <div

@@ -30,7 +30,6 @@ const adminNavItems = KUN_ADMIN_PAGE_ASIDE_NAV_ITEM.map((item) => ({
         orientation="vertical"
         variant="underlined"
         color="primary"
-        align="start"
         size="lg"
         full-width
         @update:model-value="(value) => navigateTo(`/admin/${value}`)"

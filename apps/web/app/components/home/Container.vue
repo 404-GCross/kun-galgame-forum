@@ -172,7 +172,6 @@ useIntersectionObserver(
         orientation="vertical"
         variant="underlined"
         color="primary"
-        align="start"
         full-width
       />
     </div>

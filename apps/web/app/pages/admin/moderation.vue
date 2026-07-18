@@ -135,15 +135,13 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
       </p>
     </div>
 
-    <KunScrollShadow axis="horizontal" shadow-size="2rem">
-      <KunTab
-        v-model="activeStatus"
-        :items="statusTabs"
-        variant="underlined"
-        color="primary"
-        size="sm"
-      />
-    </KunScrollShadow>
+    <KunTab
+      v-model="activeStatus"
+      :items="statusTabs"
+      variant="underlined"
+      color="primary"
+      size="sm"
+    />
 
     <KunLoading v-if="status === 'pending'" />
 

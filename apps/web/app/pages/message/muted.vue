@@ -50,15 +50,13 @@ const { data, status, refresh } = await useKunFetch<MessageList>(
       <h2 class="text-lg">已静音的消息</h2>
     </header>
 
-    <KunScrollShadow axis="horizontal" shadow-size="2rem">
-      <KunTab
-        v-model="activeTab"
-        :items="tabItems"
-        variant="underlined"
-        color="primary"
-        size="sm"
-      />
-    </KunScrollShadow>
+    <KunTab
+      v-model="activeTab"
+      :items="tabItems"
+      variant="underlined"
+      color="primary"
+      size="sm"
+    />
 
     <KunDivider />
 

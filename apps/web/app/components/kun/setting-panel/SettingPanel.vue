@@ -62,7 +62,6 @@ const activeTab = ref('appearance')
             orientation="vertical"
             variant="underlined"
             color="primary"
-            align="start"
             full-width
           />
         </div>

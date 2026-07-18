@@ -137,7 +137,6 @@ if (isBanned.value) {
               orientation="vertical"
               variant="underlined"
               color="primary"
-              align="start"
             />
           </div>
 
