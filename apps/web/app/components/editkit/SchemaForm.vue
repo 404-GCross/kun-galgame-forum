@@ -117,10 +117,9 @@ const tabItems = computed(() =>
   sections.value.map((section) => ({
     value: tabKey(section.name),
     textValue: section.name || '其他',
-    // A pencil marks a tab whose fields carry unsaved edits.
-    icon: dirtyBySection.value[tabKey(section.name)]
-      ? 'lucide:pencil-line'
-      : undefined
+    // # of unsaved edits in this section → a count badge in the #tab slot
+    // (KunTab 2.15 typed the extra field through the generic item shape).
+    count: dirtyBySection.value[tabKey(section.name)] ?? 0
   }))
 )
 
@@ -148,7 +147,18 @@ watch(
       size="md"
       class="md:w-44 md:shrink-0"
       @update:model-value="(value) => (active = value)"
-    />
+    >
+      <template #tab="{ item }">
+        {{ item.textValue }}
+        <KunBadge
+          v-if="item.count"
+          variant="count"
+          :count="item.count"
+          color="danger"
+          size="sm"
+        />
+      </template>
+    </KunTab>
     <div class="min-w-0 flex-1">
       <section
         v-for="section in sections"
