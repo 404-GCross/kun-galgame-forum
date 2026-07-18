@@ -88,12 +88,15 @@ const handleCloseCapture = () => {
 
       <p class="text-primary">{{ currentQuestion.text }}</p>
 
-      <div class="grid grid-cols-2 gap-3">
-        <label v-for="(option, index) in currentQuestion.options" :key="index">
-          <input type="radio" v-model="userAnswers" :value="option" />
-          {{ option }}
-        </label>
-      </div>
+      <KunRadioGroup
+        v-model="userAnswers"
+        :options="
+          currentQuestion.options.map((option) => ({
+            label: option,
+            value: option
+          }))
+        "
+      />
 
       <div class="flex justify-end gap-1">
         <KunButton variant="light" color="danger" @click="handleCloseCapture">
