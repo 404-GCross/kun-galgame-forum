@@ -58,6 +58,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'taxonomy',
   'friend-link',
   'doc',
+  'permission',
   'setting'
 ]
 
@@ -112,6 +113,12 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     label: '文档管理',
     icon: 'lucide:file-text',
     router: 'doc'
+  },
+  {
+    name: 'permission',
+    label: '权限管理',
+    icon: 'lucide:shield-check',
+    router: 'permission'
   },
   {
     name: 'setting',

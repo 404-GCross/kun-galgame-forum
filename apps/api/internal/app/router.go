@@ -118,6 +118,11 @@ func (a *App) setupRoutes() {
 	// Friend links (public read — rendered on /friend-links)
 	api.Get("/friend-link", a.FriendLinkHandler.List)
 
+	// Effective role→permission bundles (PUBLIC — non-sensitive config that only
+	// tells the FE which capabilities a role holds so it can show/hide affordances;
+	// it grants nothing).
+	api.Get("/perm/bundles", a.AdminRolePermissionHandler.GetBundles)
+
 	// Activity (public)
 	api.Get("/activity", a.ActivityHandler.GetActivity)
 	api.Get("/activity/tab", a.ActivityHandler.GetTab)
@@ -602,6 +607,15 @@ func (a *App) setupRoutes() {
 	// gated on user.purge_content.
 	admin.Get("/admin/user/:id/content-stats", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.GetUserContentStats)
 	admin.Delete("/admin/user/:id/content", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.PurgeUserContent)
+
+	// Role→permission override editor (permission-first authz, Phase 2). Gated by
+	// RequireAdmin — a deliberate ROLE gate, NOT RequirePermission: overrides must
+	// never be able to lock admins out of the very surface that repairs overrides
+	// (self-lockout prevention), so this meta-surface sits OUTSIDE the overridable
+	// system, like the infra-proxy mirrors.
+	rolePermAdmin := authed.Group("", middleware.RequireAdmin())
+	rolePermAdmin.Get("/admin/role-permissions", a.AdminRolePermissionHandler.GetMatrix)
+	rolePermAdmin.Put("/admin/role-permissions/:role", a.AdminRolePermissionHandler.Replace)
 
 	// Trust & Safety moderator inbox (proxied to the trust admin API with the
 	// moderator's own token; site forced to kungal).

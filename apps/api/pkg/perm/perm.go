@@ -32,6 +32,14 @@
 // NO forum permissions (creator's direct-publish lives entirely in infra's
 // submission face — deliberately no forum key), and any role absent from the
 // bundle map resolves to nothing. perm_test.go pins every row of this table.
+//
+// # Runtime overrides (Phase 2)
+//
+// This table is the compiled BASELINE. On top of it sits an admin-managed,
+// Postgres-backed override layer (overrides.go) that can grant/revoke individual
+// keys per role at runtime without a redeploy. The overrides store only the
+// deltas; with none configured the effective table is byte-identical to Bundles,
+// so the golden matrix tests keep passing unchanged.
 package perm
 
 // Permission is one named operation capability, e.g. "topic.edit_any". The
@@ -205,38 +213,28 @@ var Bundles = map[string][]Permission{
 	"ren":       adminPerms,
 }
 
-// resolver is the package-level singleton every enforcement point checks
-// through Can. It is built once at init and is immutable/read-only thereafter.
-var resolver = newResolver(Bundles)
-
 // Can reports whether ANY of the caller's roles grants permission p. roles is
 // the raw OAuth role-claim slice (the same input pkg/role takes). Fail-closed:
 // nil/empty roles, a role not in the bundles, and a permission granted by no
 // role all yield false.
+//
+// Can consults the CURRENT effective table (overrides.go): the compiled baseline
+// above with the admin-managed runtime override layer applied. With no overrides
+// configured the table is byte-identical to Bundles, so behavior matches the
+// golden matrix exactly. The table is swapped atomically, so Can is safe to call
+// concurrently with a refresh.
 func Can(roles []string, p Permission) bool {
-	return resolver.can(roles, p)
+	return current.Load().can(roles, p)
 }
 
 // resolverT is the tiny flat authorization engine: a role→permission-set map
 // answering "does any of these roles grant p?". A local copy of the infra
 // authz engine's shape — the forum is a single flat domain, so it lives right
-// here in pkg/perm rather than a separate package.
+// here in pkg/perm rather than a separate package. Instances are built by
+// buildResolver (overrides.go) from the baseline plus any runtime overrides, and
+// are immutable once installed (SetOverrides swaps in a fresh one).
 type resolverT struct {
 	grants map[string]map[Permission]struct{}
-}
-
-// newResolver builds a resolver from bundles, copying them into set form so a
-// later mutation of the source slices cannot affect it.
-func newResolver(b map[string][]Permission) *resolverT {
-	grants := make(map[string]map[Permission]struct{}, len(b))
-	for roleName, perms := range b {
-		set := make(map[Permission]struct{}, len(perms))
-		for _, p := range perms {
-			set[p] = struct{}{}
-		}
-		grants[roleName] = set
-	}
-	return &resolverT{grants: grants}
 }
 
 func (r *resolverT) can(roles []string, p Permission) bool {

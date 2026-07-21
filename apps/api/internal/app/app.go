@@ -108,6 +108,7 @@ type App struct {
 	MessageChatHandler             *msgHandler.ChatHandler
 	AdminOverviewHandler           *adminHandler.OverviewHandler
 	AdminPurgeHandler              *adminHandler.PurgeHandler
+	AdminRolePermissionHandler     *adminHandler.RolePermissionHandler
 	RankingHandler                 *rankingHandler.RankingHandler
 	SectionHandler                 *sectionHandler.SectionHandler
 	DocArticleHandler              *docHandler.ArticleHandler
@@ -144,6 +145,7 @@ type App struct {
 	ToolsetResourceHandler         *toolsetHandler.ResourceHandler
 	ToolsetUploadHandler           *toolsetHandler.UploadHandler
 	CronStop                       func()
+	RolePermStop                   func()
 }
 
 func New(cfg *config.Config) *App {
@@ -501,6 +503,9 @@ func New(cfg *config.Config) *App {
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo, gc)
 	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
+	// Runtime role→permission overrides (permission-first authz, Phase 2). Boot-load
+	// the deltas into pkg/perm and keep them fresh with a 60s background refresher.
+	adminRolePermSvc := adminService.NewRolePermissionService(adminRepo.NewRolePermissionRepository(db))
 
 	// Doc
 	docArticleRepo := docRepo.NewArticleRepository(db)
@@ -604,6 +609,7 @@ func New(cfg *config.Config) *App {
 		MessageChatHandler:             msgHandler.NewChatHandler(chatSvc),
 		AdminOverviewHandler:           adminHandler.NewOverviewHandler(adminOverviewSvc),
 		AdminPurgeHandler:              adminHandler.NewPurgeHandler(adminPurgeSvc),
+		AdminRolePermissionHandler:     adminHandler.NewRolePermissionHandler(adminRolePermSvc),
 		RankingHandler:                 rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
 		SectionHandler:                 sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
 		DocArticleHandler:              docHandler.NewArticleHandler(docArticleSvc),
@@ -643,6 +649,15 @@ func New(cfg *config.Config) *App {
 		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
 		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameMessageSync.Run, galgameRevisionSync.Run),
 	}
+
+	// Load the runtime role→permission overrides into pkg/perm and keep them
+	// fresh. A boot-load failure warns and leaves the compiled baseline in place —
+	// the override table being unreachable must never block startup or degrade
+	// requests (the compiled baseline is the safe known state).
+	if err := adminRolePermSvc.Load(context.Background()); err != nil {
+		slog.Warn("加载角色权限覆盖失败, 暂时沿用编译期基线", "error", err)
+	}
+	app.RolePermStop = adminRolePermSvc.StartRefresher(60 * time.Second)
 
 	// Fiber
 	//

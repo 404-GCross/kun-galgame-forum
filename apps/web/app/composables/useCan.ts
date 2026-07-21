@@ -1,11 +1,21 @@
 import type { ComputedRef } from 'vue'
 import { storeToRefs } from 'pinia'
 
-// Frontend mirror of apps/api/pkg/perm — the AUTHORITATIVE pure-forum
-// permission bundle. This table is hand-maintained and MUST be kept in lockstep
-// with the backend, byte-for-byte (the string values are the wire contract).
-// Frontend gating is UX ONLY — the backend (pkg/perm) is the real boundary;
-// components branch on a named CAPABILITY here, never on a role tier.
+// Frontend mirror of apps/api/pkg/perm — the pure-forum permission bundle.
+//
+// Two sources of truth, in priority order:
+//   1. RUNTIME: /perm/bundles ships the EFFECTIVE bundles (compiled baseline ±
+//      admin-set grant/revoke overrides). The perm-bundles plugin fetches them
+//      once per app load into useState('kun-perm-bundles'); when present, they
+//      are authoritative here.
+//   2. FALLBACK: the static table below is the COMPILED BASELINE — used before
+//      the fetch resolves and if it fails (offline). It is hand-maintained and
+//      MUST stay in lockstep with pkg/perm, byte-for-byte (the string values are
+//      the wire contract).
+//
+// Frontend gating is UX ONLY — the backend (pkg/perm, with the same overrides
+// applied) is the real boundary; components branch on a named CAPABILITY here,
+// never on a role tier.
 //
 // Scope: exactly the 43 PURE-FORUM permissions. The 9 INFRA-PROXY permissions
 // (galgame edit-proposal review, taxonomy admin, trust moderation inbox,
@@ -92,11 +102,29 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<ForumPermission>> = {
 }
 
 // Reactive, UX-only capability check. Reads the same role set useRole() reads
-// (usePersistUserStore, via storeToRefs so it stays reactive to role changes).
+// (usePersistUserStore, via storeToRefs so it stays reactive to role changes),
+// and reacts to the fetched runtime bundles landing in useState.
 export const useCan = (permission: ForumPermission): ComputedRef<boolean> => {
   const { roles } = storeToRefs(usePersistUserStore())
-
-  return computed(() =>
-    roles.value.some((role) => ROLE_PERMISSIONS[role]?.has(permission) ?? false)
+  // The perm-bundles plugin populates this; null until fetched / on failure.
+  const bundles = useState<Record<string, string[]> | null>(
+    'kun-perm-bundles',
+    () => null
   )
+
+  return computed(() => {
+    const effective = bundles.value
+    if (effective) {
+      // Runtime truth: the effective bundle already folds in admin overrides,
+      // so a plain membership test suffices (roles not in the map grant nothing,
+      // including `creator`, which the static fallback doesn't even list).
+      return roles.value.some(
+        (role) => effective[role]?.includes(permission) ?? false
+      )
+    }
+    // Compiled-baseline fallback (pre-fetch / offline).
+    return roles.value.some(
+      (role) => ROLE_PERMISSIONS[role]?.has(permission) ?? false
+    )
+  })
 }
