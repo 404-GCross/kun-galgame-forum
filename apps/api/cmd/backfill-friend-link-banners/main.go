@@ -62,7 +62,7 @@ func main() {
 	}
 	imgCli := imageclient.New(imageclient.Config{
 		BaseURL:      cfg.ImageClient.BaseURL,
-		CDNBase:      cfg.GalgameWiki.ImageCDNBase,
+		CDNBase:      cfg.NextMoeAPI.ImageCDNBase,
 		ClientID:     cfg.ImageClient.ClientID,
 		ClientSecret: cfg.ImageClient.ClientSecret,
 	})

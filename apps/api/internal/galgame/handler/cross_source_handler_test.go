@@ -31,10 +31,12 @@ const statsETag = `W/"gstats-1752200700"`
 func newFakeWiki(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Empty API key ⇒ the client's read calls fall back to the legacy /api
+		// face, so paths arrive prefixed with /api.
 		switch r.URL.Path {
-		case "/galgame/1/scores":
+		case "/api/galgame/1/scores":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + wikiScoresData + `}`))
-		case "/galgame/stats":
+		case "/api/galgame/stats":
 			// Mirror the wiki's ETag / 304 behaviour exactly.
 			w.Header().Set("ETag", statsETag)
 			if r.Header.Get("If-None-Match") == statsETag {

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -86,21 +87,36 @@ func cachedBatch[T any](
 	return result, nil
 }
 
-// GalgameClient calls the Galgame Wiki Service via HTTP.
+// GalgameClient calls the NextMoe catalog service (galgame surface) via HTTP.
+//
+// The service exposes two faces derived from one host base
+// (KUN_NEXTMOE_API_BASE):
+//   - internalBase = {base}/internal — the internal-tier rich READ face,
+//     gated by an X-API-Key; every read-set call goes here.
+//   - legacyBase   = {base}/api      — the legacy face; writes / submissions,
+//     admin (/admin/*) reads, and the Basic-Auth cron feeds stay here.
+//
+// With apiKey empty, read-face calls fall back to legacyBase — the rollback
+// valve: clearing KUN_NEXTMOE_API_KEY reverts every read to /api with zero
+// code change. Face selection is by ROUTE membership, not HTTP method (see
+// readTarget).
 //
 // Holds two authentication contexts:
 //   - per-request Bearer token (forwarded from the user's kungal session) —
-//     for user-identity endpoints like submit / claim / patch-draft;
+//     for user-identity endpoints like submit / claim / patch-draft, and for
+//     personalized reads (the internal face accepts the user JWT in
+//     Authorization alongside the service key in X-API-Key);
 //   - a pre-built HTTP Basic header (OAuth client_id:secret, reused from
 //     pkg/userclient credentials per decision 3 in 07-submission docs) —
 //     for service-to-service endpoints like /galgame/messages/feed.
 type GalgameClient struct {
-	baseURL    string
-	httpClient *http.Client
-	basicAuth  string
-	// imageCDNBase resolves wiki banner_image_hash → CDN URL inside
-	// doRequest (see banner.go). Empty disables resolution (responses
-	// pass through untouched).
+	internalBase string
+	legacyBase   string
+	apiKey       string
+	httpClient   *http.Client
+	basicAuth    string
+	// imageCDNBase resolves image hashes → CDN URLs inside doRequest (see
+	// banner.go). Empty disables resolution (responses pass through untouched).
 	imageCDNBase string
 
 	// Public batch-lookup caches (see cachedBatch / briefCacheTTL).
@@ -110,25 +126,39 @@ type GalgameClient struct {
 	detailCache map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]
 }
 
-// NewGalgameClient builds a client that can only do anonymous + Bearer calls.
-// Suitable when service-to-service endpoints aren't needed.
+// NewGalgameClient builds a client with no internal-tier API key: read-face
+// calls fall back to the legacy /api face. Suitable for anonymous + Bearer use
+// and for tests. baseURL is the NextMoe host base (no path suffix).
 //
-// imageCDNBase must match the wiki's KUN_IMAGE_PUBLIC_BASE_URL so
-// hash-backed banners resolve to the same CDN URLs the wiki would build.
+// imageCDNBase must match the service's KUN_IMAGE_PUBLIC_BASE_URL so
+// hash-backed banners resolve to the same CDN URLs the service would build.
 func NewGalgameClient(baseURL, imageCDNBase string) *GalgameClient {
+	return newGalgameClient(baseURL, "", imageCDNBase)
+}
+
+// newGalgameClient is the shared constructor. baseURL is the NextMoe host base
+// (e.g. http://catalog:9281, no /api or /internal suffix); the client derives
+// {base}/internal (read face) and {base}/api (legacy face). apiKey is the
+// internal-tier X-API-Key attached to read-face calls; empty routes reads to
+// the legacy face instead (rollback valve).
+func newGalgameClient(baseURL, apiKey, imageCDNBase string) *GalgameClient {
+	base := strings.TrimRight(baseURL, "/")
+
 	// Clone the default transport and lift the per-host idle-connection
 	// cap. net/http defaults MaxIdleConnsPerHost to 2, which throttles a
 	// single-host service-to-service client: concurrent callers (runtime
 	// list hydration, the release-date backfill's worker pool) can't reuse
 	// keep-alive connections beyond 2 and pay a fresh dial per request.
-	// Lifting it lets concurrent requests to the one wiki host reuse the
-	// pool instead of churning connections.
+	// Lifting it lets concurrent requests to the one host reuse the pool
+	// instead of churning connections.
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.MaxIdleConns = 100
 	transport.MaxIdleConnsPerHost = 64
 
 	return &GalgameClient{
-		baseURL: baseURL,
+		internalBase: base + "/internal",
+		legacyBase:   base + "/api",
+		apiKey:       apiKey,
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
@@ -139,13 +169,51 @@ func NewGalgameClient(baseURL, imageCDNBase string) *GalgameClient {
 	}
 }
 
-// NewGalgameClientWithBasicAuth additionally enables service-to-service
-// endpoints (currently: /galgame/messages/feed) by pre-computing the Basic
-// auth header. Pass the same OAuth Client ID/secret used by pkg/userclient.
-func NewGalgameClientWithBasicAuth(baseURL, imageCDNBase, clientID, clientSecret string) *GalgameClient {
-	c := NewGalgameClient(baseURL, imageCDNBase)
+// NewGalgameClientWithBasicAuth additionally enables the Basic-Auth cron feeds
+// (/galgame/messages/feed, /galgame/revisions/recent on the legacy face) by
+// pre-computing the Basic header. Pass the same OAuth Client ID/secret used by
+// pkg/userclient. apiKey is the internal-tier read-face key (empty → reads
+// fall back to legacy).
+func NewGalgameClientWithBasicAuth(baseURL, apiKey, imageCDNBase, clientID, clientSecret string) *GalgameClient {
+	c := newGalgameClient(baseURL, apiKey, imageCDNBase)
 	c.basicAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(clientID+":"+clientSecret))
 	return c
+}
+
+// readTarget picks the base URL + X-API-Key for a read GET by ROUTE
+// membership (not HTTP method):
+//   - /admin/* is never part of the internal read face — those reads
+//     (GetAdminStats, AdminMessages) stay on the legacy /api face;
+//   - with an internal-tier apiKey configured, every other read goes to the
+//     internal face with X-API-Key attached;
+//   - with apiKey empty (the rollback valve), reads fall back to legacy /api
+//     and no key header is sent.
+func (c *GalgameClient) readTarget(path string) (base, apiKey string) {
+	if c.apiKey == "" || strings.HasPrefix(path, "/admin/") {
+		return c.legacyBase, ""
+	}
+	return c.internalBase, c.apiKey
+}
+
+// getFace performs a GET against the given base, attaching a Bearer user token
+// and/or an X-API-Key when non-empty. Both may coexist (dual-credential
+// transport: user JWT in Authorization, service key in X-API-Key).
+func (c *GalgameClient) getFace(ctx context.Context, base, path, token string, query url.Values, apiKey string) (json.RawMessage, *errors.AppError) {
+	reqURL := base + path
+	if len(query) > 0 {
+		reqURL += "?" + query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, errors.ErrInternal("创建请求失败")
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
+	}
+	return c.doRequest(req)
 }
 
 // apiResponse is the standard {code, message, data} wrapper.
@@ -167,20 +235,12 @@ func (c *GalgameClient) Get(ctx context.Context, path string, query url.Values) 
 //   - /galgame/mine and /galgame/messages/mine are inherently user-scoped
 //
 // token "" reduces to an anonymous GET (same as Get).
+//
+// Reads route to the internal face + X-API-Key (or legacy /api when no key is
+// configured); /admin/* reads stay on the legacy face. See readTarget.
 func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
-	reqURL := c.baseURL + path
-	if len(query) > 0 {
-		reqURL += "?" + query.Encode()
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	return c.doRequest(req)
+	base, apiKey := c.readTarget(path)
+	return c.getFace(ctx, base, path, token, query, apiKey)
 }
 
 // EntityGalgameIDs fetches the member galgame ids of a wiki entity
@@ -262,7 +322,9 @@ func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+	// Writes / submissions always target the legacy /api face (the internal
+	// face is read-only; wave 05 territory).
+	req, err := http.NewRequestWithContext(ctx, method, c.legacyBase+path, bodyReader)
 	if err != nil {
 		return nil, errors.ErrInternal("创建请求失败")
 	}
@@ -700,7 +762,7 @@ func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit i
 		limit = 1000
 	}
 
-	reqURL := c.baseURL + "/galgame/messages/feed?since_id=" +
+	reqURL := c.legacyBase + "/galgame/messages/feed?since_id=" +
 		strconv.FormatInt(sinceID, 10) + "&limit=" + strconv.Itoa(limit)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
@@ -748,7 +810,7 @@ func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limi
 		limit = 1000
 	}
 
-	reqURL := c.baseURL + "/galgame/revisions/recent?since_id=" +
+	reqURL := c.legacyBase + "/galgame/revisions/recent?since_id=" +
 		strconv.FormatInt(sinceID, 10) + "&limit=" + strconv.Itoa(limit)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
@@ -808,9 +870,16 @@ type StatsResult struct {
 // doRequest because it needs the raw status code + ETag header, which the
 // envelope-only doRequest hides.
 func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsResult, *errors.AppError) {
-	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/galgame/stats", nil)
+	// A read: routes to the internal face + X-API-Key (or legacy /api when no
+	// key is configured). Kept off the shared getFace/doRequest path because it
+	// needs the raw status code + ETag header.
+	base, apiKey := c.readTarget("/galgame/stats")
+	req, err := http.NewRequestWithContext(ctx, "GET", base+"/galgame/stats", nil)
 	if err != nil {
 		return nil, errors.ErrInternal("创建请求失败")
+	}
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
 	}
 	if ifNoneMatch != "" {
 		req.Header.Set("If-None-Match", ifNoneMatch)

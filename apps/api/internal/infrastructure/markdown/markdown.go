@@ -93,7 +93,7 @@ func ExtractContentImages(content string, limit int) []string {
 var contentImageCDNBase string
 
 // SetContentImageCDNBase configures the CDN base for resolving /image/<hash>
-// content refs. Call once at startup with cfg.GalgameWiki.ImageCDNBase.
+// content refs. Call once at startup with cfg.NextMoeAPI.ImageCDNBase.
 func SetContentImageCDNBase(base string) {
 	contentImageCDNBase = strings.TrimRight(base, "/")
 }

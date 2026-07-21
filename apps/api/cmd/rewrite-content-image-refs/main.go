@@ -51,7 +51,7 @@ func main() {
 	_ = godotenv.Load()
 
 	dryRun := flag.Bool("dry-run", true, "TRUE (default): scan + report only. Pass -dry-run=false to apply.")
-	baseFlag := flag.String("base", "", "Absolute CDN base to rewrite (default = cfg.GalgameWiki.ImageCDNBase)")
+	baseFlag := flag.String("base", "", "Absolute CDN base to rewrite (default = cfg.NextMoeAPI.ImageCDNBase)")
 	flag.Parse()
 
 	cfg, err := config.Load()
@@ -61,7 +61,7 @@ func main() {
 	}
 	logger.Init(cfg.Server.Mode)
 
-	base := strings.TrimRight(orDefault(*baseFlag, cfg.GalgameWiki.ImageCDNBase), "/")
+	base := strings.TrimRight(orDefault(*baseFlag, cfg.NextMoeAPI.ImageCDNBase), "/")
 	if base == "" {
 		slog.Error("CDN base 为空 (设 KUN_IMAGE_PUBLIC_BASE_URL 或 -base)")
 		os.Exit(1)

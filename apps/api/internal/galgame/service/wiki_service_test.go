@@ -76,9 +76,10 @@ func TestProxyWrite_ForwardsForceQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProxyWrite: %v", err)
 	}
-	// Path mapping: /api/galgame-tag/5 → /tag/5
-	if got.path != "/tag/5" {
-		t.Errorf("path mismatch: got %q, want /tag/5", got.path)
+	// Path mapping: /api/galgame-tag/5 → /tag/5, then the client prepends the
+	// legacy /api face → /api/tag/5 reaches the service.
+	if got.path != "/api/tag/5" {
+		t.Errorf("path mismatch: got %q, want /api/tag/5", got.path)
 	}
 	// Critical: ?force=true survives.
 	if got.query.Get("force") != "true" {

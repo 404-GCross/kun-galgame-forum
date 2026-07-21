@@ -15,7 +15,7 @@ type Config struct {
 	Mail           MailConfig
 	Search         SearchConfig
 	CORS           CORSConfig
-	GalgameWiki    GalgameWikiConfig
+	NextMoeAPI     NextMoeAPIConfig
 	ImageClient    ImageClientConfig
 	ArtifactClient ArtifactClientConfig
 	LinkChecker    LinkCheckerConfig
@@ -109,11 +109,11 @@ type LinkCheckerConfig struct {
 
 // ImageClientConfig holds the credentials kungal uses to call the image
 // service directly (multi-image upload paths for galgame covers /
-// screenshots — U2). Distinct from GalgameWikiConfig.ImageCDNBase which
+// screenshots — U2). Distinct from NextMoeAPIConfig.ImageCDNBase which
 // is just the public URL prefix for the response-rewrite walker.
 //
 // Set the three env vars below; the public CDN prefix is shared with
-// the walker (GalgameWikiConfig.ImageCDNBase) so it isn't duplicated.
+// the walker (NextMoeAPIConfig.ImageCDNBase) so it isn't duplicated.
 // When ClientID/ClientSecret are unset, kungal's upload endpoints
 // return a clear error (no silent fallback to a misconfigured client).
 type ImageClientConfig struct {
@@ -122,14 +122,21 @@ type ImageClientConfig struct {
 	ClientSecret string // OAuth client secret
 }
 
-type GalgameWikiConfig struct {
+// NextMoeAPIConfig holds how kungal reaches the NextMoe catalog service's
+// galgame surface. BaseURL is the HOST base (no /api or /internal suffix); the
+// galgame client derives {base}/internal (internal-tier read face, X-API-Key)
+// and {base}/api (legacy face for writes / admin / feeds). APIKey is the
+// internal-tier devapi key sent as X-API-Key on read calls; empty makes reads
+// fall back to the legacy /api face (the rollback valve — no code change).
+type NextMoeAPIConfig struct {
 	BaseURL string
+	APIKey  string
 	// ImageCDNBase is the image_service public CDN prefix (no trailing
-	// slash), identical to the wiki's KUN_IMAGE_PUBLIC_BASE_URL. Wiki
-	// returns image_service-backed banners as banner="" + a
-	// banner_image_hash; kungal resolves the hash → CDN URL server-side
-	// (in the galgame client) so every downstream banner stays a plain
-	// usable URL. See docs/galgame_wiki/07-submission.md §banner and
+	// slash), identical to the service's KUN_IMAGE_PUBLIC_BASE_URL. The
+	// service returns image_service-backed banners as banner="" + a
+	// hash; kungal resolves the hash → CDN URL server-side (in the galgame
+	// client) so every downstream banner stays a plain usable URL. See
+	// docs/galgame_wiki/07-submission.md §banner and
 	// docs/image_service/06-integration-guide.md.
 	ImageCDNBase string
 }
@@ -259,9 +266,15 @@ func Load() (*Config, error) {
 				"http://127.0.0.1:2333,https://www.kungal.com",
 			),
 		},
-		GalgameWiki: GalgameWikiConfig{
-			BaseURL: envOrDefault("GALGAME_WIKI_BASE_URL", "http://127.0.0.1:9281/api"),
-			// Must match the wiki's KUN_IMAGE_PUBLIC_BASE_URL exactly —
+		NextMoeAPI: NextMoeAPIConfig{
+			// Host base, no /api suffix; the galgame client derives
+			// {base}/internal (read face) + {base}/api (legacy face). Dev
+			// default = local catalog dev instance on :19281.
+			BaseURL: envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:19281"),
+			// Internal-tier devapi key (X-API-Key) for the read face. Empty →
+			// reads fall back to the legacy /api face (rollback valve).
+			APIKey: envOrDefault("KUN_NEXTMOE_API_KEY", ""),
+			// Must match the service's KUN_IMAGE_PUBLIC_BASE_URL exactly —
 			// both build the same {base}/{hh}/{hh}/{hash}.webp layout.
 			ImageCDNBase: envOrDefault("KUN_IMAGE_PUBLIC_BASE_URL", "https://image.kungal.iloveren.link"),
 		},

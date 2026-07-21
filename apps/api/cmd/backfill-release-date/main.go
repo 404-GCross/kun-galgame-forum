@@ -130,8 +130,9 @@ func main() {
 
 	db := database.NewPostgres(cfg.Database, cfg.Server.Mode)
 	gc := galgameClient.NewGalgameClientWithBasicAuth(
-		cfg.GalgameWiki.BaseURL,
-		cfg.GalgameWiki.ImageCDNBase,
+		cfg.NextMoeAPI.BaseURL,
+		cfg.NextMoeAPI.APIKey,
+		cfg.NextMoeAPI.ImageCDNBase,
 		cfg.OAuth.ClientID,
 		cfg.OAuth.ClientSecret,
 	)

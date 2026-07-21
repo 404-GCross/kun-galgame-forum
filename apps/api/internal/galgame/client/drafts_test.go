@@ -75,15 +75,16 @@ func TestDraftsRequestAndPassthrough(t *testing.T) {
 			defer srv.Close()
 
 			// Empty imageCDNBase makes rewriteBanners a no-op, so the {items,total}
-			// bytes reach us untouched.
+			// bytes reach us untouched. Empty API key ⇒ reads fall back to the
+			// legacy /api face, so the derived path is /api/galgame/drafts.
 			c := NewGalgameClient(srv.URL, "")
 			data, appErr := c.Drafts(context.Background(), 2, 24, tc.isSFW, tc.filters)
 			if appErr != nil {
 				t.Fatalf("Drafts returned error: %v", appErr)
 			}
 
-			if gotPath != "/galgame/drafts" {
-				t.Errorf("path = %q, want /galgame/drafts", gotPath)
+			if gotPath != "/api/galgame/drafts" {
+				t.Errorf("path = %q, want /api/galgame/drafts", gotPath)
 			}
 			if got := gotQuery.Get("page"); got != "2" {
 				t.Errorf("page = %q, want 2", got)

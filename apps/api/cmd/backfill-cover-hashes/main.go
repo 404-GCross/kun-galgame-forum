@@ -71,10 +71,10 @@ func main() {
 		slog.Error("image_service 未配置 (KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET), 无法上传")
 		os.Exit(1)
 	}
-	cdnBase := strings.TrimRight(cfg.GalgameWiki.ImageCDNBase, "/")
+	cdnBase := strings.TrimRight(cfg.NextMoeAPI.ImageCDNBase, "/")
 	imgCli := imageclient.New(imageclient.Config{
 		BaseURL:      cfg.ImageClient.BaseURL,
-		CDNBase:      cfg.GalgameWiki.ImageCDNBase,
+		CDNBase:      cfg.NextMoeAPI.ImageCDNBase,
 		ClientID:     cfg.ImageClient.ClientID,
 		ClientSecret: cfg.ImageClient.ClientSecret,
 	})

@@ -56,7 +56,8 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 func fakeWiki(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/galgame/batch" {
+		// Empty API key ⇒ reads fall back to the legacy /api face → /api/galgame/batch.
+		if r.URL.Path == "/api/galgame/batch" {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":[{"id":1,"user_id":7,"name_zh_cn":"测试游戏"}]}`))
 			return
 		}
