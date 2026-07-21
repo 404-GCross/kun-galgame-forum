@@ -20,14 +20,23 @@ type overrideStore interface {
 	ReplaceForRole(ctx context.Context, role string, rows []model.RolePermissionOverride, operatorUID int) error
 }
 
-// RolePermissionService loads the runtime override deltas into pkg/perm, serves
-// the admin matrix, and validates + applies edits (write-through).
-type RolePermissionService struct {
-	repo overrideStore
+// reloader refreshes the live pkg/perm override tables after a write. The
+// PermissionOverrideSync satisfies it — routing every write-through (role AND
+// user) through the ONE Load path keeps both layers converging uniformly.
+type reloader interface {
+	Load(ctx context.Context) error
 }
 
-func NewRolePermissionService(repo overrideStore) *RolePermissionService {
-	return &RolePermissionService{repo: repo}
+// RolePermissionService serves the admin role→permission matrix and validates +
+// applies edits (write-through via the shared reloader). Boot/refresh loading of
+// the effective table lives in PermissionOverrideSync (the single Load path).
+type RolePermissionService struct {
+	repo   overrideStore
+	reload reloader
+}
+
+func NewRolePermissionService(repo overrideStore, reload reloader) *RolePermissionService {
+	return &RolePermissionService{repo: repo, reload: reload}
 }
 
 // editableRoles are the only roles an admin may override. ren is pinned to the
@@ -37,44 +46,6 @@ var editableRoles = map[string]bool{"creator": true, "moderator": true, "admin":
 
 // matrixRoles is the display order of the matrix (ren last, pinned).
 var matrixRoles = []string{"creator", "moderator", "admin", "ren"}
-
-// Load reads all override rows and pushes them into pkg/perm, making them the
-// effective authorization table. On a read error it returns the error WITHOUT
-// touching pkg/perm — the caller (boot / refresher) logs a warning and the last
-// known (or baseline) sets keep serving. The override table being unreachable
-// must never fail requests.
-func (s *RolePermissionService) Load(ctx context.Context) error {
-	rows, err := s.repo.ListAll(ctx)
-	if err != nil {
-		return err
-	}
-	perm.SetOverrides(rowsToOverrideMap(rows))
-	return nil
-}
-
-// StartRefresher launches a background goroutine that re-Loads the override table
-// every interval, so manual psql edits (and any future second instance) converge
-// without a restart. A single goroutine drives it, so runs never overlap. A Load
-// failure warns and keeps the last-known effective sets — it never crashes.
-// Returns a stop function.
-func (s *RolePermissionService) StartRefresher(interval time.Duration) func() {
-	ticker := time.NewTicker(interval)
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-done:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				if err := s.Load(context.Background()); err != nil {
-					slog.Warn("角色权限覆盖刷新失败, 继续沿用上一次的有效权限", "error", err)
-				}
-			}
-		}
-	}()
-	return func() { close(done) }
-}
 
 // Matrix returns the full read model for the admin editor.
 func (s *RolePermissionService) Matrix(ctx context.Context) (dto.RolePermissionMatrix, error) {
@@ -101,10 +72,11 @@ func (s *RolePermissionService) ReplaceOverrides(ctx context.Context, operatorUI
 	if err := s.repo.ReplaceForRole(ctx, role, itemsToRows(role, items), operatorUID); err != nil {
 		return dto.RolePermissionMatrix{}, errors.ErrInternal("保存角色权限失败")
 	}
-	// Write-through: re-Load so the edit is live at once. A Load failure here only
-	// means the in-memory table is briefly stale — the refresher converges — so we
-	// warn and still return a matrix built from the freshly written rows.
-	if err := s.Load(ctx); err != nil {
+	// Write-through: re-Load (both layers, via the shared sync) so the edit is live
+	// at once. A Load failure here only means the in-memory table is briefly stale —
+	// the refresher converges — so we warn and still return a matrix built from the
+	// freshly written rows.
+	if err := s.reload.Load(ctx); err != nil {
 		slog.Warn("写入后刷新角色权限覆盖失败, 稍后自动收敛", "error", err)
 	}
 	matrix, err := s.Matrix(ctx)

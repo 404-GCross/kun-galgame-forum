@@ -104,7 +104,7 @@ func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("无效的评论 ID"))
 	}
 
-	if appErr := h.commentService.DeleteComment(c.Context(), user.ID, perm.Can(user.Roles, perm.CommentTopicDelete), commentID); appErr != nil {
+	if appErr := h.commentService.DeleteComment(c.Context(), user.ID, perm.CanUser(user.ID, user.Roles, perm.CommentTopicDelete), commentID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

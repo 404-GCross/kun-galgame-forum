@@ -37,6 +37,46 @@ export interface KunRolePermMatrix {
   roles: Record<string, KunRolePermState>
 }
 
-// GET /perm/bundles (public): the EFFECTIVE bundles (baseline ± overrides),
-// consumed by the useCan plugin. snake-less simple shape.
-export type KunPermBundles = Record<string, string[]>
+// GET /perm/mine (any logged-in user): the CURRENT user's EFFECTIVE pure-forum
+// permission list — the role layer plus admin-set personal grant/revoke deltas,
+// already folded in. Consumed by the perm-mine plugin; the runtime truth useCan
+// reads. A plain list because the client only ever membership-tests it.
+export interface KunPermMine {
+  permissions: string[]
+}
+
+// GET /admin/user-permissions/:uid and every PUT response share this shape.
+// `role_effective` is the role-derived reference set (the deviation baseline in
+// the per-user panel); `effective` folds in this user's personal grant/revoke
+// overrides on top of it.
+export interface KunUserPermState {
+  user_id: number
+  roles: string[]
+  role_effective: string[]
+  overrides: KunRolePermOverride[]
+  effective: string[]
+}
+
+// One row of the permission audit log. `before` / `after` are the OVERRIDE sets
+// (relative to a role's compiled baseline, or a user's role_effective) captured
+// immediately before and after the change — the FE diffs them client-side to
+// render the delta. `subject` is a role claim (subject_kind 'role') or a uid
+// string (subject_kind 'user').
+export interface KunPermAuditEntry {
+  id: number
+  operator_id: number
+  subject_kind: 'role' | 'user'
+  subject: string
+  action: 'replace' | 'reset'
+  before: KunRolePermOverride[]
+  after: KunRolePermOverride[]
+  created_at: string
+}
+
+// GET /admin/permission-audit?page=&limit= — newest first, page/limit paging.
+// `users` resolves operator / user-subject ids to display chips (uid → brief).
+export interface KunPermAuditPage {
+  total: number
+  items: KunPermAuditEntry[]
+  users: Record<string, KunUser>
+}

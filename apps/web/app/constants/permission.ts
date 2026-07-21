@@ -106,6 +106,20 @@ export const KUN_PERMISSION_KEYS = Object.keys(
   KUN_PERMISSION_META
 ) as ForumPermission[]
 
+// The 43 keys pre-bucketed by group in KUN_PERMISSION_GROUP_ORDER — the shared
+// row layout for BOTH the role matrix and the per-user override panel. Static
+// (the vocabulary is compile-time constant), so it's a plain array, not a
+// computed. Empty groups are dropped.
+export const KUN_PERMISSION_GROUPS: {
+  group: string
+  perms: ForumPermission[]
+}[] = KUN_PERMISSION_GROUP_ORDER.map((group) => ({
+  group,
+  perms: KUN_PERMISSION_KEYS.filter(
+    (key) => KUN_PERMISSION_META[key].group === group
+  )
+})).filter((entry) => entry.perms.length)
+
 // Matrix columns, left → right. `creator` / `moderator` / `admin` are editable;
 // `ren` (站长) is the LOCKED safety anchor — always the full catalogue, never
 // adjustable, and never PUT.

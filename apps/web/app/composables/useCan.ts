@@ -4,12 +4,15 @@ import { storeToRefs } from 'pinia'
 // Frontend mirror of apps/api/pkg/perm — the pure-forum permission bundle.
 //
 // Two sources of truth, in priority order:
-//   1. RUNTIME: /perm/bundles ships the EFFECTIVE bundles (compiled baseline ±
-//      admin-set grant/revoke overrides). The perm-bundles plugin fetches them
-//      once per app load into useState('kun-perm-bundles'); when present, they
-//      are authoritative here.
-//   2. FALLBACK: the static table below is the COMPILED BASELINE — used before
-//      the fetch resolves and if it fails (offline). It is hand-maintained and
+//   1. RUNTIME: /perm/mine ships the CURRENT user's EFFECTIVE permission list
+//      (the role layer plus admin-set personal grant/revoke overrides, folded
+//      in). The perm-mine plugin fetches it once per app load into
+//      useState('kun-perm-mine'); when present, a plain membership test on it is
+//      authoritative here (it already reflects the caller's actual capabilities,
+//      including any per-user override on a roleless account).
+//   2. FALLBACK: the static role table below is the COMPILED BASELINE — used
+//      before the fetch resolves and if it fails (offline / logged-out). It maps
+//      roles only, so it can't see personal overrides; it is hand-maintained and
 //      MUST stay in lockstep with pkg/perm, byte-for-byte (the string values are
 //      the wire contract).
 //
@@ -101,28 +104,26 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<ForumPermission>> = {
   ren: new Set(ADMIN_PERMISSIONS)
 }
 
-// Reactive, UX-only capability check. Reads the same role set useRole() reads
-// (usePersistUserStore, via storeToRefs so it stays reactive to role changes),
-// and reacts to the fetched runtime bundles landing in useState.
+// Reactive, UX-only capability check. Reads the fetched personal list when it
+// has landed in useState, otherwise the static role table (still reactive to
+// role changes via storeToRefs, so a role-only fallback tracks login/logout).
 export const useCan = (permission: ForumPermission): ComputedRef<boolean> => {
   const { roles } = storeToRefs(usePersistUserStore())
-  // The perm-bundles plugin populates this; null until fetched / on failure.
-  const bundles = useState<Record<string, string[]> | null>(
-    'kun-perm-bundles',
-    () => null
-  )
+  // The perm-mine plugin populates this with the current user's EFFECTIVE
+  // permission list; null until fetched / on failure.
+  const mine = useState<string[] | null>('kun-perm-mine', () => null)
 
   return computed(() => {
-    const effective = bundles.value
-    if (effective) {
-      // Runtime truth: the effective bundle already folds in admin overrides,
-      // so a plain membership test suffices (roles not in the map grant nothing,
-      // including `creator`, which the static fallback doesn't even list).
-      return roles.value.some(
-        (role) => effective[role]?.includes(permission) ?? false
-      )
+    const list = mine.value
+    if (list) {
+      // Runtime truth: /perm/mine already folds in the role layer AND the
+      // caller's personal grant/revoke deltas, so a plain membership test is
+      // exact — including a permission granted to an otherwise roleless user.
+      return list.includes(permission)
     }
-    // Compiled-baseline fallback (pre-fetch / offline).
+    // Compiled-baseline fallback (pre-fetch / offline / logged-out): the static
+    // role table. It can't see personal overrides, but this is UX-only gating
+    // and the backend (with overrides applied) is the real boundary.
     return roles.value.some(
       (role) => ROLE_PERMISSIONS[role]?.has(permission) ?? false
     )

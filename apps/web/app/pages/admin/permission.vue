@@ -11,6 +11,14 @@ import {
 definePageMeta({ middleware: 'admin' })
 useKunDisableSeo('权限管理')
 
+// Two views: the role matrix (the Phase 2 surface, unchanged) and the change
+// log. Plain local tab state — no ?tab= deep-link needed.
+const permTabs = [
+  { value: 'matrix', textValue: '权限矩阵' },
+  { value: 'audit', textValue: '变更日志' }
+]
+const activeTab = ref('matrix')
+
 const { data, refresh } = await useKunFetch<KunRolePermMatrix>(
   '/admin/role-permissions'
 )
@@ -202,80 +210,96 @@ const handleReset = async (role: string) => {
       </p>
     </div>
 
-    <KunInfo
-      color="info"
-      title="调整说明"
-      description="勾选 = 授予该角色一项高于基线的权限；取消勾选 = 撤销一项基线本有的权限。带有小圆点的单元格即为相对基线的覆盖（绿色=授予，黄色=撤销）。站长（ren）恒持全部权限，不可调整。"
+    <KunTab
+      v-model="activeTab"
+      :items="permTabs"
+      variant="underlined"
+      color="primary"
+      size="sm"
     />
 
-    <KunInfo
-      v-if="moderatorExceedsAdmin.length"
-      color="warning"
-      title="权限包含关系冲突"
-      :description="`版主不应持有管理员没有的权限（后端会拒绝）：${moderatorExceedsAdmin.join('、')}。请为管理员一并授予，或撤销版主的该项。`"
-    />
+    <AdminPermissionAuditLog v-if="activeTab === 'audit'" />
 
-    <template v-if="matrix">
-      <KunCard :is-hoverable="false" :is-transparent="false" padding="sm">
-        <AdminPermissionMatrix
-          :working="working"
-          :baseline="baseline"
-          :effective="effective"
-          :disabled="saving"
-          @toggle="toggle"
-          @reset="handleReset"
-        />
-      </KunCard>
+    <template v-else>
+      <KunInfo
+        color="info"
+        title="调整说明"
+        description="勾选 = 授予该角色一项高于基线的权限；取消勾选 = 撤销一项基线本有的权限。带有小圆点的单元格即为相对基线的覆盖（绿色=授予，黄色=撤销）。站长（ren）恒持全部权限，不可调整。"
+      />
 
-      <AdminPermissionProxyList />
+      <KunInfo
+        v-if="moderatorExceedsAdmin.length"
+        color="warning"
+        title="权限包含关系冲突"
+        :description="`版主不应持有管理员没有的权限（后端会拒绝）：${moderatorExceedsAdmin.join('、')}。请为管理员一并授予，或撤销版主的该项。`"
+      />
 
-      <!-- Sticky save bar: pin the surface to alpha 1 (bg-content1 carries the
+      <template v-if="matrix">
+        <KunCard :is-hoverable="false" :is-transparent="false" padding="sm">
+          <AdminPermissionMatrix
+            :working="working"
+            :baseline="baseline"
+            :effective="effective"
+            :disabled="saving"
+            @toggle="toggle"
+            @reset="handleReset"
+          />
+        </KunCard>
+
+        <AdminPermissionProxyList />
+
+        <!-- Sticky save bar: pin the surface to alpha 1 (bg-content1 carries the
            --kun-surface-opacity glass alpha; a lowered 透明度 setting would
            otherwise let the grid show through). -->
-      <div class="sticky bottom-0 z-20 pb-3">
-        <KunCard
-          :is-hoverable="false"
-          :is-transparent="false"
-          class-name="bg-[oklch(var(--content1))]!"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <span class="text-default-500 text-sm">
-              <template v-if="totalPending">
-                待保存
-                <span class="text-warning font-medium">{{ totalPending }}</span>
-                项调整 ·
-                {{
-                  dirtyRoles
-                    .map((role) => `${roleLabel(role)} ${pendingByRole[role]}`)
-                    .join('，')
-                }}
-              </template>
-              <template v-else>尚无待保存的调整</template>
-            </span>
-            <div class="flex items-center gap-2">
-              <KunButton
-                variant="light"
-                color="default"
-                :disabled="!totalPending || saving"
-                @click="handleDiscard"
-              >
-                放弃更改
-              </KunButton>
-              <KunButton
-                color="primary"
-                :disabled="!totalPending"
-                :loading="saving"
-                @click="handleSave"
-              >
-                <KunIcon name="lucide:check" />
-                保存
-              </KunButton>
+        <div class="sticky bottom-0 z-20 pb-3">
+          <KunCard
+            :is-hoverable="false"
+            :is-transparent="false"
+            class-name="bg-[oklch(var(--content1))]!"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <span class="text-default-500 text-sm">
+                <template v-if="totalPending">
+                  待保存
+                  <span class="text-warning font-medium">{{
+                    totalPending
+                  }}</span>
+                  项调整 ·
+                  {{
+                    dirtyRoles
+                      .map(
+                        (role) => `${roleLabel(role)} ${pendingByRole[role]}`
+                      )
+                      .join('，')
+                  }}
+                </template>
+                <template v-else>尚无待保存的调整</template>
+              </span>
+              <div class="flex items-center gap-2">
+                <KunButton
+                  variant="light"
+                  color="default"
+                  :disabled="!totalPending || saving"
+                  @click="handleDiscard"
+                >
+                  放弃更改
+                </KunButton>
+                <KunButton
+                  color="primary"
+                  :disabled="!totalPending"
+                  :loading="saving"
+                  @click="handleSave"
+                >
+                  <KunIcon name="lucide:check" />
+                  保存
+                </KunButton>
+              </div>
             </div>
-          </div>
-        </KunCard>
-      </div>
-    </template>
+          </KunCard>
+        </div>
+      </template>
 
-    <KunNull v-else description="无法加载权限矩阵，请稍后重试" />
+      <KunNull v-else description="无法加载权限矩阵，请稍后重试" />
+    </template>
   </div>
 </template>

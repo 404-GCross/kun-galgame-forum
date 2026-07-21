@@ -109,6 +109,8 @@ type App struct {
 	AdminOverviewHandler           *adminHandler.OverviewHandler
 	AdminPurgeHandler              *adminHandler.PurgeHandler
 	AdminRolePermissionHandler     *adminHandler.RolePermissionHandler
+	AdminUserPermissionHandler     *adminHandler.UserPermissionHandler
+	AdminPermissionAuditHandler    *adminHandler.PermissionAuditHandler
 	RankingHandler                 *rankingHandler.RankingHandler
 	SectionHandler                 *sectionHandler.SectionHandler
 	DocArticleHandler              *docHandler.ArticleHandler
@@ -164,7 +166,7 @@ func New(cfg *config.Config) *App {
 
 	// Resolve /image/<hash> content refs to absolute CDN URLs at render time.
 	// Same CDN base the image client / galgame banner walker use.
-	markdown.SetContentImageCDNBase(cfg.GalgameWiki.ImageCDNBase)
+	markdown.SetContentImageCDNBase(cfg.NextMoeAPI.ImageCDNBase)
 
 	// Repositories
 	userStateRepo := repository.NewStateRepository(db)
@@ -179,8 +181,9 @@ func New(cfg *config.Config) *App {
 	// identity). Bearer-required endpoints still use a per-request token
 	// forwarded from the user session.
 	gc := galgameClient.NewGalgameClientWithBasicAuth(
-		cfg.GalgameWiki.BaseURL,
-		cfg.GalgameWiki.ImageCDNBase,
+		cfg.NextMoeAPI.BaseURL,
+		cfg.NextMoeAPI.APIKey,
+		cfg.NextMoeAPI.ImageCDNBase,
 		cfg.OAuth.ClientID,
 		cfg.OAuth.ClientSecret,
 	)
@@ -197,7 +200,7 @@ func New(cfg *config.Config) *App {
 		// Same image_service CDN base the wiki client uses — lets userclient
 		// resolve users' avatar_image_hash into URLs (new avatars store only the
 		// hash; the legacy `avatar` field is empty).
-		ImageCDNBase: cfg.GalgameWiki.ImageCDNBase,
+		ImageCDNBase: cfg.NextMoeAPI.ImageCDNBase,
 	})
 
 	// Install the process-wide moemoepoint Awarder: OAuth is the single source
@@ -217,7 +220,7 @@ func New(cfg *config.Config) *App {
 	if cfg.ImageClient.ClientID != "" && cfg.ImageClient.ClientSecret != "" {
 		imgCli = imageclient.New(imageclient.Config{
 			BaseURL:      cfg.ImageClient.BaseURL,
-			CDNBase:      cfg.GalgameWiki.ImageCDNBase,
+			CDNBase:      cfg.NextMoeAPI.ImageCDNBase,
 			ClientID:     cfg.ImageClient.ClientID,
 			ClientSecret: cfg.ImageClient.ClientSecret,
 		})
@@ -494,24 +497,32 @@ func New(cfg *config.Config) *App {
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
 	websiteTagRepo := websiteRepo.NewTagRepository(db)
 	websiteCoreSvc := websiteService.NewWebsiteService(
-		websiteRepository, websiteCategoryRepo, websiteTagRepo, uc, communityCli, cfg.GalgameWiki.ImageCDNBase,
+		websiteRepository, websiteCategoryRepo, websiteTagRepo, uc, communityCli, cfg.NextMoeAPI.ImageCDNBase,
 	)
-	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.GalgameWiki.ImageCDNBase)
-	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
+	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.NextMoeAPI.ImageCDNBase)
+	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.NextMoeAPI.ImageCDNBase)
 
 	// Admin
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo, gc)
 	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
-	// Runtime role→permission overrides (permission-first authz, Phase 2). Boot-load
-	// the deltas into pkg/perm and keep them fresh with a 60s background refresher.
-	adminRolePermSvc := adminService.NewRolePermissionService(adminRepo.NewRolePermissionRepository(db))
+	// Runtime permission overrides (permission-first authz, Phase 2 role layer +
+	// Phase 3 user layer). PermissionOverrideSync owns the SINGLE Load path that
+	// refreshes BOTH pkg/perm layers; boot, the 60s refresher, and every
+	// write-through (role or user replace) go through it. The audit service serves
+	// the append-only override change log (migration 064).
+	adminRolePermRepo := adminRepo.NewRolePermissionRepository(db)
+	adminUserPermRepo := adminRepo.NewUserPermissionRepository(db)
+	adminPermSync := adminService.NewPermissionOverrideSync(adminRolePermRepo, adminUserPermRepo)
+	adminRolePermSvc := adminService.NewRolePermissionService(adminRolePermRepo, adminPermSync)
+	adminUserPermSvc := adminService.NewUserPermissionService(adminUserPermRepo, uc, adminPermSync)
+	adminPermAuditSvc := adminService.NewPermissionAuditService(adminRepo.NewPermissionAuditRepository(db), uc)
 
 	// Doc
 	docArticleRepo := docRepo.NewArticleRepository(db)
 	docCategoryRepo := docRepo.NewCategoryRepository(db)
 	docTagRepo := docRepo.NewTagRepository(db)
-	docArticleSvc := docService.NewArticleService(docArticleRepo, docCategoryRepo, cfg.GalgameWiki.ImageCDNBase)
+	docArticleSvc := docService.NewArticleService(docArticleRepo, docCategoryRepo, cfg.NextMoeAPI.ImageCDNBase)
 	docCategorySvc := docService.NewCategoryService(docCategoryRepo)
 	docTagSvc := docService.NewTagService(docTagRepo)
 
@@ -610,6 +621,8 @@ func New(cfg *config.Config) *App {
 		AdminOverviewHandler:           adminHandler.NewOverviewHandler(adminOverviewSvc),
 		AdminPurgeHandler:              adminHandler.NewPurgeHandler(adminPurgeSvc),
 		AdminRolePermissionHandler:     adminHandler.NewRolePermissionHandler(adminRolePermSvc),
+		AdminUserPermissionHandler:     adminHandler.NewUserPermissionHandler(adminUserPermSvc),
+		AdminPermissionAuditHandler:    adminHandler.NewPermissionAuditHandler(adminPermAuditSvc),
 		RankingHandler:                 rankingHandler.NewRankingHandler(rankingService.NewRankingService(rankingRepo.NewRankingRepository(db), gc, uc)),
 		SectionHandler:                 sectionHandler.NewSectionHandler(sectionService.NewSectionService(sectionRepo.NewSectionRepository(db), uc)),
 		DocArticleHandler:              docHandler.NewArticleHandler(docArticleSvc),
@@ -619,7 +632,7 @@ func New(cfg *config.Config) *App {
 		WebsiteCategoryHandler:         websiteHandler.NewCategoryHandler(websiteCategorySvc),
 		WebsiteTagHandler:              websiteHandler.NewTagHandler(websiteTagSvc),
 		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db)),
-		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.GalgameWiki.ImageCDNBase),
+		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.NextMoeAPI.ImageCDNBase),
 		TrustHandler:                   trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
 		RSSHandler:                     rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
 		GalgameHandler:                 galgameHandler.NewGalgameHandler(galgameCoreSvc),
@@ -650,14 +663,15 @@ func New(cfg *config.Config) *App {
 		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameMessageSync.Run, galgameRevisionSync.Run),
 	}
 
-	// Load the runtime role→permission overrides into pkg/perm and keep them
-	// fresh. A boot-load failure warns and leaves the compiled baseline in place —
-	// the override table being unreachable must never block startup or degrade
-	// requests (the compiled baseline is the safe known state).
-	if err := adminRolePermSvc.Load(context.Background()); err != nil {
-		slog.Warn("加载角色权限覆盖失败, 暂时沿用编译期基线", "error", err)
+	// Load the runtime permission overrides (BOTH the role and user layers) into
+	// pkg/perm and keep them fresh. A boot-load failure warns and leaves the
+	// compiled baseline in place — the override tables being unreachable must never
+	// block startup or degrade requests (the compiled baseline is the safe known
+	// state).
+	if err := adminPermSync.Load(context.Background()); err != nil {
+		slog.Warn("加载权限覆盖失败, 暂时沿用编译期基线", "error", err)
 	}
-	app.RolePermStop = adminRolePermSvc.StartRefresher(60 * time.Second)
+	app.RolePermStop = adminPermSync.StartRefresher(60 * time.Second)
 
 	// Fiber
 	//

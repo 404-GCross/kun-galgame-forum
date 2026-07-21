@@ -4,12 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -110,8 +112,12 @@ func (s *CommunityCommentService) afterCreate(userID, galgameID int, content str
 // UpdateComment edits a post's body (author-only; a moderator rides the
 // mod-actor variant to edit others). galgameID (from the ?gid hint) enables the
 // edit-introduced @mention re-fan + populates the returned item; when absent the
-// core edit still succeeds and only the local enrichment is skipped.
-func (s *CommunityCommentService) UpdateComment(ctx context.Context, userID int, canModerate bool, postID int64, galgameID *int, content string) (*CommunityPostItem, *errors.AppError) {
+// core edit still succeeds and only the local enrichment is skipped. The caller's
+// roles are passed through (not a precomputed bool) so the mod-edit authority is
+// resolved against THIS post's surface (see resolveModEdit).
+func (s *CommunityCommentService) UpdateComment(ctx context.Context, userID int, roles []string, postID int64, galgameID *int, content string) (*CommunityPostItem, *errors.AppError) {
+	canModerate := s.resolveModEdit(ctx, userID, roles, postID)
+
 	post, err := s.community.EditPost(ctx, postID, communityclient.EditPostRequest{
 		AuthorID: int64(userID), Body: content, AsModerator: canModerate,
 	})
@@ -143,6 +149,55 @@ func (s *CommunityCommentService) refanMentions(userID, galgameID int, content s
 	for _, mid := range markdown.ExtractMentionIDs(content) {
 		s.helpers.CreateGalgameCommentMention(s.db, userID, mid, preview, galgameID, int(post.ID), int(root))
 	}
+}
+
+// resolveModEdit decides whether this edit rides as a moderator action. This
+// edit route is SHARED by all four comment surfaces, each with its own
+// comment.*.edit key (which runtime overrides can make diverge), so authority
+// must be checked against THIS post's surface — not a union. Nothing else in the
+// edit flow carries the anchor (EditPost's returned PostView has none), so it
+// costs one dedicated S2S read to fetch it. If the anchor can't be resolved (post
+// not visible, read failed, or an unrecognized anchor) it falls back to the
+// DEFENSIVE union of all four edit keys, so authority is never silently widened
+// or dropped. A non-moderator author still edits via EditPost's author match
+// (canModerate stays false), so owner-editing-own-comment is untouched.
+func (s *CommunityCommentService) resolveModEdit(ctx context.Context, userID int, roles []string, postID int64) bool {
+	if resolved, err := s.community.ResolvePosts(ctx, []int64{postID}); err == nil {
+		for _, ap := range resolved.Posts {
+			if ap.Post.ID != postID {
+				continue
+			}
+			if p, ok := commentEditPermForAnchor(ap.Thread.AnchorKind, ap.Thread.AnchorID); ok {
+				return perm.CanUser(userID, roles, p)
+			}
+		}
+	}
+	return perm.CanUser(userID, roles, perm.CommentGalgameEdit) ||
+		perm.CanUser(userID, roles, perm.CommentRatingEdit) ||
+		perm.CanUser(userID, roles, perm.CommentWebsiteEdit) ||
+		perm.CanUser(userID, roles, perm.CommentToolsetEdit)
+}
+
+// commentEditPermForAnchor maps a post's community anchor to the pure-forum edit
+// permission that governs its surface: galgame comments anchor site_game, while
+// rating/website/toolset ride site_resource with a prefixed anchor id
+// (rating: / website: / toolset:). ok=false for an anchor we don't recognize
+// (the caller then applies the defensive union).
+func commentEditPermForAnchor(anchorKind int32, anchorID string) (perm.Permission, bool) {
+	switch anchorKind {
+	case communityclient.AnchorSiteGame:
+		return perm.CommentGalgameEdit, true
+	case communityclient.AnchorSiteResource:
+		switch {
+		case strings.HasPrefix(anchorID, "rating:"):
+			return perm.CommentRatingEdit, true
+		case strings.HasPrefix(anchorID, "website:"):
+			return perm.CommentWebsiteEdit, true
+		case strings.HasPrefix(anchorID, "toolset:"):
+			return perm.CommentToolsetEdit, true
+		}
+	}
+	return "", false
 }
 
 // ──────────────────────────────────────────

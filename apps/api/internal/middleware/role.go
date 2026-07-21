@@ -50,7 +50,7 @@ func RequirePermission(p perm.Permission) fiber.Handler {
 		if user == nil {
 			return response.Error(c, errors.ErrAuthExpired())
 		}
-		if !perm.Can(user.Roles, p) {
+		if !perm.CanUser(user.ID, user.Roles, p) {
 			return response.Error(c, errors.ErrForbidden("您没有权限进行此操作"))
 		}
 		return c.Next()

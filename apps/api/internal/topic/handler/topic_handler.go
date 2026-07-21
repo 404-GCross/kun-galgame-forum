@@ -180,7 +180,7 @@ func (h *TopicHandler) Update(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.topicWriteService.Update(c.Context(), user.ID, perm.Can(user.Roles, perm.TopicEditAny), tid, &req); appErr != nil {
+	if appErr := h.topicWriteService.Update(c.Context(), user.ID, perm.CanUser(user.ID, user.Roles, perm.TopicEditAny), tid, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -328,7 +328,7 @@ func (h *TopicHandler) ToggleHide(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("���效的话题 ID"))
 	}
 
-	if appErr := h.topicWriteService.ToggleHide(c.Context(), user.ID, perm.Can(user.Roles, perm.TopicHide), tid); appErr != nil {
+	if appErr := h.topicWriteService.ToggleHide(c.Context(), user.ID, perm.CanUser(user.ID, user.Roles, perm.TopicHide), tid); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -353,7 +353,7 @@ func (h *TopicHandler) SetBestAnswer(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.topicWriteService.SetBestAnswer(c.Context(), user.ID, perm.Can(user.Roles, perm.TopicSetBestAnswer), tid, req.ReplyID); appErr != nil {
+	if appErr := h.topicWriteService.SetBestAnswer(c.Context(), user.ID, perm.CanUser(user.ID, user.Roles, perm.TopicSetBestAnswer), tid, req.ReplyID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

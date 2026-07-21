@@ -331,6 +331,10 @@ func (a *App) setupRoutes() {
 	authed := api.Group("", middleware.Auth(a.Redis, a.OAuthClient))
 	authed.Get("/auth/me", a.OAuthHandler.Me)
 
+	// The current user's own effective permissions (role-derived set + personal
+	// deltas). Feeds FE visibility only — it grants nothing.
+	authed.Get("/perm/mine", a.AdminUserPermissionHandler.GetMine)
+
 	// Topic (authenticated)
 	// Static /topic/interactions/mine wins over /topic/:tid (static segments beat
 	// the param route), so feed cards hydrate the viewer's own 收藏 + reactions.
@@ -608,7 +612,8 @@ func (a *App) setupRoutes() {
 	admin.Get("/admin/user/:id/content-stats", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.GetUserContentStats)
 	admin.Delete("/admin/user/:id/content", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.PurgeUserContent)
 
-	// Role→permission override editor (permission-first authz, Phase 2). Gated by
+	// Role→permission + user→permission override editors and the audit log
+	// (permission-first authz, Phase 2 role layer + Phase 3 user layer). Gated by
 	// RequireAdmin — a deliberate ROLE gate, NOT RequirePermission: overrides must
 	// never be able to lock admins out of the very surface that repairs overrides
 	// (self-lockout prevention), so this meta-surface sits OUTSIDE the overridable
@@ -616,6 +621,9 @@ func (a *App) setupRoutes() {
 	rolePermAdmin := authed.Group("", middleware.RequireAdmin())
 	rolePermAdmin.Get("/admin/role-permissions", a.AdminRolePermissionHandler.GetMatrix)
 	rolePermAdmin.Put("/admin/role-permissions/:role", a.AdminRolePermissionHandler.Replace)
+	rolePermAdmin.Get("/admin/user-permissions/:uid", a.AdminUserPermissionHandler.GetView)
+	rolePermAdmin.Put("/admin/user-permissions/:uid", a.AdminUserPermissionHandler.Replace)
+	rolePermAdmin.Get("/admin/permission-audit", a.AdminPermissionAuditHandler.List)
 
 	// Trust & Safety moderator inbox (proxied to the trust admin API with the
 	// moderator's own token; site forced to kungal).

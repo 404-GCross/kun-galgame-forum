@@ -48,7 +48,25 @@ func (f *fakeStore) ReplaceForRole(_ context.Context, role string, rows []model.
 // (which write-through Loads into the global pkg/perm table).
 func resetPerm(t *testing.T) {
 	t.Helper()
-	t.Cleanup(func() { perm.SetOverrides(nil) })
+	t.Cleanup(func() {
+		perm.SetOverrides(nil)
+		perm.SetUserOverrides(nil)
+	})
+}
+
+// emptyUserStore is a no-op user-override lister so the shared sync can refresh
+// the (empty) user layer during role-service tests.
+type emptyUserStore struct{}
+
+func (emptyUserStore) ListAll(_ context.Context) ([]model.UserPermissionOverride, error) {
+	return nil, nil
+}
+
+// newSvc builds a RolePermissionService whose write-through reloads from the SAME
+// fakeStore via a real PermissionOverrideSync, so perm.Can reflects a replace
+// immediately — exactly as the production wiring does.
+func newSvc(store *fakeStore) *RolePermissionService {
+	return NewRolePermissionService(store, NewPermissionOverrideSync(store, emptyUserStore{}))
 }
 
 func grant(p perm.Permission) dto.ReplaceOverrideItem {
@@ -61,7 +79,7 @@ func revoke(p perm.Permission) dto.ReplaceOverrideItem {
 // TestReplaceRejectsRen proves ren is not editable — pinned to the full catalog.
 func TestReplaceRejectsRen(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "ren", []dto.ReplaceOverrideItem{revoke(TopicHideKey)})
 	if appErr == nil {
 		t.Fatal("editing ren must be rejected")
@@ -75,7 +93,7 @@ func TestReplaceRejectsRen(t *testing.T) {
 // role are not manageable.
 func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	for _, role := range []string{"user", "banana", ""} {
 		if _, appErr := svc.ReplaceOverrides(context.Background(), 1, role, nil); appErr == nil {
 			t.Errorf("role %q must be rejected as non-manageable", role)
@@ -86,7 +104,7 @@ func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 // TestReplaceRejectsUnknownKey proves an out-of-catalog permission is rejected.
 func TestReplaceRejectsUnknownKey(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
 		[]dto.ReplaceOverrideItem{{Permission: "does.not.exist", Effect: perm.EffectGrant}})
 	if appErr == nil {
@@ -98,7 +116,7 @@ func TestReplaceRejectsUnknownKey(t *testing.T) {
 // rejected.
 func TestReplaceRejectsInvalidEffect(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
 		[]dto.ReplaceOverrideItem{{Permission: string(TopicHideKey), Effect: "toggle"}})
 	if appErr == nil {
@@ -110,7 +128,7 @@ func TestReplaceRejectsInvalidEffect(t *testing.T) {
 // non-baseline key is a validation error (the FE computes true deltas).
 func TestReplaceRejectsNoop(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	// moderator already holds topic.hide → granting it is a no-op.
 	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, "moderator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)}); appErr == nil {
@@ -127,7 +145,7 @@ func TestReplaceRejectsNoop(t *testing.T) {
 // rejected.
 func TestReplaceRejectsDuplicate(t *testing.T) {
 	resetPerm(t)
-	svc := NewRolePermissionService(&fakeStore{})
+	svc := newSvc(&fakeStore{})
 	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey), grant(TopicHideKey)})
 	if appErr == nil {
@@ -143,7 +161,7 @@ func TestReplaceContainmentViolation(t *testing.T) {
 	store := &fakeStore{rows: []model.RolePermissionOverride{
 		{Role: "admin", Permission: string(UserPurgeKey), Effect: perm.EffectRevoke},
 	}}
-	svc := NewRolePermissionService(store)
+	svc := newSvc(store)
 	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "moderator",
 		[]dto.ReplaceOverrideItem{grant(UserPurgeKey)})
 	if appErr == nil {
@@ -160,7 +178,7 @@ func TestReplaceContainmentViolation(t *testing.T) {
 func TestReplaceHappyPath(t *testing.T) {
 	resetPerm(t)
 	store := &fakeStore{}
-	svc := NewRolePermissionService(store)
+	svc := newSvc(store)
 
 	matrix, appErr := svc.ReplaceOverrides(context.Background(), 7, "creator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)})
@@ -204,7 +222,7 @@ func TestReplaceResetRestoresBaseline(t *testing.T) {
 	store := &fakeStore{rows: []model.RolePermissionOverride{
 		{Role: "creator", Permission: string(TopicHideKey), Effect: perm.EffectGrant},
 	}}
-	svc := NewRolePermissionService(store)
+	svc := newSvc(store)
 	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator", nil); appErr != nil {
 		t.Fatalf("reset failed: %v", appErr)
 	}

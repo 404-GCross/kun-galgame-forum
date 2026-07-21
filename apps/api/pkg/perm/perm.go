@@ -1,8 +1,11 @@
 // Package perm is kungal's permission-first authorization vocabulary: the
 // named operation capabilities the forum enforces, plus the role→permission
 // bundles that decide who holds them. Every PURE-FORUM enforcement point checks
-// a Permission via perm.Can, never a role string — the resolver here is the
-// real boundary for these operations.
+// a Permission via perm.CanUser (the concrete-caller entry point, uid + roles),
+// never a role string — the resolver here is the real boundary for these
+// operations. Can is the role-level primitive underneath CanUser that the
+// bundles, golden tests, and admin matrix use; enforcement points MUST call
+// CanUser so per-user overrides (user_overrides.go) are honored.
 //
 // # Two-class design
 //
@@ -33,13 +36,16 @@
 // submission face — deliberately no forum key), and any role absent from the
 // bundle map resolves to nothing. perm_test.go pins every row of this table.
 //
-// # Runtime overrides (Phase 2)
+// # Runtime overrides (Phase 2 role layer, Phase 3 user layer)
 //
-// This table is the compiled BASELINE. On top of it sits an admin-managed,
-// Postgres-backed override layer (overrides.go) that can grant/revoke individual
-// keys per role at runtime without a redeploy. The overrides store only the
-// deltas; with none configured the effective table is byte-identical to Bundles,
-// so the golden matrix tests keep passing unchanged.
+// This table is the compiled BASELINE. On top of it sit two admin-managed,
+// Postgres-backed override layers applied without a redeploy: a per-ROLE layer
+// (overrides.go — grant/revoke individual keys per role) and a per-USER layer
+// (user_overrides.go — grant/revoke keys for one concrete user, so even a
+// roleless user can hold a key and a personal revoke beats a role grant). Both
+// store only the deltas; with none configured the effective table is
+// byte-identical to Bundles, so the golden matrix tests keep passing unchanged.
+// CanUser composes both layers; Can sees only the role layer.
 package perm
 
 // Permission is one named operation capability, e.g. "topic.edit_any". The

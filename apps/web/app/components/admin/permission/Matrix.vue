@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
-  KUN_PERMISSION_GROUP_ORDER,
-  KUN_PERMISSION_KEYS,
+  KUN_PERMISSION_GROUPS,
   KUN_PERMISSION_META,
   KUN_PERM_ROLE_COLUMNS,
   type KunPermRoleColumn
@@ -29,14 +28,7 @@ const emit = defineEmits<{
 
 const columns = KUN_PERM_ROLE_COLUMNS
 
-const groups = computed(() =>
-  KUN_PERMISSION_GROUP_ORDER.map((group) => ({
-    group,
-    perms: KUN_PERMISSION_KEYS.filter(
-      (key) => KUN_PERMISSION_META[key].group === group
-    )
-  })).filter((entry) => entry.perms.length)
-)
+const groups = KUN_PERMISSION_GROUPS
 
 // creator | moderator | admin cells read the working set; ren reads its
 // effective set (always the full catalogue).

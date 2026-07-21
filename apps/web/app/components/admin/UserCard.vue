@@ -22,6 +22,10 @@ const stats = ref<AdminUserContentStats | null>(null)
 const isLoading = ref(false)
 const purged = ref(false)
 
+// Per-user permission override panel (grant / revoke individual permissions on
+// top of the user's roles). Self-contained modal; this card only opens it.
+const isPermOpen = ref(false)
+
 const loadStats = async () => {
   isLoading.value = true
   stats.value =
@@ -54,7 +58,10 @@ const handlePurge = async () => {
   if (deleted) {
     stats.value = deleted
     purged.value = true
-    useMessage(`已清除用户 ${props.user.name} 的 ${deleted.total} 项内容`, 'success')
+    useMessage(
+      `已清除用户 ${props.user.name} 的 ${deleted.total} 项内容`,
+      'success'
+    )
   }
 }
 </script>
@@ -66,17 +73,25 @@ const handlePurge = async () => {
     <div class="flex items-center justify-between gap-3">
       <KunUserChip :user="user" />
 
-      <KunButton
-        v-if="!stats"
-        size="sm"
-        variant="flat"
-        @click="loadStats"
-        :loading="isLoading"
-        :disabled="isLoading"
-      >
-        查看内容
-      </KunButton>
+      <div class="flex shrink-0 items-center gap-2">
+        <KunButton size="sm" variant="flat" @click="isPermOpen = true">
+          <KunIcon name="lucide:shield-check" />
+          权限调整
+        </KunButton>
+        <KunButton
+          v-if="!stats"
+          size="sm"
+          variant="flat"
+          @click="loadStats"
+          :loading="isLoading"
+          :disabled="isLoading"
+        >
+          查看内容
+        </KunButton>
+      </div>
     </div>
+
+    <AdminPermissionUserPanel v-model="isPermOpen" :user="user" />
 
     <div v-if="user.bio" class="text-default-500 line-clamp-2 text-sm">
       {{ user.bio }}
