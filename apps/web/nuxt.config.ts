@@ -85,10 +85,6 @@ export default defineNuxtConfig({
       oauthRedirectUri:
         process.env.OAUTH_REDIRECT_URI || 'http://127.0.0.1:2333/auth/callback',
 
-      // Galgame Wiki Service
-      galgameWikiUrl:
-        process.env.GALGAME_WIKI_URL || 'http://127.0.0.1:9281/api',
-
       // Client-readable mirror of the server-only imageCdnBase above. Lets the FE
       // resolve content-addressed image tokens (/image/<hash>) to an ABSOLUTE CDN
       // URL (utils/imageSrc.ts), so covers / galgame images skip both @nuxt/image

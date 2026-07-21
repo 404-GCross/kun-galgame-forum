@@ -225,14 +225,6 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
 
           <GalgameContributorContainer />
         </KunCard>
-
-        <div class="text-default-500 flex items-center justify-center text-sm">
-          页面数据全部由
-          <KunLink size="sm" target="_blank" to="https://wiki.kungal.com">
-            鲲Galgame百科
-          </KunLink>
-          提供
-        </div>
       </div>
     </div>
 

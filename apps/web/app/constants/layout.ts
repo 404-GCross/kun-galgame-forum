@@ -268,14 +268,6 @@ export const kunSubSites: KunSubSite[] = [
     hint: '震憾上线'
   },
   {
-    short: 'Gal 百科',
-    name: '鲲 Galgame Wiki (鲲 Galgame 百科)',
-    description:
-      '鲲 Galgame 百科是世界上最强大的可开放编辑的 Galgame Wiki，它是目前世界上最全的 Galgame 百科全书，涵盖了超过十万部 Galgame / 视觉小说 的全部信息，包括剧本，封面，游戏名，声优，截图，标签，制作会社，制作引擎等等一切你能想到的内容！',
-    link: 'https://wiki.kungal.com/',
-    icon: 'lucide:book-open-text'
-  },
-  {
     short: 'OAuth 系统',
     name: '鲲 Galgame OAuth 系统',
     description:
