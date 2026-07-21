@@ -13,10 +13,10 @@ import { KUN_PROXY_PERMISSIONS } from '~/constants/permission'
     content-class="space-y-3"
   >
     <div>
-      <h2 class="text-lg font-semibold">Infra 代理权限（只读）</h2>
+      <h2 class="text-lg font-semibold">NextMoe（未萌）代理权限（只读）</h2>
       <p class="text-default-500 text-sm">
-        以下操作的真闸在 infra，论坛不可在此调整；taxonomy
-        为站长裁定的更严门槛。修改需要在 infra 侧进行。
+        以下操作的真闸在 NextMoe（未萌），论坛不可在此调整；taxonomy
+        为莲裁定的更严门槛。修改需要在 NextMoe（未萌）侧进行。
       </p>
     </div>
 
@@ -36,7 +36,7 @@ import { KUN_PROXY_PERMISSIONS } from '~/constants/permission'
 
     <KunInfo
       color="info"
-      description="这些权限由 infra 强制执行，此处仅供总览。"
+      description="这些权限由 NextMoe（未萌）强制执行，此处仅供总览。"
     />
   </KunCard>
 </template>

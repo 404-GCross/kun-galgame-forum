@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import {
   KUN_PERMISSION_GROUPS,
   KUN_PERMISSION_META,
   KUN_PERM_ROLE_COLUMNS,
+  KUN_ROLE_RANK,
+  kunRoleRank,
   type KunPermRoleColumn
 } from '~/constants/permission'
 
@@ -30,25 +33,47 @@ const columns = KUN_PERM_ROLE_COLUMNS
 
 const groups = KUN_PERMISSION_GROUPS
 
-// creator | moderator | admin cells read the working set; ren reads its
-// effective set (always the full catalogue).
-const isChecked = (col: KunPermRoleColumn, perm: string) =>
-  (col.editable
-    ? props.working[col.role]?.has(perm)
-    : props.effective[col.role]?.has(perm)) ?? false
+// Delegation guard (UX mirror of apps/api — the backend is the real boundary):
+// the operator's rank gates whole columns, and the operator's own effective set
+// gates individual cells (possession). See constants/permission.ts + useCan.ts.
+const { roles } = storeToRefs(usePersistUserStore())
+const operatorRank = computed(() => kunRoleRank(roles.value))
+const myPerms = useMyPermissions()
 
-// A working state that diverges from the baseline is an override: 'grant' when
-// the role now holds a permission its baseline lacks, 'revoke' when it lacks one
-// its baseline holds. Locked columns can never deviate.
+// A column is locked when it is the pinned ren column OR its role ranks at/above
+// the operator (an operator may only edit strictly-lower-ranked roles).
+const columnLocked = (col: KunPermRoleColumn) =>
+  col.locked || (KUN_ROLE_RANK[col.role] ?? 0) >= operatorRank.value
+
+// Cell-level possession lock: an otherwise-editable cell whose key the operator
+// does not themselves hold — visible (carried-over deviations still render) but
+// not toggleable.
+const possessionLocked = (col: KunPermRoleColumn, perm: string) =>
+  col.editable && !columnLocked(col) && !myPerms.value(perm)
+
+const cellDisabled = (col: KunPermRoleColumn, perm: string) =>
+  columnLocked(col) || props.disabled || possessionLocked(col, perm)
+
+// Locked columns display their persisted effective set; editable ones the working
+// set (local pending edits folded in).
+const isChecked = (col: KunPermRoleColumn, perm: string) =>
+  (columnLocked(col)
+    ? props.effective[col.role]?.has(perm)
+    : props.working[col.role]?.has(perm)) ?? false
+
+// A displayed state that diverges from the baseline is an override: 'grant' when
+// the column now holds a permission its baseline lacks, 'revoke' when it lacks one
+// its baseline holds. Computed off the DISPLAYED value so a locked column still
+// surfaces its persisted deviations (and ren, whose effective == baseline, shows
+// none).
 const deviation = (
   col: KunPermRoleColumn,
   perm: string
 ): 'grant' | 'revoke' | null => {
-  if (!col.editable) return null
-  const inWork = props.working[col.role]?.has(perm) ?? false
+  const shown = isChecked(col, perm)
   const inBase = props.baseline[col.role]?.has(perm) ?? false
-  if (inWork === inBase) return null
-  return inWork ? 'grant' : 'revoke'
+  if (shown === inBase) return null
+  return shown ? 'grant' : 'revoke'
 }
 
 // 5 columns: a wide label column + one per role. min-width forces horizontal
@@ -74,15 +99,19 @@ const gridStyle =
         <div class="flex items-center gap-1">
           <span class="text-sm font-semibold">{{ col.label }}</span>
           <KunTooltip
-            v-if="col.locked"
-            text="站长角色恒持全部权限，不可调整"
+            v-if="columnLocked(col)"
+            :text="
+              col.locked
+                ? '莲角色恒持全部权限，不可调整'
+                : '仅可编辑低于自身角色的权限'
+            "
             position="top"
           >
             <KunIcon name="lucide:lock" class="text-default-400 text-xs" />
           </KunTooltip>
         </div>
         <KunButton
-          v-if="col.editable"
+          v-if="col.editable && !columnLocked(col)"
           size="xs"
           variant="light"
           color="default"
@@ -112,9 +141,21 @@ const gridStyle =
             class="border-default-100 flex items-center justify-center border-b px-2 py-2"
           >
             <div class="relative">
+              <KunTooltip
+                v-if="possessionLocked(col, perm)"
+                text="不可增删自己未持有的权限"
+                position="top"
+              >
+                <KunCheckBox
+                  :model-value="isChecked(col, perm)"
+                  :disabled="true"
+                  color="primary"
+                />
+              </KunTooltip>
               <KunCheckBox
+                v-else
                 :model-value="isChecked(col, perm)"
-                :disabled="!col.editable || disabled"
+                :disabled="cellDisabled(col, perm)"
                 color="primary"
                 @change="(value) => emit('toggle', col.role, perm, value)"
               />

@@ -51,7 +51,7 @@ func (h *UserPermissionHandler) Replace(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, errors.ErrBadRequest("请求格式错误"))
 	}
-	view, appErr := h.svc.ReplaceOverrides(c.Context(), operator.ID, uid, req.Overrides)
+	view, appErr := h.svc.ReplaceOverrides(c.Context(), operator.ID, operator.Roles, uid, req.Overrides)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

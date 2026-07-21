@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
 	"kun-galgame-api/internal/admin/dto"
@@ -76,11 +77,17 @@ func revoke(p perm.Permission) dto.ReplaceOverrideItem {
 	return dto.ReplaceOverrideItem{Permission: string(p), Effect: perm.EffectRevoke}
 }
 
+// renOperatorRoles is a ren operator (rank 4, holds the full catalog): it clears
+// both delegation guards (rank + possession) for every subject, so the pre-Change-2
+// tests keep asserting exactly their original expectations. Rank/possession-specific
+// behavior is covered by the dedicated delegation tests below.
+var renOperatorRoles = []string{"ren"}
+
 // TestReplaceRejectsRen proves ren is not editable — pinned to the full catalog.
 func TestReplaceRejectsRen(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "ren", []dto.ReplaceOverrideItem{revoke(TopicHideKey)})
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "ren", []dto.ReplaceOverrideItem{revoke(TopicHideKey)})
 	if appErr == nil {
 		t.Fatal("editing ren must be rejected")
 	}
@@ -95,7 +102,7 @@ func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
 	for _, role := range []string{"user", "banana", ""} {
-		if _, appErr := svc.ReplaceOverrides(context.Background(), 1, role, nil); appErr == nil {
+		if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, role, nil); appErr == nil {
 			t.Errorf("role %q must be rejected as non-manageable", role)
 		}
 	}
@@ -105,7 +112,7 @@ func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 func TestReplaceRejectsUnknownKey(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{{Permission: "does.not.exist", Effect: perm.EffectGrant}})
 	if appErr == nil {
 		t.Fatal("unknown permission key must be rejected")
@@ -117,7 +124,7 @@ func TestReplaceRejectsUnknownKey(t *testing.T) {
 func TestReplaceRejectsInvalidEffect(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{{Permission: string(TopicHideKey), Effect: "toggle"}})
 	if appErr == nil {
 		t.Fatal("invalid effect must be rejected")
@@ -130,12 +137,12 @@ func TestReplaceRejectsNoop(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
 	// moderator already holds topic.hide → granting it is a no-op.
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, "moderator",
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "moderator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)}); appErr == nil {
 		t.Error("granting a baseline permission must be rejected as a no-op")
 	}
 	// creator holds nothing → revoking topic.hide is a no-op.
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{revoke(TopicHideKey)}); appErr == nil {
 		t.Error("revoking a non-baseline permission must be rejected as a no-op")
 	}
@@ -146,7 +153,7 @@ func TestReplaceRejectsNoop(t *testing.T) {
 func TestReplaceRejectsDuplicate(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator",
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey), grant(TopicHideKey)})
 	if appErr == nil {
 		t.Fatal("duplicate permission must be rejected")
@@ -162,7 +169,7 @@ func TestReplaceContainmentViolation(t *testing.T) {
 		{Role: "admin", Permission: string(UserPurgeKey), Effect: perm.EffectRevoke},
 	}}
 	svc := newSvc(store)
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, "moderator",
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "moderator",
 		[]dto.ReplaceOverrideItem{grant(UserPurgeKey)})
 	if appErr == nil {
 		t.Fatal("containment violation (moderator ⊄ admin) must be rejected")
@@ -180,7 +187,7 @@ func TestReplaceHappyPath(t *testing.T) {
 	store := &fakeStore{}
 	svc := newSvc(store)
 
-	matrix, appErr := svc.ReplaceOverrides(context.Background(), 7, "creator",
+	matrix, appErr := svc.ReplaceOverrides(context.Background(), 7, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)})
 	if appErr != nil {
 		t.Fatalf("valid replace failed: %v", appErr)
@@ -223,7 +230,7 @@ func TestReplaceResetRestoresBaseline(t *testing.T) {
 		{Role: "creator", Permission: string(TopicHideKey), Effect: perm.EffectGrant},
 	}}
 	svc := newSvc(store)
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, "creator", nil); appErr != nil {
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator", nil); appErr != nil {
 		t.Fatalf("reset failed: %v", appErr)
 	}
 	if len(store.rows) != 0 {
@@ -231,6 +238,102 @@ func TestReplaceResetRestoresBaseline(t *testing.T) {
 	}
 	if perm.Can([]string{"creator"}, TopicHideKey) {
 		t.Error("creator should hold nothing after a reset")
+	}
+}
+
+// ──────────────────────────────────────────
+// Change 2 — delegation guard (rank + possession)
+// ──────────────────────────────────────────
+
+// adminOperatorRoles is a non-ren operator (rank 3) used to exercise the guards a
+// ren operator would clear.
+var adminOperatorRoles = []string{"admin"}
+
+// TestReplaceRankAdminCannotEditAdminRole proves an admin (rank 3) may not edit the
+// admin role (rank 3) — only a strictly-higher operator (ren) can.
+func TestReplaceRankAdminCannotEditAdminRole(t *testing.T) {
+	resetPerm(t)
+	svc := newSvc(&fakeStore{})
+	_, appErr := svc.ReplaceOverrides(context.Background(), 100, adminOperatorRoles, "admin",
+		[]dto.ReplaceOverrideItem{revoke(UserPurgeKey)})
+	if appErr == nil || appErr.StatusCode != 400 {
+		t.Fatalf("admin editing the admin role must be rejected with 400, got %v", appErr)
+	}
+}
+
+// TestReplaceRankRenCanEditAdminRole proves ren (rank 4) may edit the admin role
+// (rank 3): revoking an admin-only key that no lower role holds keeps containment.
+func TestReplaceRankRenCanEditAdminRole(t *testing.T) {
+	resetPerm(t)
+	svc := newSvc(&fakeStore{})
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "admin",
+		[]dto.ReplaceOverrideItem{revoke(perm.AdminDashboard)}); appErr != nil {
+		t.Fatalf("ren editing the admin role must succeed, got %v", appErr)
+	}
+}
+
+// TestReplacePossessionAddedRow proves an operator cannot ADD an override for a key
+// they do not themselves hold: an admin with a personal revoke of topic.hide may
+// not grant it to creator.
+func TestReplacePossessionAddedRow(t *testing.T) {
+	resetPerm(t)
+	perm.SetUserOverrides(map[int][]perm.Override{
+		100: {{Permission: perm.TopicHide, Effect: perm.EffectRevoke}},
+	})
+	svc := newSvc(&fakeStore{})
+	_, appErr := svc.ReplaceOverrides(context.Background(), 100, adminOperatorRoles, "creator",
+		[]dto.ReplaceOverrideItem{grant(TopicHideKey)})
+	if appErr == nil || appErr.StatusCode != 400 {
+		t.Fatalf("adding an unheld permission must be rejected with 400, got %v", appErr)
+	}
+	if !strings.Contains(appErr.Message, "不可增删自己未持有的权限") {
+		t.Errorf("expected possession error, got %q", appErr.Message)
+	}
+}
+
+// TestReplacePossessionCarriedOverPasses proves a row set earlier by a higher-ranked
+// operator (a creator grant of topic.hide) survives an admin operator's unrelated
+// edit — even though the admin does not hold topic.hide, the carried-over row is not
+// a delta, so only the newly-added key (which the admin does hold) is judged.
+func TestReplacePossessionCarriedOverPasses(t *testing.T) {
+	resetPerm(t)
+	perm.SetUserOverrides(map[int][]perm.Override{
+		100: {{Permission: perm.TopicHide, Effect: perm.EffectRevoke}},
+	})
+	store := &fakeStore{rows: []model.RolePermissionOverride{
+		{Role: "creator", Permission: string(TopicHideKey), Effect: perm.EffectGrant},
+	}}
+	svc := newSvc(store)
+	matrix, appErr := svc.ReplaceOverrides(context.Background(), 100, adminOperatorRoles, "creator",
+		[]dto.ReplaceOverrideItem{grant(TopicHideKey), grant(perm.DocEdit)})
+	if appErr != nil {
+		t.Fatalf("carrying over an unheld row while adding a held one must pass, got %v", appErr)
+	}
+	creator := matrix.Roles["creator"]
+	if !contains(creator.Effective, string(TopicHideKey)) || !contains(creator.Effective, string(perm.DocEdit)) {
+		t.Errorf("creator effective %v should hold both topic.hide and doc.edit", creator.Effective)
+	}
+}
+
+// TestReplacePossessionRemovalChecked proves the possession guard also covers
+// REMOVALS: an admin who does not hold topic.hide may not remove creator's
+// existing topic.hide grant.
+func TestReplacePossessionRemovalChecked(t *testing.T) {
+	resetPerm(t)
+	perm.SetUserOverrides(map[int][]perm.Override{
+		100: {{Permission: perm.TopicHide, Effect: perm.EffectRevoke}},
+	})
+	store := &fakeStore{rows: []model.RolePermissionOverride{
+		{Role: "creator", Permission: string(TopicHideKey), Effect: perm.EffectGrant},
+	}}
+	svc := newSvc(store)
+	_, appErr := svc.ReplaceOverrides(context.Background(), 100, adminOperatorRoles, "creator",
+		[]dto.ReplaceOverrideItem{})
+	if appErr == nil || appErr.StatusCode != 400 {
+		t.Fatalf("removing an unheld override row must be rejected with 400, got %v", appErr)
+	}
+	if !strings.Contains(appErr.Message, "不可增删自己未持有的权限") {
+		t.Errorf("expected possession error, got %q", appErr.Message)
 	}
 }
 

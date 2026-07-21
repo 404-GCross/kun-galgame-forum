@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import {
   KUN_PERMISSION_GROUPS,
   KUN_PERMISSION_KEYS,
-  KUN_PERMISSION_META
+  KUN_PERMISSION_META,
+  kunRoleRank
 } from '~/constants/permission'
 import { KUN_USER_ROLE_MAP } from '~/constants/user'
 
@@ -25,9 +27,28 @@ const saving = ref(false)
 const working = ref<Set<string>>(new Set())
 const initial = ref<Set<string>>(new Set())
 
-// The ren (站长) safety anchor holds the full catalogue and the backend refuses
+// The ren (莲) safety anchor holds the full catalogue and the backend refuses
 // any override on it — render the whole panel read-only.
 const isRen = computed(() => state.value?.roles.includes('ren') ?? false)
+
+// Delegation guard (UX mirror of apps/api — the backend is the real boundary):
+// an operator may only adjust a user of strictly-lower rank, and only toggle keys
+// the operator themselves hold (possession). See constants/permission.ts + useCan.
+const { roles: operatorRoles } = storeToRefs(usePersistUserStore())
+const myPerms = useMyPermissions()
+const targetRoles = computed(() => state.value?.roles ?? [])
+const rankLocked = computed(
+  () => kunRoleRank(operatorRoles.value) <= kunRoleRank(targetRoles.value)
+)
+// The whole panel is read-only for a ren target OR a same/higher-rank target.
+const readOnly = computed(() => isRen.value || rankLocked.value)
+
+// Cell-level possession lock: an editable-panel cell whose key the operator does
+// not hold — visible (carried-over deviations still render) but not toggleable.
+const possessionLocked = (permission: string) =>
+  !readOnly.value && !myPerms.value(permission)
+const cellDisabled = (permission: string) =>
+  readOnly.value || saving.value || possessionLocked(permission)
 
 // The role-derived reference set: the deviation baseline for the per-user panel.
 const roleEffective = computed(() => new Set(state.value?.role_effective ?? []))
@@ -122,7 +143,7 @@ const handleDiscard = () => {
 }
 
 const handleSave = async () => {
-  if (!isDirty.value || saving.value || isRen.value) {
+  if (!isDirty.value || saving.value || readOnly.value) {
     return
   }
   const ok = await useComponentMessageStore().alert(
@@ -145,7 +166,7 @@ const handleSave = async () => {
 }
 
 const handleReset = async () => {
-  if (!hasOverrides.value || saving.value || isRen.value) {
+  if (!hasOverrides.value || saving.value || readOnly.value) {
     return
   }
   const ok = await useComponentMessageStore().alert(
@@ -198,8 +219,14 @@ const handleReset = async () => {
         <KunInfo
           v-if="isRen"
           color="warning"
-          title="站长权限不可调整"
-          description="站长（ren）恒持全部权限，不可调整。"
+          title="莲权限不可调整"
+          description="莲（ren）恒持全部权限，不可调整。"
+        />
+        <KunInfo
+          v-else-if="rankLocked"
+          color="warning"
+          title="无法调整该用户"
+          description="仅可调整低于自身角色的用户。"
         />
         <KunInfo
           v-else
@@ -221,9 +248,21 @@ const handleReset = async () => {
               class="border-default-100 flex items-center gap-2 border-b px-2 py-2"
             >
               <div class="relative shrink-0">
+                <KunTooltip
+                  v-if="possessionLocked(perm)"
+                  text="不可增删自己未持有的权限"
+                  position="top"
+                >
+                  <KunCheckBox
+                    :model-value="isChecked(perm)"
+                    :disabled="true"
+                    color="primary"
+                  />
+                </KunTooltip>
                 <KunCheckBox
+                  v-else
                   :model-value="isChecked(perm)"
-                  :disabled="isRen || saving"
+                  :disabled="cellDisabled(perm)"
                   color="primary"
                   @change="(value: boolean) => toggle(perm, value)"
                 />
@@ -253,9 +292,9 @@ const handleReset = async () => {
           </div>
         </div>
 
-        <!-- Action bar (hidden for the read-only ren case). -->
+        <!-- Action bar (hidden for the read-only ren / rank-locked cases). -->
         <div
-          v-if="!isRen"
+          v-if="!readOnly"
           class="border-default-200 flex flex-wrap items-center justify-between gap-3 border-t pt-3"
         >
           <span class="text-default-500 text-sm">

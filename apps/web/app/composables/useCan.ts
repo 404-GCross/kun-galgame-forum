@@ -129,3 +129,28 @@ export const useCan = (permission: ForumPermission): ComputedRef<boolean> => {
     )
   })
 }
+
+// Reactive predicate over the CURRENT user's OWN effective permission set — the
+// shared possession helper for the admin permission editors (Matrix / UserPanel).
+// It resolves each key with the SAME priority as useCan (runtime /perm/mine list
+// when landed, else the static role table), so an operator may only add/remove an
+// override for a key they themselves hold. UX only; the backend possession guard
+// (perm.EffectiveForUser) is the real boundary.
+export const useMyPermissions = (): ComputedRef<
+  (permission: string) => boolean
+> => {
+  const { roles } = storeToRefs(usePersistUserStore())
+  const mine = useState<string[] | null>('kun-perm-mine', () => null)
+
+  return computed(() => {
+    const list = mine.value
+    if (list) {
+      return (permission: string) => list.includes(permission)
+    }
+    return (permission: string) =>
+      roles.value.some(
+        (role) =>
+          ROLE_PERMISSIONS[role]?.has(permission as ForumPermission) ?? false
+      )
+  })
+}

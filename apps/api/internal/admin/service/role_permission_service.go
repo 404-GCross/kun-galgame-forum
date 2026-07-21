@@ -59,13 +59,14 @@ func (s *RolePermissionService) Matrix(ctx context.Context) (dto.RolePermissionM
 // ReplaceOverrides validates and atomically replaces one role's override set,
 // then re-Loads so the change takes effect immediately (write-through). It
 // returns the fresh matrix. Validation failures return a user-facing Chinese
-// 400.
-func (s *RolePermissionService) ReplaceOverrides(ctx context.Context, operatorUID int, role string, items []dto.ReplaceOverrideItem) (dto.RolePermissionMatrix, *errors.AppError) {
+// 400. operatorRoles are the editing admin's role claims — the delegation guard
+// (rank + possession) is judged against them.
+func (s *RolePermissionService) ReplaceOverrides(ctx context.Context, operatorUID int, operatorRoles []string, role string, items []dto.ReplaceOverrideItem) (dto.RolePermissionMatrix, *errors.AppError) {
 	current, err := s.repo.ListAll(ctx)
 	if err != nil {
 		return dto.RolePermissionMatrix{}, errors.ErrInternal("读取角色权限失败")
 	}
-	if appErr := validateReplace(role, items, current); appErr != nil {
+	if appErr := validateReplace(operatorUID, operatorRoles, role, items, current); appErr != nil {
 		return dto.RolePermissionMatrix{}, appErr
 	}
 
@@ -88,20 +89,28 @@ func (s *RolePermissionService) ReplaceOverrides(ctx context.Context, operatorUI
 
 // validateReplace enforces every guard rail on a proposed replacement:
 //   - role must be one of {creator, moderator, admin} (ren pinned, user implicit)
+//   - RANK: the operator's rank must strictly exceed the target role's rank
 //   - each permission must be a known catalog key
 //   - each effect must be grant or revoke
 //   - no duplicate permission in the request
 //   - no no-op (granting a baseline key, or revoking a non-baseline key)
+//   - POSSESSION: every row the request adds/removes/changes vs the stored set
+//     must be a key the operator's own effective set holds
 //   - containment: effective(moderator) ⊆ effective(admin) after applying
 //
 // `current` is every stored override row (all roles) — used to compute the
-// prospective effective sets for the containment check.
-func validateReplace(role string, items []dto.ReplaceOverrideItem, current []model.RolePermissionOverride) *errors.AppError {
+// prospective effective sets for the containment check AND the stored side of the
+// possession delta.
+func validateReplace(operatorUID int, operatorRoles []string, role string, items []dto.ReplaceOverrideItem, current []model.RolePermissionOverride) *errors.AppError {
 	if role == "ren" {
 		return errors.ErrBadRequest("ren 角色的权限被固定为全部, 不可修改")
 	}
 	if !editableRoles[role] {
 		return errors.ErrBadRequest("不支持管理该角色, 仅可管理 creator / moderator / admin")
+	}
+	// Rank: an operator may only edit a role strictly below their own rank.
+	if perm.Rank(operatorRoles) <= perm.RoleRank(role) {
+		return errors.ErrBadRequest("不可编辑与自身同级或更高的角色 (" + role + ")")
 	}
 
 	seen := make(map[string]bool, len(items))
@@ -125,6 +134,17 @@ func validateReplace(role string, items []dto.ReplaceOverrideItem, current []mod
 		if it.Effect == perm.EffectRevoke && !inBaseline {
 			return errors.ErrBadRequest("权限 " + it.Permission + " 不在 " + role + " 的默认集合中, 无需撤销")
 		}
+	}
+
+	// Possession: only rows this request actually changes vs the stored set are
+	// judged, and each changed key must be one the operator themselves hold. Rows
+	// carried over unchanged (e.g. a grant a ren earlier set) pass untouched.
+	if key, ok := possessionOffender(
+		effectMapFromRoleRows(current, role),
+		effectMapFromItems(items),
+		operatorEffectiveSet(operatorUID, operatorRoles),
+	); !ok {
+		return errors.ErrBadRequest("不可增删自己未持有的权限: " + key)
 	}
 
 	// Containment: build the prospective override map (all roles' current stored

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"kun-galgame-api/internal/admin/dto"
@@ -80,7 +81,7 @@ const targetUID = 4242
 func TestUserReplaceRejectsRenHolder(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"ren"}, found: true})
-	_, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID, []dto.ReplaceOverrideItem{revoke(TopicHideKey)})
+	_, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, []dto.ReplaceOverrideItem{revoke(TopicHideKey)})
 	if appErr == nil || appErr.StatusCode != 400 {
 		t.Fatalf("ren holder must be rejected with 400, got %v", appErr)
 	}
@@ -92,12 +93,12 @@ func TestUserReplaceFailClosed(t *testing.T) {
 	resetPerm(t)
 	// Lookup error.
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{err: errors.New("oauth down")})
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID, nil); appErr == nil {
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, nil); appErr == nil {
 		t.Error("a lookup error must fail closed")
 	}
 	// Nonexistent user (found=false).
 	svc2 := newUserSvc(&fakeUserStore{}, fakeUserClient{found: false})
-	if _, appErr := svc2.ReplaceOverrides(context.Background(), 1, targetUID, nil); appErr == nil {
+	if _, appErr := svc2.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, nil); appErr == nil {
 		t.Error("a nonexistent user must fail closed")
 	}
 }
@@ -107,11 +108,11 @@ func TestUserReplaceFailClosed(t *testing.T) {
 func TestUserReplaceRejectsUnknownKeyAndEffect(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{found: true})
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID,
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{{Permission: "does.not.exist", Effect: perm.EffectGrant}}); appErr == nil {
 		t.Error("unknown permission must be rejected")
 	}
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID,
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{{Permission: string(TopicHideKey), Effect: "toggle"}}); appErr == nil {
 		t.Error("invalid effect must be rejected")
 	}
@@ -121,7 +122,7 @@ func TestUserReplaceRejectsUnknownKeyAndEffect(t *testing.T) {
 func TestUserReplaceRejectsDuplicate(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{found: true})
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID,
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey), grant(TopicHideKey)}); appErr == nil {
 		t.Error("duplicate permission must be rejected")
 	}
@@ -134,13 +135,13 @@ func TestUserReplaceRejectsNoop(t *testing.T) {
 	resetPerm(t)
 	// A moderator holds topic.hide by role → granting it personally is a no-op.
 	modSvc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"moderator"}, found: true})
-	if _, appErr := modSvc.ReplaceOverrides(context.Background(), 1, targetUID,
+	if _, appErr := modSvc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)}); appErr == nil {
 		t.Error("granting a role-held permission must be rejected as a no-op")
 	}
 	// A roleless user's role doesn't hold topic.hide → revoking it is a no-op.
 	plainSvc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: nil, found: true})
-	if _, appErr := plainSvc.ReplaceOverrides(context.Background(), 1, targetUID,
+	if _, appErr := plainSvc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{revoke(TopicHideKey)}); appErr == nil {
 		t.Error("revoking a permission the role lacks must be rejected as a no-op")
 	}
@@ -154,7 +155,7 @@ func TestUserReplaceGrantToRoleless(t *testing.T) {
 	store := &fakeUserStore{}
 	svc := newUserSvc(store, fakeUserClient{roles: nil, found: true})
 
-	view, appErr := svc.ReplaceOverrides(context.Background(), 9, targetUID,
+	view, appErr := svc.ReplaceOverrides(context.Background(), 9, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)})
 	if appErr != nil {
 		t.Fatalf("valid grant failed: %v", appErr)
@@ -189,7 +190,7 @@ func TestUserReplaceResetRestores(t *testing.T) {
 	})
 	svc := newUserSvc(store, fakeUserClient{roles: nil, found: true})
 
-	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, targetUID, nil); appErr != nil {
+	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, nil); appErr != nil {
 		t.Fatalf("reset failed: %v", appErr)
 	}
 	if len(store.rows) != 0 {
@@ -197,5 +198,20 @@ func TestUserReplaceResetRestores(t *testing.T) {
 	}
 	if perm.CanUser(targetUID, nil, TopicHideKey) {
 		t.Error("roleless user should hold nothing after a reset")
+	}
+}
+
+// TestUserReplaceRankAdminCannotEditPeerAdmin proves an admin (rank 3) may not edit
+// another admin's (rank 3) personal permissions — only ren outranks an admin.
+func TestUserReplaceRankAdminCannotEditPeerAdmin(t *testing.T) {
+	resetPerm(t)
+	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"admin"}, found: true})
+	_, appErr := svc.ReplaceOverrides(context.Background(), 100, adminOperatorRoles, targetUID,
+		[]dto.ReplaceOverrideItem{grant(TopicHideKey)})
+	if appErr == nil || appErr.StatusCode != 400 {
+		t.Fatalf("admin editing a peer admin must be rejected with 400, got %v", appErr)
+	}
+	if !strings.Contains(appErr.Message, "不可编辑与自身同级或更高的用户") {
+		t.Errorf("expected rank error, got %q", appErr.Message)
 	}
 }

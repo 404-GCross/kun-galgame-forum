@@ -121,7 +121,7 @@ export const KUN_PERMISSION_GROUPS: {
 })).filter((entry) => entry.perms.length)
 
 // Matrix columns, left → right. `creator` / `moderator` / `admin` are editable;
-// `ren` (站长) is the LOCKED safety anchor — always the full catalogue, never
+// `ren` (莲) is the LOCKED safety anchor — always the full catalogue, never
 // adjustable, and never PUT.
 export interface KunPermRoleColumn {
   role: string
@@ -134,7 +134,7 @@ export const KUN_PERM_ROLE_COLUMNS: KunPermRoleColumn[] = [
   { role: 'creator', label: '创作者', editable: true, locked: false },
   { role: 'moderator', label: '版主', editable: true, locked: false },
   { role: 'admin', label: '管理员', editable: true, locked: false },
-  { role: 'ren', label: '站长', editable: false, locked: true }
+  { role: 'ren', label: '莲', editable: false, locked: true }
 ]
 
 // The roles a PUT may target. `ren` is intentionally absent.
@@ -143,6 +143,24 @@ export const KUN_PERM_EDITABLE_ROLES = [
   'moderator',
   'admin'
 ] as const
+
+// Delegation rank ladder — MUST stay in lockstep with apps/api/pkg/perm/rank.go
+// (roleRank). Order high → low: ren=4, admin=3, moderator=2, creator=1; any
+// other/absent role (incl. the implicit `user`) = 0. Used ONLY by the permission
+// editors' delegation guard: an operator may edit a subject strictly BELOW their
+// own rank. This is a LOCAL ordering for delegation authority, NOT a general role
+// tier — capability checks still go through useCan, never a number. The backend
+// (pkg/perm) is the real boundary; this mirror is UX only.
+export const KUN_ROLE_RANK: Record<string, number> = {
+  ren: 4,
+  admin: 3,
+  moderator: 2,
+  creator: 1
+}
+
+// The delegation rank of a role SET: the max rank over its claims (0 if empty).
+export const kunRoleRank = (roles: string[]): number =>
+  roles.reduce((max, role) => Math.max(max, KUN_ROLE_RANK[role] ?? 0), 0)
 
 // The 9 INFRA-PROXY operations, shown read-only. Their truth lives in infra
 // (kun-galgame-infra editing engine / kun_trust), NOT in pkg/perm — surfacing
@@ -162,46 +180,46 @@ export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
   {
     key: 'galgame.create',
     label: 'Galgame 直发建条目',
-    note: '版主+，绕过提交队列；镜像 infra galgame.create'
+    note: '版主+，绕过提交队列；镜像 NextMoe galgame.create'
   },
   {
     key: 'galgame.review_submission',
     label: 'Galgame 提交审核队列',
-    note: '版主+；镜像 infra edit.galgame.game.status'
+    note: '版主+；镜像 NextMoe edit.galgame.game.status'
   },
   {
     key: 'galgame.review',
     label: 'Galgame 提案查看 / 队列',
-    note: '版主+ 或条目创建者；镜像 infra galgame.review'
+    note: '版主+ 或条目创建者；镜像 NextMoe galgame.review'
   },
   {
     key: 'galgame.edit_decide',
     label: 'Galgame 提案裁决',
-    note: '管理员+ 或条目创建者；镜像 infra edit.galgame.game.review'
+    note: '管理员+ 或条目创建者；镜像 NextMoe edit.galgame.game.review'
   },
   {
     key: 'galgame.edit_revert',
     label: 'Galgame 修订回滚',
-    note: '管理员+ 或条目创建者；镜像 infra edit.galgame.game.review / galgame.owner_override'
+    note: '管理员+ 或条目创建者；镜像 NextMoe edit.galgame.game.review / galgame.owner_override'
   },
   {
     key: 'taxonomy.edit',
     label: 'Wiki 条目编辑',
-    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
+    note: '莲裁定的更严门槛（仅 admin / ren，NextMoe 为版主+）'
   },
   {
     key: 'taxonomy.delete',
     label: 'Wiki 条目删除',
-    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
+    note: '莲裁定的更严门槛（仅 admin / ren，NextMoe 为版主+）'
   },
   {
     key: 'taxonomy.revert',
     label: 'Wiki 条目回滚',
-    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
+    note: '莲裁定的更严门槛（仅 admin / ren，NextMoe 为版主+）'
   },
   {
     key: 'trust.queue_access',
     label: 'Trust 举报收件箱',
-    note: '版主+；镜像 infra trust.queue_access'
+    note: '版主+；镜像 NextMoe trust.queue_access'
   }
 ]

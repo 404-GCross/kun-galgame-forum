@@ -59,8 +59,10 @@ func (s *UserPermissionService) View(ctx context.Context, uid int) (dto.UserPerm
 
 // ReplaceOverrides validates and atomically replaces one user's personal override
 // set, re-Loads so the change is live at once (write-through), and returns the
-// fresh view. Validation failures return a user-facing Chinese 400.
-func (s *UserPermissionService) ReplaceOverrides(ctx context.Context, operatorUID, uid int, items []dto.ReplaceOverrideItem) (dto.UserPermissionView, *errors.AppError) {
+// fresh view. Validation failures return a user-facing Chinese 400. operatorRoles
+// are the editing admin's role claims — the delegation guard (rank + possession)
+// is judged against them.
+func (s *UserPermissionService) ReplaceOverrides(ctx context.Context, operatorUID int, operatorRoles []string, uid int, items []dto.ReplaceOverrideItem) (dto.UserPermissionView, *errors.AppError) {
 	if uid <= 0 {
 		return dto.UserPermissionView{}, errors.ErrBadRequest("非法的用户 ID")
 	}
@@ -68,7 +70,11 @@ func (s *UserPermissionService) ReplaceOverrides(ctx context.Context, operatorUI
 	if appErr != nil {
 		return dto.UserPermissionView{}, appErr
 	}
-	if appErr := validateUserReplace(roles, items); appErr != nil {
+	currentRows, err := s.repo.ListForUser(ctx, uid)
+	if err != nil {
+		return dto.UserPermissionView{}, errors.ErrInternal("读取用户权限失败")
+	}
+	if appErr := validateUserReplace(operatorUID, operatorRoles, roles, items, currentRows); appErr != nil {
 		return dto.UserPermissionView{}, appErr
 	}
 
@@ -108,15 +114,24 @@ func (s *UserPermissionService) targetRoles(ctx context.Context, uid int) ([]str
 
 // validateUserReplace enforces every guard rail on a proposed per-user replace:
 //   - the target must not hold `ren` (ren holders are pinned to the full catalog)
+//   - RANK: the operator's rank must strictly exceed the target user's rank
 //   - each permission must be a known catalog key
 //   - each effect must be grant or revoke
 //   - no duplicate permission in the request
 //   - no NO-OP judged against the user's ROLE-DERIVED effective set: granting a
 //     key their roles already effectively hold, or revoking a key their roles do
 //     not hold, is a 400 (the FE computes true personal deltas).
-func validateUserReplace(roles []string, items []dto.ReplaceOverrideItem) *errors.AppError {
+//   - POSSESSION: every row the request adds/removes/changes vs the user's stored
+//     personal rows must be a key the operator's own effective set holds.
+//
+// `roles` are the TARGET user's roles; `current` their stored personal rows.
+func validateUserReplace(operatorUID int, operatorRoles, roles []string, items []dto.ReplaceOverrideItem, current []model.UserPermissionOverride) *errors.AppError {
 	if hasRen(roles) {
 		return errors.ErrBadRequest("ren 持有者恒持全部权限, 不可调整")
+	}
+	// Rank: an operator may only edit a user whose rank is strictly below theirs.
+	if perm.Rank(operatorRoles) <= perm.Rank(roles) {
+		return errors.ErrBadRequest("不可编辑与自身同级或更高的用户")
 	}
 	seen := make(map[string]bool, len(items))
 	for _, it := range items {
@@ -142,6 +157,17 @@ func validateUserReplace(roles []string, items []dto.ReplaceOverrideItem) *error
 		if it.Effect == perm.EffectRevoke && !roleHolds {
 			return errors.ErrBadRequest("权限 " + it.Permission + " 不在该用户的角色权限内, 无需撤销")
 		}
+	}
+
+	// Possession: only rows this request actually changes vs the user's stored
+	// personal rows are judged, and each changed key must be one the operator
+	// themselves hold. Carried-over rows pass untouched.
+	if key, ok := possessionOffender(
+		effectMapFromUserRows(current),
+		effectMapFromItems(items),
+		operatorEffectiveSet(operatorUID, operatorRoles),
+	); !ok {
+		return errors.ErrBadRequest("不可增删自己未持有的权限: " + key)
 	}
 	return nil
 }
