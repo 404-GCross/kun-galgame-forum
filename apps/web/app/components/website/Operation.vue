@@ -12,7 +12,8 @@ const emits = defineEmits<{
 type WebsiteData = (CreateWebsitePayload & { website_id?: number }) | undefined
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canEditWebsite = useCan('website.edit')
+const canDeleteWebsite = useCan('website.delete')
 
 // Tag the outbound 访问网站 jump with utm_source=<current domain>.
 const utmLink = useUtmLink()
@@ -148,7 +149,7 @@ const handleAction = async (
       size="lg"
     />
 
-    <KunTooltip v-if="canModerate" text="编辑">
+    <KunTooltip v-if="canEditWebsite" text="编辑">
       <KunButton
         :is-icon-only="true"
         size="lg"
@@ -166,7 +167,7 @@ const handleAction = async (
       @submit="handleUpdate"
     />
 
-    <KunTooltip v-if="canModerate" text="删除">
+    <KunTooltip v-if="canDeleteWebsite" text="删除">
       <KunButton
         :is-icon-only="true"
         size="lg"

@@ -8,11 +8,16 @@ const props = defineProps<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canCreateAnyPoll = useCan('poll.create_any')
+const canEditAnyPoll = useCan('poll.edit_any')
 const tempReplyStore = useTempReplyStore()
 const { lastSuccessfulReply } = storeToRefs(tempReplyStore)
+// Poll management on this topic: the owner manages their own topic's polls;
+// poll.create_any / poll.edit_any extend that to any topic. Drives the poll
+// create card + create/edit modal in TopicPollContainer.
 const isTopicAdmin = computed(
-  () => canModerate.value || props.topic.user.id === id
+  () =>
+    props.topic.user.id === id || canCreateAnyPoll.value || canEditAnyPoll.value
 )
 
 const {

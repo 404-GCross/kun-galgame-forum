@@ -8,11 +8,12 @@ const emits = defineEmits<{
 }>()
 
 const { id, moemoepoint } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteTopicComment = useCan('comment.topic.delete')
 
-const isCommonUser = !canModerate.value
-const isAdmin = canModerate.value
-const canDelete = computed(() => id === props.comment.user.id || isAdmin)
+const isCommonUser = !canDeleteTopicComment.value
+const canDelete = computed(
+  () => id === props.comment.user.id || canDeleteTopicComment.value
+)
 
 const handleDeleteComment = async () => {
   const moemoepointToDecrease = 3 * (props.comment.like_count + 1)

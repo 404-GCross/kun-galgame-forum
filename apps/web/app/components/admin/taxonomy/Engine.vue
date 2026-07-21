@@ -4,6 +4,9 @@
 // posture as the public engine list page.
 import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
+// Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
 const { data, refresh } = await useKunFetch<GalgameEngineItem[]>(

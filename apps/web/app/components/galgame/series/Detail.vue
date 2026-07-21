@@ -16,6 +16,9 @@ const pagedGalgames = computed(() =>
   props.data.galgame.slice((page.value - 1) * limit, page.value * limit)
 )
 
+// Proxy-face: taxonomy (tag/official/engine/series) CRUD + revert mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 const showSeriesModal = ref(false)
 const editingSeries = ref<UpdateGalgameSeriesPayload>(

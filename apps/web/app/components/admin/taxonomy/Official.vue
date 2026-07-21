@@ -8,6 +8,9 @@ import {
 } from '~/constants/galgameOfficial'
 import type { UpdateGalgameOfficialPayload } from '~/components/galgame/types'
 
+// Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
 const pageData = reactive({ page: 1, limit: 50 })

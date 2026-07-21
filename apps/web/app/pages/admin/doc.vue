@@ -6,6 +6,11 @@ import type { DocEditorMode } from '~/components/edit/doc/type'
 // DocArticleSummary / DocArticleDetail / DocArticleListResponse are
 // auto-imported (shared/types).
 
+// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
+// on the /admin/doc/article + /doc/* routes. UX guard — the real boundary is the
+// API.
+definePageMeta({ middleware: 'moderator' })
+
 useKunDisableSeo('文档管理')
 
 // Status (0/1/2) → chip label + color, mirroring the friend-link chip map.

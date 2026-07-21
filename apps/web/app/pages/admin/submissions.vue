@@ -6,6 +6,11 @@
 // See docs/galgame_wiki/06-admin.md §PUT /admin/galgame/:gid/status for
 // the upstream contract and 08-messages.md for the message shape.
 
+// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
+// on /admin/galgame/messages + /admin/galgame/:gid/status. UX guard — the real
+// boundary is the API (and the wiki admin API behind it).
+definePageMeta({ middleware: 'moderator' })
+
 useKunDisableSeo('Galgame 审核')
 
 interface AdminQueueGalgame {
@@ -239,11 +244,17 @@ const handleConfirmReason = async () => {
             <h3 class="truncate text-lg font-medium">
               {{ displayName(msg) }}
             </h3>
-            <KunChip size="xs" variant="flat" :color="typeBadge(msg.type).color">
+            <KunChip
+              size="xs"
+              variant="flat"
+              :color="typeBadge(msg.type).color"
+            >
               {{ typeBadge(msg.type).label }}
             </KunChip>
           </div>
-          <div class="text-default-500 flex flex-wrap items-center gap-2 text-sm">
+          <div
+            class="text-default-500 flex flex-wrap items-center gap-2 text-sm"
+          >
             <span>
               提交者:
               <KunLink v-if="msg.actor" :to="`/user/${msg.actor.id}`">
@@ -320,9 +331,7 @@ const handleConfirmReason = async () => {
         <KunTextarea
           v-model="reasonText"
           :placeholder="
-            modalRequiresReason
-              ? '请填写拒绝原因 (必填)'
-              : '可选填理由'
+            modalRequiresReason ? '请填写拒绝原因 (必填)' : '可选填理由'
           "
           :rows="4"
           :maxlength="1007"
@@ -333,9 +342,7 @@ const handleConfirmReason = async () => {
         <div class="flex justify-end gap-2">
           <KunButton variant="light" @click="closeReasonModal">取消</KunButton>
           <KunButton
-            :color="
-              reasonContext?.action === 'decline' ? 'danger' : 'default'
-            "
+            :color="reasonContext?.action === 'decline' ? 'danger' : 'default'"
             @click="handleConfirmReason"
           >
             确认

@@ -6,8 +6,8 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -112,7 +112,19 @@ func (h *CommunityCommentHandler) Update(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	item, appErr := h.service.UpdateComment(c.Context(), user.ID, role.CanModerate(user.Roles), postID, optionalGid(c), req.Content)
+	// This edit route is SHARED across all four comment surfaces — galgame,
+	// rating, website, toolset all reuse PUT /galgame/comments/:postId for edits
+	// (only delete is per-surface). Resolving the exact surface here would
+	// require an extra S2S round-trip to read the post's anchor (site_game vs a
+	// prefixed site_resource), which we deliberately avoid. Since all four
+	// comment.*.edit permissions are mod-threshold, the union below is exactly
+	// equivalent to the old role.CanModerate check while keeping the vocabulary
+	// explicit.
+	canModerate := perm.Can(user.Roles, perm.CommentGalgameEdit) ||
+		perm.Can(user.Roles, perm.CommentRatingEdit) ||
+		perm.Can(user.Roles, perm.CommentWebsiteEdit) ||
+		perm.Can(user.Roles, perm.CommentToolsetEdit)
+	item, appErr := h.service.UpdateComment(c.Context(), user.ID, canModerate, postID, optionalGid(c), req.Content)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -130,7 +142,10 @@ func (h *CommunityCommentHandler) Delete(c fiber.Ctx) error {
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("非法的评论 ID"))
 	}
-	if appErr := h.service.DeleteComment(c.Context(), user.ID, role.CanModerate(user.Roles), postID, optionalGid(c)); appErr != nil {
+	// Unlike edit, delete is NOT a shared route — the resource surfaces carry
+	// their own region-aware delete (ResourceCommentHandler), so this path only
+	// ever tombstones galgame (site_game) comments.
+	if appErr := h.service.DeleteComment(c.Context(), user.ID, perm.Can(user.Roles, perm.CommentGalgameDelete), postID, optionalGid(c)); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "评论已删除")

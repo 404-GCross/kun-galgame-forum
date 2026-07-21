@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const { id: userId } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteAnyRating = useCan('rating.delete_any')
 
 // Even on the detail page (which the reader opened deliberately), a 严重剧透
 // review stays behind a one-click frosted overlay; 部分剧透 / 无剧透 show直接.
@@ -29,7 +29,7 @@ const isSummaryMasked = computed(
 
 const canEdit = computed(() => props.data.user.id === userId)
 const canDelete = computed(
-  () => props.data.user.id === userId || canModerate.value
+  () => props.data.user.id === userId || canDeleteAnyRating.value
 )
 const rating = computed(() =>
   calcGalgameRating(

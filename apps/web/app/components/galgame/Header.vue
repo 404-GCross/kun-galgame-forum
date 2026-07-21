@@ -19,7 +19,7 @@ const emits = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canBanResourcePublish = useCan('galgame.ban_resource_publish')
 
 // Resource-publish ban (moderator kill-switch): a live reactive flag shared with
 // the resource tab (provided by Galgame.vue), so the menu label + tab notice
@@ -246,11 +246,16 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             </KunButton>
 
             <KunPopover
-              v-if="galgame.user.id !== id || canModerate"
+              v-if="galgame.user.id !== id || canBanResourcePublish"
               position="bottom-end"
             >
               <template #trigger>
-                <KunButton :is-icon-only="true" variant="light" color="default" size="sm">
+                <KunButton
+                  :is-icon-only="true"
+                  variant="light"
+                  color="default"
+                  size="sm"
+                >
                   <KunIcon name="lucide:ellipsis" />
                 </KunButton>
               </template>
@@ -266,7 +271,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                 <!-- Moderator kill-switch: forbid / allow publishing download
                      resources under this game (copyright / third-party). -->
                 <KunButton
-                  v-if="canModerate"
+                  v-if="canBanResourcePublish"
                   variant="light"
                   :color="resourcePublishBanned ? 'success' : 'danger'"
                   size="sm"
@@ -276,10 +281,14 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                 >
                   <KunIcon
                     :name="
-                      resourcePublishBanned ? 'lucide:circle-check' : 'lucide:ban'
+                      resourcePublishBanned
+                        ? 'lucide:circle-check'
+                        : 'lucide:ban'
                     "
                   />
-                  {{ resourcePublishBanned ? '解除资源发布禁止' : '禁止发布资源' }}
+                  {{
+                    resourcePublishBanned ? '解除资源发布禁止' : '禁止发布资源'
+                  }}
                 </KunButton>
               </div>
             </KunPopover>

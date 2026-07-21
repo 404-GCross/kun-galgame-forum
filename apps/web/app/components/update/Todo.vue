@@ -5,7 +5,8 @@ import {
 } from '~/constants/update'
 import type { UpdateTodoPayload } from './types'
 
-const { canModerate } = useRole()
+const canCreateUpdateLog = useCan('update_log.create')
+const canEditUpdateLog = useCan('update_log.edit')
 
 const iconMap: Record<number, string> = {
   0: 'lucide:circle-divide',
@@ -71,7 +72,7 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       description="这里记录了网站将会实现的功能, 以及更改的功能, 包括 Galgame 以及话题, 以及网站所有方向可能发生的各种更新等等"
     >
       <template #endContent>
-        <div v-if="canModerate" class="flex justify-end">
+        <div v-if="canCreateUpdateLog" class="flex justify-end">
           <KunButton @click="showTodoModal = true">创建待办</KunButton>
         </div>
       </template>
@@ -115,7 +116,7 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
         <KunButton
           variant="flat"
           size="sm"
-          v-if="canModerate"
+          v-if="canEditUpdateLog"
           @click="openEditTodoModal(todo)"
         >
           编辑

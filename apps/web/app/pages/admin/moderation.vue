@@ -12,6 +12,11 @@ import {
   trustSubjectHref
 } from '~/constants/trust'
 
+// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
+// on the /admin/trust/review-items routes. UX guard — the real boundary is the
+// API (and the infra trust admin API behind it).
+definePageMeta({ middleware: 'moderator' })
+
 useKunDisableSeo('内容审核')
 
 const statusTabs = [
@@ -55,9 +60,9 @@ const openDetail = async (id: number) => {
   action.value = 1
   reasonCode.value = ''
   statement.value = ''
-  detail.value = (await kunFetch<ReviewItemDetail>(
-    `/admin/trust/review-items/${id}`
-  )) ?? null
+  detail.value =
+    (await kunFetch<ReviewItemDetail>(`/admin/trust/review-items/${id}`)) ??
+    null
   detailLoading.value = false
 }
 
@@ -73,10 +78,15 @@ const subjectHref = computed(() => {
   if (!detail.value) {
     return undefined
   }
-  const fromReport = detail.value.reports.find((r) => r.subject_url)?.subject_url
+  const fromReport = detail.value.reports.find(
+    (r) => r.subject_url
+  )?.subject_url
   return (
     fromReport ||
-    trustSubjectHref(detail.value.item.subject_kind, detail.value.item.subject_id)
+    trustSubjectHref(
+      detail.value.item.subject_kind,
+      detail.value.item.subject_id
+    )
   )
 })
 
@@ -156,9 +166,13 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
       >
         <div class="flex items-center justify-between gap-2">
           <div class="flex flex-wrap items-center gap-2">
-            <KunChip color="secondary">{{ kindLabel(item.subject_kind) }}</KunChip>
+            <KunChip color="secondary">{{
+              kindLabel(item.subject_kind)
+            }}</KunChip>
             <span class="text-default-500 text-sm">#{{ item.subject_id }}</span>
-            <KunChip :color="TRUST_REVIEW_STATUS[item.status]?.color ?? 'default'">
+            <KunChip
+              :color="TRUST_REVIEW_STATUS[item.status]?.color ?? 'default'"
+            >
               {{ TRUST_REVIEW_STATUS[item.status]?.label ?? item.status }}
             </KunChip>
           </div>
@@ -166,9 +180,15 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
             优先级 {{ item.priority.toFixed(1) }}
           </span>
         </div>
-        <div class="text-default-400 mt-1 flex flex-wrap items-center gap-x-3 text-xs">
-          <span>来源：{{ TRUST_REVIEW_SOURCE[item.source] ?? item.source }}</span>
-          <span v-if="item.report_weight_sum">举报权重 {{ item.report_weight_sum.toFixed(1) }}</span>
+        <div
+          class="text-default-400 mt-1 flex flex-wrap items-center gap-x-3 text-xs"
+        >
+          <span
+            >来源：{{ TRUST_REVIEW_SOURCE[item.source] ?? item.source }}</span
+          >
+          <span v-if="item.report_weight_sum"
+            >举报权重 {{ item.report_weight_sum.toFixed(1) }}</span
+          >
           <KunTime :time="item.created_at" type="datetime" show-year />
         </div>
       </button>
@@ -183,10 +203,15 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
 
     <KunModal v-model="isDetailOpen" inner-class-name="max-w-2xl w-[94vw]">
       <KunLoading v-if="detailLoading" />
-      <div v-else-if="detail" class="max-h-[80dvh] space-y-4 overflow-y-auto p-1">
+      <div
+        v-else-if="detail"
+        class="max-h-[80dvh] space-y-4 overflow-y-auto p-1"
+      >
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-lg font-bold">审核详情</span>
-          <KunChip color="secondary">{{ kindLabel(detail.item.subject_kind) }}</KunChip>
+          <KunChip color="secondary">{{
+            kindLabel(detail.item.subject_kind)
+          }}</KunChip>
           <KunLink
             v-if="subjectHref"
             :to="subjectHref"
@@ -195,7 +220,9 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
           >
             查看内容 #{{ detail.item.subject_id }}
           </KunLink>
-          <span v-else class="text-default-500 text-sm">#{{ detail.item.subject_id }}</span>
+          <span v-else class="text-default-500 text-sm"
+            >#{{ detail.item.subject_id }}</span
+          >
         </div>
 
         <!-- Reports (evidence) -->
@@ -218,7 +245,8 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
             <pre
               v-if="r.subject_snapshot"
               class="text-default-500 border-default-200 max-h-32 overflow-y-auto rounded border p-2 text-xs whitespace-pre-wrap"
-            >{{ r.subject_snapshot }}</pre>
+              >{{ r.subject_snapshot }}</pre
+            >
           </div>
         </div>
 

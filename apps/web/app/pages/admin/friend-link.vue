@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { FRIEND_LINK_CATEGORIES } from '~/constants/friendLink'
 
+// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
+// on the /admin/friend-link routes. UX guard — the real boundary is the API.
+definePageMeta({ middleware: 'moderator' })
+
 useKunDisableSeo('友链管理')
 
 // Same public endpoint the display page uses; refetched after every mutation.

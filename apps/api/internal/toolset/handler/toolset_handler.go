@@ -5,8 +5,8 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -118,7 +118,7 @@ func (h *ToolsetHandler) Update(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.toolsetService.Update(c.Context(), user.ID, role.CanModerate(user.Roles), id, &req); appErr != nil {
+	if appErr := h.toolsetService.Update(c.Context(), user.ID, perm.Can(user.Roles, perm.ToolsetEditAny), id, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "工具更新成功")
@@ -137,7 +137,7 @@ func (h *ToolsetHandler) Delete(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("无效的工具 ID"))
 	}
 
-	if appErr := h.toolsetService.Delete(user.ID, role.CanModerate(user.Roles), id); appErr != nil {
+	if appErr := h.toolsetService.Delete(user.ID, perm.Can(user.Roles, perm.ToolsetDeleteAny), id); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "工具已删除")

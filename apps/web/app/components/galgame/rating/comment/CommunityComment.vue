@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteRatingComment = useCan('comment.rating.delete')
 const { open: openFlag } = useGalgameCommentFlag()
 
 const isShowReply = ref(false)
@@ -30,7 +30,8 @@ const isAuthor = computed(() => props.comment.user?.id === id)
 
 const isShowEdit = computed(() => isAuthor.value && !props.comment.deleted)
 const isShowDelete = computed(
-  () => (isAuthor.value || canModerate.value) && !props.comment.deleted
+  () =>
+    (isAuthor.value || canDeleteRatingComment.value) && !props.comment.deleted
 )
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
 
@@ -145,10 +146,7 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
       </p>
 
       <!-- Plain-text view (parity — the rating area was never markdown). -->
-      <div
-        v-else-if="!isEditing"
-        class="break-all whitespace-pre-line"
-      >
+      <div v-else-if="!isEditing" class="break-all whitespace-pre-line">
         {{ comment.content }}
       </div>
 
@@ -163,7 +161,11 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
           >
             取消
           </KunButton>
-          <KunButton size="sm" :loading="isSavingEdit" @click="handleSubmitEdit">
+          <KunButton
+            size="sm"
+            :loading="isSavingEdit"
+            @click="handleSubmitEdit"
+          >
             保存
           </KunButton>
         </div>

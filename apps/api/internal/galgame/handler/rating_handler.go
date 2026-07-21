@@ -7,8 +7,8 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -100,7 +100,7 @@ func (h *RatingHandler) DeleteRating(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.ratingService.DeleteRating(user.ID, role.CanModerate(user.Roles), req.GalgameRatingID); appErr != nil {
+	if appErr := h.ratingService.DeleteRating(user.ID, perm.Can(user.Roles, perm.RatingDeleteAny), req.GalgameRatingID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "评分已删除")

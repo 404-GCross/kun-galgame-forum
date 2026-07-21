@@ -13,11 +13,17 @@ const props = defineProps<{
 }>()
 
 const { id: userId } = usePersistUserStore()
-const { canModerate } = useRole()
+const canEditAnyToolset = useCan('toolset.edit_any')
+const canDeleteAnyToolset = useCan('toolset.delete_any')
 
 const data = computed(() => props.toolset)
-const canManageToolset = computed(
-  () => data.value.user.id === userId || canModerate.value
+// The toolset owner manages their own tool; toolset.edit_any / delete_any
+// extend that to anyone's.
+const canEditToolset = computed(
+  () => data.value.user.id === userId || canEditAnyToolset.value
+)
+const canDeleteToolset = computed(
+  () => data.value.user.id === userId || canDeleteAnyToolset.value
 )
 
 // Own the resource list locally so add / edit / delete are reactive. The detail
@@ -225,14 +231,14 @@ const handleResourceUpdated = (res: ToolsetResource) => {
         <div class="flex gap-1">
           <KunButton @click="handlePublishResource">上传 / 添加资源</KunButton>
           <KunButton
-            v-if="canManageToolset"
+            v-if="canEditToolset"
             variant="flat"
             @click="handleRewriteToolset"
           >
             修改
           </KunButton>
           <KunButton
-            v-if="canManageToolset"
+            v-if="canDeleteToolset"
             color="danger"
             variant="flat"
             :loading="isDeleting"

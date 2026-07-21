@@ -48,7 +48,9 @@ const resolveContentType = (file: File): string =>
 const { moemoepoint, dailyToolsetUploadBytes } = storeToRefs(
   usePersistUserStore()
 )
-const { canModerate } = useRole()
+// Upload bypass: hold this permission to skip the per-user daily quota / single-
+// file cap (moderator+). Owner/quota checks otherwise apply.
+const canUploadBypass = useCan('toolset.upload_bypass')
 const fileInput = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
 
@@ -66,7 +68,7 @@ const isLarge = computed(() => {
   return !!f && f.size > MAX_SMALL_FILE_SIZE
 })
 const dailyUploadLimit = computed(() => {
-  if (canModerate.value) {
+  if (canUploadBypass.value) {
     return MAX_LARGE_FILE_SIZE
   }
 
@@ -79,7 +81,7 @@ const dailyUploadLimit = computed(() => {
   )
 })
 const maxSingleFileLimit = computed(() => {
-  if (canModerate.value) {
+  if (canUploadBypass.value) {
     return MAX_LARGE_FILE_SIZE
   }
 
@@ -323,7 +325,10 @@ const completeUpload = async (
     return false
   }
   useMessage('上传成功', 'success')
-  emits('onUploadSuccess', { artifact_uuid: done.artifact_uuid, size: done.size })
+  emits('onUploadSuccess', {
+    artifact_uuid: done.artifact_uuid,
+    size: done.size
+  })
   progress.value = 100
   uploadStatus.value = 'complete'
   forgetPending(artifactUuid)

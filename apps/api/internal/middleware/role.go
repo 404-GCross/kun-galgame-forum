@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/role"
 
@@ -32,6 +33,24 @@ func RequireAdmin() fiber.Handler {
 			return response.Error(c, errors.ErrAuthExpired())
 		}
 		if !role.CanAdminister(user.Roles) {
+			return response.Error(c, errors.ErrForbidden("您没有权限进行此操作"))
+		}
+		return c.Next()
+	}
+}
+
+// RequirePermission gates a route to holders of a named PURE-FORUM permission
+// (pkg/perm — the forum's own resolver is the authoritative boundary for these
+// operations). Same shape as RequireModerator: nil user → auth-expired, missing
+// permission → 403. INFRA-PROXY operations do NOT use this — they stay on
+// RequireModerator/RequireAdmin with a mirror comment.
+func RequirePermission(p perm.Permission) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		user := GetUser(c)
+		if user == nil {
+			return response.Error(c, errors.ErrAuthExpired())
+		}
+		if !perm.Can(user.Roles, p) {
 			return response.Error(c, errors.ErrForbidden("您没有权限进行此操作"))
 		}
 		return c.Next()

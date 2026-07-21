@@ -4,10 +4,10 @@ const props = defineProps<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canSetBestAnswer = useCan('topic.set_best_answer')
 const topicUserId = inject<number>('topicUserId')
 
-const isDisabled = !canModerate.value && topicUserId !== id
+const isDisabled = !canSetBestAnswer.value && topicUserId !== id
 
 const handleUpdateTopicBestAnswer = async () => {
   const res = await useComponentMessageStore().alert(

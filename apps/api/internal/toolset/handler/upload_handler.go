@@ -5,8 +5,8 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -40,7 +40,7 @@ func (h *UploadHandler) UploadInit(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	result, appErr := h.uploadService.Init(c.Context(), id, user.ID, role.CanModerate(user.Roles), &req)
+	result, appErr := h.uploadService.Init(c.Context(), id, user.ID, perm.Can(user.Roles, perm.ToolsetUploadBypass), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

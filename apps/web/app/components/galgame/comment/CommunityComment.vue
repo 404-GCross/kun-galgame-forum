@@ -29,7 +29,7 @@ const emit = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteGalgameComment = useCan('comment.galgame.delete')
 const { open: openFlag } = useGalgameCommentFlag()
 
 const isShowReply = ref(false)
@@ -44,7 +44,8 @@ const isAuthor = computed(() => props.comment.user?.id === id)
 // the server never allowed it — so the owner no longer sees the button.
 const isShowEdit = computed(() => isAuthor.value && !props.comment.deleted)
 const isShowDelete = computed(
-  () => (isAuthor.value || canModerate.value) && !props.comment.deleted
+  () =>
+    (isAuthor.value || canDeleteGalgameComment.value) && !props.comment.deleted
 )
 // Report entry: not on your own post, and never on a tombstone.
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
@@ -178,7 +179,11 @@ const handleDelete = async () => {
           >
             取消
           </KunButton>
-          <KunButton size="sm" :loading="isSavingEdit" @click="handleSubmitEdit">
+          <KunButton
+            size="sm"
+            :loading="isSavingEdit"
+            @click="handleSubmitEdit"
+          >
             保存
           </KunButton>
         </div>

@@ -15,7 +15,10 @@ const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
 // Local mutable copy so answering / rating updates the view without a refetch.
 const state = ref<GalgameQuizPlay>({ ...props.quiz })
-const { canModerate } = useRole()
+// Edit fetches the answer key (quiz.edit_any); delete removes the quiz and its
+// records (quiz.delete_any). The author holds both over their own quiz.
+const canEditAnyQuiz = useCan('quiz.edit_any')
+const canDeleteAnyQuiz = useCan('quiz.delete_any')
 
 const answerRef = ref<{
   getSubmitted: () => Record<string, unknown>
@@ -67,7 +70,11 @@ const onRated = (r: QuizQualityResult) => {
 }
 
 const isDeleting = ref(false)
-const canManage = computed(() => state.value.is_author || canModerate.value)
+const canEdit = computed(() => state.value.is_author || canEditAnyQuiz.value)
+const canDelete = computed(
+  () => state.value.is_author || canDeleteAnyQuiz.value
+)
+const canManage = computed(() => canEdit.value || canDelete.value)
 
 const showEdit = ref(false)
 const editData = ref<QuizEditData | null>(null)
@@ -130,6 +137,7 @@ const correctRate = computed(() =>
         </template>
         <div class="flex w-32 flex-col gap-1 p-2">
           <KunButton
+            v-if="canEdit"
             variant="light"
             color="default"
             size="sm"
@@ -139,6 +147,7 @@ const correctRate = computed(() =>
             <KunIcon name="lucide:pencil" />编辑
           </KunButton>
           <KunButton
+            v-if="canDelete"
             variant="light"
             color="danger"
             size="sm"
@@ -165,7 +174,8 @@ const correctRate = computed(() =>
             :color="kunQuizDifficultyColor(state.difficulty)"
             variant="flat"
           >
-            {{ kunQuizDifficultyLabel(state.difficulty) }} · {{ state.difficulty }}
+            {{ kunQuizDifficultyLabel(state.difficulty) }} ·
+            {{ state.difficulty }}
           </KunChip>
           <KunChip variant="light">
             {{ KUN_QUIZ_CATEGORY_MAP[state.category] }}
@@ -186,7 +196,9 @@ const correctRate = computed(() =>
             {{ getPreferredLanguageText(g.name) }}
           </KunLink>
           <KunChip
-            v-if="!state.galgames.length && state.hide_galgame && !state.my_answer"
+            v-if="
+              !state.galgames.length && state.hide_galgame && !state.my_answer
+            "
             variant="flat"
             size="sm"
           >
@@ -232,7 +244,9 @@ const correctRate = computed(() =>
                on its own line when the row wraps on mobile). -->
           <div class="text-default-500 ml-auto flex items-center gap-1">
             <span class="inline-flex items-center gap-1.5 px-2 py-1 text-sm">
-              <KunIcon name="lucide:eye" class="text-[1.15rem]" />{{ state.view }}
+              <KunIcon name="lucide:eye" class="text-[1.15rem]" />{{
+                state.view
+              }}
             </span>
             <FavoriteToggle
               :favorited="state.is_favorited"
@@ -279,11 +293,7 @@ const correctRate = computed(() =>
       class="text-default-400 flex items-center justify-center gap-1.5 text-sm"
     >
       本题出自
-      <img
-        src="/favicon.webp"
-        alt="鲲 Galgame 论坛"
-        class="h-4 w-4 rounded"
-      />
+      <img src="/favicon.webp" alt="鲲 Galgame 论坛" class="h-4 w-4 rounded" />
       <KunLink to="/galgame-quiz" class="text-sm">
         鲲 Galgame 论坛 Galgame 题库
       </KunLink>

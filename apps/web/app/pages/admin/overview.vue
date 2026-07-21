@@ -6,6 +6,11 @@ import {
   KUN_ADMIN_OVERVIEW_STATS_MODEL_MAP
 } from '~/constants/admin'
 
+// Admin-only (admin ⊂ ren): mirrors the API's RequireAdmin gate on
+// /admin/overview/all + /admin/overview/stats. UX guard — the real boundary is
+// the API.
+definePageMeta({ middleware: 'admin' })
+
 interface AdminOverviewAll {
   name: string
   label: string
@@ -135,10 +140,7 @@ useKunDisableSeo('数据总览')
       <p class="text-default-500 text-sm">
         如果要用一张可视化的图表来表示网站的增量数据状态, 那就是下面这张图
       </p>
-      <KunCard
-        :is-transparent="true"
-        :is-hoverable="false"
-      >
+      <KunCard :is-transparent="true" :is-hoverable="false">
         <AdminOverviewChart v-if="data" :data="data" />
       </KunCard>
     </div>

@@ -5,14 +5,25 @@ import {
   type KUN_GALGAME_OFFICIAL_TYPE
 } from '~/constants/galgameOfficial'
 
+// Proxy-face: taxonomy (tag/official/engine/series) edit + revert mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 const route = useRoute()
 const official_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
-const { page, limit, type, language, platform, gameType, sortField, sortOrder } =
-  useGalgameFilters()
+const {
+  page,
+  limit,
+  type,
+  language,
+  platform,
+  gameType,
+  sortField,
+  sortOrder
+} = useGalgameFilters()
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
@@ -137,9 +148,9 @@ if (data.value) {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页展示本站已收录的、由该会社制作的 Galgame,
-            可按类型 / 语言 / 平台 / 排序筛选。本站尚未收录的作品不在此列。默认仅显示
-            SFW 的 Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
+            本页展示本站已收录的、由该会社制作的 Galgame, 可按类型 / 语言 / 平台
+            / 排序筛选。本站尚未收录的作品不在此列。默认仅显示 SFW 的 Galgame,
+            查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 

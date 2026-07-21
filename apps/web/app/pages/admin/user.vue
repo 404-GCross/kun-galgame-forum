@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
+// Admin-only (admin ⊂ ren): mirrors the API's RequireAdmin gate on the
+// /admin/user/:id/content-stats + purge routes (AdminUserCard). UX guard — the
+// real boundary is the API.
+definePageMeta({ middleware: 'admin' })
+
 useKunDisableSeo('用户内容管理')
 
 // Account details (ban / delete / profile) live in the OAuth admin UI now.

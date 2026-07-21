@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"kun-galgame-api/internal/middleware"
+	"kun-galgame-api/pkg/perm"
 
 	"github.com/gofiber/fiber/v3"
 	fiberCors "github.com/gofiber/fiber/v3/middleware/cors"
@@ -483,6 +484,10 @@ func (a *App) setupRoutes() {
 	// to admin/moderator (see docs/galgame_wiki/01-galgame.md §POST). Most
 	// users go through POST /galgame/submit instead. We mirror the gate
 	// here so non-admin attempts fail fast before the wiki hop.
+	//
+	// INFRA-PROXY (mirrors infra key `galgame.create`, moderator+): the wiki
+	// re-checks; this RequireModerator stays a fail-fast mirror, NOT a
+	// pkg/perm boundary (truth lives in infra).
 	authed.Post("/galgame",
 		middleware.RequireModerator(),
 		a.GalgameHandler.Create,
@@ -499,6 +504,9 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame/:gid/edit/proposals", a.GalgameEditHandler.Submit)
 	authed.Get("/galgame-edit/mine", a.GalgameEditHandler.Mine)
 	authed.Post("/galgame-edit/proposals/:id/withdraw", a.GalgameEditHandler.Withdraw)
+	// INFRA-PROXY (mirrors infra key `galgame.review`, moderator+): the queue
+	// read + proposal view are proxied to the editing engine; RequireModerator
+	// is the entry mirror, the engine's projection holds the real policy.
 	authed.Get("/galgame-edit/queue", middleware.RequireModerator(), a.GalgameEditHandler.Queue)
 	authed.Get("/galgame-edit/proposals/:id", a.GalgameEditHandler.ProposalDetail)
 	authed.Post("/galgame-edit/proposals/:id/amend", a.GalgameEditHandler.Amend)
@@ -521,6 +529,12 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
 	authed.Post("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
 	authed.Post("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
+	// INFRA-PROXY (taxonomy.edit / taxonomy.delete / taxonomy.revert): these
+	// mirror infra keys `galgame.taxonomy.edit_any` / `galgame.taxonomy.review`,
+	// which infra grants to moderator+. kungal deliberately keeps RequireAdmin
+	// (admin ⊂ ren, STRICTER than infra) per the user's ruling (commit
+	// f819503c: public create, admin-only edit/delete/revert). Not a pkg/perm
+	// key — the wiki re-checks every write; this gate is the local mirror.
 	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
 	taxonomyWrite.Put("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
 	taxonomyWrite.Put("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
@@ -576,79 +590,99 @@ func (a *App) setupRoutes() {
 	// ADMIN routes (moderator / admin capability)
 	// ════════════════════════════════════════════
 
-	admin := authed.Group("", middleware.RequireAdmin())
-	admin.Get("/admin/overview/all", a.AdminOverviewHandler.GetOverview)
-	admin.Get("/admin/overview/stats", a.AdminOverviewHandler.GetStats)
+	// The admin overview/stats surface is PURE-FORUM: gated on admin.dashboard.
+	admin := authed.Group("")
+	admin.Get("/admin/overview/all", middleware.RequirePermission(perm.AdminDashboard), a.AdminOverviewHandler.GetOverview)
+	admin.Get("/admin/overview/stats", middleware.RequirePermission(perm.AdminDashboard), a.AdminOverviewHandler.GetStats)
 
 	// Content moderation: kungal no longer brokers identity (account
 	// ban/delete/register all live in the OAuth admin UI), but it DOES own
 	// every piece of content a user publishes here — so an admin can preview
-	// and one-shot purge a spam user's entire kungal footprint.
-	admin.Get("/admin/user/:id/content-stats", a.AdminPurgeHandler.GetUserContentStats)
-	admin.Delete("/admin/user/:id/content", a.AdminPurgeHandler.PurgeUserContent)
+	// and one-shot purge a spam user's entire kungal footprint. PURE-FORUM:
+	// gated on user.purge_content.
+	admin.Get("/admin/user/:id/content-stats", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.GetUserContentStats)
+	admin.Delete("/admin/user/:id/content", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.PurgeUserContent)
 
-	// Galgame admin (moderator+): wiki submission review queue +
-	// approve/decline/ban actions. Wiki requires admin/moderator on these
-	// (per docs/galgame_wiki/06-admin.md + 08-messages.md); we mirror the
-	// gate locally and forward via ProxyWriteWithToken so the wiki sees
-	// the calling admin's identity for the revision/message side effects.
 	// Trust & Safety moderator inbox (proxied to the trust admin API with the
 	// moderator's own token; site forced to kungal).
+	//
+	// INFRA-PROXY (mirrors infra key `trust.queue_access`, moderator+): the
+	// trust admin API re-checks; RequireModerator here is the fail-fast mirror,
+	// NOT a pkg/perm boundary.
 	trustAdmin := authed.Group("", middleware.RequireModerator())
 	trustAdmin.Get("/admin/trust/review-items", a.TrustHandler.ListReviewItems)
 	trustAdmin.Get("/admin/trust/review-items/:id", a.TrustHandler.GetReviewItem)
 	trustAdmin.Post("/admin/trust/review-items/:id/claim", a.TrustHandler.ClaimReviewItem)
 	trustAdmin.Post("/admin/trust/review-items/:id/decide", a.TrustHandler.DecideReviewItem)
 
-	galgameAdmin := authed.Group("", middleware.RequireModerator())
-	galgameAdmin.Get("/admin/galgame/messages", a.GalgameMessageHandler.AdminMessages)
+	// Galgame admin: a MIXED group — the submission-review routes are
+	// INFRA-PROXY (wiki re-checks), the resource-publish ban is PURE-FORUM, so
+	// each route carries its own gate rather than a shared group middleware.
+	galgameAdmin := authed.Group("")
+	// INFRA-PROXY (mirrors infra key `galgame.review_submission`, moderator+):
+	// the wiki submission review queue. Wiki requires admin/moderator (per
+	// docs/galgame_wiki/06-admin.md + 08-messages.md); RequireModerator is the
+	// local mirror, forwarding via ProxyWriteWithToken so the wiki sees the
+	// calling admin's identity for the revision/message side effects.
+	galgameAdmin.Get("/admin/galgame/messages", middleware.RequireModerator(), a.GalgameMessageHandler.AdminMessages)
+	// INFRA-PROXY (mirrors infra key `edit.galgame.game.status`, moderator+):
+	// approve/decline/ban status transitions land as engine direct edits.
 	galgameAdmin.Put(
 		"/admin/galgame/:gid/status",
+		middleware.RequireModerator(),
 		a.GalgameWikiHandler.ProxyWriteWithToken("PUT"),
 	)
+	// PURE-FORUM: the local resource_publish_banned kill-switch (migration 061)
+	// is enforced entirely by the forum — gated on galgame.ban_resource_publish.
 	galgameAdmin.Put(
 		"/admin/galgame/:gid/resource-publish-ban",
+		middleware.RequirePermission(perm.GalgameBanResourcePublish),
 		a.GalgameResourceHandler.SetResourcePublishBan,
 	)
 
-	// Doc admin (moderator+)
-	docAdmin := authed.Group("", middleware.RequireModerator())
-	docAdmin.Get("/admin/doc/article", a.DocArticleHandler.GetAdminArticles)
-	docAdmin.Post("/doc/article", a.DocArticleHandler.CreateArticle)
-	docAdmin.Put("/doc/article", a.DocArticleHandler.UpdateArticle)
-	docAdmin.Put("/doc/article/reorder", a.DocArticleHandler.ReorderArticles)
-	docAdmin.Put("/doc/article/pin", a.DocArticleHandler.SetArticlePin)
-	docAdmin.Delete("/doc/article", a.DocArticleHandler.DeleteArticle)
-	docAdmin.Post("/doc/category", a.DocCategoryHandler.CreateCategory)
-	docAdmin.Put("/doc/category", a.DocCategoryHandler.UpdateCategory)
-	docAdmin.Delete("/doc/category", a.DocCategoryHandler.DeleteCategory)
-	docAdmin.Post("/doc/tag", a.DocTagHandler.CreateTag)
-	docAdmin.Put("/doc/tag", a.DocTagHandler.UpdateTag)
-	docAdmin.Delete("/doc/tag", a.DocTagHandler.DeleteTag)
+	// Doc admin — PURE-FORUM, gated per verb (doc.create / doc.edit /
+	// doc.delete). The admin article LIST + reorder + pin are edit-surface
+	// reads/mutations, so they ride doc.edit.
+	docAdmin := authed.Group("")
+	docAdmin.Get("/admin/doc/article", middleware.RequirePermission(perm.DocEdit), a.DocArticleHandler.GetAdminArticles)
+	docAdmin.Post("/doc/article", middleware.RequirePermission(perm.DocCreate), a.DocArticleHandler.CreateArticle)
+	docAdmin.Put("/doc/article", middleware.RequirePermission(perm.DocEdit), a.DocArticleHandler.UpdateArticle)
+	docAdmin.Put("/doc/article/reorder", middleware.RequirePermission(perm.DocEdit), a.DocArticleHandler.ReorderArticles)
+	docAdmin.Put("/doc/article/pin", middleware.RequirePermission(perm.DocEdit), a.DocArticleHandler.SetArticlePin)
+	docAdmin.Delete("/doc/article", middleware.RequirePermission(perm.DocDelete), a.DocArticleHandler.DeleteArticle)
+	docAdmin.Post("/doc/category", middleware.RequirePermission(perm.DocCreate), a.DocCategoryHandler.CreateCategory)
+	docAdmin.Put("/doc/category", middleware.RequirePermission(perm.DocEdit), a.DocCategoryHandler.UpdateCategory)
+	docAdmin.Delete("/doc/category", middleware.RequirePermission(perm.DocDelete), a.DocCategoryHandler.DeleteCategory)
+	docAdmin.Post("/doc/tag", middleware.RequirePermission(perm.DocCreate), a.DocTagHandler.CreateTag)
+	docAdmin.Put("/doc/tag", middleware.RequirePermission(perm.DocEdit), a.DocTagHandler.UpdateTag)
+	docAdmin.Delete("/doc/tag", middleware.RequirePermission(perm.DocDelete), a.DocTagHandler.DeleteTag)
 
-	// Website admin (moderator+)
-	wsAdmin := authed.Group("", middleware.RequireModerator())
-	wsAdmin.Post("/website", a.WebsiteHandler.CreateWebsite)
-	wsAdmin.Put("/website/:domain", a.WebsiteHandler.UpdateWebsite)
-	wsAdmin.Delete("/website/:domain", a.WebsiteHandler.DeleteWebsite)
-	wsAdmin.Put("/website-category", a.WebsiteCategoryHandler.UpdateWebsiteCategory)
-	wsAdmin.Post("/website-tag", a.WebsiteTagHandler.CreateWebsiteTag)
-	wsAdmin.Put("/website-tag", a.WebsiteTagHandler.UpdateWebsiteTag)
-	wsAdmin.Delete("/website-tag", a.WebsiteTagHandler.DeleteWebsiteTag)
+	// Website admin — PURE-FORUM, gated per verb (website.create / website.edit
+	// / website.delete). Category edit rides website.edit.
+	wsAdmin := authed.Group("")
+	wsAdmin.Post("/website", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteHandler.CreateWebsite)
+	wsAdmin.Put("/website/:domain", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteHandler.UpdateWebsite)
+	wsAdmin.Delete("/website/:domain", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteHandler.DeleteWebsite)
+	wsAdmin.Put("/website-category", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteCategoryHandler.UpdateWebsiteCategory)
+	wsAdmin.Post("/website-tag", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteTagHandler.CreateWebsiteTag)
+	wsAdmin.Put("/website-tag", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteTagHandler.UpdateWebsiteTag)
+	wsAdmin.Delete("/website-tag", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteTagHandler.DeleteWebsiteTag)
 
-	// Update admin (moderator+)
-	updateAdmin := authed.Group("", middleware.RequireModerator())
-	updateAdmin.Post("/update/history", a.UpdateHandler.CreateHistory)
-	updateAdmin.Put("/update/history", a.UpdateHandler.UpdateHistory)
-	updateAdmin.Delete("/update/history", a.UpdateHandler.DeleteHistory)
-	updateAdmin.Post("/update/todo", a.UpdateHandler.CreateTodo)
-	updateAdmin.Put("/update/todo", a.UpdateHandler.UpdateTodo)
-	updateAdmin.Delete("/update/todo", a.UpdateHandler.DeleteTodo)
+	// Update admin — PURE-FORUM, gated per verb (update_log.create / .edit /
+	// .delete). History + todo share the update-log vocabulary.
+	updateAdmin := authed.Group("")
+	updateAdmin.Post("/update/history", middleware.RequirePermission(perm.UpdateLogCreate), a.UpdateHandler.CreateHistory)
+	updateAdmin.Put("/update/history", middleware.RequirePermission(perm.UpdateLogEdit), a.UpdateHandler.UpdateHistory)
+	updateAdmin.Delete("/update/history", middleware.RequirePermission(perm.UpdateLogDelete), a.UpdateHandler.DeleteHistory)
+	updateAdmin.Post("/update/todo", middleware.RequirePermission(perm.UpdateLogCreate), a.UpdateHandler.CreateTodo)
+	updateAdmin.Put("/update/todo", middleware.RequirePermission(perm.UpdateLogEdit), a.UpdateHandler.UpdateTodo)
+	updateAdmin.Delete("/update/todo", middleware.RequirePermission(perm.UpdateLogDelete), a.UpdateHandler.DeleteTodo)
 
-	// Friend-link admin (moderator+): CRUD + drag-reorder.
-	friendAdmin := authed.Group("", middleware.RequireModerator())
-	friendAdmin.Post("/admin/friend-link", a.FriendLinkHandler.Create)
-	friendAdmin.Put("/admin/friend-link", a.FriendLinkHandler.Update)
-	friendAdmin.Delete("/admin/friend-link", a.FriendLinkHandler.Delete)
-	friendAdmin.Put("/admin/friend-link/reorder", a.FriendLinkHandler.Reorder)
+	// Friend-link admin — PURE-FORUM, gated per verb (friend_link.create /
+	// .edit / .delete). Drag-reorder rides friend_link.edit.
+	friendAdmin := authed.Group("")
+	friendAdmin.Post("/admin/friend-link", middleware.RequirePermission(perm.FriendLinkCreate), a.FriendLinkHandler.Create)
+	friendAdmin.Put("/admin/friend-link", middleware.RequirePermission(perm.FriendLinkEdit), a.FriendLinkHandler.Update)
+	friendAdmin.Delete("/admin/friend-link", middleware.RequirePermission(perm.FriendLinkDelete), a.FriendLinkHandler.Delete)
+	friendAdmin.Put("/admin/friend-link/reorder", middleware.RequirePermission(perm.FriendLinkEdit), a.FriendLinkHandler.Reorder)
 }

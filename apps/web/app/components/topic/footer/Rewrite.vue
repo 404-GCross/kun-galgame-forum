@@ -18,9 +18,9 @@ const {
   isTopicRewriting
 } = storeToRefs(useTempEditStore())
 const { id: userId } = usePersistUserStore()
-const { canModerate } = useRole()
+const canEditAnyTopic = useCan('topic.edit_any')
 const isShowRewrite = computed(
-  () => userId === props.topic.user.id || canModerate.value
+  () => userId === props.topic.user.id || canEditAnyTopic.value
 )
 
 const rewriteTopic = async () => {

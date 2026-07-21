@@ -7,8 +7,8 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -153,7 +153,7 @@ func (h *QuizHandler) DeleteQuiz(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.quizService.DeleteQuiz(user.ID, role.CanModerate(user.Roles), req.QuizID); appErr != nil {
+	if appErr := h.quizService.DeleteQuiz(user.ID, perm.Can(user.Roles, perm.QuizDeleteAny), req.QuizID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "题目已删除")
@@ -185,7 +185,7 @@ func (h *QuizHandler) UpdateQuiz(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	regraded, appErr := h.quizService.UpdateQuiz(c.Context(), user.ID, role.CanModerate(user.Roles), &req)
+	regraded, appErr := h.quizService.UpdateQuiz(c.Context(), user.ID, perm.Can(user.Roles, perm.QuizEditAny), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -205,7 +205,7 @@ func (h *QuizHandler) GetQuizForEdit(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("无效的题目 ID"))
 	}
 	data, appErr := h.quizService.GetQuizForEdit(
-		c.Context(), user.ID, role.CanModerate(user.Roles), id,
+		c.Context(), user.ID, perm.Can(user.Roles, perm.QuizEditAny), id,
 	)
 	if appErr != nil {
 		return response.Error(c, appErr)

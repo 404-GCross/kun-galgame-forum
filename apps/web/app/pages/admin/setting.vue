@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Admin-only (admin ⊂ ren): the site-settings console sits alongside the other
+// admin surfaces. UX guard — the real boundary is the API.
+definePageMeta({ middleware: 'admin' })
+
 useKunDisableSeo('网站设置')
 </script>
 

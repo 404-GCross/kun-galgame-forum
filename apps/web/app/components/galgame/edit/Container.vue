@@ -69,6 +69,10 @@ const reviewable = computed(() => {
   )
 })
 
+// Proxy-face: the "审核队列" entry link points at the review queue, whose gate
+// mirrors the infra editing-engine review capability (truth = infra, not
+// pkg/perm). Per-edit direct-edit/automerge rights come from the bootstrap
+// can_review / would_automerge projection above. Stays on useRole, not useCan.
 const { canModerate } = useRole()
 
 const gameName = computed(() => {
@@ -151,7 +155,11 @@ const handleWithdraw = async (id: number) => {
 <template>
   <div class="flex w-full flex-col gap-3">
     <template v-if="bootstrap">
-      <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
+      <KunCard
+        :is-hoverable="false"
+        :is-transparent="false"
+        content-class="space-y-2"
+      >
         <KunHeader
           :name="`编辑资料 · ${gameName}`"
           description="修改字段后保存：拥有直接编辑权限（管理员 / 游戏创建者）时立即生效，否则进入审核队列，由审核人处理（审核人可在合并前修正您的提案，双方都会署名）"
@@ -260,9 +268,13 @@ const handleWithdraw = async (id: number) => {
       <!-- Sticky save bar: keeps submit reachable across the tabbed form, with
            an optional edit note. -->
       <div class="sticky bottom-0 z-20 pb-3">
+        <!-- Floating save bar: pin the surface to alpha 1 (bg-content1 carries
+             the --kun-surface-opacity glass alpha, so a lowered 透明度 setting
+             would otherwise let the scrolling form show through). -->
         <KunCard
           :is-hoverable="false"
           :is-transparent="false"
+          class-name="bg-[oklch(var(--content1))]!"
           content-class="space-y-2"
         >
           <KunTextarea
@@ -270,6 +282,7 @@ const handleWithdraw = async (id: number) => {
             v-model="note"
             label="编辑说明（可选）"
             placeholder="说明这次修改的内容与依据，帮助审核人更快处理"
+            :rows="2"
             :maxlength="2000"
           />
           <div class="flex items-center justify-between gap-3">
@@ -298,7 +311,9 @@ const handleWithdraw = async (id: number) => {
                 :loading="submitting"
                 @click="handleSubmit"
               >
-                <KunIcon :name="willAutomerge ? 'lucide:check' : 'lucide:send'" />
+                <KunIcon
+                  :name="willAutomerge ? 'lucide:check' : 'lucide:send'"
+                />
                 {{ willAutomerge ? '保存修改' : '提交提案' }}
               </KunButton>
             </div>

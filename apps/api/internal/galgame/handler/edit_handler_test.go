@@ -192,6 +192,7 @@ func doJSON(t *testing.T, app *fiber.App, method, path, body string) (int, []byt
 }
 
 var moderatorUser = &middleware.UserInfo{ID: 42, Name: "mod", Roles: []string{"moderator"}}
+var adminUser = &middleware.UserInfo{ID: 42, Name: "admin", Roles: []string{"admin"}}
 var plainUser = &middleware.UserInfo{ID: 7, Name: "user", Roles: nil}
 
 // TestEditDegradesWhenUnconfigured: every endpoint 503s on an unconfigured
@@ -384,14 +385,29 @@ func TestEditOwnerReview(t *testing.T) {
 	}
 }
 
-// TestEditDeclineNotification: the decline reason travels to the proposer in
-// full on the decline notice (E3b ruling 1).
+// TestEditDeclineNotification: adjudication (decline) requires admin/ren or the
+// game's owner — a plain moderator is forbidden (sanctioned split: view is
+// moderator+, decide is admin+, mirroring infra edit.galgame.game.review). Once
+// a valid decider acts, the decline reason travels to the proposer in full on
+// the decline notice (E3b ruling 1).
 func TestEditDeclineNotification(t *testing.T) {
 	fake := &fakeEditFace{}
 	wiki := fakeWiki(t)
 	sink := &fakeNotifier{}
-	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, moderatorUser, sink)
 
+	// A plain moderator (not the owner) may VIEW but not DECIDE: decline 403s
+	// locally, before any decline write reaches the S2S face.
+	modApp := editTestAppFull(t, fake.server(t).URL, wiki.URL, moderatorUser, sink)
+	if status, raw := doJSON(t, modApp, "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"x"}`); status != http.StatusForbidden {
+		t.Fatalf("moderator decline: status = %d body %s, want 403", status, raw)
+	}
+	for _, r := range fake.requests {
+		if r.Method == "POST" && strings.HasSuffix(r.Path, "/decline") {
+			t.Fatalf("forbidden moderator decline must not reach the S2S face")
+		}
+	}
+
+	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, adminUser, sink)
 	status, raw := doJSON(t, app, "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"资料来源不可靠，请补充出处"}`)
 	if status != http.StatusOK {
 		t.Fatalf("decline: status = %d body %s", status, raw)

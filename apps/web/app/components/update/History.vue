@@ -8,7 +8,8 @@ const pageData = ref({
   language: 'zh-cn'
 })
 
-const { canModerate } = useRole()
+const canCreateUpdateLog = useCan('update_log.create')
+const canEditUpdateLog = useCan('update_log.edit')
 
 const { data, status, refresh } = await useKunFetch<UpdateHistoryList>(
   '/update/history',
@@ -56,7 +57,7 @@ const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
       description="本页面记录了网站所有的更新日志, 新特性, BUG 修复, 功能更改, 性能优化等等"
     >
       <template #endContent>
-        <div v-if="canModerate" class="flex justify-end">
+        <div v-if="canCreateUpdateLog" class="flex justify-end">
           <KunButton @click="showUpdateLogModal = true">创建更新日志</KunButton>
         </div>
       </template>
@@ -81,7 +82,7 @@ const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
         <KunButton
           variant="flat"
           size="sm"
-          v-if="canModerate"
+          v-if="canEditUpdateLog"
           @click="openEditUpdateLogModal(update)"
         >
           编辑

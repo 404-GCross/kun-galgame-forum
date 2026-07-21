@@ -113,6 +113,13 @@ export interface GalgameEditProposalDetail {
   values: Record<string, unknown>
   fields: GalgameEditSchemaField[]
   users: Record<number, GalgameEditUser>
+  /**
+   * Engine-projected adjudication right for the session user: view (moderator+
+   * or owner) vs decide (admin+ or owner). A plain moderator can open a
+   * proposal read-only but cannot amend / merge / decline it. Sourced from the
+   * infra editing-engine projection, NOT pkg/perm — a proxy-face capability.
+   */
+  can_decide: boolean
 }
 
 export interface GalgameEditRevisionList {

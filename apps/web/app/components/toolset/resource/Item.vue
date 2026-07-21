@@ -29,13 +29,19 @@ const isDeleting = ref(false)
 const isSaving = ref(false)
 
 const { id: userId } = usePersistUserStore()
-const { canModerate } = useRole()
-const canManage = computed(() => {
-  if (canModerate.value) {
-    return true
-  }
-  return detail.value ? detail.value.user.id === userId : false
-})
+const canEditAnyResource = useCan('toolset.resource.edit_any')
+const canDeleteAnyResource = useCan('toolset.resource.delete_any')
+// The resource owner manages their own row once its detail (author) is loaded;
+// toolset.resource.edit_any / delete_any extend that to anyone's.
+const isResourceOwner = computed(() =>
+  detail.value ? detail.value.user.id === userId : false
+)
+const canEditResource = computed(
+  () => canEditAnyResource.value || isResourceOwner.value
+)
+const canDeleteResource = computed(
+  () => canDeleteAnyResource.value || isResourceOwner.value
+)
 
 const s3DisplaySize = computed(() => {
   if (base.value.type !== 's3') {
@@ -117,7 +123,7 @@ const toggleShow = async () => {
 }
 
 const handleDelete = async () => {
-  if (!canManage.value) {
+  if (!canDeleteResource.value) {
     useMessage('您没有权限删除该工具资源', 'warn')
     return
   }
@@ -227,7 +233,7 @@ const handleSave = async () => {
         </KunButton>
 
         <KunButton
-          v-if="canModerate || (detail && canManage)"
+          v-if="canEditResource"
           :is-icon-only="true"
           variant="light"
           @click="isEditing = true"
@@ -235,7 +241,7 @@ const handleSave = async () => {
           <KunIcon name="lucide:pencil" />
         </KunButton>
         <KunButton
-          v-if="canModerate || (detail && canManage)"
+          v-if="canDeleteResource"
           :is-icon-only="true"
           color="danger"
           variant="light"

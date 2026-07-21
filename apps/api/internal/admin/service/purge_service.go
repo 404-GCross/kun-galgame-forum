@@ -60,6 +60,11 @@ func (s *PurgeService) PurgeUserContent(ctx context.Context, operatorID, userID 
 	if err != nil {
 		return dto.PurgeResult{}, errors.ErrInternal("无法核验用户身份, 已中止清除")
 	}
+	// This is a guard on the TARGET's status (never purge staff content), not
+	// the operator's authorization — the operator's user.purge_content gate is
+	// enforced at the router. So it stays role.CanModerate: it asks "is the
+	// target privileged?", which is an identity/capability property, not a
+	// pkg/perm forum-operation check.
 	if found && role.CanModerate(u.Roles) {
 		return dto.PurgeResult{}, errors.ErrForbidden("不可清除管理员 / 版主用户的内容")
 	}

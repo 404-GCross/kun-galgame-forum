@@ -135,6 +135,9 @@ func editActor(c fiber.Ctx) (catalogclient.EditActor, *errors.AppError) {
 		return catalogclient.EditActor{}, errors.ErrAuthExpired()
 	}
 	var tier int16
+	// Not an authorization gate — a trust-tier projection for the S2S actor
+	// assertion (staff → 3). Stays on role.CanModerate (identity/tier, not a
+	// pkg/perm forum capability).
 	if role.CanModerate(user.Roles) {
 		tier = 3 // staff (mirrors the community starter-boost staff floor)
 	}
@@ -440,6 +443,10 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
 	// Review-grade gate: admin ⊂ ren, or the game's owner (mirrors can_revert
 	// and the engine's per-field review rule; moderators excluded).
+	//
+	// INFRA-PROXY mirror: mirrors infra key `edit.galgame.game.review` /
+	// `galgame.owner_override` (admin/ren or owner). The engine re-checks every
+	// restored field, so this stays a role/owner gate, not a pkg/perm key.
 	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
 		return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
 	}
@@ -568,19 +575,52 @@ func (h *EditHandler) proposalForReview(ctx context.Context, id int64) (*catalog
 	return prop, nil
 }
 
-// reviewEntry authorizes the proposal-directed review surfaces (E3b
-// owner-review): the entry admits moderators AND the game's creator;
-// everyone else 403s. The owner assertion is stamped onto the actor — the
-// engine's kungal overlay holds the field-level policy (owners adjudicate
-// the default keys only; status/vndb_id stay perm-gated).
-func (h *EditHandler) reviewEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
+// stampOwner loads the proposal (pinned to the kungal tenant) and stamps
+// is_entity_owner onto the actor — the shared preamble both review gates run
+// before applying their own threshold.
+func (h *EditHandler) stampOwner(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
 	prop, err := h.proposalForReview(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	actor.IsEntityOwner = h.isGameOwner(ctx, prop.EntityID, actor.UserID)
+	return prop, nil
+}
+
+// reviewEntry authorizes the proposal VIEW surface (ProposalDetail, E3b
+// owner-review): the entry admits moderators AND the game's creator; everyone
+// else 403s. The owner assertion is stamped onto the actor — the engine's
+// kungal overlay holds the field-level policy.
+//
+// INFRA-PROXY mirror: mirrors infra key `galgame.review` (moderator+, plus the
+// owner overlay) — this is a read gate, so the moderator threshold is correct.
+// Adjudication is stricter; see decideEntry.
+func (h *EditHandler) reviewEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
+	prop, err := h.stampOwner(ctx, id, actor)
+	if err != nil {
+		return nil, err
+	}
 	if !role.CanModerate(actor.Roles) && !actor.IsEntityOwner {
 		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
+	}
+	return prop, nil
+}
+
+// decideEntry authorizes the proposal ADJUDICATION surfaces (Amend / Merge /
+// Decline): admits admin ⊂ ren AND the game's creator, but NOT a plain
+// moderator. This closes a real bug — a bare moderator used to pass this forum
+// gate, click merge, then get 403'd by infra, whose edit.galgame.game.review is
+// admin/ren-only (the owner overlay grants owners the default-field review).
+//
+// INFRA-PROXY mirror: mirrors infra key `edit.galgame.game.review` (admin/ren
+// or the entity owner).
+func (h *EditHandler) decideEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
+	prop, err := h.stampOwner(ctx, id, actor)
+	if err != nil {
+		return nil, err
+	}
+	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
+		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "decide entry denied"}
 	}
 	return prop, nil
 }
@@ -645,6 +685,11 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 		"values":   values,
 		"fields":   schema.Fields,
 		"users":    h.userMap(ctx, collectProposalUIDs([]catalogclient.EditProposal{*prop})),
+		// can_decide projects the decideEntry predicate for the UI: only
+		// admin/ren or the game's owner may amend/merge/decline (a plain
+		// moderator can view but not adjudicate). actor.IsEntityOwner was
+		// stamped by reviewEntry above.
+		"can_decide": role.CanAdminister(actor.Roles) || actor.IsEntityOwner,
 	})
 }
 
@@ -685,7 +730,7 @@ func (h *EditHandler) Amend(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	if _, err := h.reviewEntry(ctx, id, &actor); err != nil {
+	if _, err := h.decideEntry(ctx, id, &actor); err != nil {
 		return editError(c, err)
 	}
 	amendment, err := h.catalog.AmendEditProposal(ctx, id, req.Set, req.Unset, req.Note, actor)
@@ -718,7 +763,7 @@ func (h *EditHandler) Merge(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	prop, err := h.reviewEntry(ctx, id, &actor)
+	prop, err := h.decideEntry(ctx, id, &actor)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -779,7 +824,7 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	target, err := h.reviewEntry(ctx, id, &actor)
+	target, err := h.decideEntry(ctx, id, &actor)
 	if err != nil {
 		return editError(c, err)
 	}

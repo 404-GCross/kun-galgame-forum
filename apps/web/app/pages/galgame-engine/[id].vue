@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
+// Proxy-face: taxonomy (tag/official/engine/series) edit + revert mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 const route = useRoute()
 const engine_id = computed(() => {
@@ -11,8 +14,16 @@ const engine_id = computed(() => {
 // the entity detail lists the forum-LOCAL subset of the engine's catalogue, so
 // the same 类型/语言/平台/作品类型 filters + sorts as /galgame apply (backend runs
 // them locally over the engine's member ids — see entity_filter.buildEntityFilter).
-const { page, limit, type, language, platform, gameType, sortField, sortOrder } =
-  useGalgameFilters()
+const {
+  page,
+  limit,
+  type,
+  language,
+  platform,
+  gameType,
+  sortField,
+  sortOrder
+} = useGalgameFilters()
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
@@ -133,9 +144,10 @@ if (data.value) {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页展示本站已收录的、使用该引擎制作的 Galgame,
-            可按类型 / 语言 / 平台 / 排序筛选。本站尚未收录的作品不在此列。默认仅显示
-            SFW 的 Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
+            本页展示本站已收录的、使用该引擎制作的 Galgame, 可按类型 / 语言 /
+            平台 / 排序筛选。本站尚未收录的作品不在此列。默认仅显示 SFW 的
+            Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW
+            开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 

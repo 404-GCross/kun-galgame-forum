@@ -5,8 +5,8 @@ import (
 	"kun-galgame-api/internal/toolset/dto"
 	"kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -73,7 +73,7 @@ func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	updated, appErr := h.resourceService.UpdateResource(c.Context(), user.ID, role.CanModerate(user.Roles), &req)
+	updated, appErr := h.resourceService.UpdateResource(c.Context(), user.ID, perm.Can(user.Roles, perm.ToolsetResourceEditAny), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -96,7 +96,7 @@ func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.resourceService.DeleteResource(user.ID, role.CanModerate(user.Roles), &req); appErr != nil {
+	if appErr := h.resourceService.DeleteResource(user.ID, perm.Can(user.Roles, perm.ToolsetResourceDeleteAny), &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "资源已删除")

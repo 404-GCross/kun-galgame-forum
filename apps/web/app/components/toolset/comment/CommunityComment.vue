@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteToolsetComment = useCan('comment.toolset.delete')
 const { open: openFlag } = useGalgameCommentFlag()
 
 const isShowReply = ref(false)
@@ -33,7 +33,8 @@ const isAuthor = computed(() => props.comment.user?.id === id)
 
 const isShowEdit = computed(() => isAuthor.value && !props.comment.deleted)
 const isShowDelete = computed(
-  () => (isAuthor.value || canModerate.value) && !props.comment.deleted
+  () =>
+    (isAuthor.value || canDeleteToolsetComment.value) && !props.comment.deleted
 )
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
 
@@ -175,13 +176,20 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
           >
             取消
           </KunButton>
-          <KunButton size="sm" :loading="isSavingEdit" @click="handleSubmitEdit">
+          <KunButton
+            size="sm"
+            :loading="isSavingEdit"
+            @click="handleSubmitEdit"
+          >
             保存
           </KunButton>
         </div>
       </div>
 
-      <div v-if="!comment.deleted && !isEditing" class="-ml-2 flex items-center gap-1">
+      <div
+        v-if="!comment.deleted && !isEditing"
+        class="-ml-2 flex items-center gap-1"
+      >
         <KunButton
           variant="light"
           size="sm"

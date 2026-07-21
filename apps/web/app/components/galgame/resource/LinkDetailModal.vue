@@ -80,7 +80,8 @@ onBeforeUnmount(teardownNoteObserver)
 const nuxtApp = useNuxtApp()
 
 const { id: currentUserId } = usePersistUserStore()
-const { canModerate } = useRole()
+const canEditAnyResource = useCan('resource.edit_any')
+const canDeleteAnyResource = useCan('resource.delete_any')
 
 // Local edit-modal state. Deliberately NOT going through
 // useTempGalgameResourceStore + Resource.vue's KunModal +
@@ -100,9 +101,11 @@ const detail = ref<null | GalgameResourceDetailLink>(null)
 const isFetching = ref(false)
 const isExpired = computed(() => props.resource.status === 1)
 const isOwner = computed(() => currentUserId === props.resource.user.id)
-// Admin/moderator (canModerate) can edit / delete any resource — mirrors
-// the rules on the dedicated detail page (resource/detail/Panel.vue).
-const canManage = computed(() => isOwner.value || canModerate.value)
+// The owner edits / deletes their own resource; resource.edit_any /
+// resource.delete_any extend that to anyone's — mirrors the rules on the
+// dedicated detail page (resource/detail/Info.vue).
+const canEdit = computed(() => isOwner.value || canEditAnyResource.value)
+const canDelete = computed(() => isOwner.value || canDeleteAnyResource.value)
 
 const providerName = computed(() => {
   const names = props.resource.provider_names
@@ -367,7 +370,7 @@ const handleEditDone = () => {
         <div class="flex flex-wrap items-center justify-between gap-1">
           <div class="flex flex-wrap items-center gap-1">
             <KunButton
-              v-if="canManage"
+              v-if="canEdit"
               variant="light"
               color="default"
               @click="handleEdit"
@@ -376,7 +379,7 @@ const handleEditDone = () => {
               编辑
             </KunButton>
             <KunButton
-              v-if="canManage"
+              v-if="canDelete"
               variant="light"
               color="danger"
               :loading="isFetching"

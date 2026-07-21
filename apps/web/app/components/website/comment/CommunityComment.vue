@@ -23,14 +23,15 @@ const emit = defineEmits<{
 }>()
 
 const { id } = usePersistUserStore()
-const { canModerate } = useRole()
+const canDeleteWebsiteComment = useCan('comment.website.delete')
 const { open: openFlag } = useGalgameCommentFlag()
 
 const isShowReply = ref(false)
 
 const isAuthor = computed(() => props.comment.user?.id === id)
 const isShowDelete = computed(
-  () => (isAuthor.value || canModerate.value) && !props.comment.deleted
+  () =>
+    (isAuthor.value || canDeleteWebsiteComment.value) && !props.comment.deleted
 )
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
 

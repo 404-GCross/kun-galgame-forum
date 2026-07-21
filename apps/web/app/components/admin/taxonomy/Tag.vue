@@ -5,6 +5,9 @@ import { watchDebounced } from '@vueuse/core'
 import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 import type { UpdateGalgameTagPayload } from '~/components/galgame/types'
 
+// Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
 const pageData = reactive({ page: 1, limit: 50 })
@@ -65,7 +68,10 @@ const openEdit = async (tag: GalgameTagItem) => {
 }
 
 const handleUpdate = async (payload: UpdateGalgameTagPayload) => {
-  const result = await kunFetch(`/galgame-tag`, { method: 'PUT', body: payload })
+  const result = await kunFetch(`/galgame-tag`, {
+    method: 'PUT',
+    body: payload
+  })
   if (result) {
     useMessage('标签已更新', 'success')
     await refresh()

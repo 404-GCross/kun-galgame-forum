@@ -15,7 +15,7 @@ import (
 	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
-	"kun-galgame-api/pkg/role"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -163,7 +163,7 @@ func (s *PollService) GetPollsByTopic(
 	canModerate := false
 	if userInfo != nil {
 		userID = userInfo.ID
-		canModerate = role.CanModerate(userInfo.Roles)
+		canModerate = perm.Can(userInfo.Roles, perm.PollViewRestricted)
 	}
 
 	responses := make([]dto.TopicPollResponse, 0, len(polls))
@@ -445,7 +445,7 @@ func (s *PollService) GetVoteLog(
 	canModerate := false
 	if userInfo != nil {
 		userID = userInfo.ID
-		canModerate = role.CanModerate(userInfo.Roles)
+		canModerate = perm.Can(userInfo.Roles, perm.PollViewRestricted)
 	}
 
 	hasVoted, _ := s.pollRepo.HasUserVoted(pollID, userID)

@@ -5,6 +5,9 @@ import {
   type KUN_GALGAME_TAG_TYPE
 } from '~/constants/galgameTag'
 
+// Proxy-face: taxonomy (tag/official/engine/series) CRUD + revert mirrors infra
+// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
+// useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 const route = useRoute()
 const tag_id = computed(() => {

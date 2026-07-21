@@ -19,13 +19,21 @@ useKunDisableSeo('审阅提案')
 // Entry authorization lives in the BFF (E3b: moderators AND the game's
 // creator pass) — the page trusts the fetch outcome instead of duplicating
 // the policy client-side. Only the exit destination branches: moderators go
-// back to the site-wide queue, owners to their game's edit page.
+// back to the site-wide queue, owners to their game's edit page. Proxy-face:
+// this VIEW gate mirrors the infra editing-engine review capability (truth =
+// infra, not pkg/perm), so it stays on useRole rather than useCan.
 const { canModerate } = useRole()
 
 const { data, status, refresh } = await useKunFetch<GalgameEditProposalDetail>(
   `/galgame-edit/proposals/${proposalId.value}`,
   { method: 'GET', watch: false }
 )
+
+// Adjudication right (amend / merge / decline) is a per-proposal projection from
+// the engine: view (moderator+ or owner) is split from decide (admin+ or owner).
+// A plain moderator without can_decide sees the proposal read-only. Proxy-face
+// capability — sourced from the detail response, not pkg/perm.
+const canDecide = computed(() => data.value?.can_decide ?? false)
 
 const proposal = computed(() => data.value?.proposal)
 const isOpen = computed(() => proposal.value?.status === 'open')
@@ -37,8 +45,7 @@ const exitTo = computed(() =>
 const effective = computed(
   () => proposal.value?.effective_patch ?? proposal.value?.patch ?? {}
 )
-const fieldOf = (key: string) =>
-  data.value?.fields.find((f) => f.key === key)
+const fieldOf = (key: string) => data.value?.fields.find((f) => f.key === key)
 
 // ---- per-field review state -------------------------------------------------
 // overrides: reviewer-corrected values (amend set); rejected: field keys the
@@ -164,7 +171,11 @@ const userName = (uid?: number) => {
 <template>
   <div class="mx-auto flex max-w-3xl flex-col gap-3">
     <template v-if="data && proposal">
-      <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
+      <KunCard
+        :is-hoverable="false"
+        :is-transparent="false"
+        content-class="space-y-2"
+      >
         <KunHeader :name="`审阅提案 #${proposal.id}`" scale="h2" />
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <KunLink :to="`/galgame/${proposal.entity_id}`" size="sm">
@@ -236,12 +247,18 @@ const userName = (uid?: number) => {
               拒绝 {{ galgameEditLabel(key) }}
             </KunChip>
           </div>
-          <p v-if="a.note" class="text-default-400 mt-1 text-xs">{{ a.note }}</p>
+          <p v-if="a.note" class="text-default-400 mt-1 text-xs">
+            {{ a.note }}
+          </p>
         </div>
       </KunCard>
 
       <!-- Per-field adjudication -->
-      <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-5">
+      <KunCard
+        :is-hoverable="false"
+        :is-transparent="false"
+        content-class="space-y-5"
+      >
         <KunHeader
           name="逐字段审阅"
           :description="
@@ -267,7 +284,7 @@ const userName = (uid?: number) => {
           />
 
           <div
-            v-if="isOpen && fieldOf(String(key))?.can_review"
+            v-if="isOpen && canDecide && fieldOf(String(key))?.can_review"
             class="flex flex-wrap items-center gap-2"
           >
             <template v-if="!editing[String(key)]">
@@ -305,7 +322,12 @@ const userName = (uid?: number) => {
 
           <!-- Inline correction editor (the crown interaction) -->
           <div
-            v-if="isOpen && editing[String(key)] && fieldOf(String(key))"
+            v-if="
+              isOpen &&
+              canDecide &&
+              editing[String(key)] &&
+              fieldOf(String(key))
+            "
             class="border-secondary-200 rounded border p-3"
           >
             <EditkitSchemaField
@@ -322,9 +344,18 @@ const userName = (uid?: number) => {
         />
       </KunCard>
 
+      <!-- View-only state: a moderator may open the proposal but only an
+           adjudicator (admin+ or the game's owner) can amend / merge / decline. -->
+      <KunInfo
+        v-if="isOpen && !canDecide"
+        color="info"
+        title="只读审阅"
+        description="您可以查看此提案，但只有具备裁决权限的管理员（或该条目的创建者）可以合并、修正或拒绝。"
+      />
+
       <!-- Decision bar -->
       <KunCard
-        v-if="isOpen"
+        v-if="isOpen && canDecide"
         :is-hoverable="false"
         :is-transparent="false"
         content-class="space-y-3"
@@ -358,10 +389,16 @@ const userName = (uid?: number) => {
         <div class="space-y-3">
           <KunHeader name="拒绝这个提案？" scale="h3" />
           <p class="text-default-500 text-sm">
-            拒绝理由将展示给提案人：{{ note || '（尚未填写，请返回填写审核说明）' }}
+            拒绝理由将展示给提案人：{{
+              note || '（尚未填写，请返回填写审核说明）'
+            }}
           </p>
           <div class="flex justify-end gap-2">
-            <KunButton variant="flat" color="default" @click="declineOpen = false">
+            <KunButton
+              variant="flat"
+              color="default"
+              @click="declineOpen = false"
+            >
               取消
             </KunButton>
             <KunButton color="danger" :loading="acting" @click="handleDecline">

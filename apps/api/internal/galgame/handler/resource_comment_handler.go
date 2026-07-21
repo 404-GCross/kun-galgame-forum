@@ -4,8 +4,8 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -71,8 +71,11 @@ func (h *ResourceCommentHandler) list(c fiber.Ctx, src service.CommentSource, re
 	return response.OK(c, page)
 }
 
-// remove is the shared region-delete handler for a resolved (source, resourceID).
-func (h *ResourceCommentHandler) remove(c fiber.Ctx, src service.CommentSource, resourceID int) error {
+// remove is the shared region-delete handler for a resolved (source,
+// resourceID). The caller passes the surface's own moderation permission
+// (comment.rating/website/toolset.delete) — the route already resolved the
+// surface, so no anchor lookup is needed here.
+func (h *ResourceCommentHandler) remove(c fiber.Ctx, src service.CommentSource, resourceID int, modPerm perm.Permission) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -81,7 +84,7 @@ func (h *ResourceCommentHandler) remove(c fiber.Ctx, src service.CommentSource, 
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("非法的评论 ID"))
 	}
-	if appErr := h.service.DeleteComment(c.Context(), src, resourceID, user.ID, role.CanModerate(user.Roles), postID); appErr != nil {
+	if appErr := h.service.DeleteComment(c.Context(), src, resourceID, user.ID, perm.Can(user.Roles, modPerm), postID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "评论已删除")
@@ -129,7 +132,7 @@ func (h *ResourceCommentHandler) RatingDelete(c fiber.Ctx) error {
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("非法的评分 ID"))
 	}
-	return h.remove(c, service.SourceRating(), id)
+	return h.remove(c, service.SourceRating(), id, perm.CommentRatingDelete)
 }
 
 // ──────────────────────────────────────────
@@ -169,7 +172,7 @@ func (h *ResourceCommentHandler) WebsiteDelete(c fiber.Ctx) error {
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("非法的网站 ID"))
 	}
-	return h.remove(c, service.SourceWebsite(), id)
+	return h.remove(c, service.SourceWebsite(), id, perm.CommentWebsiteDelete)
 }
 
 // websiteID reads the addressing website_id from the query (the :domain path
@@ -218,5 +221,5 @@ func (h *ResourceCommentHandler) ToolsetDelete(c fiber.Ctx) error {
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("非法的工具 ID"))
 	}
-	return h.remove(c, service.SourceToolset(), id)
+	return h.remove(c, service.SourceToolset(), id, perm.CommentToolsetDelete)
 }
