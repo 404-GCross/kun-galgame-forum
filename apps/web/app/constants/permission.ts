@@ -155,50 +155,53 @@ export interface KunProxyPermission {
   note: string
 }
 
+// Keys below mirror the CANONICAL 9-op enumeration in apps/api/pkg/perm's
+// package doc (and docs/proj/permissions.md 表一) verbatim — display names must
+// not fork from the backend vocabulary.
 export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
   {
-    key: 'galgame.entry.create',
+    key: 'galgame.create',
     label: 'Galgame 直发建条目',
-    note: '由 infra 编辑引擎裁定（创作者直发 / 管理员）'
+    note: '版主+，绕过提交队列；镜像 infra galgame.create'
   },
   {
-    key: 'galgame.edit.submit',
-    label: 'Galgame 提交审核',
-    note: '任意登录用户可提交编辑提案，真闸在 infra'
+    key: 'galgame.review_submission',
+    label: 'Galgame 提交审核队列',
+    note: '版主+；镜像 infra edit.galgame.game.status'
   },
   {
-    key: 'galgame.proposal.view',
-    label: 'Galgame 提案查看',
-    note: '公开读，真闸在 infra'
+    key: 'galgame.review',
+    label: 'Galgame 提案查看 / 队列',
+    note: '版主+ 或条目创建者；镜像 infra galgame.review'
   },
   {
-    key: 'galgame.proposal.decide',
+    key: 'galgame.edit_decide',
     label: 'Galgame 提案裁决',
-    note: 'infra 审核能力（审核人 / 条目创建者）'
+    note: '管理员+ 或条目创建者；镜像 infra edit.galgame.game.review'
   },
   {
-    key: 'galgame.revision.revert',
+    key: 'galgame.edit_revert',
     label: 'Galgame 修订回滚',
-    note: 'infra 编辑引擎裁定'
+    note: '管理员+ 或条目创建者；镜像 infra edit.galgame.game.review / galgame.owner_override'
   },
   {
     key: 'taxonomy.edit',
     label: 'Wiki 条目编辑',
-    note: '站长裁定的更严门槛（仅 admin / ren）'
+    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
   },
   {
     key: 'taxonomy.delete',
     label: 'Wiki 条目删除',
-    note: '站长裁定的更严门槛（仅 admin / ren）'
+    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
   },
   {
     key: 'taxonomy.revert',
     label: 'Wiki 条目回滚',
-    note: '站长裁定的更严门槛（仅 admin / ren）'
+    note: '站长裁定的更严门槛（仅 admin / ren，infra 为版主+）'
   },
   {
-    key: 'trust.report.inbox',
+    key: 'trust.queue_access',
     label: 'Trust 举报收件箱',
-    note: 'infra kun_trust 审核入口'
+    note: '版主+；镜像 infra trust.queue_access'
   }
 ]
