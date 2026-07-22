@@ -1,7 +1,7 @@
 // Package imageclient is the Go SDK for the image service.
 //
 // Intended to be imported by calling services (kungal / moyu / galgame
-// wiki) as a singleton. The SDK holds no mutable state beyond HTTP
+// galgame) as a singleton. The SDK holds no mutable state beyond HTTP
 // connection pool settings, so the singleton pattern is purely to avoid
 // repeating connection/tuning config.
 //

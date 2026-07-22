@@ -31,7 +31,7 @@ type HomeGalgame struct {
 	Platform           []string   `json:"platform"`
 	Language           []string   `json:"language"`
 	// U2: derived banner. effective_banner_url is injected by
-	// client.rewriteBanners on every wiki response — dropping it here
+	// client.rewriteBanners on every galgame response — dropping it here
 	// forces the FE card to fall back to the legacy `banner` field,
 	// which is empty for newly-uploaded (covers-only) galgames.
 	EffectiveBannerHash string `json:"effective_banner_hash,omitempty"`

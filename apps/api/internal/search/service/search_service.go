@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	galgameDto "kun-galgame-api/internal/galgame/dto"
 	galgameService "kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/search/dto"
@@ -18,19 +18,19 @@ import (
 )
 
 type SearchService struct {
-	repo       *repository.SearchRepository
-	wikiClient *galgameClient.GalgameClient
-	enricher   *galgameService.GalgameEnricher
-	userClient *userclient.Client
+	repo          *repository.SearchRepository
+	galgameClient *client.GalgameClient
+	enricher      *galgameService.GalgameEnricher
+	userClient    *userclient.Client
 }
 
 func NewSearchService(
 	repo *repository.SearchRepository,
-	wikiClient *galgameClient.GalgameClient,
+	galgameClient *client.GalgameClient,
 	enricher *galgameService.GalgameEnricher,
 	userClient *userclient.Client,
 ) *SearchService {
-	return &SearchService{repo: repo, wikiClient: wikiClient, enricher: enricher, userClient: userClient}
+	return &SearchService{repo: repo, galgameClient: galgameClient, enricher: enricher, userClient: userClient}
 }
 
 // tokenize splits a keyword string into trimmed non-empty tokens.
@@ -178,8 +178,8 @@ func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, lim
 	return &dto.PaginatedResult[dto.ReplyItem]{Items: items, Total: total}, nil
 }
 
-// SearchGalgames returns galgame search results from the wiki Meilisearch
-// index, enriched with local interaction counts. Uses the wiki `fields`
+// SearchGalgames returns galgame search results from the galgame Meilisearch
+// index, enriched with local interaction counts. Uses the galgame `fields`
 // parameter so the heavy `intro_*` markdown isn't sent over the wire on
 // list pages — saves hundreds of KB per request.
 func (s *SearchService) SearchGalgames(
@@ -191,7 +191,7 @@ func (s *SearchService) SearchGalgames(
 	if _, appErr := tokenize(raw); appErr != nil {
 		return nil, appErr
 	}
-	if s.wikiClient == nil || s.enricher == nil {
+	if s.galgameClient == nil || s.enricher == nil {
 		return nil, errors.ErrInternal("Galgame 搜索未启用")
 	}
 
@@ -208,20 +208,20 @@ func (s *SearchService) SearchGalgames(
 		q.Set("content_limit", "sfw")
 	}
 
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/search", q)
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/search", q)
 	if appErr != nil {
 		return nil, appErr
 	}
 
 	var resp struct {
-		Items []galgameDto.WikiGalgameItem `json:"items"`
-		Total int64                        `json:"total"`
+		Items []galgameDto.NextMoeGalgameItem `json:"items"`
+		Total int64                           `json:"total"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, errors.ErrInternal(fmt.Sprintf("解析 Wiki 搜索响应失败: %v", err))
+		return nil, errors.ErrInternal(fmt.Sprintf("解析 Galgame 搜索响应失败: %v", err))
 	}
 
-	// Defensive: if wiki ignores the SFW filter we still strip NSFW here.
+	// Defensive: if galgame ignores the SFW filter we still strip NSFW here.
 	filtered := s.enricher.FilterSFW(resp.Items, isSFW)
 	cards := s.enricher.ToCards(ctx, filtered)
 

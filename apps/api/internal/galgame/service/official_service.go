@@ -12,56 +12,56 @@ import (
 )
 
 type OfficialService struct {
-	wikiClient *client.GalgameClient
+	galgameClient *client.GalgameClient
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
-	// over the official's member ids (the wiki can't filter by kungal-local
+	// over the official's member ids (the galgame can't filter by kungal-local
 	// resource data). See GetDetail.
 	galgameSvc *GalgameService
 }
 
-func NewOfficialService(wikiClient *client.GalgameClient, galgameSvc *GalgameService) *OfficialService {
-	return &OfficialService{wikiClient: wikiClient, galgameSvc: galgameSvc}
+func NewOfficialService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *OfficialService {
+	return &OfficialService{galgameClient: galgameClient, galgameSvc: galgameSvc}
 }
 
 // ──────────────────────────────────────────
-// Wiki response shapes
+// Galgame response shapes
 // ──────────────────────────────────────────
 
-type wikiOfficialListItem struct {
-	ID           int             `json:"id"`
-	Name         string          `json:"name"`
-	Link         string          `json:"link"`
-	Category     string          `json:"category"`
-	Lang         string          `json:"lang"`
-	Alias        []dto.WikiAlias `json:"alias"`
-	GalgameCount int             `json:"galgame_count"`
+type nextMoeOfficialListItem struct {
+	ID           int                `json:"id"`
+	Name         string             `json:"name"`
+	Link         string             `json:"link"`
+	Category     string             `json:"category"`
+	Lang         string             `json:"lang"`
+	Alias        []dto.NextMoeAlias `json:"alias"`
+	GalgameCount int                `json:"galgame_count"`
 }
 
-type wikiOfficialListResp struct {
-	Items []wikiOfficialListItem `json:"items"`
-	Total int64                  `json:"total"`
+type nextMoeOfficialListResp struct {
+	Items []nextMoeOfficialListItem `json:"items"`
+	Total int64                     `json:"total"`
 }
 
-type wikiOfficialDetail struct {
+type nextMoeOfficialDetail struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
-	// Original-language name (added by wiki PR4 sub-change, K-PR6).
-	// Pointer because wiki may omit / null when the field hasn't been
+	// Original-language name (added by galgame PR4 sub-change, K-PR6).
+	// Pointer because galgame may omit / null when the field hasn't been
 	// set yet; the FE edit modal needs to round-trip the current
 	// value, so dropping it on the floor here makes the modal default
 	// to an empty input every open.
-	Original    *string         `json:"original"`
-	Link        string          `json:"link"`
-	Category    string          `json:"category"`
-	Lang        string          `json:"lang"`
-	Description string          `json:"description"`
-	Alias       []dto.WikiAlias `json:"alias"`
+	Original    *string            `json:"original"`
+	Link        string             `json:"link"`
+	Category    string             `json:"category"`
+	Lang        string             `json:"lang"`
+	Description string             `json:"description"`
+	Alias       []dto.NextMoeAlias `json:"alias"`
 }
 
-type wikiOfficialDetailResp struct {
-	Official wikiOfficialDetail    `json:"official"`
-	Galgames []dto.WikiGalgameItem `json:"galgames"`
-	Total    int64                 `json:"total"`
+type nextMoeOfficialDetailResp struct {
+	Official nextMoeOfficialDetail    `json:"official"`
+	Galgames []dto.NextMoeGalgameItem `json:"galgames"`
+	Total    int64                    `json:"total"`
 }
 
 // ──────────────────────────────────────────
@@ -72,14 +72,14 @@ func (s *OfficialService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 ) (*dto.OfficialListPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/official", rawQuery)
+	data, appErr := s.galgameClient.Get(ctx, "/official", rawQuery)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiOfficialListResp
+	var parsed nextMoeOfficialListResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	items := make([]dto.OfficialListItem, len(parsed.Items))
@@ -101,7 +101,7 @@ func (s *OfficialService) GetList(
 // Search — GET /galgame-official/search
 // ──────────────────────────────────────────
 //
-// Wiki search is Meilisearch-backed and returns the standard
+// Galgame search is Meilisearch-backed and returns the standard
 // `{items, total, processing_time_ms}` envelope. The alias field on each
 // item may be missing entirely or populated with {id, name, ...} objects;
 // aliasesToNames(nil) → []string{} keeps the frontend contract intact.
@@ -116,15 +116,15 @@ func (s *OfficialService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
 ) ([]dto.OfficialListItem, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/official/search", rawQuery)
+	data, appErr := s.galgameClient.Get(ctx, "/official/search", rawQuery)
 	if appErr != nil {
 		return nil, appErr
 	}
 	var resp struct {
-		Items []wikiOfficialListItem `json:"items"`
+		Items []nextMoeOfficialListItem `json:"items"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 	raw := resp.Items
 
@@ -155,23 +155,23 @@ func (s *OfficialService) GetDetail(
 ) (*dto.OfficialDetail, *errors.AppError) {
 	// Entity detail lists the forum-LOCAL subset of the official's catalogue, so
 	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
-	// official's metadata is used from the wiki here (cheapest page); the galgame
+	// official's metadata is used from the galgame here (cheapest page); the galgame
 	// list is recomputed locally from the member ids below.
 	q := withSFWFilter(rawQuery, isSFW)
-	// The wiki resolves the entity by the official_id QUERY param (the :name path
+	// The galgame resolves the entity by the official_id QUERY param (the :name path
 	// segment is cosmetic — 04-taxonomy). Source it from the path so the lookup
 	// never depends on the FE echoing it in the query string.
 	q.Set("official_id", name)
 	q.Set("page", "1")
 	q.Set("limit", "1")
-	data, appErr := s.wikiClient.Get(ctx, "/official/"+name, q)
+	data, appErr := s.galgameClient.Get(ctx, "/official/"+name, q)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiOfficialDetailResp
+	var parsed nextMoeOfficialDetailResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	o := parsed.Official
@@ -180,9 +180,9 @@ func (s *OfficialService) GetDetail(
 		original = *o.Original
 	}
 
-	// Member ids from the wiki, then the SAME local filter/sort/paginate as
+	// Member ids from the galgame, then the SAME local filter/sort/paginate as
 	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
-	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "official", o.ID)
+	memberIDs, appErr := s.galgameClient.EntityGalgameIDs(ctx, "official", o.ID)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -205,8 +205,8 @@ func (s *OfficialService) GetDetail(
 	}, nil
 }
 
-// aliasesToNames extracts the name field from a slice of WikiAlias.
-func aliasesToNames(aliases []dto.WikiAlias) []string {
+// aliasesToNames extracts the name field from a slice of NextMoeAlias.
+func aliasesToNames(aliases []dto.NextMoeAlias) []string {
 	out := make([]string, len(aliases))
 	for i, a := range aliases {
 		out[i] = a.Name
@@ -214,7 +214,7 @@ func aliasesToNames(aliases []dto.WikiAlias) []string {
 	return out
 }
 
-// withSFWFilter clones q and pins `content_limit` per the wiki NSFW
+// withSFWFilter clones q and pins `content_limit` per the galgame NSFW
 // protocol (see docs/galgame_wiki/00-handbook-for-downstream.md §16).
 //
 // Both modes are EXPLICIT: omitting the parameter would fall to each

@@ -3,7 +3,7 @@
 // bounces non-admins. (Editing / deleting taxonomy is also API-gated by
 // RequireAdmin; creating stays open for the public contribution surfaces.)
 definePageMeta({ middleware: 'admin' })
-useKunDisableSeo('Wiki 条目管理')
+useKunDisableSeo('资料库条目管理')
 </script>
 
 <template>

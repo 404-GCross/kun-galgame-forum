@@ -1,7 +1,7 @@
 package handler
 
 import (
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/rss/dto"
 	"kun-galgame-api/internal/rss/repository"
 	"kun-galgame-api/pkg/response"
@@ -12,19 +12,19 @@ import (
 
 // RSSHandler handles RSS feed routes.
 // No service layer — logic is a single query with fixed filters.
-// Galgame RSS additionally enriches local stub IDs with wiki metadata.
+// Galgame RSS additionally enriches local stub IDs with galgame metadata.
 type RSSHandler struct {
-	repo       *repository.RSSRepository
-	wikiClient *galgameClient.GalgameClient
-	userClient *userclient.Client
+	repo          *repository.RSSRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
 }
 
 func NewRSSHandler(
 	repo *repository.RSSRepository,
-	wikiClient *galgameClient.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 ) *RSSHandler {
-	return &RSSHandler{repo: repo, wikiClient: wikiClient, userClient: userClient}
+	return &RSSHandler{repo: repo, galgameClient: galgameClient, userClient: userClient}
 }
 
 // GetTopicRSS returns recent topics for RSS feed.
@@ -50,7 +50,7 @@ func (h *RSSHandler) GetTopicRSS(c fiber.Ctx) error {
 // GET /api/rss/galgame
 //
 // Local DB only stores stub IDs + created timestamps — name/banner/user come
-// from the wiki batch endpoint. Description is left empty since wiki batch
+// from the galgame batch endpoint. Description is left empty since galgame batch
 // doesn't include intros.
 func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 	rows := h.repo.FindRecentGalgameIDs(10)
@@ -68,9 +68,9 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 	// RSS is consumed by feed readers and search engines — pin SFW
 	// unconditionally (docs/galgame_wiki/00-handbook §16). Anything
 	// else would leak NSFW into syndicated channels we don't control.
-	briefMap, _ := h.wikiClient.GetBatchPublic(c.Context(), ids, true)
+	briefMap, _ := h.galgameClient.GetBatchPublic(c.Context(), ids, true)
 	if briefMap == nil {
-		briefMap = map[int]galgameClient.GalgameBrief{}
+		briefMap = map[int]client.GalgameBrief{}
 	}
 
 	userIDs := make([]int, 0, len(briefMap))
@@ -104,7 +104,7 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 // fallback chain: zh-cn > zh-tw > ja-jp > en-us. Returns the first non-empty
 // entry. en-US (usually the VNDB romaji title) is LAST so a JP/CN-titled game
 // never surfaces its VNDB English name when a Chinese/Japanese name exists.
-func pickPreferredName(b galgameClient.GalgameBrief) string {
+func pickPreferredName(b client.GalgameBrief) string {
 	candidates := []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs}
 	for _, n := range candidates {
 		if n != "" {

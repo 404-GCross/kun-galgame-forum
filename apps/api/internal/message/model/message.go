@@ -44,7 +44,7 @@ type SystemMessage struct {
 func (SystemMessage) TableName() string { return "system_message" }
 
 // SystemMessageReadState is the per-user "read up to" cursor for the
-// admin broadcast stream. Mirrors WikiMessageReadState (model and
+// admin broadcast stream. Mirrors GalgameMessageReadState (model and
 // migration 008) — see migrations/012 for the rationale.
 type SystemMessageReadState struct {
 	UserID            int       `gorm:"column:user_id;primaryKey" json:"user_id"`

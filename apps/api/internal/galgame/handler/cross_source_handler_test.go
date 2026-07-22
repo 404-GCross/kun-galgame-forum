@@ -2,9 +2,9 @@ package handler
 
 // Route-layer tests for the cross-source read face: they wire the real
 // CrossSourceHandler over a bare Fiber app, backed by httptest fakes standing in
-// for the wiki (scores/stats) and the catalog (credits/reverse-lookups). They
+// for the galgame (scores/stats) and the catalog (credits/reverse-lookups). They
 // assert the three things the BFF passthrough must guarantee:
-//   - the wiki / catalog `data` reaches the browser verbatim (no reshape);
+//   - the galgame / catalog `data` reaches the browser verbatim (no reshape);
 //   - the stats ETag + If-None-Match / 304 conditional cache survives the hop;
 //   - bad ids are rejected locally and a down catalog degrades (503), not 500.
 
@@ -15,29 +15,29 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/pkg/catalogclient"
 
 	"github.com/gofiber/fiber/v3"
 )
 
-const wikiScoresData = `{"vndb":{"rating":76,"vote_count":615,"url":"https://vndb.org/v1"},"bangumi":null,"eg":null,"synced_at":"2026-03-02T00:00:00Z"}`
+const nextMoeScoresData = `{"vndb":{"rating":76,"vote_count":615,"url":"https://vndb.org/v1"},"bangumi":null,"eg":null,"synced_at":"2026-03-02T00:00:00Z"}`
 const catalogCreditsData = `{"work_id":3853,"groups":[{"role_id":1,"role_key":"scenario","role_name":"剧本","credits":[{"credit_name_id":42,"name":"丸戸史明","lang":"ja"}]}]}`
 
 const statsETag = `W/"gstats-1752200700"`
 
-// newFakeWiki serves the two wiki read endpoints the handler proxies.
-func newFakeWiki(t *testing.T) *httptest.Server {
+// newFakeGalgame serves the two galgame read endpoints the handler proxies.
+func newFakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Reads go to the internal face + X-API-Key, so paths arrive prefixed
 		// with /internal.
 		switch r.URL.Path {
 		case "/internal/galgame/1/scores":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + wikiScoresData + `}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + nextMoeScoresData + `}`))
 		case "/internal/galgame/stats":
-			// Mirror the wiki's ETag / 304 behaviour exactly.
+			// Mirror the galgame's ETag / 304 behaviour exactly.
 			w.Header().Set("ETag", statsETag)
 			if r.Header.Get("If-None-Match") == statsETag {
 				w.WriteHeader(http.StatusNotModified)
@@ -71,9 +71,9 @@ func newFakeCatalog(t *testing.T) *httptest.Server {
 }
 
 // buildApp wires the handler exactly as router.go does, over the given upstreams.
-func buildApp(t *testing.T, wikiURL, catalogURL string) *fiber.App {
+func buildApp(t *testing.T, galgameURL, catalogURL string) *fiber.App {
 	t.Helper()
-	gc := galgameClient.New(wikiURL, "nm_test", "") // empty CDN base = banner walker off
+	gc := client.New(galgameURL, "nm_test", "") // empty CDN base = banner walker off
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
 	h := NewCrossSourceHandler(service.NewCrossSourceService(gc, cc))
 
@@ -106,7 +106,7 @@ func doGet(t *testing.T, app *fiber.App, path string, headers map[string]string)
 }
 
 func TestScores_PassthroughVerbatim(t *testing.T) {
-	app := buildApp(t, newFakeWiki(t).URL, newFakeCatalog(t).URL)
+	app := buildApp(t, newFakeGalgame(t).URL, newFakeCatalog(t).URL)
 	resp := doGet(t, app, "/api/galgame/1/scores", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
@@ -119,22 +119,22 @@ func TestScores_PassthroughVerbatim(t *testing.T) {
 	if env.Code != 0 {
 		t.Fatalf("code = %d, want 0", env.Code)
 	}
-	if !jsonEqual(t, env.Data, wikiScoresData) {
-		t.Fatalf("scores data not verbatim:\n got %s\nwant %s", env.Data, wikiScoresData)
+	if !jsonEqual(t, env.Data, nextMoeScoresData) {
+		t.Fatalf("scores data not verbatim:\n got %s\nwant %s", env.Data, nextMoeScoresData)
 	}
 }
 
 func TestScores_BadID(t *testing.T) {
-	app := buildApp(t, newFakeWiki(t).URL, newFakeCatalog(t).URL)
+	app := buildApp(t, newFakeGalgame(t).URL, newFakeCatalog(t).URL)
 	if resp := doGet(t, app, "/api/galgame/abc/scores", nil); resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
 }
 
 func TestStats_ETagAnd304Passthrough(t *testing.T) {
-	app := buildApp(t, newFakeWiki(t).URL, newFakeCatalog(t).URL)
+	app := buildApp(t, newFakeGalgame(t).URL, newFakeCatalog(t).URL)
 
-	// First hit: 200 with the wiki's ETag forwarded + Cache-Control set.
+	// First hit: 200 with the galgame's ETag forwarded + Cache-Control set.
 	resp := doGet(t, app, "/api/galgame/stats", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("first status = %d, want 200", resp.StatusCode)
@@ -160,7 +160,7 @@ func TestStats_ETagAnd304Passthrough(t *testing.T) {
 }
 
 func TestWorkCredits_PassthroughAndAuth(t *testing.T) {
-	app := buildApp(t, newFakeWiki(t).URL, newFakeCatalog(t).URL)
+	app := buildApp(t, newFakeGalgame(t).URL, newFakeCatalog(t).URL)
 	resp := doGet(t, app, "/api/catalog/works/3853/credits", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
@@ -174,7 +174,7 @@ func TestWorkCredits_PassthroughAndAuth(t *testing.T) {
 }
 
 func TestWorkCredits_BadID(t *testing.T) {
-	app := buildApp(t, newFakeWiki(t).URL, newFakeCatalog(t).URL)
+	app := buildApp(t, newFakeGalgame(t).URL, newFakeCatalog(t).URL)
 	if resp := doGet(t, app, "/api/catalog/works/0/credits", nil); resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
@@ -186,7 +186,7 @@ func TestCatalog_DegradesWhenDown(t *testing.T) {
 	dead := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	deadURL := dead.URL
 	dead.Close()
-	app := buildApp(t, newFakeWiki(t).URL, deadURL)
+	app := buildApp(t, newFakeGalgame(t).URL, deadURL)
 	if resp := doGet(t, app, "/api/catalog/works/3853/credits", nil); resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", resp.StatusCode)
 	}

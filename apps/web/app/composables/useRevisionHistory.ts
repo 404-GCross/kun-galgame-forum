@@ -35,7 +35,7 @@ export interface GalgameRevisionListItem {
 // Internal: raw wiki taxonomy revision row (snake_case ProxyGet
 // passthrough). We normalise to GalgameRevisionListItem at the
 // boundary so the UI sees one shape.
-interface WikiTaxonomyRevisionRow {
+interface NextMoeTaxonomyRevisionRow {
   id: number
   revision: number
   action: string
@@ -80,7 +80,7 @@ export const useRevisionHistory = (
   // present, falls back to the bare array otherwise.
   type RawListResponse =
     | { items: GalgameRevisionListItem[]; total: number }
-    | WikiTaxonomyRevisionRow[]
+    | NextMoeTaxonomyRevisionRow[]
     | null
 
   const { data, status, refresh } = useKunFetch<RawListResponse>(
@@ -108,7 +108,7 @@ export const useRevisionHistory = (
     // embedded `user` (a raw snake_case wiki row) — otherwise the list
     // renderer throws on `rev.user.name`.
     const rows = (Array.isArray(d) ? d : (d.items ?? [])) as Array<
-      GalgameRevisionListItem & Partial<WikiTaxonomyRevisionRow>
+      GalgameRevisionListItem & Partial<NextMoeTaxonomyRevisionRow>
     >
     return rows.map((r) => {
       if (r.user) {

@@ -12,12 +12,12 @@ import (
 )
 
 // Forum creator-eligibility thresholds. This is the forum's OWN policy — change
-// freely here; OAuth and the wiki are untouched (the role + queue live in
-// OAuth, the contribution data in the wiki). A user may apply if ANY criterion
+// freely here; OAuth and the galgame are untouched (the role + queue live in
+// OAuth, the contribution data in the galgame). A user may apply if ANY criterion
 // is met. Cross-service contract owned by OAuth (not yet mirrored under docs/).
 const (
-	creatorMinMergedPRs   = 5    // 合并的 PR 数（数据源:wiki /user/:id/stats）
-	creatorMinGalgames    = 10   // 已发布 galgame 数（数据源:wiki）
+	creatorMinMergedPRs   = 5    // 合并的 PR 数（数据源:galgame /user/:id/stats）
+	creatorMinGalgames    = 10   // 已发布 galgame 数（数据源:galgame）
 	creatorMinReviews     = 5    // 简评(≥100 字)数（数据源:本论坛 galgame_rating）
 	creatorReviewMinLen   = 100  // 简评字数门槛
 	creatorMinMoemoepoint = 2000 // 萌萌点（数据源:OAuth 权威余额，单一来源）
@@ -42,17 +42,17 @@ type CreatorEligibility struct {
 // application to the central OAuth queue. The forum owns the POLICY; OAuth owns
 // the queue + admin review + role grant.
 type CreatorService struct {
-	ratingRepo *repository.RatingRepository
-	wikiClient *client.GalgameClient
-	userClient *userclient.Client
+	ratingRepo    *repository.RatingRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
 }
 
-func NewCreatorService(ratingRepo *repository.RatingRepository, wikiClient *client.GalgameClient, userClient *userclient.Client) *CreatorService {
-	return &CreatorService{ratingRepo: ratingRepo, wikiClient: wikiClient, userClient: userClient}
+func NewCreatorService(ratingRepo *repository.RatingRepository, galgameClient *client.GalgameClient, userClient *userclient.Client) *CreatorService {
+	return &CreatorService{ratingRepo: ratingRepo, galgameClient: galgameClient, userClient: userClient}
 }
 
 func (s *CreatorService) eligibility(ctx context.Context, userID int) (*CreatorEligibility, *errors.AppError) {
-	stats, err := s.wikiClient.GetUserStats(ctx, userID)
+	stats, err := s.galgameClient.GetUserStats(ctx, userID)
 	if err != nil {
 		return nil, errors.ErrInternal("获取贡献统计失败")
 	}

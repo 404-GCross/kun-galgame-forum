@@ -25,7 +25,7 @@ func NewImageHandler(imageService *service.ImageService) *ImageHandler {
 // Cover uploads use `galgame_banner` (pinned sort_order=0; generates the
 // 460x259 `mini` variant). Screenshot uploads use the dedicated
 // `galgame_screenshot` preset (main image only, no unused variants) — added
-// to wiki's image_presets.yaml 2026-06; Screenshots.vue now routes to it.
+// to galgame's image_presets.yaml 2026-06; Screenshots.vue now routes to it.
 // Both ride the same global pipeline (fit 1920x1080 webp@77).
 var allowedGalgamePresets = map[string]struct{}{
 	"galgame_banner":     {}, // cover (sort_order=0 pinned)

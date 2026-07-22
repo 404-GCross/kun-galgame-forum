@@ -162,7 +162,7 @@ type RatingGalgameDetail struct {
 	Banner       string `json:"banner"`
 	// U2 banner pair — FE getEffectiveBanner reads these first and only
 	// falls back to legacy `banner` when both are empty. New
-	// covers-only galgames (post wiki PR5) have empty `banner`, so
+	// covers-only galgames (post galgame PR5) have empty `banner`, so
 	// omitting these here renders an empty hero on the rating page.
 	EffectiveBannerHash      string           `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string           `json:"effective_banner_url,omitempty"`

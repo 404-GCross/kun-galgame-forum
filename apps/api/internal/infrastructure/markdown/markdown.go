@@ -161,7 +161,7 @@ func newGoldmark(hardWraps bool) goldmark.Markdown {
 	// `<pre class="chroma">`, which bypasses the codeBlockRegex wrapper below.
 	// Emitting plain `<pre><code class="language-x">` lets every fence flow
 	// through the .kun-code-container wrapper and be themed by the shared
-	// prose.css (project color system), matching moyu / wiki.
+	// prose.css (project color system), matching moyu / galgame.
 	rendererOpts := []renderer.Option{html.WithUnsafe()}
 	if hardWraps {
 		rendererOpts = append(rendererOpts, html.WithHardWraps())

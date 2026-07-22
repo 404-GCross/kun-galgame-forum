@@ -21,8 +21,8 @@ func NewOverviewHandler(overviewService *service.OverviewService) *OverviewHandl
 // GetOverview returns counts for all major models.
 // GET /api/admin/overview/all
 func (h *OverviewHandler) GetOverview(c fiber.Ctx) error {
-	// Forward the admin's OAuth Bearer so the wiki /admin/stats merge is
-	// authorized; an empty token just degrades the wiki rows to zero (the
+	// Forward the admin's OAuth Bearer so the galgame /admin/stats merge is
+	// authorized; an empty token just degrades the galgame rows to zero (the
 	// forum-local counts still render). See OverviewService.GetOverview.
 	token := middleware.GetAccessToken(c)
 	items, appErr := h.overviewService.GetOverview(c.Context(), token)

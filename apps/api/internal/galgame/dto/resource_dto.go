@@ -160,7 +160,7 @@ type ResourceGalgameSummary struct {
 	// U2 banner pair — FE Hero / [id]/index.vue both call
 	// `getEffectiveBanner(galgame)` which reads these before falling
 	// back to legacy `banner`. Missing them broke the hero on
-	// covers-only (post wiki PR5) galgames.
+	// covers-only (post galgame PR5) galgames.
 	EffectiveBannerHash      string   `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string   `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int      `json:"effective_banner_width,omitempty"`

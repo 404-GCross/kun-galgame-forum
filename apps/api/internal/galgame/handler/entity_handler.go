@@ -11,8 +11,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// EntityHandler groups the wiki-entity endpoints (series/official/engine/tag).
-// All of these proxy to wiki, enrich with local data, and apply NSFW filtering.
+// EntityHandler groups the galgame-entity endpoints (series/official/engine/tag).
+// All of these proxy to galgame, enrich with local data, and apply NSFW filtering.
 type EntityHandler struct {
 	seriesService   *service.SeriesService
 	officialService *service.OfficialService

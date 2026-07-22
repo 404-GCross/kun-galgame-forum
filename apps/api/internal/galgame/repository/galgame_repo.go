@@ -12,7 +12,7 @@ import (
 
 // GalgameRepository holds core local DB queries for the galgame table:
 // single-row + batch local stats lookups, user brief batching, view bumps,
-// and the create-stub helper used during wiki creation.
+// and the create-stub helper used during galgame creation.
 //
 // Sibling repos in this package own the other concerns:
 //   - GalgameInteractionRepository (interaction_repo.go)
@@ -32,7 +32,7 @@ func (r *GalgameRepository) DB() *gorm.DB {
 	return r.db
 }
 
-// GalgameLocalRow is a lightweight row of local stats for enriching wiki data.
+// GalgameLocalRow is a lightweight row of local stats for enriching galgame data.
 type GalgameLocalRow struct {
 	ID                 int       `gorm:"column:id"`
 	LikeCount          int       `gorm:"column:like_count"`
@@ -78,7 +78,7 @@ func (r *GalgameRepository) IncrementView(id int) {
 // Side-effect helpers used by Create
 // ──────────────────────────────────────────
 
-// CreateLocalStub creates the empty galgame row on the local side after wiki
+// CreateLocalStub creates the empty galgame row on the local side after galgame
 // creation succeeds, inside the given transaction. Used by paths that
 // transition a galgame to a publicly visible status (admin direct create,
 // claim, approved cron event) so it shows up in the kungal list query
@@ -118,8 +118,8 @@ func (r *GalgameRepository) Touch(tx *gorm.DB, galgameID int) error {
 // galgame_comment, galgame_resource, etc.). Idempotent — no-op when the row
 // was never lazy-created. Used by:
 //   - DeleteDraft (defensive — submitter may have self-interacted)
-//   - wiki message sync cron on "banned" events
-//   - wiki message sync cron on hard-deleted galgames (msg.Galgame == nil)
+//   - galgame message sync cron on "banned" events
+//   - galgame message sync cron on hard-deleted galgames (msg.Galgame == nil)
 func (r *GalgameRepository) DeleteLocalStub(galgameID int) {
 	r.db.Where("id = ?", galgameID).Delete(&model.GalgameLocal{})
 }

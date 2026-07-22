@@ -1,16 +1,16 @@
 package service
 
 // Integration-style test for ProxyWrite — uses an httptest server as
-// the fake wiki target so we can assert the path + query + body + token
-// header survive the kungal → wiki hop verbatim. The single most
+// the fake galgame target so we can assert the path + query + body + token
+// header survive the kungal → galgame hop verbatim. The single most
 // important contract this test guards is:
 //
-//   `?force=true` (taxonomy two-stage safe delete) MUST reach wiki.
+//   `?force=true` (taxonomy two-stage safe delete) MUST reach galgame.
 //
 // A silent drop here would degrade `DELETE /galgame-tag/:id?force=true`
-// into a regular DELETE which wiki rejects → user sees "still
+// into a regular DELETE which galgame rejects → user sees "still
 // referenced" forever even after the second confirmation, with no
-// indication that the query param was lost in transit. Worse, if wiki
+// indication that the query param was lost in transit. Worse, if galgame
 // were to ever accept the bare DELETE, the FE-side two-stage UI would
 // nuke references the user thought they were force-deleting.
 
@@ -27,7 +27,7 @@ import (
 	"kun-galgame-api/internal/galgame/client"
 )
 
-// captured records what the fake wiki saw on a single request.
+// captured records what the fake galgame saw on a single request.
 type captured struct {
 	method string
 	path   string
@@ -36,10 +36,10 @@ type captured struct {
 	body   string
 }
 
-// newFakeWiki spins up a tiny HTTP server that captures the next
+// newFakeGalgame spins up a tiny HTTP server that captures the next
 // request and replies with a successful {code,message,data} envelope.
 // Returns the captured-request channel + the server URL.
-func newFakeWiki(t *testing.T) (*captured, *httptest.Server) {
+func newFakeGalgame(t *testing.T) (*captured, *httptest.Server) {
 	t.Helper()
 	got := &captured{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,11 +57,11 @@ func newFakeWiki(t *testing.T) (*captured, *httptest.Server) {
 }
 
 func TestProxyWrite_ForwardsForceQuery(t *testing.T) {
-	got, srv := newFakeWiki(t)
+	got, srv := newFakeGalgame(t)
 	// CDN base intentionally empty: rewriteBanners must not interfere
 	// with the success-envelope body when there are no banner fields.
 	gc := client.New(srv.URL, "nm_test", "")
-	svc := NewWikiService(gc, nil, nil)
+	svc := NewGalgameProxyService(gc, nil, nil)
 
 	q := url.Values{"force": {"true"}}
 	_, err := svc.ProxyWrite(
@@ -95,9 +95,9 @@ func TestProxyWrite_ForwardsForceQuery(t *testing.T) {
 }
 
 func TestProxyWrite_OmitsQueryWhenEmpty(t *testing.T) {
-	got, srv := newFakeWiki(t)
+	got, srv := newFakeGalgame(t)
 	gc := client.New(srv.URL, "nm_test", "")
-	svc := NewWikiService(gc, nil, nil)
+	svc := NewGalgameProxyService(gc, nil, nil)
 
 	_, err := svc.ProxyWrite(
 		context.Background(),
@@ -118,9 +118,9 @@ func TestProxyWrite_OmitsQueryWhenEmpty(t *testing.T) {
 }
 
 func TestProxyWrite_ForwardsBodyAndContentType(t *testing.T) {
-	got, srv := newFakeWiki(t)
+	got, srv := newFakeGalgame(t)
 	gc := client.New(srv.URL, "nm_test", "")
-	svc := NewWikiService(gc, nil, nil)
+	svc := NewGalgameProxyService(gc, nil, nil)
 
 	body := []byte(`{"alias":["a","b"]}`)
 	_, err := svc.ProxyWrite(

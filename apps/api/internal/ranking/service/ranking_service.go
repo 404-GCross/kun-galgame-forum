@@ -3,31 +3,31 @@ package service
 import (
 	"context"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/ranking/dto"
 	"kun-galgame-api/internal/ranking/repository"
 	"kun-galgame-api/pkg/userclient"
 )
 
 type RankingService struct {
-	repo       *repository.RankingRepository
-	wikiGC     *galgameClient.GalgameClient
-	userClient *userclient.Client
+	repo          *repository.RankingRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
 }
 
 func NewRankingService(
 	repo *repository.RankingRepository,
-	gc *galgameClient.GalgameClient,
+	gc *client.GalgameClient,
 	userClient *userclient.Client,
 ) *RankingService {
-	return &RankingService{repo: repo, wikiGC: gc, userClient: userClient}
+	return &RankingService{repo: repo, galgameClient: gc, userClient: userClient}
 }
 
 // GetGalgameRanking composes galgame ranking rows by
-// 1) querying local interaction columns, 2) batch-fetching wiki metadata,
+// 1) querying local interaction columns, 2) batch-fetching galgame metadata,
 // 3) batch-fetching user info from OAuth.
 //
-// SFW gating goes through wiki via content_limit
+// SFW gating goes through galgame via content_limit
 // (docs/galgame_wiki/00-handbook §16); kungal-local NSFW filtering is
 // explicitly forbidden by the protocol.
 func (s *RankingService) GetGalgameRanking(
@@ -42,7 +42,7 @@ func (s *RankingService) GetGalgameRanking(
 	for i, r := range rows {
 		ids[i] = r.ID
 	}
-	briefMap, appErr := s.wikiGC.GetBatchPublic(ctx, ids, isSFW)
+	briefMap, appErr := s.galgameClient.GetBatchPublic(ctx, ids, isSFW)
 	if appErr != nil {
 		return []dto.GalgameRankingItem{}
 	}
@@ -79,7 +79,7 @@ func (s *RankingService) GetGalgameRanking(
 
 // GetTopicRanking returns topic ranking items. Identity is hydrated from OAuth
 // via userclient. SFW filter is applied at the SQL layer (topic.is_nsfw
-// is kungal-local data, not wiki-managed).
+// is kungal-local data, not galgame-managed).
 func (s *RankingService) GetTopicRanking(ctx context.Context, req *dto.TopicRankingRequest, isSFW bool) []dto.TopicRankingItem {
 	rows := s.repo.FindTopicRanking(req.SortField, req.SortOrder, req.Page, req.Limit, isSFW)
 	uids := userclient.CollectIDs(rows, func(r repository.TopicRankingRow) int { return r.UserID })

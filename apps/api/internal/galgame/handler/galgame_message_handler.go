@@ -12,18 +12,18 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// WikiMessageHandler exposes the wiki notification stream to kungal users
+// GalgameMessageHandler exposes the galgame notification stream to kungal users
 // and admins, plus the kungal-local read-state cursor.
-type WikiMessageHandler struct {
-	svc *service.WikiMessageService
+type GalgameMessageHandler struct {
+	svc *service.GalgameMessageService
 }
 
-func NewWikiMessageHandler(svc *service.WikiMessageService) *WikiMessageHandler {
-	return &WikiMessageHandler{svc: svc}
+func NewGalgameMessageHandler(svc *service.GalgameMessageService) *GalgameMessageHandler {
+	return &GalgameMessageHandler{svc: svc}
 }
 
 // MessagesMine — GET /api/galgame/messages/mine (any authenticated user)
-func (h *WikiMessageHandler) MessagesMine(c fiber.Ctx) error {
+func (h *GalgameMessageHandler) MessagesMine(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -41,7 +41,7 @@ func (h *WikiMessageHandler) MessagesMine(c fiber.Ctx) error {
 
 // AdminMessages — GET /api/admin/galgame/messages (moderator+)
 // Caller must already be in a RequireModerator()-gated route group.
-func (h *WikiMessageHandler) AdminMessages(c fiber.Ctx) error {
+func (h *GalgameMessageHandler) AdminMessages(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -66,7 +66,7 @@ type ReadStateRequest struct {
 //
 // Returns the cursor as { last_read_message_id: <int64> }. Frontend uses
 // this together with the /messages/mine list to compute unread counts.
-func (h *WikiMessageHandler) GetReadState(c fiber.Ctx) error {
+func (h *GalgameMessageHandler) GetReadState(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -74,14 +74,14 @@ func (h *WikiMessageHandler) GetReadState(c fiber.Ctx) error {
 
 	last, err := h.svc.GetReadState(user.ID)
 	if err != nil {
-		slog.Warn("查询 wiki 消息已读游标失败", "userID", user.ID, "error", err)
+		slog.Warn("查询 galgame 消息已读游标失败", "userID", user.ID, "error", err)
 		return response.Error(c, errors.ErrInternal("查询失败"))
 	}
 	return response.OK(c, fiber.Map{"last_read_message_id": last})
 }
 
 // SetReadState — PUT /api/galgame/messages/read-state
-func (h *WikiMessageHandler) SetReadState(c fiber.Ctx) error {
+func (h *GalgameMessageHandler) SetReadState(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
@@ -96,7 +96,7 @@ func (h *WikiMessageHandler) SetReadState(c fiber.Ctx) error {
 	}
 
 	if err := h.svc.SetReadState(user.ID, req.LastReadMessageID); err != nil {
-		slog.Warn("更新 wiki 消息已读游标失败",
+		slog.Warn("更新 galgame 消息已读游标失败",
 			"userID", user.ID, "last_id", req.LastReadMessageID, "error", err)
 		return response.Error(c, errors.ErrInternal("更新失败"))
 	}

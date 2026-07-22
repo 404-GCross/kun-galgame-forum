@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Release-date filter bound parsing, mirroring the wiki §17 protocol
+// Release-date filter bound parsing, mirroring the galgame §17 protocol
 // (docs/galgame_wiki/00-handbook-for-downstream.md §17). Accepts two
 // string formats and resolves each to an inclusive DATE boundary that
 // kungal's local `galgame.release_date` (PG `date`) column compares
@@ -84,7 +84,7 @@ func validMonth(mm string) error {
 	return nil
 }
 
-// ParseMonthSet parses the `released_months` query param (wiki §17.10):
+// ParseMonthSet parses the `released_months` query param (galgame §17.10):
 // a comma-separated set of month numbers (1–12) AND-combined with the
 // year range to keep only games released in those months, across all
 // years in range ("历年三月发售"). Returns a deduped, ascending slice.

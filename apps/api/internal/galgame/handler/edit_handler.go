@@ -55,22 +55,22 @@ import (
 // PR chain, all best-effort (a failure logs a warning, never rolls back the
 // decision).
 type EditHandler struct {
-	catalog  *catalogclient.Client
-	wiki     *client.GalgameClient // best-effort brief enrichment + owner lookup
-	users    *userclient.Client    // best-effort attribution enrichment
-	notifier msgService.Notifier   // best-effort decision notifications
-	repo     *repository.GalgameRepository
+	catalog       *catalogclient.Client
+	galgameClient *client.GalgameClient // best-effort brief enrichment + owner lookup
+	users         *userclient.Client    // best-effort attribution enrichment
+	notifier      msgService.Notifier   // best-effort decision notifications
+	repo          *repository.GalgameRepository
 }
 
 func NewEditHandler(
-	catalog *catalogclient.Client, wiki *client.GalgameClient, users *userclient.Client,
+	catalog *catalogclient.Client, galgameClient *client.GalgameClient, users *userclient.Client,
 	notifier msgService.Notifier, repo *repository.GalgameRepository,
 ) *EditHandler {
-	return &EditHandler{catalog: catalog, wiki: wiki, users: users, notifier: notifier, repo: repo}
+	return &EditHandler{catalog: catalog, galgameClient: galgameClient, users: users, notifier: notifier, repo: repo}
 }
 
 // editUser is the attribution shape lists carry (contribution attribution
-// is a parity hardline — bare uids would be a regression from the old wiki).
+// is a parity hardline — bare uids would be a regression from the old galgame).
 type editUser struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
@@ -148,10 +148,10 @@ func editActor(c fiber.Ctx) (catalogclient.EditActor, *errors.AppError) {
 // batch read is short-TTL cached in the client, so per-request lookups for
 // owner assertion / notification naming stay cheap.
 func (h *EditHandler) gameBrief(ctx context.Context, gid int64) *client.GalgameBrief {
-	if h.wiki == nil || gid <= 0 {
+	if h.galgameClient == nil || gid <= 0 {
 		return nil
 	}
-	briefs, appErr := h.wiki.GetBatch(ctx, []int{int(gid)})
+	briefs, appErr := h.galgameClient.GetBatch(ctx, []int{int(gid)})
 	if appErr != nil {
 		slog.Warn("galgame edit: brief lookup failed", "gid", gid, "error", appErr)
 		return nil
@@ -163,7 +163,7 @@ func (h *EditHandler) gameBrief(ctx context.Context, gid int64) *client.GalgameB
 }
 
 // isGameOwner reports whether uid created the galgame row. Fail-closed: an
-// unreachable wiki degrades the owner assertion to false (moderators are
+// unreachable galgame degrades the owner assertion to false (moderators are
 // unaffected; the owner retries).
 func (h *EditHandler) isGameOwner(ctx context.Context, gid, uid int64) bool {
 	b := h.gameBrief(ctx, gid)
@@ -352,7 +352,7 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 // submitSideEffects mirrors the old SubmitPR chain onto a new open proposal
 // (best-effort): a "requested" notice to the game's owner and a
 // GALGAME_PR_CREATION row on the activity timeline. The proposal id continues
-// the old wiki PR id space (the E2 transform bumped the sequence past it), so
+// the old galgame PR id space (the E2 transform bumped the sequence past it), so
 // wiki_pr_id stays the idempotency key.
 func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient.EditProposal) {
 	brief := h.gameBrief(ctx, prop.EntityID)
@@ -377,7 +377,7 @@ func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient
 }
 
 // Revisions — GET /galgame/:gid/edit/revisions (optional auth; public like
-// the wiki's revision history always was). Includes the E2-migrated history.
+// the galgame's revision history always was). Includes the E2-migrated history.
 // A logged-in reviewer — moderator or the game's creator (E3b) — additionally
 // gets can_revert so the history page can offer the revert control.
 func (h *EditHandler) Revisions(c fiber.Ctx) error {
@@ -479,7 +479,7 @@ func (h *EditHandler) Diff(c fiber.Ctx) error {
 // ──────────────────────────────────────────
 
 // proposalItem is one enriched list row: the proposal + a best-effort
-// galgame brief (nil when the wiki batch read fails — the UI falls back to
+// galgame brief (nil when the galgame batch read fails — the UI falls back to
 // the bare gid link).
 type proposalItem struct {
 	catalogclient.EditProposal
@@ -497,9 +497,9 @@ func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProp
 		}
 	}
 	var briefs map[int]client.GalgameBrief
-	if len(ids) > 0 && h.wiki != nil {
+	if len(ids) > 0 && h.galgameClient != nil {
 		var appErr *errors.AppError
-		if briefs, appErr = h.wiki.GetBatch(ctx, ids); appErr != nil {
+		if briefs, appErr = h.galgameClient.GetBatch(ctx, ids); appErr != nil {
 			slog.Warn("galgame edit: brief enrichment failed", "error", appErr)
 		}
 	}
@@ -802,7 +802,7 @@ func (h *EditHandler) mergeSideEffects(ctx context.Context, prop *catalogclient.
 
 // Decline — POST /galgame-edit/proposals/:id/decline (auth; moderator or
 // the game's creator). The reason is required — a silent decline was the
-// old wiki's worst reviewer habit; it travels to the proposer in full on
+// old galgame's worst reviewer habit; it travels to the proposer in full on
 // the decline notice (E3b ruling 1).
 func (h *EditHandler) Decline(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)

@@ -27,7 +27,7 @@ import (
 // after deleting the user's content on OTHER users' entities we recompute the
 // affected parents' counters from the surviving rows.
 //
-// Scope: account identity is owned by OAuth; galgame ENTRIES are wiki-owned
+// Scope: account identity is owned by OAuth; galgame ENTRIES are galgame-owned
 // (local `galgame` has no user_id) — both out of reach by design. Admin-only
 // content (doc_article / todo / update_log / unmoe, all RequireModerator()) is
 // intentionally NOT handled here because the service refuses to purge any user

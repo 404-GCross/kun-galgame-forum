@@ -5,7 +5,7 @@ package dto
 // ──────────────────────────────────────────
 
 // GalgameCard is the enriched galgame card returned by entity detail pages.
-// It fuses wiki metadata with local interaction counts.
+// It fuses galgame metadata with local interaction counts.
 type GalgameCard struct {
 	ID                 int         `json:"id"`
 	Name               KunLanguage `json:"name"`
@@ -17,7 +17,7 @@ type GalgameCard struct {
 	ResourceUpdateTime string      `json:"resource_update_time"`
 	Platform           []string    `json:"platform"`
 	Language           []string    `json:"language"`
-	// U1: nil = unknown release; see WikiGalgameDetailFull comment.
+	// U1: nil = unknown release; see NextMoeGalgameDetailFull comment.
 	ReleaseDate    *string `json:"release_date"`
 	ReleaseDateTBA bool    `json:"release_date_tba"`
 	// ReleasePrecision (day/month/year/tba/unknown) tells the calendar how to
@@ -26,19 +26,19 @@ type GalgameCard struct {
 	ReleasePrecision string `json:"release_precision,omitempty"`
 	// U2: same convention as GalgameListCard — card only carries the
 	// derived banner; URL injected by rewriteBanners. banner_image_hash
-	// retired in wiki PR5 (K-PR6).
+	// retired in galgame PR5 (K-PR6).
 	EffectiveBannerHash      string `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
-	// IsOnForum is false for wiki-catalogue games the forum has never ingested
+	// IsOnForum is false for galgame-catalogue games the forum has never ingested
 	// (no local row → no resources / ratings / views). Entity detail pages
-	// (会社 / tag / engine / series) list the FULL wiki catalogue, so the
+	// (会社 / tag / engine / series) list the FULL galgame catalogue, so the
 	// frontend uses this to hide the forum-only fields + show a "未收录" state
 	// instead of misleading zeros.
 	IsOnForum bool `json:"is_on_forum"`
-	// Status = wiki 草稿状态 (calendar only): 2 = 未认领的 VNDB 草稿. The FE renders
+	// Status = galgame 草稿状态 (calendar only): 2 = 未认领的 VNDB 草稿. The FE renders
 	// status=2 as a "未发布" claim card (→ publish wizard) rather than a /galgame
 	// link. omitempty so published (0) cards stay unchanged everywhere else.
 	Status int `json:"status,omitempty"`
@@ -118,8 +118,8 @@ type OfficialListPage struct {
 type OfficialDetail struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
-	// Original-language name (wiki PR4 sub-change, K-PR6). Passed through
-	// from wiki so the FE edit modal can pre-fill the current value;
+	// Original-language name (galgame PR4 sub-change, K-PR6). Passed through
+	// from galgame so the FE edit modal can pre-fill the current value;
 	// without it the modal opens with an empty input every time.
 	Original     string        `json:"original"`
 	Link         string        `json:"link"`

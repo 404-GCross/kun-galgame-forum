@@ -16,9 +16,9 @@ import (
 // renameTaxonomyIDField translates the camelCase id field that the FE
 // (KunUI tag/official/engine edit modals) sends — `tagId`, `officialId`,
 // `engineId` — into the snake_case form (`tag_id`, `official_id`,
-// `engine_id`) that the wiki taxonomy PUT endpoints actually validate.
+// `engine_id`) that the galgame taxonomy PUT endpoints actually validate.
 //
-// Without this rename the wiki silently drops the unknown camelCase key,
+// Without this rename the galgame silently drops the unknown camelCase key,
 // fails to find the target row (required `*_id` missing), and the entire
 // edit flow breaks. We do it here rather than in the FE so the three
 // modals don't each need their own body-translation step (mirrors the
@@ -26,18 +26,18 @@ import (
 //
 // Only PUTs need it (POST creates have no id field in the body, DELETEs
 // have no body). For unrecognized paths it returns the body untouched.
-func renameTaxonomyIDField(wikiPath string, body []byte) []byte {
+func renameTaxonomyIDField(galgamePath string, body []byte) []byte {
 	if len(body) == 0 {
 		return body
 	}
 
 	var srcKey, dstKey string
 	switch {
-	case strings.HasPrefix(wikiPath, "/tag"):
+	case strings.HasPrefix(galgamePath, "/tag"):
 		srcKey, dstKey = "tagId", "tag_id"
-	case strings.HasPrefix(wikiPath, "/official"):
+	case strings.HasPrefix(galgamePath, "/official"):
 		srcKey, dstKey = "officialId", "official_id"
-	case strings.HasPrefix(wikiPath, "/engine"):
+	case strings.HasPrefix(galgamePath, "/engine"):
 		srcKey, dstKey = "engineId", "engine_id"
 	default:
 		return body
@@ -60,20 +60,20 @@ func renameTaxonomyIDField(wikiPath string, body []byte) []byte {
 	return out
 }
 
-// WikiService handles pass-through proxying to the wiki service and the
-// common "wiki + local user resolution" pattern used by galgame sub-routes.
-type WikiService struct {
-	wikiClient  *client.GalgameClient
-	galgameRepo *repository.GalgameRepository
-	userClient  *userclient.Client
+// GalgameProxyService handles pass-through proxying to the galgame service and the
+// common "galgame + local user resolution" pattern used by galgame sub-routes.
+type GalgameProxyService struct {
+	galgameClient *client.GalgameClient
+	galgameRepo   *repository.GalgameRepository
+	userClient    *userclient.Client
 }
 
-func NewWikiService(
-	wikiClient *client.GalgameClient,
+func NewGalgameProxyService(
+	galgameClient *client.GalgameClient,
 	galgameRepo *repository.GalgameRepository,
 	userClient *userclient.Client,
-) *WikiService {
-	return &WikiService{wikiClient: wikiClient, galgameRepo: galgameRepo, userClient: userClient}
+) *GalgameProxyService {
+	return &GalgameProxyService{galgameClient: galgameClient, galgameRepo: galgameRepo, userClient: userClient}
 }
 
 // ──────────────────────────────────────────
@@ -84,9 +84,9 @@ func NewWikiService(
 // vehicle) retired in E3b with its routes; ProxyGetWithToken below stays for
 // the taxonomy revision reads.
 
-// wikiRevisionRow / wikiRevisionListResp mirror the wiki's revision list
+// nextMoeRevisionRow / nextMoeRevisionListResp mirror the galgame's revision list
 // shape (shared by the four taxonomy entities).
-type wikiRevisionRow struct {
+type nextMoeRevisionRow struct {
 	ID        int    `json:"id"`
 	GalgameID int    `json:"galgame_id"`
 	Revision  int    `json:"revision"`
@@ -97,29 +97,29 @@ type wikiRevisionRow struct {
 	Created   string `json:"created"`
 }
 
-type wikiRevisionListResp struct {
-	Items []wikiRevisionRow `json:"items"`
-	Total int64             `json:"total"`
+type nextMoeRevisionListResp struct {
+	Items []nextMoeRevisionRow `json:"items"`
+	Total int64                `json:"total"`
 }
 
 // GetTaxonomyRevisions lists a taxonomy entity's (tag/official/engine)
 // revision history, hydrating each row's user_id into a full user object,
 // so the FE sees one camelCase {items,total} shape with a real name/avatar
-// instead of a raw snake_case wiki row (whose missing `user` field otherwise
-// crashed the list renderer). `entity` is the wiki resource name
-// (tag/official/engine); the bearer is forwarded because the wiki gates
+// instead of a raw snake_case galgame row (whose missing `user` field otherwise
+// crashed the list renderer). `entity` is the galgame resource name
+// (tag/official/engine); the bearer is forwarded because the galgame gates
 // these GETs behind auth.
-func (s *WikiService) GetTaxonomyRevisions(
+func (s *GalgameProxyService) GetTaxonomyRevisions(
 	ctx context.Context,
 	entity, id, token string,
 	query url.Values,
 ) (*dto.GalgameRevisionListPage, *errors.AppError) {
-	data, appErr := s.wikiClient.GetWithToken(ctx, "/"+entity+"/"+id+"/revisions", token, query)
+	data, appErr := s.galgameClient.GetWithToken(ctx, "/"+entity+"/"+id+"/revisions", token, query)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiRevisionListResp
+	var parsed nextMoeRevisionListResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		return &dto.GalgameRevisionListPage{Items: []dto.GalgameRevision{}, Total: 0}, nil
 	}
@@ -130,7 +130,7 @@ func (s *WikiService) GetTaxonomyRevisions(
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
 
-	// Drop revisions authored by a banned user. Total is left wiki-sourced —
+	// Drop revisions authored by a banned user. Total is left galgame-sourced —
 	// a small over-report matching the SFW filtering trade-off elsewhere.
 	items := make([]dto.GalgameRevision, 0, len(parsed.Items))
 	for _, r := range parsed.Items {
@@ -150,56 +150,56 @@ func (s *WikiService) GetTaxonomyRevisions(
 	return &dto.GalgameRevisionListPage{Items: items, Total: parsed.Total}, nil
 }
 
-// ProxyGetWithToken is ProxyGet but forwards the caller's wiki bearer token
-// (empty = anonymous). Used by the taxonomy revision-history GETs: the wiki
+// ProxyGetWithToken is ProxyGet but forwards the caller's galgame bearer token
+// (empty = anonymous). Used by the taxonomy revision-history GETs: the galgame
 // gates `/tag|official|engine/:id/revisions` behind auth (per the 02-revisions
 // "后端透传 Bearer 代理" contract), so a token-less ProxyGet 401s for everyone.
-// Empty token still works for any endpoint the wiki actually serves publicly.
-func (s *WikiService) ProxyGetWithToken(
+// Empty token still works for any endpoint the galgame actually serves publicly.
+func (s *GalgameProxyService) ProxyGetWithToken(
 	ctx context.Context,
 	gatewayPath, token string,
 	query url.Values,
 ) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.GetWithToken(ctx, client.ToWikiPath(gatewayPath), token, query)
+	return s.galgameClient.GetWithToken(ctx, client.ToGalgamePath(gatewayPath), token, query)
 }
 
 // ProxyWrite forwards a write request (POST/PUT/DELETE) with OAuth token.
 //
 // contentType is the original Content-Type from the gateway request — kept
 // verbatim so multipart boundaries / form-encoded payloads survive the hop.
-// Empty defaults to application/json (what the wiki expects on JSON bodies).
+// Empty defaults to application/json (what the galgame expects on JSON bodies).
 // query is the original gateway query string (url.Values). It MUST be
 // forwarded — e.g. the two-stage safe delete on tag/official/engine
 // keys off `?force=true` (docs 04-taxonomy / 00-handbook): dropping it
 // would make every force-delete silently behave as a plain delete.
-func (s *WikiService) ProxyWrite(
+func (s *GalgameProxyService) ProxyWrite(
 	ctx context.Context,
 	method, gatewayPath, token string,
 	query url.Values,
 	body []byte,
 	contentType string,
 ) (json.RawMessage, *errors.AppError) {
-	wikiPath := client.ToWikiPath(gatewayPath)
+	galgamePath := client.ToGalgamePath(gatewayPath)
 
 	// Translate FE camelCase taxonomy id (tagId/officialId/engineId) to
-	// the wiki's required snake_case form. Done on PUT only — see helper
+	// the galgame's required snake_case form. Done on PUT only — see helper
 	// doc above for the rationale.
 	if method == "PUT" {
-		body = renameTaxonomyIDField(wikiPath, body)
+		body = renameTaxonomyIDField(galgamePath, body)
 	}
 
 	if len(query) > 0 {
-		wikiPath += "?" + query.Encode()
+		galgamePath += "?" + query.Encode()
 	}
 	payload := json.RawMessage(body)
 
 	switch method {
 	case "POST":
-		return s.wikiClient.PostWithToken(ctx, wikiPath, token, payload, contentType)
+		return s.galgameClient.PostWithToken(ctx, galgamePath, token, payload, contentType)
 	case "PUT":
-		return s.wikiClient.PutWithToken(ctx, wikiPath, token, payload, contentType)
+		return s.galgameClient.PutWithToken(ctx, galgamePath, token, payload, contentType)
 	case "DELETE":
-		return s.wikiClient.DeleteWithToken(ctx, wikiPath, token, payload, contentType)
+		return s.galgameClient.DeleteWithToken(ctx, galgamePath, token, payload, contentType)
 	default:
 		return nil, errors.ErrBadRequest("不支持的方法")
 	}
@@ -209,7 +209,7 @@ func (s *WikiService) ProxyWrite(
 // Galgame Links
 // ──────────────────────────────────────────
 
-type wikiLinkRow struct {
+type nextMoeLinkRow struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	Link      string `json:"link"`
@@ -217,18 +217,18 @@ type wikiLinkRow struct {
 	UserID    int    `json:"user_id"`
 }
 
-// GetGalgameLinks fetches the links for a galgame from wiki and resolves the
+// GetGalgameLinks fetches the links for a galgame from galgame and resolves the
 // author user in the local DB.
-func (s *WikiService) GetGalgameLinks(
+func (s *GalgameProxyService) GetGalgameLinks(
 	ctx context.Context,
 	gid string,
 ) ([]dto.GalgameLink, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/"+gid+"/links", nil)
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/"+gid+"/links", nil)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var rows []wikiLinkRow
+	var rows []nextMoeLinkRow
 	if err := json.Unmarshal(data, &rows); err != nil {
 		return []dto.GalgameLink{}, nil
 	}

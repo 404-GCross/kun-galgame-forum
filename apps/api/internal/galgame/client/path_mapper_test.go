@@ -2,13 +2,13 @@ package client
 
 import "testing"
 
-func TestToWikiPath(t *testing.T) {
+func TestToGalgamePath(t *testing.T) {
 	cases := []struct {
 		name string
 		in   string
 		want string
 	}{
-		// U3 taxonomy revisions / revert — wiki keeps them on the bare
+		// U3 taxonomy revisions / revert — galgame keeps them on the bare
 		// entity path (same shape as /tag/search, PUT /tag, DELETE
 		// /tag/:id). No namespace special-case: the standard kebab
 		// prefix rewrite handles them.
@@ -44,9 +44,9 @@ func TestToWikiPath(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := ToWikiPath(c.in)
+			got := ToGalgamePath(c.in)
 			if got != c.want {
-				t.Errorf("ToWikiPath(%q) = %q, want %q", c.in, got, c.want)
+				t.Errorf("ToGalgamePath(%q) = %q, want %q", c.in, got, c.want)
 			}
 		})
 	}

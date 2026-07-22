@@ -234,7 +234,7 @@ type TopicCommentActivityData struct {
 
 // GalgameActivityData is the rich-card payload for galgame-scoped activity
 // (creation / edit / PR / comment / rating / resource): the galgame's name +
-// cover + a little metadata, all pulled from the wiki brief already fetched
+// cover + a little metadata, all pulled from the galgame brief already fetched
 // during enrichment (no extra query). CoverHash resolves to a CDN URL on the FE
 // (imageTokenUrl). Release date is nullable (TBA / unknown).
 type GalgameActivityData struct {
@@ -245,14 +245,14 @@ type GalgameActivityData struct {
 	ReleaseDate *string `json:"release_date"`
 	// GalgameID lets the FE link / like / favorite without parsing the link.
 	GalgameID int `json:"galgame_id,omitempty"`
-	// RevisionID is the wiki revision ROW id for GALGAME_EDIT — the legacy input
+	// RevisionID is the galgame revision ROW id for GALGAME_EDIT — the legacy input
 	// for the id→number diff resolution. RevisionNumber is the per-galgame
 	// revision number the diff endpoint's :rev keys on; the card uses it directly
 	// when present (>0) and falls back to RevisionID otherwise.
 	RevisionID     int `json:"revision_id,omitempty"`
 	RevisionNumber int `json:"revision_number,omitempty"`
 	// Developer (制作会社) + Intro are set for the GALGAME_CREATION and GALGAME_EDIT
-	// cards (which share the info area), from the wiki detail brief. Developer =
+	// cards (which share the info area), from the galgame detail brief. Developer =
 	// officials joined with 、; Intro is the preferred-language introduction,
 	// truncated for a 3-line preview.
 	Developer string `json:"developer,omitempty"`

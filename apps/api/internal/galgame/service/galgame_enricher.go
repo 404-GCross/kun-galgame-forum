@@ -8,11 +8,11 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// GalgameEnricher turns wiki galgame items into the enriched GalgameCard
+// GalgameEnricher turns galgame galgame items into the enriched GalgameCard
 // shape the frontend consumes, applying NSFW filtering and fusing in local
 // interaction counts + user info.
 //
-// This is the single source of truth for "wiki galgame + local enrichment"
+// This is the single source of truth for "galgame galgame + local enrichment"
 // across series / official / engine / tag detail endpoints.
 type GalgameEnricher struct {
 	galgameRepo *repository.GalgameRepository
@@ -29,11 +29,11 @@ func NewGalgameEnricher(
 }
 
 // FilterSFW removes NSFW items when the caller requests SFW-only content.
-func (e *GalgameEnricher) FilterSFW(items []dto.WikiGalgameItem, isSFW bool) []dto.WikiGalgameItem {
+func (e *GalgameEnricher) FilterSFW(items []dto.NextMoeGalgameItem, isSFW bool) []dto.NextMoeGalgameItem {
 	if !isSFW {
 		return items
 	}
-	out := make([]dto.WikiGalgameItem, 0, len(items))
+	out := make([]dto.NextMoeGalgameItem, 0, len(items))
 	for _, g := range items {
 		if g.ContentLimit == "sfw" {
 			out = append(out, g)
@@ -43,7 +43,7 @@ func (e *GalgameEnricher) FilterSFW(items []dto.WikiGalgameItem, isSFW bool) []d
 }
 
 // HasNSFW reports whether any item in the list is nsfw.
-func (e *GalgameEnricher) HasNSFW(items []dto.WikiGalgameItem) bool {
+func (e *GalgameEnricher) HasNSFW(items []dto.NextMoeGalgameItem) bool {
 	for _, g := range items {
 		if g.ContentLimit == "nsfw" {
 			return true
@@ -53,7 +53,7 @@ func (e *GalgameEnricher) HasNSFW(items []dto.WikiGalgameItem) bool {
 }
 
 // Samples returns up to `n` minimal samples (name + banner).
-func (e *GalgameEnricher) Samples(items []dto.WikiGalgameItem, n int) []dto.GalgameSample {
+func (e *GalgameEnricher) Samples(items []dto.NextMoeGalgameItem, n int) []dto.GalgameSample {
 	if n > len(items) {
 		n = len(items)
 	}
@@ -76,9 +76,9 @@ func (e *GalgameEnricher) Samples(items []dto.WikiGalgameItem, n int) []dto.Galg
 	return out
 }
 
-// ToCards converts wiki galgame items into enriched GalgameCard DTOs, batch-
+// ToCards converts galgame galgame items into enriched GalgameCard DTOs, batch-
 // loading users (from OAuth) and local stats once.
-func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameItem) []dto.GalgameCard {
+func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgameItem) []dto.GalgameCard {
 	if len(items) == 0 {
 		return []dto.GalgameCard{}
 	}
@@ -93,7 +93,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 	userMap := e.userClient.Hydrate(ctx, userIDs)
 	localMap := e.galgameRepo.FindLocalBatch(galgameIDs)
 	// Platform/language badges come from the LOCAL galgame_resource rows — the
-	// wiki item (incl. Meilisearch search hits) carries neither — so the search /
+	// galgame item (incl. Meilisearch search hits) carries neither — so the search /
 	// series / official / engine / tag cards match the /galgame list card's
 	// top-left platform badges. Cheap now that galgame_resource(galgame_id) is indexed.
 	platformMap, languageMap := groupResourceMeta(e.metaRepo.FindResourceMetaBatch(galgameIDs))
@@ -101,7 +101,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 	cards := make([]dto.GalgameCard, len(items))
 	for i, g := range items {
 		// Present in FindLocalBatch ⇒ the forum has a local row for this game
-		// (created/claimed/approved or has activity). Wiki-only games are absent
+		// (created/claimed/approved or has activity). Galgame-only games are absent
 		// ⇒ IsOnForum=false and their view/like/platform/language stay zero/empty
 		// (the frontend hides those rather than showing misleading zeros).
 		_, onForum := localMap[g.ID]
@@ -115,13 +115,13 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 			User:         userBriefToDTO(userMap[g.UserID]),
 			ContentLimit: g.ContentLimit,
 			// View is a kungal-local stat (each site has its own audience),
-			// not metadata; pull from the local stats row instead of wiki.
+			// not metadata; pull from the local stats row instead of galgame.
 			View:               localMap[g.ID].View,
 			LikeCount:          localMap[g.ID].LikeCount,
 			ResourceUpdateTime: g.ResourceUpdateTime,
 			ReleaseDate:        g.ReleaseDate,
 			ReleaseDateTBA:     g.ReleaseDateTBA,
-			// "" for non-calendar sources (wiki only emits it on calendar
+			// "" for non-calendar sources (galgame only emits it on calendar
 			// endpoints) — the calendar FE reads it; other pages ignore it.
 			ReleasePrecision: g.ReleasePrecision,
 			// 2 = unclaimed VNDB draft (calendar only) → FE renders a 未发布
@@ -129,7 +129,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.WikiGalgameIt
 			Status: g.Status,
 			// U2: card carries only the derived banner; cdn_url/
 			// effective_banner_url is injected by client.rewriteBanners
-			// walker. banner_image_hash retired in wiki PR5 (K-PR6).
+			// walker. banner_image_hash retired in galgame PR5 (K-PR6).
 			EffectiveBannerHash:      g.EffectiveBannerHash,
 			EffectiveBannerURL:       g.EffectiveBannerURL,
 			EffectiveBannerWidth:     g.EffectiveBannerWidth,

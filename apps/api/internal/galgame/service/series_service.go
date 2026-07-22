@@ -12,40 +12,40 @@ import (
 )
 
 type SeriesService struct {
-	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	galgameClient *client.GalgameClient
+	enricher      *GalgameEnricher
 }
 
-func NewSeriesService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *SeriesService {
-	return &SeriesService{wikiClient: wikiClient, enricher: enricher}
+func NewSeriesService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *SeriesService {
+	return &SeriesService{galgameClient: galgameClient, enricher: enricher}
 }
 
 // ──────────────────────────────────────────
-// Wiki response shapes (parsing-only)
+// Galgame response shapes (parsing-only)
 // ──────────────────────────────────────────
 
-type wikiSeriesListItem struct {
-	ID           int                   `json:"id"`
-	Name         string                `json:"name"`
-	Description  string                `json:"description"`
-	Galgame      []dto.WikiGalgameItem `json:"galgame"`
-	GalgameCount int                   `json:"galgame_count"`
-	Created      string                `json:"created"`
-	Updated      string                `json:"updated"`
+type nextMoeSeriesListItem struct {
+	ID           int                      `json:"id"`
+	Name         string                   `json:"name"`
+	Description  string                   `json:"description"`
+	Galgame      []dto.NextMoeGalgameItem `json:"galgame"`
+	GalgameCount int                      `json:"galgame_count"`
+	Created      string                   `json:"created"`
+	Updated      string                   `json:"updated"`
 }
 
-type wikiSeriesListResp struct {
-	Items []wikiSeriesListItem `json:"items"`
-	Total int64                `json:"total"`
+type nextMoeSeriesListResp struct {
+	Items []nextMoeSeriesListItem `json:"items"`
+	Total int64                   `json:"total"`
 }
 
-type wikiSeriesDetail struct {
-	ID          int                   `json:"id"`
-	Name        string                `json:"name"`
-	Description string                `json:"description"`
-	Galgame     []dto.WikiGalgameItem `json:"galgame"`
-	Created     string                `json:"created"`
-	Updated     string                `json:"updated"`
+type nextMoeSeriesDetail struct {
+	ID          int                      `json:"id"`
+	Name        string                   `json:"name"`
+	Description string                   `json:"description"`
+	Galgame     []dto.NextMoeGalgameItem `json:"galgame"`
+	Created     string                   `json:"created"`
+	Updated     string                   `json:"updated"`
 }
 
 // ──────────────────────────────────────────
@@ -61,7 +61,7 @@ func (s *SeriesService) GetList(
 	req *dto.SeriesListRequest,
 	isSFW bool,
 ) (*dto.SeriesListPage, *errors.AppError) {
-	// NSFW gating MUST be reflected as content_limit to the wiki (single source
+	// NSFW gating MUST be reflected as content_limit to the galgame (single source
 	// of truth; §16) — it defaults to sfw when omitted. On the LIST this makes
 	// galgame_count reflect the right rating: without it an all-NSFW series
 	// reports count 0 in NSFW mode, so the count-gated backfill below never runs
@@ -75,14 +75,14 @@ func (s *SeriesService) GetList(
 		"page": {"1"}, "limit": {"500"}, "include": {"galgame"},
 		"content_limit": {contentLimit},
 	}
-	data, appErr := s.wikiClient.Get(ctx, "/series", query)
+	data, appErr := s.galgameClient.Get(ctx, "/series", query)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiSeriesListResp
+	var parsed nextMoeSeriesListResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	// Backfill galgame arrays where the list endpoint omitted them — with the
@@ -120,24 +120,24 @@ func (s *SeriesService) GetList(
 }
 
 // backfillGalgames fetches the full galgame list for series whose included
-// galgame slice is INCOMPLETE (fewer than galgame_count). The wiki list endpoint
+// galgame slice is INCOMPLETE (fewer than galgame_count). The galgame list endpoint
 // returns sparse galgame arrays — usually empty, but sometimes PARTIAL (e.g. 2
 // of 14, as for series 51). The old "only when empty" check left those partial
 // series stuck at their handful of games, so the card's 5-cover montage showed
 // far fewer covers than the series has. Backfilling whenever len < count fixes
 // both the empty and the partial case.
-func (s *SeriesService) backfillGalgames(ctx context.Context, items []wikiSeriesListItem, contentLimit string) {
+func (s *SeriesService) backfillGalgames(ctx context.Context, items []nextMoeSeriesListItem, contentLimit string) {
 	q := url.Values{"content_limit": {contentLimit}}
 	for i := range items {
 		if items[i].GalgameCount == 0 || len(items[i].Galgame) >= items[i].GalgameCount {
 			continue
 		}
-		data, err := s.wikiClient.Get(ctx, fmt.Sprintf("/series/%d", items[i].ID), q)
+		data, err := s.galgameClient.Get(ctx, fmt.Sprintf("/series/%d", items[i].ID), q)
 		if err != nil {
 			continue
 		}
 		var parsed struct {
-			Galgame []dto.WikiGalgameItem `json:"galgame"`
+			Galgame []dto.NextMoeGalgameItem `json:"galgame"`
 		}
 		if json.Unmarshal(data, &parsed) == nil {
 			items[i].Galgame = parsed.Galgame
@@ -160,14 +160,14 @@ func (s *SeriesService) GetDetail(
 	if isSFW {
 		contentLimit = "sfw"
 	}
-	data, appErr := s.wikiClient.Get(ctx, "/series/"+seriesID, url.Values{"content_limit": {contentLimit}})
+	data, appErr := s.galgameClient.Get(ctx, "/series/"+seriesID, url.Values{"content_limit": {contentLimit}})
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiSeriesDetail
+	var parsed nextMoeSeriesDetail
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	filtered := s.enricher.FilterSFW(parsed.Galgame, isSFW)

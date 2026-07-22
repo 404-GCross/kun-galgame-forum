@@ -29,7 +29,7 @@ type GalgameRating struct {
 	// `ON DELETE RESTRICT` at the DB level (see 000_baseline.up.sql).
 	// Deleting a galgame while ratings exist will fail with a
 	// foreign_key_violation — by design, since ratings are user-authored
-	// content that should not vanish silently with the wiki entity.
+	// content that should not vanish silently with the galgame entity.
 	// (`constraint:OnDelete:RESTRICT` is a doc tag only — GORM only
 	//  acts on it under AutoMigrate, which this project doesn't run.)
 	GalgameID int `gorm:"column:galgame_id;not null;constraint:OnDelete:RESTRICT" json:"galgame_id"`

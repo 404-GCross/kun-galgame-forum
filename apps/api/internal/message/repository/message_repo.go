@@ -134,8 +134,8 @@ func (r *MessageRepository) GetSystemReadCursor(userID int) (int64, error) {
 //
 // GREATEST() ensures the cursor only moves forward — stale "mark all
 // read" requests from a tab still showing yesterday's max id can't
-// rewind a fresher cursor written by another tab. Mirrors the wiki
-// repository pattern (see WikiMessageRepository.UpsertForward).
+// rewind a fresher cursor written by another tab. Mirrors the galgame
+// repository pattern (see GalgameMessageRepository.UpsertForward).
 func (r *MessageRepository) UpsertSystemReadCursorForward(userID int, lastReadID int64) error {
 	return r.db.Exec(`
 		INSERT INTO system_message_read_state (user_id, last_read_message_id, updated_at)

@@ -87,7 +87,7 @@ func (r *ResourceRepository) FindByID(id int) (model.GalgameResourceRow, bool) {
 
 // IsResourcePublishBanned reports whether a moderator has forbidden publishing
 // download resources under this galgame (migration 061). No local row (a
-// never-ingested wiki game) ⇒ not banned.
+// never-ingested galgame game) ⇒ not banned.
 func (r *ResourceRepository) IsResourcePublishBanned(galgameID int) bool {
 	var banned []bool
 	r.db.Table("galgame").Where("id = ?", galgameID).Pluck("resource_publish_banned", &banned)
@@ -95,7 +95,7 @@ func (r *ResourceRepository) IsResourcePublishBanned(galgameID int) bool {
 }
 
 // SetResourcePublishBanned upserts the local galgame row and sets the ban flag,
-// so a moderator can pre-ban a wiki game the forum has never ingested.
+// so a moderator can pre-ban a galgame game the forum has never ingested.
 func (r *ResourceRepository) SetResourcePublishBanned(galgameID int, banned bool) error {
 	return r.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},

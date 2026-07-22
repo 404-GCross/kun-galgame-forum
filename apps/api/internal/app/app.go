@@ -17,7 +17,7 @@ import (
 	docService "kun-galgame-api/internal/doc/service"
 	friendHandler "kun-galgame-api/internal/friendlink/handler"
 	friendRepo "kun-galgame-api/internal/friendlink/repository"
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	galgameHandler "kun-galgame-api/internal/galgame/handler"
 	galgameRepo "kun-galgame-api/internal/galgame/repository"
 	galgameService "kun-galgame-api/internal/galgame/service"
@@ -134,9 +134,9 @@ type App struct {
 	GalgameEntityHandler           *galgameHandler.EntityHandler
 	GalgameCalendarHandler         *galgameHandler.CalendarHandler
 	GalgameDraftsHandler           *galgameHandler.DraftsHandler
-	GalgameWikiHandler             *galgameHandler.WikiHandler
+	GalgameProxyHandler            *galgameHandler.GalgameProxyHandler
 	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
-	GalgameMessageHandler          *galgameHandler.WikiMessageHandler
+	GalgameMessageHandler          *galgameHandler.GalgameMessageHandler
 	GalgameCrossSourceHandler      *galgameHandler.CrossSourceHandler
 	GalgameEditHandler             *galgameHandler.EditHandler
 	ActivityHandler                *activityHandler.ActivityHandler
@@ -180,7 +180,7 @@ func New(cfg *config.Config) *App {
 	// feeds (/galgame/messages/feed, /galgame/revisions/recent) ride the same
 	// internal face + key (service identity). Bearer-required endpoints still
 	// use a per-request token forwarded from the user session.
-	gc := galgameClient.New(
+	gc := client.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
@@ -195,7 +195,7 @@ func New(cfg *config.Config) *App {
 		BaseURL:      cfg.OAuth.ServerURL,
 		ClientID:     cfg.OAuth.ClientID,
 		ClientSecret: cfg.OAuth.ClientSecret,
-		// Same image_service CDN base the wiki client uses — lets userclient
+		// Same image_service CDN base the galgame client uses — lets userclient
 		// resolve users' avatar_image_hash into URLs (new avatars store only the
 		// hash; the legacy `avatar` field is empty).
 		ImageCDNBase: cfg.NextMoeAPI.ImageCDNBase,
@@ -212,7 +212,7 @@ func New(cfg *config.Config) *App {
 	// downstream service-level `imgCli == nil` guard actually fires when
 	// the operator forgot to set KUN_IMAGE_CLIENT_ID/SECRET — and
 	// surfaces "图片上传服务未配置" instead of a misleading image_service
-	// 401 when the user tries to upload. Mirrors the wiki side's same
+	// 401 when the user tries to upload. Mirrors the galgame side's same
 	// guard pattern. A loud warn-on-startup so ops notices early.
 	var imgCli *imageclient.Client
 	if cfg.ImageClient.ClientID != "" && cfg.ImageClient.ClientSecret != "" {
@@ -470,25 +470,25 @@ func New(cfg *config.Config) *App {
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
-	galgameWikiSvc := galgameService.NewWikiService(gc, galgameLocalRepo, uc)
+	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
 	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, galgameLocalRepo)
-	// Cross-source read face (step 36): three-source scores + site stats (wiki
+	// Cross-source read face (step 36): three-source scores + site stats (galgame
 	// passthrough) and catalog credits / entity reverse-lookups (catalog S2S
 	// passthrough) for the galgame detail page. Pure GET passthrough — no local
 	// state.
 	galgameCrossSourceSvc := galgameService.NewCrossSourceService(gc, catalogCli)
 
-	// Wiki message stream: user notifications + admin queue + per-user
+	// Galgame message stream: user notifications + admin queue + per-user
 	// "read up to" cursor. The cron-driven ingestion lives in
 	// galgameMessageSync below.
-	galgameMessageRepo := galgameRepo.NewWikiMessageRepository(db)
-	galgameMessageSvc := galgameService.NewWikiMessageService(gc, galgameMessageRepo)
-	galgameMessageSync := galgameService.NewWikiMessageSync(gc, galgameLocalRepo, userStateRepo, rdb)
-	// Mirrors wiki merged-revision (edit) events into galgame_activity so the
+	galgameMessageRepo := galgameRepo.NewGalgameMessageRepository(db)
+	galgameMessageSvc := galgameService.NewGalgameMessageService(gc, galgameMessageRepo)
+	galgameMessageSync := galgameService.NewGalgameMessageSync(gc, galgameLocalRepo, userStateRepo, rdb)
+	// Mirrors galgame merged-revision (edit) events into galgame_activity so the
 	// forum activity timeline can show galgame edits (see migration 021).
-	galgameRevisionSync := galgameService.NewWikiRevisionSync(gc, db, rdb)
+	galgameRevisionSync := galgameService.NewGalgameRevisionSync(gc, db, rdb)
 
 	// Website
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
@@ -543,7 +543,7 @@ func New(cfg *config.Config) *App {
 	// Trust & Safety enforcement adapters — the "thin adapter" half of the
 	// pipeline: each subject_kind wires hide/remove/author-lookup to existing
 	// services/repos. galgame + user are ABSENT (human-only: galgame moderation
-	// is wiki-side, user bans are IdP-side), so their callbacks no-op locally.
+	// is galgame-side, user bans are IdP-side), so their callbacks no-op locally.
 	//
 	// galgame_comment is a legacy subject_kind: its rows migrated to community
 	// posts (charter step 06a), so enforcement resolves the legacy id through the
@@ -646,9 +646,9 @@ func New(cfg *config.Config) *App {
 		),
 		GalgameCalendarHandler:     galgameHandler.NewCalendarHandler(galgameCalendarSvc),
 		GalgameDraftsHandler:       galgameHandler.NewDraftsHandler(galgameDraftsSvc),
-		GalgameWikiHandler:         galgameHandler.NewWikiHandler(galgameWikiSvc),
+		GalgameProxyHandler:        galgameHandler.NewGalgameProxyHandler(galgameProxySvc),
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
-		GalgameMessageHandler:      galgameHandler.NewWikiMessageHandler(galgameMessageSvc),
+		GalgameMessageHandler:      galgameHandler.NewGalgameMessageHandler(galgameMessageSvc),
 		GalgameCrossSourceHandler:  galgameHandler.NewCrossSourceHandler(galgameCrossSourceSvc),
 		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),

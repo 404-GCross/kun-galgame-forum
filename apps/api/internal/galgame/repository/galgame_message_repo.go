@@ -8,25 +8,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// WikiMessageRepository owns the kungal-local wiki_message_read_state table.
-// The wiki messages themselves live in the wiki service; we just track each
+// GalgameMessageRepository owns the kungal-local wiki_message_read_state table.
+// The galgame messages themselves live in the galgame service; we just track each
 // user's "read up to" cursor so the frontend can compute unread counts.
-type WikiMessageRepository struct {
+type GalgameMessageRepository struct {
 	db *gorm.DB
 }
 
-func NewWikiMessageRepository(db *gorm.DB) *WikiMessageRepository {
-	return &WikiMessageRepository{db: db}
+func NewGalgameMessageRepository(db *gorm.DB) *GalgameMessageRepository {
+	return &GalgameMessageRepository{db: db}
 }
 
 // FindOrZero returns the user's read-state row, or a zero-valued struct
 // (UserID set, LastReadMessageID=0) when the user has never marked any
 // message as read.
-func (r *WikiMessageRepository) FindOrZero(userID int) (*model.WikiMessageReadState, error) {
-	var row model.WikiMessageReadState
+func (r *GalgameMessageRepository) FindOrZero(userID int) (*model.GalgameMessageReadState, error) {
+	var row model.GalgameMessageReadState
 	err := r.db.First(&row, "user_id = ?", userID).Error
 	if stderrors.Is(err, gorm.ErrRecordNotFound) {
-		return &model.WikiMessageReadState{UserID: userID}, nil
+		return &model.GalgameMessageReadState{UserID: userID}, nil
 	}
 	return &row, err
 }
@@ -39,7 +39,7 @@ func (r *WikiMessageRepository) FindOrZero(userID int) (*model.WikiMessageReadSt
 // Implemented as raw INSERT...ON CONFLICT to use Postgres's GREATEST() —
 // expressing this through GORM's clause builder is uglier than just
 // writing the SQL.
-func (r *WikiMessageRepository) UpsertForward(userID int, lastReadID int64) error {
+func (r *GalgameMessageRepository) UpsertForward(userID int, lastReadID int64) error {
 	return r.db.Exec(`
 		INSERT INTO wiki_message_read_state (user_id, last_read_message_id, updated_at)
 		VALUES (?, ?, NOW())

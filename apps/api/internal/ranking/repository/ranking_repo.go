@@ -37,9 +37,9 @@ var topicSortColumn = map[string]string{
 // userCountSource maps the FE's user-ranking sort names to a LOCAL table whose
 // per-user COUNT(*) is the ranking value. `moemoepoint` is handled separately
 // (it's a kungal_user_state column, not a count). The `galgame` ("Galgame 数")
-// metric is intentionally absent: post-wiki-migration the local `galgame`
+// metric is intentionally absent: post-galgame-migration the local `galgame`
 // table has no creator column, so it has no local source — ranking by it would
-// need wiki data (infra-owned).
+// need galgame data (infra-owned).
 var userCountSource = map[string]struct {
 	table string
 	where string
@@ -143,7 +143,7 @@ func (r *RankingRepository) FindGalgameLocal(sortField, sortOrder string, page, 
 // can't crawl NSFW topics through the ranking page (and so cookie-off
 // users get a clean list). is_nsfw is kungal-local data, so the filter
 // is correctly applied at the SQL layer here (unlike galgame.content_limit
-// which lives only on wiki).
+// which lives only on galgame).
 func (r *RankingRepository) FindTopicRanking(sortField, sortOrder string, page, limit int, isSFW bool) []TopicRankingRow {
 	var rows []TopicRankingRow
 	col := topicSortColumn[sortField]

@@ -11,18 +11,18 @@ import (
 )
 
 type EngineService struct {
-	wikiClient *client.GalgameClient
+	galgameClient *client.GalgameClient
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
-	// over the engine's member ids (the wiki can't filter by kungal-local
+	// over the engine's member ids (the galgame can't filter by kungal-local
 	// resource data). See GetDetail.
 	galgameSvc *GalgameService
 }
 
-func NewEngineService(wikiClient *client.GalgameClient, galgameSvc *GalgameService) *EngineService {
-	return &EngineService{wikiClient: wikiClient, galgameSvc: galgameSvc}
+func NewEngineService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *EngineService {
+	return &EngineService{galgameClient: galgameClient, galgameSvc: galgameSvc}
 }
 
-type wikiEngineListItem struct {
+type nextMoeEngineListItem struct {
 	ID           int      `json:"id"`
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
@@ -32,28 +32,28 @@ type wikiEngineListItem struct {
 	Updated      string   `json:"updated"`
 }
 
-type wikiEngineDetail struct {
+type nextMoeEngineDetail struct {
 	ID          int      `json:"id"`
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Alias       []string `json:"alias"`
 }
 
-type wikiEngineDetailResp struct {
-	Engine   wikiEngineDetail      `json:"engine"`
-	Galgames []dto.WikiGalgameItem `json:"galgames"`
-	Total    int64                 `json:"total"`
+type nextMoeEngineDetailResp struct {
+	Engine   nextMoeEngineDetail      `json:"engine"`
+	Galgames []dto.NextMoeGalgameItem `json:"galgames"`
+	Total    int64                    `json:"total"`
 }
 
 // GetList — GET /galgame-engine
 func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/engine", nil)
+	data, appErr := s.galgameClient.Get(ctx, "/engine", nil)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var engines []wikiEngineListItem
+	var engines []nextMoeEngineListItem
 	if err := json.Unmarshal(data, &engines); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	items := make([]dto.EngineListItem, len(engines))
@@ -78,7 +78,7 @@ func (s *EngineService) GetDetail(
 ) (*dto.EngineDetail, *errors.AppError) {
 	// Entity detail lists the forum-LOCAL subset of the engine's catalogue, so
 	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
-	// engine's metadata is used from the wiki here (cheapest page); the galgame
+	// engine's metadata is used from the galgame here (cheapest page); the galgame
 	// list is recomputed locally from the member ids below.
 	q := withSFWFilter(rawQuery, isSFW)
 	// Resolve by the engine_id QUERY param (the :name path is cosmetic — 04-taxonomy),
@@ -86,20 +86,20 @@ func (s *EngineService) GetDetail(
 	q.Set("engine_id", name)
 	q.Set("page", "1")
 	q.Set("limit", "1")
-	data, appErr := s.wikiClient.Get(ctx, "/engine/"+name, q)
+	data, appErr := s.galgameClient.Get(ctx, "/engine/"+name, q)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed wikiEngineDetailResp
+	var parsed nextMoeEngineDetailResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	e := parsed.Engine
 
-	// Member ids from the wiki, then the SAME local filter/sort/paginate as
+	// Member ids from the galgame, then the SAME local filter/sort/paginate as
 	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
-	memberIDs, appErr := s.wikiClient.EntityGalgameIDs(ctx, "engine", e.ID)
+	memberIDs, appErr := s.galgameClient.EntityGalgameIDs(ctx, "engine", e.ID)
 	if appErr != nil {
 		return nil, appErr
 	}

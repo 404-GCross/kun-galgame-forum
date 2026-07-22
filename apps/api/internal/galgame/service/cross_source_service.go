@@ -12,32 +12,32 @@ import (
 
 // CrossSourceService is the BFF read face for the galgame detail page's
 // cross-source data (steps 34 + 36): the three-source scores + site stats
-// proxied from the wiki's public read face, and the catalog credits / entity
+// proxied from the galgame's public read face, and the catalog credits / entity
 // reverse-lookups proxied from the infra catalog service (S2S Basic). Every
 // method is a verbatim GET passthrough — no local enrichment, no DB — so the
-// wiki / catalog contract IS the forum's exit contract, and the 37 frontend
+// galgame / catalog contract IS the forum's exit contract, and the 37 frontend
 // reads the infra shape (docs/integration/galgame_wiki/10 + docs/catalog).
 type CrossSourceService struct {
-	wikiClient    *client.GalgameClient
+	galgameClient *client.GalgameClient
 	catalogClient *catalogclient.Client
 }
 
-func NewCrossSourceService(wikiClient *client.GalgameClient, catalogClient *catalogclient.Client) *CrossSourceService {
-	return &CrossSourceService{wikiClient: wikiClient, catalogClient: catalogClient}
+func NewCrossSourceService(galgameClient *client.GalgameClient, catalogClient *catalogclient.Client) *CrossSourceService {
+	return &CrossSourceService{galgameClient: galgameClient, catalogClient: catalogClient}
 }
 
 // ──────────────────────────────────────────
-// Scores / stats (wiki passthrough)
+// Scores / stats (galgame passthrough)
 // ──────────────────────────────────────────
 
 // Scores proxies GET /galgame/:gid/scores (three-source rating snapshot).
 func (s *CrossSourceService) Scores(ctx context.Context, gid int) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.Scores(ctx, gid)
+	return s.galgameClient.Scores(ctx, gid)
 }
 
 // Stats proxies GET /galgame/stats, preserving the ETag / 304 conditional cache.
 func (s *CrossSourceService) Stats(ctx context.Context, ifNoneMatch string) (*client.StatsResult, *errors.AppError) {
-	return s.wikiClient.Stats(ctx, ifNoneMatch)
+	return s.galgameClient.Stats(ctx, ifNoneMatch)
 }
 
 // ──────────────────────────────────────────

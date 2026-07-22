@@ -32,7 +32,7 @@ type UserGalgameCard struct {
 	ResourceUpdateTime string      `json:"resource_update_time"`
 	Platform           []string    `json:"platform"`
 	Language           []string    `json:"language"`
-	// Wiki U1: `released` (free-form string) was replaced by release_date
+	// Galgame U1: `released` (free-form string) was replaced by release_date
 	// + release_date_tba. FE GalgameCard.release_date is optional, so we
 	// pass through the *string (nil → JSON null) and let the FE collapse
 	// missing dates to "未知".

@@ -258,7 +258,7 @@ func (r *GalgameCollectionRepository) GalgamesOnlyInCollection(tx *gorm.DB, coll
 // ── galgame_local favorite_count side-effects ──
 
 // EnsureGalgameLocal lazy-creates the local stub so favorite_count updates land
-// (a never-ingested wiki-catalogue game has no local row yet). Same rationale as
+// (a never-ingested galgame-catalogue game has no local row yet). Same rationale as
 // GalgameInteractionRepository.ToggleLike.
 func (r *GalgameCollectionRepository) EnsureGalgameLocal(tx *gorm.DB, galgameID int) error {
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).

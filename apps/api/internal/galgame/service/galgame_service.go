@@ -31,7 +31,7 @@ type GalgameService struct {
 	resourceMetaRepo *repository.GalgameResourceMetaRepository
 	detailRatingRepo *repository.GalgameDetailRatingRepository
 	stateRepo        *userRepo.StateRepository
-	wikiClient       *client.GalgameClient
+	galgameClient    *client.GalgameClient
 	userClient       *userclient.Client
 	helpers          InteractionHelpers
 }
@@ -43,7 +43,7 @@ func NewGalgameService(
 	resourceMetaRepo *repository.GalgameResourceMetaRepository,
 	detailRatingRepo *repository.GalgameDetailRatingRepository,
 	stateRepo *userRepo.StateRepository,
-	wikiClient *client.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 ) *GalgameService {
 	return &GalgameService{
@@ -53,7 +53,7 @@ func NewGalgameService(
 		resourceMetaRepo: resourceMetaRepo,
 		detailRatingRepo: detailRatingRepo,
 		stateRepo:        stateRepo,
-		wikiClient:       wikiClient,
+		galgameClient:    galgameClient,
 		userClient:       userClient,
 	}
 }
@@ -62,18 +62,18 @@ func NewGalgameService(
 // Create — POST /galgame
 // ──────────────────────────────────────────
 
-// Create forwards the payload to wiki, then awards moemoepoint and creates
-// the local stub row for the new galgame. Returns the raw wiki response body
+// Create forwards the payload to galgame, then awards moemoepoint and creates
+// the local stub row for the new galgame. Returns the raw galgame response body
 // so the handler can forward it verbatim.
 //
 // Daily-limit policy (mirrors topic create, formerly nitro
 // api/galgame/index.post.ts:43): a user can create at most
 // `moemoepoint/10 + 1` galgames per 24h. The limit is checked BEFORE the
-// wiki call so we don't pollute wiki with rejects, using wiki's own
+// galgame call so we don't pollute galgame with rejects, using galgame's own
 // `galgame_created_today` stat as the canonical day-count (kungal has no
 // local creation log post-migration). There's still a thin race window
-// between the check and wiki accepting the create — acceptable because
-// wiki rejects duplicate vndb_id, which is the main spam vector.
+// between the check and galgame accepting the create — acceptable because
+// galgame rejects duplicate vndb_id, which is the main spam vector.
 //
 // Post-success local side effects (stub row + moemoepoint +3) run inside
 // a single transaction with SELECT … FOR UPDATE on kungal_user_state, so
@@ -91,34 +91,34 @@ func (s *GalgameService) Create(
 		return nil, errors.ErrNotFound("未找到该用户")
 	}
 	dailyLimit := int64(state.Moemoepoint/10 + 1)
-	if wikiStats, sErr := s.wikiClient.GetUserStats(ctx, userID); sErr == nil && wikiStats != nil {
-		if wikiStats.GalgameCreatedToday >= dailyLimit {
+	if galgameStats, sErr := s.galgameClient.GetUserStats(ctx, userID); sErr == nil && galgameStats != nil {
+		if galgameStats.GalgameCreatedToday >= dailyLimit {
 			return nil, errors.ErrBadRequest("您今日发布的 Galgame 已达上限")
 		}
 	}
-	// On wiki stats failure we choose to allow the create rather than
-	// hard-fail — wiki itself remains the authority on VNDB-ID uniqueness.
+	// On galgame stats failure we choose to allow the create rather than
+	// hard-fail — galgame itself remains the authority on VNDB-ID uniqueness.
 
-	// Forward to wiki.
-	data, appErr := s.wikiClient.PostWithToken(ctx, "/galgame", token, json.RawMessage(body), contentType)
+	// Forward to galgame.
+	data, appErr := s.galgameClient.PostWithToken(ctx, "/galgame", token, json.RawMessage(body), contentType)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var created dto.WikiCreatedResp
+	var created dto.NextMoeCreatedResp
 	_ = json.Unmarshal(data, &created)
 
 	if created.ID > 0 {
 		// Local stub so the galgame appears in kungal's list query. Idempotent
 		// (OnConflict DoNothing), so no row lock needed. Log-only on failure:
-		// the wiki create already succeeded; a missing stub self-heals on the
+		// the galgame create already succeeded; a missing stub self-heals on the
 		// first interaction (lazy stub) and the approved-cron stub seed.
 		if err := s.galgameRepo.CreateLocalStub(s.galgameRepo.DB(), created.ID); err != nil {
 			slog.Warn("创建本地 galgame stub 失败", "gid", created.ID, "error", err)
 		}
 		// NOTE: deliberately no moemoepoint award here. A fresh create lands as
-		// status=pending on the wiki; +RewardCreateGalgame is granted exactly
-		// once when it is actually approved, via the wiki "approved" message in
+		// status=pending on the galgame; +RewardCreateGalgame is granted exactly
+		// once when it is actually approved, via the galgame "approved" message in
 		// wiki_message_sync (Ref "galgame"). Awarding at create time too would
 		// double-count (the same galgame paid twice) and would pay out for
 		// content that may yet be declined.
@@ -168,7 +168,7 @@ func (s *GalgameService) GetMyInteractions(userID int) dto.MyGalgameInteractions
 }
 
 // fetchOwnerAndName reads the galgame's owner user_id AND a display name from
-// wiki in ONE request (0 / "" on any failure). The name becomes the notification
+// galgame in ONE request (0 / "" on any failure). The name becomes the notification
 // content preview so a favorite/like notice shows WHICH galgame instead of a
 // blank line — see the CreateGalgameMessageWithContent callers below.
 //
@@ -177,7 +177,7 @@ func (s *GalgameService) GetMyInteractions(userID int) dto.MyGalgameInteractions
 // is LAST on purpose: a JP/CN-titled game must never surface its VNDB English
 // name when a Chinese or Japanese name exists.
 func (s *GalgameService) fetchOwnerAndName(ctx context.Context, galgameID int) (int, string) {
-	data, err := s.wikiClient.Get(ctx, fmt.Sprintf("/galgame/%d", galgameID), nil)
+	data, err := s.galgameClient.Get(ctx, fmt.Sprintf("/galgame/%d", galgameID), nil)
 	if err != nil {
 		return 0, ""
 	}
@@ -210,16 +210,16 @@ func firstNonEmpty(vals ...string) string {
 // GetDetail — GET /galgame/:gid
 // ──────────────────────────────────────────
 
-// GetDetail aggregates wiki metadata + local interaction stats into the
+// GetDetail aggregates galgame metadata + local interaction stats into the
 // full detail payload.
 //
 // token (Bearer access token from session, may be empty) is forwarded to
-// wiki so its visibility filter sees the caller's identity — the
+// galgame so its visibility filter sees the caller's identity — the
 // submitter of a pending draft can view their own row, an authenticated
 // user can see VNDB-source drafts, etc. Anonymous viewers get the same
 // behavior as before (status=0 only).
 //
-// NSFW is NOT gated here — wiki's /galgame/:gid default is "不过滤"
+// NSFW is NOT gated here — galgame's /galgame/:gid default is "不过滤"
 // (docs/galgame_wiki/00-handbook §16.2: direct URL access is "有意为之").
 // We deliberately let the response carry contentLimit through to the FE
 // and let the FE decide UX: anonymous + SFW-cookie users see a "click
@@ -232,16 +232,16 @@ func (s *GalgameService) GetDetail(
 	token string,
 	isSFW bool,
 ) (*dto.GalgameDetail, *errors.AppError) {
-	wikiData, appErr := s.wikiClient.GetWithToken(
+	galgameData, appErr := s.galgameClient.GetWithToken(
 		ctx, fmt.Sprintf("/galgame/%d", galgameID), token, nil,
 	)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed dto.WikiGalgameDetailFullResp
-	if err := json.Unmarshal(wikiData, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+	var parsed dto.NextMoeGalgameDetailFullResp
+	if err := json.Unmarshal(galgameData, &parsed); err != nil {
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 	g := parsed.Galgame
 	if g.Status == 1 {
@@ -263,12 +263,12 @@ func (s *GalgameService) GetDetail(
 
 	ratings := s.buildDetailRatings(ctx, galgameID, currentUserID, g)
 
-	detail := galgameDetailFromWiki(g, parsed.Users)
+	detail := galgameDetailFromNextMoe(g, parsed.Users)
 	detail.View = local.View
 	detail.LikeCount = local.LikeCount
 	detail.FavoriteCount = local.FavoriteCount
 	detail.ResourcePublishBanned = local.ResourcePublishBanned
-	// No local row ⇒ a wiki-catalogue game the forum has never ingested. The FE
+	// No local row ⇒ a galgame-catalogue game the forum has never ingested. The FE
 	// then shows a 未收录 notice + hides the (always-0) view count, but keeps the
 	// upload/rate/comment CTAs that create the local row on first use.
 	detail.IsOnForum = local.ID != 0
@@ -293,14 +293,14 @@ func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isS
 	if isSFW {
 		contentLimit = "sfw"
 	}
-	data, err := s.wikiClient.Get(
+	data, err := s.galgameClient.Get(
 		ctx, fmt.Sprintf("/series/%d", seriesID),
 		url.Values{"content_limit": {contentLimit}},
 	)
 	if err != nil {
 		return nil
 	}
-	var brief dto.WikiSeriesBrief
+	var brief dto.NextMoeSeriesBrief
 	if jsonErr := json.Unmarshal(data, &brief); jsonErr != nil {
 		return nil
 	}
@@ -342,7 +342,7 @@ func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isS
 func (s *GalgameService) buildDetailRatings(
 	ctx context.Context,
 	galgameID, currentUserID int,
-	g dto.WikiGalgameDetailFull,
+	g dto.NextMoeGalgameDetailFull,
 ) []dto.GalgameDetailRating {
 	rows := s.detailRatingRepo.FindRatingsByGalgame(galgameID)
 	if len(rows) == 0 {
@@ -383,7 +383,7 @@ func (s *GalgameService) GetList(
 		sortOrder = "desc"
 	}
 
-	// Resolve the release-date filter (wiki §17 "YYYY"/"YYYY-MM") to
+	// Resolve the release-date filter (galgame §17 "YYYY"/"YYYY-MM") to
 	// inclusive date boundaries. Malformed input is a client error, not
 	// a silently-ignored param.
 	releasedFrom, err := utils.ParseReleaseLowerBound(req.ReleasedFrom)
@@ -422,10 +422,10 @@ func (s *GalgameService) GetList(
 }
 
 // hydrateListCards runs the shared "filter → ids → hydrate → cards" flow used by
-// BOTH the global /galgame list AND the wiki-entity detail pages (tag/official/
-// engine, which set filter.RestrictIDs = the wiki member ids). All filtering /
+// BOTH the global /galgame list AND the galgame-entity detail pages (tag/official/
+// engine, which set filter.RestrictIDs = the galgame member ids). All filtering /
 // sorting / pagination is local (list_repo over galgame_resource); hydration
-// pulls wiki metadata + OAuth users + local stats/ratings/resource-meta. Keeping
+// pulls galgame metadata + OAuth users + local stats/ratings/resource-meta. Keeping
 // this in one place is why the entity pages add zero duplicated filter logic.
 func (s *GalgameService) hydrateListCards(
 	ctx context.Context,
@@ -433,8 +433,8 @@ func (s *GalgameService) hydrateListCards(
 	isSFW bool,
 ) (*dto.GalgameListPage, *errors.AppError) {
 	// Note: `total` from listRepo is the count of kungal-known galgames (stats
-	// rows) and can over-report when wiki drops NSFW briefs in SFW mode; an exact
-	// total requires the public list to source from wiki's /galgame, not kungal's
+	// rows) and can over-report when galgame drops NSFW briefs in SFW mode; an exact
+	// total requires the public list to source from galgame's /galgame, not kungal's
 	// local stats — out of scope here.
 	ids, total := s.listRepo.ListIDs(filter)
 	if len(ids) == 0 {
@@ -448,14 +448,14 @@ func (s *GalgameService) hydrateListCards(
 }
 
 // HydrateCardsByIDs turns an ORDERED galgame id list into list cards, fusing
-// wiki metadata + OAuth users + local stats/ratings/resource-meta. The output
-// preserves the input order and drops ids the wiki filtered out (NSFW miss /
-// deleted). Shared by the global list, the wiki-entity detail pages, AND the
+// galgame metadata + OAuth users + local stats/ratings/resource-meta. The output
+// preserves the input order and drops ids the galgame filtered out (NSFW miss /
+// deleted). Shared by the global list, the galgame-entity detail pages, AND the
 // collection detail (收藏夹) so none of them duplicate the hydration.
 //
-// SFW gating is delegated to wiki via content_limit per
+// SFW gating is delegated to galgame via content_limit per
 // docs/galgame_wiki/00-handbook §16 — no service-layer post-filter (would
-// violate "wiki is the only NSFW SoT"). A wiki-batch error is surfaced, not
+// violate "galgame is the only NSFW SoT"). A galgame-batch error is surfaced, not
 // silently degraded to a blank list.
 func (s *GalgameService) HydrateCardsByIDs(
 	ctx context.Context,
@@ -466,12 +466,12 @@ func (s *GalgameService) HydrateCardsByIDs(
 		return []dto.GalgameListCard{}, nil
 	}
 
-	briefMap, appErr := s.wikiClient.GetBatchPublic(ctx, ids, isSFW)
+	briefMap, appErr := s.galgameClient.GetBatchPublic(ctx, ids, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	// Users (from wiki briefs) — hydrated from OAuth.
+	// Users (from galgame briefs) — hydrated from OAuth.
 	userIDs := make([]int, 0, len(briefMap))
 	for _, b := range briefMap {
 		userIDs = append(userIDs, b.UserID)
@@ -508,7 +508,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 			Rating:       ratingMap[id].Score,
 			RatingCount:  ratingMap[id].Count,
 			// kungal's own list: the displayed "最近更新" comes from the LOCAL
-			// resource_update_time (the sort key), NOT the wiki's (which never
+			// resource_update_time (the sort key), NOT the galgame's (which never
 			// tracks kungal resource activity) — so order and label agree.
 			ResourceUpdateTime:       localMap[id].ResourceUpdateTime.Format(time.RFC3339),
 			ReleaseDate:              b.ReleaseDate,

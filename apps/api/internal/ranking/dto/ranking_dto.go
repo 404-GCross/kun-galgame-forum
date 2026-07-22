@@ -31,7 +31,7 @@ type TopicRankingRequest struct {
 
 // SortField: moemoepoint reads kungal_user_state; the rest are per-user COUNT(*)
 // over local content tables (see userCountSource). `galgame` is omitted — the
-// local galgame table has no creator column post-wiki-migration.
+// local galgame table has no creator column post-galgame-migration.
 type UserRankingRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
 	Limit     int    `query:"limit" validate:"min=1,max=50"`

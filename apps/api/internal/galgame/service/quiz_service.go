@@ -23,27 +23,27 @@ import (
 )
 
 type QuizService struct {
-	quizRepo   *repository.QuizRepository
-	wikiClient *client.GalgameClient
-	userClient *userclient.Client
-	check      *gate.CheckService
-	scan       *gate.ScanService
-	helpers    InteractionHelpers
+	quizRepo      *repository.QuizRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
+	check         *gate.CheckService
+	scan          *gate.ScanService
+	helpers       InteractionHelpers
 }
 
 func NewQuizService(
 	quizRepo *repository.QuizRepository,
-	wikiClient *client.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	check *gate.CheckService,
 	scan *gate.ScanService,
 ) *QuizService {
 	return &QuizService{
-		quizRepo:   quizRepo,
-		wikiClient: wikiClient,
-		userClient: userClient,
-		check:      check,
-		scan:       scan,
+		quizRepo:      quizRepo,
+		galgameClient: galgameClient,
+		userClient:    userClient,
+		check:         check,
+		scan:          scan,
 	}
 }
 
@@ -798,7 +798,7 @@ func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int
 	if len(galgameIDs) == 0 {
 		return map[int]client.GalgameBrief{}
 	}
-	m, _ := s.wikiClient.GetBatch(ctx, galgameIDs)
+	m, _ := s.galgameClient.GetBatch(ctx, galgameIDs)
 	if m == nil {
 		return map[int]client.GalgameBrief{}
 	}
@@ -809,7 +809,7 @@ func (s *QuizService) fetchBriefsPublic(ctx context.Context, galgameIDs []int, i
 	if len(galgameIDs) == 0 {
 		return map[int]client.GalgameBrief{}
 	}
-	m, _ := s.wikiClient.GetBatchPublic(ctx, galgameIDs, isSFW)
+	m, _ := s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	if m == nil {
 		return map[int]client.GalgameBrief{}
 	}
@@ -826,7 +826,7 @@ func (s *QuizService) fetchBriefsPublic(ctx context.Context, galgameIDs []int, i
 // keeping the picker snappy.
 const quizGalgameSearchLimit = 12
 
-type wikiGalgameSearchRow struct {
+type nextMoeGalgameSearchRow struct {
 	ID int `json:"id"`
 }
 
@@ -834,7 +834,7 @@ func (s *QuizService) SearchGalgameOptions(
 	ctx context.Context, keywords string, isSFW bool,
 ) []dto.QuizGalgameOption {
 	empty := []dto.QuizGalgameOption{}
-	// Use the wiki Meilisearch galgame index (`/galgame/search`) — the SAME
+	// Use the galgame Meilisearch galgame index (`/galgame/search`) — the SAME
 	// accurate, ranked, typo-tolerant search the /search page uses. The old
 	// /series/search is a plain name match (borrowed from the series picker) and
 	// ranked poorly here, so the picker "couldn't find" obvious titles. We only
@@ -846,12 +846,12 @@ func (s *QuizService) SearchGalgameOptions(
 	if isSFW {
 		q.Set("content_limit", "sfw")
 	}
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/search", q)
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/search", q)
 	if appErr != nil {
 		return empty
 	}
 	var resp struct {
-		Items []wikiGalgameSearchRow `json:"items"`
+		Items []nextMoeGalgameSearchRow `json:"items"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return empty
@@ -902,7 +902,7 @@ func (s *QuizService) fetchDetailBriefs(ctx context.Context, ids []int, isSFW bo
 	if len(ids) == 0 {
 		return map[int]client.GalgameDetailBrief{}
 	}
-	m, _ := s.wikiClient.GetBatchDetailPublic(ctx, ids, isSFW)
+	m, _ := s.galgameClient.GetBatchDetailPublic(ctx, ids, isSFW)
 	if m == nil {
 		return map[int]client.GalgameDetailBrief{}
 	}

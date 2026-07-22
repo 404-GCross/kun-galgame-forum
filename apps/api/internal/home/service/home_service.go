@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/home/dto"
 	"kun-galgame-api/internal/home/repository"
 	"kun-galgame-api/pkg/userclient"
@@ -18,7 +18,7 @@ import (
 const (
 	// Public count — the number of galgame cards the homepage actually renders.
 	homeGalgameLimit = 12
-	// Over-fetch factor: wiki may be missing a subset of local IDs (migration
+	// Over-fetch factor: galgame may be missing a subset of local IDs (migration
 	// lag) and the SFW filter drops some too, so we need slack above
 	// homeGalgameLimit to reliably return `homeGalgameLimit` usable cards.
 	homeGalgameFetchLimit = 24
@@ -27,28 +27,28 @@ const (
 
 // homeCacheTTL bounds homepage staleness. The page has no per-user state (keyed
 // only by isSFW), so one cached build is shared across viewers, sparing the
-// per-render galgame-list query + wiki name-enrichment round-trip.
+// per-render galgame-list query + galgame name-enrichment round-trip.
 const homeCacheTTL = 60 * time.Second
 
 type HomeService struct {
-	repo       *repository.HomeRepository
-	wikiGC     *galgameClient.GalgameClient
-	userClient *userclient.Client
-	rdb        *redis.Client
+	repo          *repository.HomeRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
+	rdb           *redis.Client
 }
 
 func NewHomeService(
 	repo *repository.HomeRepository,
-	gc *galgameClient.GalgameClient,
+	gc *client.GalgameClient,
 	userClient *userclient.Client,
 	rdb *redis.Client,
 ) *HomeService {
-	return &HomeService{repo: repo, wikiGC: gc, userClient: userClient, rdb: rdb}
+	return &HomeService{repo: repo, galgameClient: gc, userClient: userClient, rdb: rdb}
 }
 
 // GetHome returns homepage data: galgames + topics.
 //
-// Galgame data is best-effort: if the wiki service is unreachable we log and
+// Galgame data is best-effort: if the galgame service is unreachable we log and
 // return an empty galgame list rather than failing the whole endpoint, so the
 // topic feed still renders. Topic lookup failures are still propagated — they
 // come from the local DB and indicate something more serious.
@@ -68,7 +68,7 @@ func (s *HomeService) GetHome(ctx context.Context, isSFW bool) (*dto.HomeRespons
 		return nil, err
 	}
 	resp := &dto.HomeResponse{Galgames: galgames, Topics: topics}
-	// Only cache a fully-successful build — never pin a wiki-degraded (empty
+	// Only cache a fully-successful build — never pin a galgame-degraded (empty
 	// galgame) homepage for the whole TTL.
 	if gErr == nil {
 		s.cacheHome(ctx, cacheKey, resp)
@@ -107,7 +107,7 @@ func (s *HomeService) cacheHome(ctx context.Context, key string, resp *dto.HomeR
 }
 
 func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.HomeGalgame, error) {
-	// Step 1: Over-fetch local rows. Wiki may not know some IDs (migration
+	// Step 1: Over-fetch local rows. Galgame may not know some IDs (migration
 	// lag) and the SFW filter below also drops rows, so we pull 2x the
 	// displayed count to reliably land at `homeGalgameLimit` after filtering.
 	localRows, err := s.repo.FindRecentGalgames(homeGalgameFetchLimit)
@@ -118,15 +118,15 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 		return []dto.HomeGalgame{}, nil
 	}
 
-	// Step 2: Batch fetch metadata from wiki
+	// Step 2: Batch fetch metadata from galgame
 	galgameIDs := make([]int, len(localRows))
 	for i, r := range localRows {
 		galgameIDs[i] = r.ID
 	}
-	// Wiki-side SFW filter — see docs/galgame_wiki/00-handbook §16. The
+	// Galgame-side SFW filter — see docs/galgame_wiki/00-handbook §16. The
 	// batch endpoint defaults to NO filter, so we must pass isSFW
 	// explicitly. Any post-filter at this layer would be wrong per spec.
-	briefMap, appErr := s.wikiGC.GetBatchPublic(ctx, galgameIDs, isSFW)
+	briefMap, appErr := s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -161,7 +161,7 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 		}
 		b, ok := briefMap[lr.ID]
 		if !ok {
-			continue // wiki doesn't have this galgame
+			continue // galgame doesn't have this galgame
 		}
 		u := userMap[b.UserID]
 		result = append(result, dto.HomeGalgame{

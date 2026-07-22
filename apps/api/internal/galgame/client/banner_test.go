@@ -18,7 +18,7 @@ func TestBannerURLFromHash(t *testing.T) {
 	}{
 		{"abcd1234ef", cdn + "/ab/cd/abcd1234ef.webp"},
 		{"00ff00ff00ff", cdn + "/00/ff/00ff00ff00ff.webp"},
-		{"abc", ""},  // < 4 chars → unusable, mirrors wiki guard
+		{"abc", ""},  // < 4 chars → unusable, mirrors galgame guard
 		{"", ""},     // empty
 	}
 	for _, c := range cases {
@@ -81,7 +81,7 @@ func TestRewriteBanners_EffectiveBannerURL(t *testing.T) {
 }
 
 // U2: cover/screenshot row injection — heuristic requires sort_order so
-// the wiki image record (which also carries image_hash but no sort_order)
+// the galgame image record (which also carries image_hash but no sort_order)
 // is left alone.
 func TestRewriteBanners_CoverAndScreenshotCDNURL(t *testing.T) {
 	in := json.RawMessage(`{"galgame":{
@@ -124,7 +124,7 @@ func TestRewriteBanners_CoverAndScreenshotCDNURL(t *testing.T) {
 	}
 }
 
-// U2: a bare image_hash without sort_order (the wiki image-service
+// U2: a bare image_hash without sort_order (the galgame image-service
 // record itself) must NOT receive a cdn_url — that field is the image
 // record's own concern, not ours.
 func TestRewriteBanners_SkipBareImageRecord(t *testing.T) {

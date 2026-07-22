@@ -40,7 +40,7 @@ var ErrRefPingNoEffect = errors.New(
 // /image/<hash> tokens. New token-bearing columns are kept alive automatically;
 // pinging a stray non-token hash is harmless (image_service returns not_found).
 // (Forum stores no local *_image_hash columns: avatars are OAuth's [site=account],
-// galgame cover/screenshot hashes are wiki's, pinged by infra's galgame refping.
+// galgame cover/screenshot hashes are galgame's, pinged by infra's galgame refping.
 // The forum client is site=kungal — the same site these images were uploaded
 // under — so the site-scoped pings hit.)
 //

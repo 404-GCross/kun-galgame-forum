@@ -12,7 +12,7 @@ import "kun-galgame-api/pkg/trustclient"
 //     (see app.go's enforce registry, which keys this same literal).
 //   - galgame / user: REPORT-only. The report button targets a galgame detail
 //     page / a user profile, so both must be registered or the report 422s;
-//     their LOCAL enforcement no-ops (galgame moderation is wiki-side, user bans
+//     their LOCAL enforcement no-ops (galgame moderation is galgame-side, user bans
 //     are IdP-side).
 const (
 	SubjectKindGalgameComment = "galgame_comment"

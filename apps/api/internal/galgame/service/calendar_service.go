@@ -18,27 +18,27 @@ import (
 // max_month. Real announced dates rarely exceed ~1–2 years out.
 const upcomingMonthCap = 24
 
-// upcomingFetchConcurrency caps concurrent wiki calendar requests during the
+// upcomingFetchConcurrency caps concurrent galgame calendar requests during the
 // 未发售 fan-out.
 const upcomingFetchConcurrency = 8
 
-// CalendarService proxies the wiki release-calendar endpoints
+// CalendarService proxies the galgame release-calendar endpoints
 // (GET /galgame/calendar[/pending|/tba]) and enriches each entry with
 // forum-local data (view/like/platform + IsOnForum) via GalgameEnricher — the
 // same overlay the entity detail pages use, so calendar cards match them,
 // including the 未收录 marker for games the forum has never ingested (which is
 // most upcoming releases). See docs/galgame_wiki/01-galgame.md §Galgame 发售月历.
 type CalendarService struct {
-	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	galgameClient *client.GalgameClient
+	enricher      *GalgameEnricher
 }
 
-func NewCalendarService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *CalendarService {
-	return &CalendarService{wikiClient: wikiClient, enricher: enricher}
+func NewCalendarService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *CalendarService {
+	return &CalendarService{galgameClient: galgameClient, enricher: enricher}
 }
 
-// wikiCalendarMeta mirrors the wiki month-calendar meta (snake_case wire).
-type wikiCalendarMeta struct {
+// nextMoeCalendarMeta mirrors the galgame month-calendar meta (snake_case wire).
+type nextMoeCalendarMeta struct {
 	PrevMonth string `json:"prev_month"`
 	NextMonth string `json:"next_month"`
 	HasPrev   bool   `json:"has_prev"`
@@ -48,46 +48,46 @@ type wikiCalendarMeta struct {
 	Count     int    `json:"count"`
 }
 
-// wikiCalendarMonthResp mirrors the month envelope. Items parse into
-// WikiGalgameItem (+ release_precision); wiki preloads covers/official too but
+// nextMoeCalendarMonthResp mirrors the month envelope. Items parse into
+// NextMoeGalgameItem (+ release_precision); galgame preloads covers/official too but
 // the card only needs the scalar fields the enricher reads.
-type wikiCalendarMonthResp struct {
-	Month string                `json:"month"`
-	Today string                `json:"today"`
-	Items []dto.WikiGalgameItem `json:"items"`
-	Meta  wikiCalendarMeta      `json:"meta"`
+type nextMoeCalendarMonthResp struct {
+	Month string                   `json:"month"`
+	Today string                   `json:"today"`
+	Items []dto.NextMoeGalgameItem `json:"items"`
+	Meta  nextMoeCalendarMeta      `json:"meta"`
 }
 
-// wikiCalendarBucketResp covers both the pending (year) and TBA buckets — each
+// nextMoeCalendarBucketResp covers both the pending (year) and TBA buckets — each
 // is just {year?, items, meta:{count}}.
-type wikiCalendarBucketResp struct {
-	Year  string                `json:"year"`
-	Items []dto.WikiGalgameItem `json:"items"`
+type nextMoeCalendarBucketResp struct {
+	Year  string                   `json:"year"`
+	Items []dto.NextMoeGalgameItem `json:"items"`
 	Meta  struct {
 		Count int `json:"count"`
 	} `json:"meta"`
 }
 
-// fetchMonthRaw fetches + parses a single month's wiki calendar response. An
-// empty `month` lets wiki default to the current JST month. content_limit is
+// fetchMonthRaw fetches + parses a single month's galgame calendar response. An
+// empty `month` lets galgame default to the current JST month. content_limit is
 // pinned per the SFW cookie (sfw / all) via the shared withSFWFilter helper.
 func (s *CalendarService) fetchMonthRaw(
 	ctx context.Context,
 	month string,
 	isSFW bool,
-) (*wikiCalendarMonthResp, *errors.AppError) {
+) (*nextMoeCalendarMonthResp, *errors.AppError) {
 	q := url.Values{}
 	if month != "" {
 		q.Set("month", month)
 	}
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/calendar", withSFWFilter(q, isSFW))
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar", withSFWFilter(q, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiCalendarMonthResp
+	var parsed nextMoeCalendarMonthResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 	return &parsed, nil
 }
@@ -126,14 +126,14 @@ func (s *CalendarService) GetPending(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.CalendarPendingPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/calendar/pending", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar/pending", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiCalendarBucketResp
+	var parsed nextMoeCalendarBucketResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	return &dto.CalendarPendingPage{
@@ -149,14 +149,14 @@ func (s *CalendarService) GetTBA(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.CalendarTBAPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Get(ctx, "/galgame/calendar/tba", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar/tba", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiCalendarBucketResp
+	var parsed nextMoeCalendarBucketResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	return &dto.CalendarTBAPage{
@@ -183,7 +183,7 @@ func (s *CalendarService) GetUpcoming(
 	months := monthRange(base.Month, base.Meta.MaxMonth, upcomingMonthCap)
 
 	// rawByMonth[0] is the already-fetched current month; the rest fan out.
-	rawByMonth := make([][]dto.WikiGalgameItem, len(months))
+	rawByMonth := make([][]dto.NextMoeGalgameItem, len(months))
 	rawByMonth[0] = base.Items
 	if len(months) > 1 {
 		var wg sync.WaitGroup
@@ -205,7 +205,7 @@ func (s *CalendarService) GetUpcoming(
 
 	// Flatten in month order, keeping only the not-yet-released entries
 	// (release_date >= today; lexicographic compare is valid on YYYY-MM-DD).
-	var flat []dto.WikiGalgameItem
+	var flat []dto.NextMoeGalgameItem
 	for _, items := range rawByMonth {
 		for _, it := range items {
 			if it.ReleaseDate != nil && *it.ReleaseDate >= today {

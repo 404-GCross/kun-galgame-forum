@@ -81,7 +81,7 @@ const handleWithdraw = async (item: MineGalgameItem) => {
       v-if="!data"
       color="danger"
       title="加载失败"
-      description="无法获取您的提交列表, 可能是后端 / Galgame Wiki 暂时不可用, 请稍后重试。"
+      description="无法获取您的提交列表, 可能是后端 / Galgame 资料库暂时不可用, 请稍后重试。"
     />
 
     <div v-else-if="data.items.length" class="flex flex-col gap-3">

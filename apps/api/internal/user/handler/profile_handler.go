@@ -10,7 +10,7 @@ package handler
 //  1. require a logged-in kungal session (the auth middleware on the
 //     route group fires before this);
 //  2. pull the session-stored OAuth access token via
-//     middleware.GetAccessToken — same source as the wiki proxy;
+//     middleware.GetAccessToken — same source as the galgame proxy;
 //  3. forward to the corresponding /auth/me endpoint;
 //  4. invalidate the kungal-side userclient cache on success so the
 //     updated identity surfaces immediately in subsequent renders

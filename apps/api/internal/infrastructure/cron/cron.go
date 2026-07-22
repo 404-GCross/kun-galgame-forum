@@ -21,13 +21,13 @@ const scheduleTZ = "Asia/Shanghai"
 
 // Start creates and starts all scheduled tasks. Returns a stop function.
 //
-// wikiMessageSync (optional, may be nil) drives the periodic ingestion of
-// admin-triggered events from the wiki message feed. Scheduled every 10
+// galgameMessageSync (optional, may be nil) drives the periodic ingestion of
+// admin-triggered events from the galgame message feed. Scheduled every 10
 // minutes — see docs/galgame_wiki/07-submission.md §调用方 cron 同步本地
 // status (the cron pace was bumped from daily so users see their +3
 // moemoepoint within a normal page-refresh window after admin approves
 // their submission).
-func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, wikiMessageSync func(), wikiRevisionSync func()) func() {
+func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameMessageSync func(), galgameRevisionSync func()) func() {
 	loc, err := time.LoadLocation(scheduleTZ)
 	if err != nil {
 		slog.Warn("加载定时任务时区失败, 回退到进程本地时区", "tz", scheduleTZ, "error", err)
@@ -73,17 +73,17 @@ func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, wikiMessa
 		slog.Warn("image client 未配置, 跳过内容图 reference-ping —— 内容图存在被 image-gc 回收的风险")
 	}
 
-	// Every 10 min: pull wiki submission-stream events and apply local
+	// Every 10 min: pull galgame submission-stream events and apply local
 	// side effects (+3 moemoepoint on approve, drop stub on ban). Skipped
 	// when the caller didn't wire a sync (e.g. tests).
-	if wikiMessageSync != nil {
-		c.AddFunc("*/10 * * * *", wikiMessageSync)
+	if galgameMessageSync != nil {
+		c.AddFunc("*/10 * * * *", galgameMessageSync)
 	}
 
-	// Every 10 min: mirror wiki merged-revision (edit) events into the local
+	// Every 10 min: mirror galgame merged-revision (edit) events into the local
 	// galgame_activity timeline source. Same cadence as the message sync.
-	if wikiRevisionSync != nil {
-		c.AddFunc("*/10 * * * *", wikiRevisionSync)
+	if galgameRevisionSync != nil {
+		c.AddFunc("*/10 * * * *", galgameRevisionSync)
 	}
 
 	c.Start()

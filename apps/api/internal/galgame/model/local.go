@@ -3,7 +3,7 @@ package model
 import "time"
 
 // GalgameLocal represents the stripped-down local galgame row.
-// After wiki migration, only interaction counts + view remain locally.
+// After galgame migration, only interaction counts + view remain locally.
 //
 // CreatedAt / UpdatedAt are needed so the lazy-create stub
 // (`Create(&GalgameLocal{ID: ...}).OnConflict(DoNothing)`) emits valid
@@ -22,9 +22,9 @@ type GalgameLocal struct {
 	CommentCount     int `gorm:"column:comment_count;default:0" json:"comment_count"`
 	ContributorCount int `gorm:"column:contributor_count;default:0" json:"contributor_count"`
 	RatingCount      int `gorm:"column:rating_count;default:0" json:"rating_count"`
-	// Mirror of wiki's release_date (migration 013), so the local browse
+	// Mirror of galgame's release_date (migration 013), so the local browse
 	// list can filter/sort by release year/month — kungal's /galgame
-	// doesn't proxy wiki's list. Nullable: NULL = unknown / not yet
+	// doesn't proxy galgame's list. Nullable: NULL = unknown / not yet
 	// backfilled. Populated by cmd/backfill-release-date (idempotent).
 	// The lazy-create stub leaves it nil → NULL until a backfill run.
 	ReleaseDate *time.Time `gorm:"column:release_date" json:"release_date"`

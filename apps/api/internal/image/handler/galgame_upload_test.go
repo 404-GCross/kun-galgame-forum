@@ -28,7 +28,7 @@ import (
 
 // newTestApp wires a Fiber app with the upload handler + a session stub
 // so MustGetUser succeeds for UID=1. ImageService is constructed without a
-// wiki client (wikiClient=nil) — galgame uploads now proxy to the wiki's
+// galgame client (galgameClient=nil) — galgame uploads now proxy to the galgame's
 // /galgame/image — the handler boundary checks (preset / file / size) run
 // before the service touches the client, so the missing client only matters
 // once those pass.
@@ -107,9 +107,9 @@ func TestUploadGalgameImage_RejectsMissingFile(t *testing.T) {
 
 func TestUploadGalgameImage_AcceptsAllowedPresets(t *testing.T) {
 	// Both gated presets must pass the boundary and reach the service. With
-	// wikiClient=nil the service returns "未配置" — that's how we confirm the
+	// galgameClient=nil the service returns "未配置" — that's how we confirm the
 	// boundary checks all passed (preset OK, file OK, size OK) without a real
-	// wiki round-trip.
+	// galgame round-trip.
 	for _, preset := range []string{"galgame_banner", "galgame_screenshot"} {
 		t.Run(preset, func(t *testing.T) {
 			app := newTestApp(t)

@@ -19,7 +19,7 @@ import (
 
 // briefCacheTTL memoizes the public batch lookups (names/covers + detail briefs)
 // so the activity feed's repeated GetBatchPublic / GetBatchDetailPublic calls —
-// across scroll pages and concurrent viewers — don't re-hit the wiki for the same
+// across scroll pages and concurrent viewers — don't re-hit the galgame for the same
 // galgames. Names/covers are stable enough to tolerate a couple of minutes stale.
 const briefCacheTTL = 2 * time.Minute
 
@@ -209,7 +209,7 @@ type apiResponse struct {
 	Data    json.RawMessage `json:"data"`
 }
 
-// Get performs a GET request to the wiki service.
+// Get performs a GET request to the galgame service.
 func (c *GalgameClient) Get(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
 	return c.GetWithToken(ctx, path, "", query)
 }
@@ -229,9 +229,9 @@ func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, qu
 	return c.getFace(ctx, base, path, token, query, apiKey)
 }
 
-// EntityGalgameIDs fetches the member galgame ids of a wiki entity
+// EntityGalgameIDs fetches the member galgame ids of a galgame entity
 // (kind = "tag" | "official" | "engine") so the forum can run its OWN local
-// resource-based filtering over them — the wiki has no resource concept. The
+// resource-based filtering over them — the galgame has no resource concept. The
 // result is always non-nil so the caller's RestrictIDs guard distinguishes
 // "restrict to this (possibly empty) set" from "no restriction".
 func (c *GalgameClient) EntityGalgameIDs(ctx context.Context, kind string, id int) ([]int, *errors.AppError) {
@@ -243,7 +243,7 @@ func (c *GalgameClient) EntityGalgameIDs(ctx context.Context, kind string, id in
 		IDs []int `json:"ids"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 	if parsed.IDs == nil {
 		parsed.IDs = []int{}
@@ -322,40 +322,40 @@ func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token
 	return c.doRequest(req)
 }
 
-// WikiUserStats is the user galgame stats from wiki service.
-type WikiUserStats struct {
+// NextMoeUserStats is the user galgame stats from galgame service.
+type NextMoeUserStats struct {
 	GalgameCreated      int64 `json:"galgame_created"`
 	GalgameCreatedToday int64 `json:"galgame_created_today"`
 	GalgameContributed  int64 `json:"galgame_contributed"`
 	PRMerged            int64 `json:"pr_merged"`
 }
 
-// GetUserStats fetches galgame-related stats for a user from wiki.
-func (c *GalgameClient) GetUserStats(ctx context.Context, userID int) (*WikiUserStats, error) {
+// GetUserStats fetches galgame-related stats for a user from galgame.
+func (c *GalgameClient) GetUserStats(ctx context.Context, userID int) (*NextMoeUserStats, error) {
 	path := fmt.Sprintf("/galgame/user/%d/stats", userID)
 	data, appErr := c.Get(ctx, path, nil)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var stats WikiUserStats
+	var stats NextMoeUserStats
 	if err := json.Unmarshal(data, &stats); err != nil {
 		return nil, err
 	}
 	return &stats, nil
 }
 
-// WikiUserGalgames is the paginated published-galgame list for a user.
-type WikiUserGalgames struct {
+// NextMoeUserGalgames is the paginated published-galgame list for a user.
+type NextMoeUserGalgames struct {
 	Galgames []GalgameBrief `json:"galgames"`
 	Total    int64          `json:"total"`
 }
 
 // GetUserGalgames fetches a user's PUBLISHED galgames (briefs, newest first,
-// paginated) from the wiki — the source for the profile "已发布 Galgame" tab.
-// kungal's local galgame mirror has no user_id (ownership is wiki-managed after
-// the OAuth migration), so this wiki endpoint is the only way to answer "what
-// has this user published". NSFW gating is done server-side by the wiki.
+// paginated) from the galgame — the source for the profile "已发布 Galgame" tab.
+// kungal's local galgame mirror has no user_id (ownership is galgame-managed after
+// the OAuth migration), so this galgame endpoint is the only way to answer "what
+// has this user published". NSFW gating is done server-side by the galgame.
 //
 //	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
 //	isSFW=false → content_limit=all
@@ -373,19 +373,19 @@ func (c *GalgameClient) GetUserGalgames(ctx context.Context, userID, page, limit
 	if appErr != nil {
 		return nil, 0, appErr
 	}
-	var resp WikiUserGalgames
+	var resp NextMoeUserGalgames
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, 0, errors.ErrInternal("解析 Wiki 用户 Galgame 列表失败")
+		return nil, 0, errors.ErrInternal("解析 Galgame 用户 Galgame 列表失败")
 	}
 	return resp.Galgames, resp.Total, nil
 }
 
 // GetUserContributedGalgames fetches a user's CONTRIBUTED galgames — the
-// games they created OR edited/claimed — from the wiki (briefs, paginated,
+// games they created OR edited/claimed — from the galgame (briefs, paginated,
 // same shape + NSFW gating as GetUserGalgames). Source for the profile
 // "贡献的 Galgame" tab. This is the superset of the "已发布" (created) list:
 // "已发布" answers "what did this user create", "贡献的" adds games they only
-// edited. Backed by wiki's GET /galgame/user/:id/contributed.
+// edited. Backed by galgame's GET /galgame/user/:id/contributed.
 func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, page, limit int, isSFW bool) ([]GalgameBrief, int64, *errors.AppError) {
 	contentLimit := "all"
 	if isSFW {
@@ -400,9 +400,9 @@ func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, 
 	if appErr != nil {
 		return nil, 0, appErr
 	}
-	var resp WikiUserGalgames
+	var resp NextMoeUserGalgames
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, 0, errors.ErrInternal("解析 Wiki 用户贡献 Galgame 列表失败")
+		return nil, 0, errors.ErrInternal("解析 Galgame 用户贡献 Galgame 列表失败")
 	}
 	return resp.Galgames, resp.Total, nil
 }
@@ -414,22 +414,22 @@ func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, 
 // global list: the params are backward compatible. Drafts carry VNDB-synced
 // official + tag edges (both scopes well populated), but engine edges are
 // human-curated and empty on drafts today; the parameter is kept uniform across
-// the three entities regardless. Mirrors the wiki's official_id / tag_id /
+// the three entities regardless. Mirrors the galgame's official_id / tag_id /
 // engine_id query params (infra dbdd998).
 type DraftFilters struct {
 	OfficialID int
 	TagID      int
 	EngineID   int
 	// OriginalLanguages is a CSV of original-language codes forwarded to the
-	// wiki (e.g. "ja-jp,zh-cn,zh-tw"); empty = all languages.
+	// galgame (e.g. "ja-jp,zh-cn,zh-tw"); empty = all languages.
 	OriginalLanguages string
 }
 
-// Drafts fetches the wiki's unclaimed VNDB drafts (status=2, newest first,
+// Drafts fetches the galgame's unclaimed VNDB drafts (status=2, newest first,
 // paginated) — the source for the entity detail pages' "未发布的游戏" modal,
 // optionally scoped to one taxonomy entity via f. The response envelope is
 // {items, total}; the raw data is forwarded to the caller (the drafts service
-// enriches the items into cards). NSFW gating is done server-side by the wiki
+// enriches the items into cards). NSFW gating is done server-side by the galgame
 // via content_limit, exactly like the calendar / user-galgame reads:
 //
 //	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
@@ -444,7 +444,7 @@ func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool,
 		"limit":         {strconv.Itoa(limit)},
 		"content_limit": {contentLimit},
 	}
-	// Forward only a non-zero entity id: a zero means "global", which the wiki
+	// Forward only a non-zero entity id: a zero means "global", which the galgame
 	// also reads as absent — keeps the outgoing query clean and unambiguous.
 	if f.OfficialID > 0 {
 		query.Set("official_id", strconv.Itoa(f.OfficialID))
@@ -461,26 +461,26 @@ func (c *GalgameClient) Drafts(ctx context.Context, page, limit int, isSFW bool,
 	return c.Get(ctx, "/galgame/drafts", query)
 }
 
-// WikiAdminStats is the admin stats response from wiki service.
-type WikiAdminStats struct {
+// NextMoeAdminStats is the admin stats response from galgame service.
+type NextMoeAdminStats struct {
 	Totals map[string]int64 `json:"totals"`
 	Daily  []map[string]any `json:"daily"`
 }
 
-// GetAdminStats fetches wiki-side admin stats for the last N days. The wiki's
+// GetAdminStats fetches galgame-side admin stats for the last N days. The galgame's
 // /admin/stats is an authenticated admin endpoint (401s anonymously), so the
 // caller MUST forward the requesting admin's OAuth Bearer — sourced from the
 // kungal session via middleware.GetAccessToken, exactly like the submission-
 // review (/admin/galgame*) calls. An empty token degrades to an anonymous call
-// the wiki rejects, which the overview merges as zeroes (non-blocking).
-func (c *GalgameClient) GetAdminStats(ctx context.Context, days int, token string) (*WikiAdminStats, error) {
+// the galgame rejects, which the overview merges as zeroes (non-blocking).
+func (c *GalgameClient) GetAdminStats(ctx context.Context, days int, token string) (*NextMoeAdminStats, error) {
 	query := url.Values{"days": {fmt.Sprintf("%d", days)}}
 	data, appErr := c.GetWithToken(ctx, "/admin/stats", token, query)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var stats WikiAdminStats
+	var stats NextMoeAdminStats
 	if err := json.Unmarshal(data, &stats); err != nil {
 		return nil, err
 	}
@@ -496,7 +496,7 @@ func (c *GalgameClient) GetAdminStats(ctx context.Context, days int, token strin
 // EffectiveBannerHash is the derived hash from covers[sort_order=0];
 // frontend reads it (or the rewriteBanners-injected
 // effective_banner_url) to render head images. banner_image_hash was
-// retired in wiki PR5 (K-PR6) — no top-level field any more.
+// retired in galgame PR5 (K-PR6) — no top-level field any more.
 type GalgameBrief struct {
 	ID                 int    `json:"id"`
 	VndbID             string `json:"vndb_id"`
@@ -511,17 +511,17 @@ type GalgameBrief struct {
 	ResourceUpdateTime string `json:"resource_update_time"`
 	OriginalLanguage   string `json:"original_language"`
 	AgeLimit           string `json:"age_limit"`
-	// U1: see WikiGalgameDetailFull. nil = unknown; TBA can coexist with a
+	// U1: see NextMoeGalgameDetailFull. nil = unknown; TBA can coexist with a
 	// concrete date ("predicted 2024 sometime") so don't enforce mutex.
 	ReleaseDate    *string `json:"release_date"`
 	ReleaseDateTBA bool    `json:"release_date_tba"`
-	// U2: derived effective banner hash on briefs (wiki computes from the
+	// U2: derived effective banner hash on briefs (galgame computes from the
 	// row's covers[sort_order=0]). EffectiveBannerURL is injected by
-	// rewriteBanners over the wiki response BEFORE this struct is
+	// rewriteBanners over the galgame response BEFORE this struct is
 	// unmarshalled — declare the field so we capture it; without it
 	// Go's unmarshal silently drops the walker's work and downstream
 	// DTOs are stuck with only the hash. banner_image_hash retired in
-	// wiki PR5 (K-PR6).
+	// galgame PR5 (K-PR6).
 	EffectiveBannerHash      string `json:"effective_banner_hash"`
 	EffectiveBannerURL       string `json:"effective_banner_url"`
 	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
@@ -569,7 +569,7 @@ func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isS
 		}
 		var briefs []GalgameDetailBrief
 		if err := json.Unmarshal(data, &briefs); err != nil {
-			return nil, errors.ErrInternal("解析 Wiki 批量详情响应失败")
+			return nil, errors.ErrInternal("解析 Galgame 批量详情响应失败")
 		}
 		result := make(map[int]GalgameDetailBrief, len(briefs))
 		for _, b := range briefs {
@@ -588,7 +588,7 @@ func (c *GalgameClient) GetBatch(ctx context.Context, ids []int) (map[int]Galgam
 }
 
 // GetBatchPublic is the cookie-aware batch fetch for any public list /
-// feed enrichment path: enriches kungal-local IDs with wiki briefs while
+// feed enrichment path: enriches kungal-local IDs with galgame briefs while
 // honouring the caller's NSFW preference.
 //
 //	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
@@ -599,7 +599,7 @@ func (c *GalgameClient) GetBatch(ctx context.Context, ids []int) (map[int]Galgam
 // reachable by anonymous traffic / search crawlers MUST go through
 // this helper rather than the bare GetBatch — see §16 "不要在下游做
 // 客户端 filtering" for why service-layer post-filtering isn't
-// equivalent (data has already left the wiki boundary).
+// equivalent (data has already left the galgame boundary).
 func (c *GalgameClient) GetBatchPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameBrief, *errors.AppError) {
 	return cachedBatch(&c.briefMu, c.briefCache, ids, isSFW, func(miss []int) (map[int]GalgameBrief, *errors.AppError) {
 		limit := "all"
@@ -611,7 +611,7 @@ func (c *GalgameClient) GetBatchPublic(ctx context.Context, ids []int, isSFW boo
 }
 
 // GetBatchWithViewer is the Bearer-aware batch fetch. With a non-empty token
-// the wiki additionally returns any status=3/4 row whose user_id matches
+// the galgame additionally returns any status=3/4 row whose user_id matches
 // the JWT's userID claim — used by the "我的提交"/"发布向导" UX.
 //
 // token="" reduces to the anonymous form.
@@ -622,7 +622,7 @@ func (c *GalgameClient) GetBatchWithViewer(ctx context.Context, ids []int, token
 // GetBatchWithOptions is the fully-parameterized batch fetch:
 //
 //   - token: caller's Bearer access_token; "" = anonymous
-//   - contentLimit: "sfw" / "nsfw" / "all" / "" (omit, wiki default = no filter)
+//   - contentLimit: "sfw" / "nsfw" / "all" / "" (omit, galgame default = no filter)
 //
 // Per docs/galgame_wiki/00-handbook §16, /galgame/batch's default is
 // **no filter** (the caller already knows the IDs they want). Public
@@ -650,7 +650,7 @@ func (c *GalgameClient) GetBatchWithOptions(ctx context.Context, ids []int, toke
 
 	var briefs []GalgameBrief
 	if err := json.Unmarshal(data, &briefs); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 批量响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 批量响应失败")
 	}
 
 	result := make(map[int]GalgameBrief, len(briefs))
@@ -675,7 +675,7 @@ func joinStrings(s []string, sep string) string {
 // Submission (user-identity, Bearer-forwarded)
 // ──────────────────────────────────────────
 
-// SubmitDraft posts a new pending submission (status=3). Returns the wiki
+// SubmitDraft posts a new pending submission (status=3). Returns the galgame
 // response data raw so the handler can forward verbatim. See
 // docs/galgame_wiki/07-submission.md §POST /galgame/submit.
 func (c *GalgameClient) SubmitDraft(ctx context.Context, token string, body []byte, contentType string) (json.RawMessage, *errors.AppError) {
@@ -691,14 +691,14 @@ func (c *GalgameClient) ClaimDraft(ctx context.Context, token string, gid int) (
 }
 
 // PatchDraft updates the caller's own pending/declined draft (status IN 3,4).
-// If the row was status=4, the wiki flips it back to status=3 (re-queues).
+// If the row was status=4, the galgame flips it back to status=3 (re-queues).
 func (c *GalgameClient) PatchDraft(ctx context.Context, token string, gid int, body []byte, contentType string) (json.RawMessage, *errors.AppError) {
 	path := "/galgame/" + strconv.Itoa(gid)
 	return c.PatchWithToken(ctx, path, token, json.RawMessage(body), contentType)
 }
 
-// DeleteDraft hard-deletes the caller's own pending/declined draft. Wiki
-// CASCADEs the associated wiki tables; kungal still needs to clean its
+// DeleteDraft hard-deletes the caller's own pending/declined draft. Galgame
+// CASCADEs the associated galgame tables; kungal still needs to clean its
 // local stub if interaction lazy-created one.
 func (c *GalgameClient) DeleteDraft(ctx context.Context, token string, gid int) *errors.AppError {
 	path := "/galgame/" + strconv.Itoa(gid)
@@ -710,36 +710,36 @@ func (c *GalgameClient) DeleteDraft(ctx context.Context, token string, gid int) 
 // Message feed (service identity, X-API-Key)
 // ──────────────────────────────────────────
 
-// WikiMessageGalgameBrief is the brief embed inside each WikiMessage.
+// NextMoeMessageGalgameBrief is the brief embed inside each NextMoeMessage.
 // Null on hard-deleted galgames — consumers must null-check.
-type WikiMessageGalgameBrief struct {
+type NextMoeMessageGalgameBrief struct {
 	ID     int `json:"id"`
 	Status int `json:"status"`
 }
 
-// WikiMessage matches the per-message shape in /galgame/messages/feed.
+// NextMoeMessage matches the per-message shape in /galgame/messages/feed.
 // See docs/galgame_wiki/08-messages.md for the wire format.
-type WikiMessage struct {
-	ID           int64                    `json:"id"`
-	Type         string                   `json:"type"`
-	GalgameID    int                      `json:"galgame_id"`
-	Galgame      *WikiMessageGalgameBrief `json:"galgame"`
-	ActorUserID  int                      `json:"actor_user_id"`
-	TargetUserID *int                     `json:"target_user_id"`
-	Payload      json.RawMessage          `json:"payload"`
-	CreatedAt    string                   `json:"created_at"`
+type NextMoeMessage struct {
+	ID           int64                       `json:"id"`
+	Type         string                      `json:"type"`
+	GalgameID    int                         `json:"galgame_id"`
+	Galgame      *NextMoeMessageGalgameBrief `json:"galgame"`
+	ActorUserID  int                         `json:"actor_user_id"`
+	TargetUserID *int                        `json:"target_user_id"`
+	Payload      json.RawMessage             `json:"payload"`
+	CreatedAt    string                      `json:"created_at"`
 }
 
-// WikiMessageFeed is the envelope returned by /galgame/messages/feed.
-type WikiMessageFeed struct {
-	Items   []WikiMessage `json:"items"`
-	HasMore bool          `json:"has_more"`
+// NextMoeMessageFeed is the envelope returned by /galgame/messages/feed.
+type NextMoeMessageFeed struct {
+	Items   []NextMoeMessage `json:"items"`
+	HasMore bool             `json:"has_more"`
 }
 
 // MessagesFeed pulls a batch of admin-triggered events (approved /
 // declined / banned / unbanned) from the internal face using the service
-// X-API-Key. Used by the wiki-message sync cron.
-func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit int) (*WikiMessageFeed, *errors.AppError) {
+// X-API-Key. Used by the galgame-message sync cron.
+func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit int) (*NextMoeMessageFeed, *errors.AppError) {
 	if limit <= 0 {
 		limit = 1000
 	}
@@ -752,16 +752,16 @@ func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit i
 	if appErr != nil {
 		return nil, appErr
 	}
-	var feed WikiMessageFeed
+	var feed NextMoeMessageFeed
 	if err := json.Unmarshal(data, &feed); err != nil {
-		return nil, errors.ErrInternal("解析 wiki 消息 feed 失败")
+		return nil, errors.ErrInternal("解析 galgame 消息 feed 失败")
 	}
 	return &feed, nil
 }
 
-// WikiRevision matches one item in /galgame/revisions/recent — a merged
+// NextMoeRevision matches one item in /galgame/revisions/recent — a merged
 // (edit-landed) galgame revision. UserID is the editor (correct actor).
-type WikiRevision struct {
+type NextMoeRevision struct {
 	ID        int64  `json:"id"`
 	GalgameID int    `json:"galgame_id"`
 	Revision  int    `json:"revision"` // per-galgame number — the diff endpoint's :rev
@@ -770,16 +770,16 @@ type WikiRevision struct {
 	Created   string `json:"created"`
 }
 
-// WikiRevisionFeed is the envelope returned by /galgame/revisions/recent.
-type WikiRevisionFeed struct {
-	Items   []WikiRevision `json:"items"`
-	HasMore bool           `json:"has_more"`
+// NextMoeRevisionFeed is the envelope returned by /galgame/revisions/recent.
+type NextMoeRevisionFeed struct {
+	Items   []NextMoeRevision `json:"items"`
+	HasMore bool              `json:"has_more"`
 }
 
 // RecentRevisions pulls a batch of merged-revision (edit) events from the
-// internal face using the service X-API-Key — the wiki-revision sync cron's
+// internal face using the service X-API-Key — the galgame-revision sync cron's
 // source for mirroring galgame edits into the local activity timeline.
-func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limit int) (*WikiRevisionFeed, *errors.AppError) {
+func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limit int) (*NextMoeRevisionFeed, *errors.AppError) {
 	if limit <= 0 {
 		limit = 1000
 	}
@@ -792,15 +792,15 @@ func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limi
 	if appErr != nil {
 		return nil, appErr
 	}
-	var feed WikiRevisionFeed
+	var feed NextMoeRevisionFeed
 	if err := json.Unmarshal(data, &feed); err != nil {
-		return nil, errors.ErrInternal("解析 wiki 修订 feed 失败")
+		return nil, errors.ErrInternal("解析 galgame 修订 feed 失败")
 	}
 	return &feed, nil
 }
 
 // bodySnippet trims an upstream body for safe logging / error context.
-// Wiki errors are tiny JSON; a misconfigured upstream may return a large
+// Galgame errors are tiny JSON; a misconfigured upstream may return a large
 // HTML page, so cap it.
 func bodySnippet(b []byte) string {
 	const max = 512
@@ -811,19 +811,19 @@ func bodySnippet(b []byte) string {
 }
 
 // ──────────────────────────────────────────
-// Cross-source scores / stats (public wiki read face, step 34)
+// Cross-source scores / stats (public galgame read face, step 34)
 // ──────────────────────────────────────────
 
 // Scores fetches the three-source (VNDB / Bangumi / EG) rating snapshot for one
-// galgame from the wiki's public read face and returns the response `data`
+// galgame from the galgame's public read face and returns the response `data`
 // verbatim (naming = contract; the 37 frontend reads the infra shape directly).
 // Missing sources are null server-side; a galgame with no rows returns all-null.
 func (c *GalgameClient) Scores(ctx context.Context, gid int) (json.RawMessage, *errors.AppError) {
 	return c.Get(ctx, "/galgame/"+strconv.Itoa(gid)+"/scores", nil)
 }
 
-// StatsResult carries a stats fetch: the verbatim `data` payload plus the wiki's
-// ETag, or NotModified when the wiki answered 304 to the forwarded If-None-Match
+// StatsResult carries a stats fetch: the verbatim `data` payload plus the galgame's
+// ETag, or NotModified when the galgame answered 304 to the forwarded If-None-Match
 // (Data is then nil). The BFF re-emits the ETag and the 304 so the browser's
 // conditional cache survives the extra hop.
 type StatsResult struct {
@@ -832,9 +832,9 @@ type StatsResult struct {
 	Data        json.RawMessage
 }
 
-// Stats fetches the site-wide cross-source statistics overview from the wiki's
+// Stats fetches the site-wide cross-source statistics overview from the galgame's
 // public read face, preserving the ETag / If-None-Match conditional cache. A
-// non-empty ifNoneMatch is forwarded; a wiki 304 comes back as
+// non-empty ifNoneMatch is forwarded; a galgame 304 comes back as
 // StatsResult.NotModified so the caller can relay an empty 304. The six frozen
 // keys' payloads pass through untouched. This does not go through the shared
 // doRequest because it needs the raw status code + ETag header, which the
@@ -856,9 +856,9 @@ func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsRe
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		slog.Error("Wiki 服务请求失败 (传输层)",
+		slog.Error("Galgame 服务请求失败 (传输层)",
 			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal(fmt.Sprintf("Wiki 服务不可达: %v", err))
+		return nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
 	}
 	defer resp.Body.Close()
 
@@ -869,16 +869,16 @@ func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsRe
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.ErrInternal("读取 Wiki 响应失败")
+		return nil, errors.ErrInternal("读取 Galgame 响应失败")
 	}
 
 	var result apiResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		slog.Error("解析 Wiki 响应失败 (非 JSON 响应)",
+		slog.Error("解析 Galgame 响应失败 (非 JSON 响应)",
 			"method", req.Method, "url", req.URL.String(),
 			"status", resp.StatusCode, "body", bodySnippet(body))
 		return nil, errors.New(errors.CodeBiz,
-			fmt.Sprintf("Wiki 服务返回了非预期响应 (HTTP %d)", resp.StatusCode), resp.StatusCode)
+			fmt.Sprintf("Galgame 服务返回了非预期响应 (HTTP %d)", resp.StatusCode), resp.StatusCode)
 	}
 	if result.Code != 0 {
 		return nil, errors.New(result.Code, result.Message, resp.StatusCode)
@@ -889,37 +889,37 @@ func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsRe
 func (c *GalgameClient) doRequest(req *http.Request) (json.RawMessage, *errors.AppError) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		// Transport-level failure: wiki unreachable / DNS / timeout /
+		// Transport-level failure: galgame unreachable / DNS / timeout /
 		// connection refused. The most common operational cause is the
-		// wiki service simply not running on the configured base URL.
-		slog.Error("Wiki 服务请求失败 (传输层)",
+		// galgame service simply not running on the configured base URL.
+		slog.Error("Galgame 服务请求失败 (传输层)",
 			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal(fmt.Sprintf("Wiki 服务不可达: %v", err))
+		return nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		slog.Error("读取 Wiki 响应失败",
+		slog.Error("读取 Galgame 响应失败",
 			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal("读取 Wiki 响应失败")
+		return nil, errors.ErrInternal("读取 Galgame 响应失败")
 	}
 
 	var result apiResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		// Wiki returned something that isn't the {code,message,data}
+		// Galgame returned something that isn't the {code,message,data}
 		// envelope — almost always a Fiber default error page (e.g. a
 		// plain-text "Cannot POST /api/galgame/30831/claim" when the
-		// running wiki binary predates the submission endpoints, or an
+		// running galgame binary predates the submission endpoints, or an
 		// upstream proxy 5xx HTML). Surface the real HTTP status + body
 		// so this is diagnosable instead of a blanket 500.
-		slog.Error("解析 Wiki 响应失败 (非 JSON 响应)",
+		slog.Error("解析 Galgame 响应失败 (非 JSON 响应)",
 			"method", req.Method, "url", req.URL.String(),
 			"status", resp.StatusCode, "body", bodySnippet(respBody))
 		return nil, errors.New(
 			errors.CodeBiz,
 			fmt.Sprintf(
-				"Wiki 服务返回了非预期响应 (HTTP %d), 请确认 wiki 服务已部署对应接口",
+				"Galgame 服务返回了非预期响应 (HTTP %d), 请确认 galgame 服务已部署对应接口",
 				resp.StatusCode,
 			),
 			resp.StatusCode,
@@ -927,7 +927,7 @@ func (c *GalgameClient) doRequest(req *http.Request) (json.RawMessage, *errors.A
 	}
 
 	if result.Code != 0 {
-		// Transparently forward wiki service error code + message.
+		// Transparently forward galgame service error code + message.
 		return nil, errors.New(result.Code, result.Message, resp.StatusCode)
 	}
 

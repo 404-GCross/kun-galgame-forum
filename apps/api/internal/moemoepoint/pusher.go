@@ -99,7 +99,7 @@ func (a *Awarder) Award(userID, delta int, reason, ref, idempotencyKey string) {
 }
 
 // AwardSync is the SYNCHRONOUS variant of Award for replayable cron paths
-// (notably wiki-approve) that must know whether the OAuth call landed before
+// (notably galgame-approve) that must know whether the OAuth call landed before
 // advancing their durable cursor — otherwise a transient failure would be
 // silently lost (the cron would move past the message and never retry). Same
 // terminal-state contract as Award (NO local +=, mirrors the authoritative

@@ -8,14 +8,14 @@ import (
 	"kun-galgame-api/internal/galgame/model"
 )
 
-// buildEntityFilter builds the local list filter for a wiki-entity detail page
+// buildEntityFilter builds the local list filter for a galgame-entity detail page
 // (tag / official / engine) from the request query + the entity's member ids.
-// The page renders the forum-LOCAL subset of the entity's catalogue: the wiki
+// The page renders the forum-LOCAL subset of the entity's catalogue: the galgame
 // supplies the member ids, and RestrictIDs scopes the SAME local filter / sort /
 // paginate flow as /galgame to them, so games the forum has never ingested (no
 // galgame_resource row) simply don't appear. This is why these pages can filter
 // by 类型 / 语言 / 平台 / 作品类型 and sort by every field — all of which live in
-// kungal-local tables the wiki knows nothing about.
+// kungal-local tables the galgame knows nothing about.
 //
 // A non-nil (even empty) RestrictIDs means "restrict to this set", so an entity
 // with no local members renders empty, never the whole catalogue (list_repo).
@@ -48,7 +48,7 @@ func buildEntityFilter(q url.Values, restrictIDs []int) model.GalgameListFilter 
 // preserving the existing entity-page response shape so the FE is unchanged.
 // IsOnForum is always true here: this path lists only forum-local members (a
 // game with no local row can't survive the list_repo filter), so no card is a
-// wiki-only "未收录" entry.
+// galgame-only "未收录" entry.
 func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {
 	out := make([]dto.GalgameCard, len(cards))
 	for i, c := range cards {

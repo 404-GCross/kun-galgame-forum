@@ -11,27 +11,27 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// WikiHandler groups wiki pass-through endpoints and the galgame sub-routes
-// that proxy to wiki + enrich with local user data.
-type WikiHandler struct {
-	wikiService *service.WikiService
+// GalgameProxyHandler groups galgame pass-through endpoints and the galgame sub-routes
+// that proxy to galgame + enrich with local user data.
+type GalgameProxyHandler struct {
+	galgameProxyService *service.GalgameProxyService
 }
 
-func NewWikiHandler(wikiService *service.WikiService) *WikiHandler {
-	return &WikiHandler{wikiService: wikiService}
+func NewGalgameProxyHandler(galgameProxyService *service.GalgameProxyService) *GalgameProxyHandler {
+	return &GalgameProxyHandler{galgameProxyService: galgameProxyService}
 }
 
 // ──────────────────────────────────────────
 // Generic proxy
 // ──────────────────────────────────────────
 
-// ProxyGetWithToken forwards a GET to wiki WITH the caller's session OAuth
+// ProxyGetWithToken forwards a GET to galgame WITH the caller's session OAuth
 // token (attached by OptionalAuth — empty for anonymous callers). Needed for
-// endpoints the wiki gates behind auth even on read (taxonomy revision
+// endpoints the galgame gates behind auth even on read (taxonomy revision
 // history), where the plain token-less ProxyGet 401s.
-func (h *WikiHandler) ProxyGetWithToken(c fiber.Ctx) error {
+func (h *GalgameProxyHandler) ProxyGetWithToken(c fiber.Ctx) error {
 	token := middleware.GetAccessToken(c)
-	data, appErr := h.wikiService.ProxyGetWithToken(c.Context(), c.Path(), token, collectQuery(c))
+	data, appErr := h.galgameProxyService.ProxyGetWithToken(c.Context(), c.Path(), token, collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -39,13 +39,13 @@ func (h *WikiHandler) ProxyGetWithToken(c fiber.Ctx) error {
 }
 
 // GetTaxonomyRevisions returns a handler that lists a taxonomy entity's
-// revision history, hydrated (real user name/avatar). `entity` is the wiki
+// revision history, hydrated (real user name/avatar). `entity` is the galgame
 // resource name (tag/official/engine), bound per-route. Token forwarded via
-// OptionalAuth (the wiki gates these GETs behind auth).
-func (h *WikiHandler) GetTaxonomyRevisions(entity string) fiber.Handler {
+// OptionalAuth (the galgame gates these GETs behind auth).
+func (h *GalgameProxyHandler) GetTaxonomyRevisions(entity string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		token := middleware.GetAccessToken(c)
-		page, appErr := h.wikiService.GetTaxonomyRevisions(
+		page, appErr := h.galgameProxyService.GetTaxonomyRevisions(
 			c.Context(), entity, c.Params("id"), token, collectQuery(c),
 		)
 		if appErr != nil {
@@ -56,11 +56,11 @@ func (h *WikiHandler) GetTaxonomyRevisions(entity string) fiber.Handler {
 }
 
 // ProxyWriteWithToken returns a Fiber handler that forwards a POST/PUT/DELETE
-// to wiki with the session-stored OAuth access token. The token is taken
+// to galgame with the session-stored OAuth access token. The token is taken
 // from the Redis session (attached by middleware.Auth) — NOT from a
-// client-supplied header — so wiki always sees the authenticated kungal
+// client-supplied header — so galgame always sees the authenticated kungal
 // user's identity rather than whatever bearer the client felt like sending.
-func (h *WikiHandler) ProxyWriteWithToken(method string) fiber.Handler {
+func (h *GalgameProxyHandler) ProxyWriteWithToken(method string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if _, appErr := middleware.MustGetUser(c); appErr != nil {
 			return response.Error(c, appErr)
@@ -71,7 +71,7 @@ func (h *WikiHandler) ProxyWriteWithToken(method string) fiber.Handler {
 			return response.Error(c, errors.ErrAuthExpired())
 		}
 
-		data, appErr := h.wikiService.ProxyWrite(
+		data, appErr := h.galgameProxyService.ProxyWrite(
 			c.Context(), method, c.Path(), token,
 			collectQuery(c), c.Body(), c.Get("Content-Type"),
 		)
@@ -87,8 +87,8 @@ func (h *WikiHandler) ProxyWriteWithToken(method string) fiber.Handler {
 // ──────────────────────────────────────────
 
 // GetGalgameLinks — GET /galgame/:gid/link/all
-func (h *WikiHandler) GetGalgameLinks(c fiber.Ctx) error {
-	links, appErr := h.wikiService.GetGalgameLinks(c.Context(), c.Params("gid"))
+func (h *GalgameProxyHandler) GetGalgameLinks(c fiber.Ctx) error {
+	links, appErr := h.galgameProxyService.GetGalgameLinks(c.Context(), c.Params("gid"))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

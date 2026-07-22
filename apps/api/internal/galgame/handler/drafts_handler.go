@@ -12,7 +12,7 @@ import (
 // DraftsHandler serves the unclaimed-VNDB-draft list powering the galgame
 // detail page's "未发布的游戏" modal. Read-only and SFW-default like the rest of
 // the galgame surface — utils.IsSFW reads the content-rating cookie and the
-// service maps it to the wiki content_limit (sfw / all). See DraftsService.
+// service maps it to the galgame content_limit (sfw / all). See DraftsService.
 type DraftsHandler struct {
 	draftsService *service.DraftsService
 }

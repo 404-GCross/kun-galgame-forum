@@ -162,7 +162,7 @@ func Auth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
 
 		c.Locals(string(UserInfoKey), &session.UserInfo)
 		// Expose the session's OAuth access token to handlers that need to
-		// forward authority to the wiki service. Sourcing this from Redis
+		// forward authority to the galgame service. Sourcing this from Redis
 		// (rather than a client-supplied X-OAuth-Token header) guarantees
 		// the token's subject matches the kun_session cookie holder.
 		c.Locals(string(OAuthAccessTokenKey), session.OAuthAccessToken)
@@ -191,7 +191,7 @@ func OptionalAuth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
 		}
 
 		// Best-effort refresh. optAuth read paths forward the session's OAuth
-		// access token to the wiki service; without a refresh an EXPIRED token
+		// access token to the galgame service; without a refresh an EXPIRED token
 		// would be forwarded and rejected as anonymous (a logged-in user could
 		// not read their own drafts until some mandatory-Auth request happened
 		// to refresh). Unlike Auth(), failure here is NON-fatal: if the token
@@ -220,9 +220,9 @@ func OptionalAuth(rdb *redis.Client, oauthClient *oauth.Client) fiber.Handler {
 		c.Locals(string(UserInfoKey), &session.UserInfo)
 		// Mirror Auth(): also attach the session's OAuth access token so
 		// GetAccessToken works on optAuth routes for logged-in users.
-		// Without this, optAuth handlers that forward authority to wiki
+		// Without this, optAuth handlers that forward authority to galgame
 		// (e.g. GET /galgame/:gid → GetDetail) always sent an empty
-		// token, so wiki saw an anonymous caller and a submitter could
+		// token, so galgame saw an anonymous caller and a submitter could
 		// not open their own status=3/4 draft (20001 "Galgame 不存在").
 		// Anonymous callers still hit the early c.Next() above, so this
 		// is purely additive — public reads are unchanged.
@@ -252,7 +252,7 @@ func MustGetUser(c fiber.Ctx) (*UserInfo, *errors.AppError) {
 // GetAccessToken returns the session-stored OAuth access token attached by
 // Auth middleware. Returns empty when no valid session is present (e.g.
 // OptionalAuth path with anonymous user). Callers that forward authority to
-// the wiki service MUST source the token from here — never from a
+// the galgame service MUST source the token from here — never from a
 // client-supplied header — so the token subject is guaranteed to match the
 // kun_session cookie holder.
 func GetAccessToken(c fiber.Ctx) string {
@@ -370,7 +370,7 @@ func renewSlidingSession(c fiber.Ctx, rdb *redis.Client, token string) {
 
 // waitForRefresh is the lock-loser path. Another request is currently
 // refreshing this user's token; instead of racing through with the stale
-// access token (which would just generate downstream 401s from the wiki
+// access token (which would just generate downstream 401s from the galgame
 // service), we poll until either:
 //
 //   - the session in Redis has a fresh OAuthExpiresAt → proceed with the

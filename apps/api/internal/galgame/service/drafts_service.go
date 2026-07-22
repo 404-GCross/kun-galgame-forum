@@ -9,7 +9,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// DraftsService proxies the wiki's unclaimed-VNDB-draft list
+// DraftsService proxies the galgame's unclaimed-VNDB-draft list
 // (GET /galgame/drafts, status=2) and enriches each entry into the shared
 // GalgameCard shape via GalgameEnricher — the same overlay the calendar /
 // entity detail pages use. Drafts are never on the forum, so every card comes
@@ -17,20 +17,20 @@ import (
 // claim card linking to the publish wizard (identical to the calendar's
 // status=2 cards). See docs/galgame_wiki §drafts.
 type DraftsService struct {
-	wikiClient *client.GalgameClient
-	enricher   *GalgameEnricher
+	galgameClient *client.GalgameClient
+	enricher      *GalgameEnricher
 }
 
-func NewDraftsService(wikiClient *client.GalgameClient, enricher *GalgameEnricher) *DraftsService {
-	return &DraftsService{wikiClient: wikiClient, enricher: enricher}
+func NewDraftsService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *DraftsService {
+	return &DraftsService{galgameClient: galgameClient, enricher: enricher}
 }
 
-// wikiDraftsResp mirrors the wiki {items, total} draft envelope. Items parse
-// into WikiGalgameItem; the enricher reads the scalar card fields (name /
+// nextMoeDraftsResp mirrors the galgame {items, total} draft envelope. Items parse
+// into NextMoeGalgameItem; the enricher reads the scalar card fields (name /
 // banner / status / content_limit) and fuses in local stats.
-type wikiDraftsResp struct {
-	Items []dto.WikiGalgameItem `json:"items"`
-	Total int64                 `json:"total"`
+type nextMoeDraftsResp struct {
+	Items []dto.NextMoeGalgameItem `json:"items"`
+	Total int64                    `json:"total"`
 }
 
 // GetDrafts returns one page of unclaimed VNDB drafts as enriched cards,
@@ -43,14 +43,14 @@ func (s *DraftsService) GetDrafts(
 	isSFW bool,
 	f client.DraftFilters,
 ) (*dto.DraftsPage, *errors.AppError) {
-	data, appErr := s.wikiClient.Drafts(ctx, page, limit, isSFW, f)
+	data, appErr := s.galgameClient.Drafts(ctx, page, limit, isSFW, f)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed wikiDraftsResp
+	var parsed nextMoeDraftsResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 响应失败")
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
 
 	return &dto.DraftsPage{

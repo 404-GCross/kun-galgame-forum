@@ -37,7 +37,7 @@ func (h *SearchHandler) Search(c fiber.Ctx) error {
 		// in or not, SFW-mode or not) can discover every game by name. The
 		// SFW gate is enforced on the detail page itself (anonymous SFW
 		// callers see a click-to-confirm interstitial there). Pass
-		// isSFW=false so wiki receives content_limit=all.
+		// isSFW=false so galgame receives content_limit=all.
 		res, appErr := h.searchService.SearchGalgames(
 			c.Context(), req.Keywords, req.Page, req.Limit, false,
 		)

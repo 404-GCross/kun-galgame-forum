@@ -39,16 +39,16 @@ func groupResourceMeta(rows []model.GalgameResourceMeta) (platforms, languages m
 }
 
 // ──────────────────────────────────────────
-// Wiki → Detail DTO
+// Galgame → Detail DTO
 // ──────────────────────────────────────────
 
-// galgameDetailFromWiki maps a wiki galgame payload into the response DTO,
-// resolving author/contributor users from the wiki-returned users map.
-func galgameDetailFromWiki(g dto.WikiGalgameDetailFull, users map[string]dto.WikiUser) dto.GalgameDetail {
+// galgameDetailFromNextMoe maps a galgame galgame payload into the response DTO,
+// resolving author/contributor users from the galgame-returned users map.
+func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]dto.NextMoeUser) dto.GalgameDetail {
 	return dto.GalgameDetail{
 		ID:     g.ID,
 		VndbID: g.VndbID,
-		User:   lookupWikiUser(users, g.UserID),
+		User:   lookupNextMoeUser(users, g.UserID),
 		Name: dto.KunLanguage{
 			EnUs: g.NameEnUs, JaJp: g.NameJaJp,
 			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
@@ -74,28 +74,28 @@ func galgameDetailFromWiki(g dto.WikiGalgameDetailFull, users map[string]dto.Wik
 		// U2: effective_banner_hash + Covers/Screenshots are the
 		// canonical banner/gallery sources. CDN URLs (effective_banner_url
 		// + per-row cdn_url) are injected by client.rewriteBanners over
-		// the wiki response BEFORE we unmarshal — and we explicitly
-		// declare the fields on WikiGalgameDetailFull so they survive,
-		// then pipe through here. banner_image_hash retired in wiki
+		// the galgame response BEFORE we unmarshal — and we explicitly
+		// declare the fields on NextMoeGalgameDetailFull so they survive,
+		// then pipe through here. banner_image_hash retired in galgame
 		// PR5 (K-PR6).
 		EffectiveBannerHash:      g.EffectiveBannerHash,
 		EffectiveBannerURL:       g.EffectiveBannerURL,
 		EffectiveBannerWidth:     g.EffectiveBannerWidth,
 		EffectiveBannerHeight:    g.EffectiveBannerHeight,
 		EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
-		Covers:                   coversFromWiki(g.Covers),
-		Screenshots:              screenshotsFromWiki(g.Screenshots),
-		Contributor:              contributorsFromWiki(g.Contributor, users),
-		Alias:                    wikiAliasesToNames(g.Alias),
-		Engine:                   enginesFromWiki(g.Engine),
-		Official:                 officialsFromWiki(g.Official),
-		Tag:                      tagsFromWiki(g.Tag),
+		Covers:                   coversFromNextMoe(g.Covers),
+		Screenshots:              screenshotsFromNextMoe(g.Screenshots),
+		Contributor:              contributorsFromNextMoe(g.Contributor, users),
+		Alias:                    nextMoeAliasesToNames(g.Alias),
+		Engine:                   enginesFromNextMoe(g.Engine),
+		Official:                 officialsFromNextMoe(g.Official),
+		Tag:                      tagsFromNextMoe(g.Tag),
 		Created:                  g.Created,
 		Updated:                  g.Updated,
 	}
 }
 
-func lookupWikiUser(users map[string]dto.WikiUser, userID int) dto.UserBrief {
+func lookupNextMoeUser(users map[string]dto.NextMoeUser, userID int) dto.UserBrief {
 	if u, ok := users[fmt.Sprintf("%d", userID)]; ok {
 		return dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
 	}
@@ -106,7 +106,7 @@ func lookupWikiUser(users map[string]dto.WikiUser, userID int) dto.UserBrief {
 // shape is identical (snake_case JSON tags); the wrappers exist so the
 // frontend-exposed types can later diverge (e.g. omit Source/SourceKey
 // from public responses) without rewriting the mapper site.
-func coversFromWiki(rows []dto.WikiGalgameCover) []dto.GalgameCover {
+func coversFromNextMoe(rows []dto.NextMoeGalgameCover) []dto.GalgameCover {
 	out := make([]dto.GalgameCover, len(rows))
 	for i, r := range rows {
 		out[i] = dto.GalgameCover{
@@ -123,7 +123,7 @@ func coversFromWiki(rows []dto.WikiGalgameCover) []dto.GalgameCover {
 	return out
 }
 
-func screenshotsFromWiki(rows []dto.WikiGalgameScreenshot) []dto.GalgameScreenshot {
+func screenshotsFromNextMoe(rows []dto.NextMoeGalgameScreenshot) []dto.GalgameScreenshot {
 	out := make([]dto.GalgameScreenshot, len(rows))
 	for i, r := range rows {
 		out[i] = dto.GalgameScreenshot{
@@ -139,15 +139,15 @@ func screenshotsFromWiki(rows []dto.WikiGalgameScreenshot) []dto.GalgameScreensh
 	return out
 }
 
-func contributorsFromWiki(contribs []dto.WikiContributor, users map[string]dto.WikiUser) []dto.UserBrief {
+func contributorsFromNextMoe(contribs []dto.NextMoeContributor, users map[string]dto.NextMoeUser) []dto.UserBrief {
 	out := make([]dto.UserBrief, len(contribs))
 	for i, c := range contribs {
-		out[i] = lookupWikiUser(users, c.UserID)
+		out[i] = lookupNextMoeUser(users, c.UserID)
 	}
 	return out
 }
 
-func wikiAliasesToNames(aliases []dto.WikiAlias) []string {
+func nextMoeAliasesToNames(aliases []dto.NextMoeAlias) []string {
 	out := make([]string, len(aliases))
 	for i, a := range aliases {
 		out[i] = a.Name
@@ -155,7 +155,7 @@ func wikiAliasesToNames(aliases []dto.WikiAlias) []string {
 	return out
 }
 
-func enginesFromWiki(engines []dto.WikiEngineWithAlias) []dto.GalgameDetailEngine {
+func enginesFromNextMoe(engines []dto.NextMoeEngineWithAlias) []dto.GalgameDetailEngine {
 	out := make([]dto.GalgameDetailEngine, len(engines))
 	for i, e := range engines {
 		alias := e.Engine.Alias
@@ -172,7 +172,7 @@ func enginesFromWiki(engines []dto.WikiEngineWithAlias) []dto.GalgameDetailEngin
 	return out
 }
 
-func officialsFromWiki(rels []dto.WikiOfficialRel) []dto.GalgameDetailOfficial {
+func officialsFromNextMoe(rels []dto.NextMoeOfficialRel) []dto.GalgameDetailOfficial {
 	out := make([]dto.GalgameDetailOfficial, len(rels))
 	for i, rel := range rels {
 		out[i] = dto.GalgameDetailOfficial{
@@ -181,14 +181,14 @@ func officialsFromWiki(rels []dto.WikiOfficialRel) []dto.GalgameDetailOfficial {
 			Link:         rel.Official.Link,
 			Category:     rel.Official.Category,
 			Lang:         rel.Official.Lang,
-			Alias:        wikiAliasesToNames(rel.Official.Alias),
+			Alias:        nextMoeAliasesToNames(rel.Official.Alias),
 			GalgameCount: rel.Official.GalgameCount,
 		}
 	}
 	return out
 }
 
-func tagsFromWiki(tags []dto.WikiTagWithSpoiler) []dto.GalgameDetailTag {
+func tagsFromNextMoe(tags []dto.NextMoeTagWithSpoiler) []dto.GalgameDetailTag {
 	out := make([]dto.GalgameDetailTag, len(tags))
 	for i, t := range tags {
 		out[i] = dto.GalgameDetailTag{
@@ -208,7 +208,7 @@ func detailRatingFromRow(
 	user userclient.User,
 	isLiked bool,
 	galgameID int,
-	g dto.WikiGalgameDetailFull,
+	g dto.NextMoeGalgameDetailFull,
 ) dto.GalgameDetailRating {
 	return dto.GalgameDetailRating{
 		ID:           r.ID,

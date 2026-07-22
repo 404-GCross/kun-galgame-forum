@@ -22,7 +22,7 @@ const tabItems = [
 <template>
   <div class="w-full space-y-6">
     <KunHeader
-      name="Wiki 条目管理"
+      name="资料库条目管理"
       description="集中管理 Galgame 的标签 / 会社 / 引擎 / 系列条目。仅管理员（admin / ren）可进入；编辑与删除由服务端强制校验。"
     />
 

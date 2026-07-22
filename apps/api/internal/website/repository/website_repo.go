@@ -46,7 +46,7 @@ type WebsiteListRow struct {
 // ──────────────────────────────────────────
 
 // sfwScope chains the age_limit='all' predicate when SFW mode is on.
-// Mirrors the wiki content_limit protocol so SFW guests don't see r18
+// Mirrors the galgame content_limit protocol so SFW guests don't see r18
 // websites in any list view (the FE Container.vue still advertises
 // "默认仅显示 SFW 的网站" — without this scope the BE shipped the full
 // list and broke that promise).

@@ -24,7 +24,7 @@ func NewGalgameHandler(galgameService *service.GalgameService) *GalgameHandler {
 }
 
 // ──────────────────────────────────────────
-// Create (proxy to wiki with local side effects)
+// Create (proxy to galgame with local side effects)
 // ──────────────────────────────────────────
 
 // Create — POST /api/galgame
@@ -59,9 +59,9 @@ func (h *GalgameHandler) Create(c fiber.Ctx) error {
 // GetDetail — GET /api/galgame/:gid
 //
 // Bearer-aware: forwards the caller's OAuth access token (when present
-// via OptionalAuth) so the wiki returns the caller's own pending /
+// via OptionalAuth) so the galgame returns the caller's own pending /
 // declined drafts in addition to public status=0 rows. Without the
-// token, wiki applies its default visibility filter and the call
+// token, galgame applies its default visibility filter and the call
 // behaves identically to the legacy anonymous path.
 //
 // This is what makes /edit/galgame/draft/:gid (owner viewing own

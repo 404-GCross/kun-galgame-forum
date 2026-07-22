@@ -1,9 +1,9 @@
-// Backfill galgame.release_date from wiki for every local galgame row.
+// Backfill galgame.release_date from galgame for every local galgame row.
 //
 // kungal's GET /galgame browse list filters + sorts on the LOCAL galgame
 // table (migration 013 added the release_date column). This command
-// mirrors wiki's canonical release_date into that column so the list can
-// offer release year/month filtering (wiki §17).
+// mirrors galgame's canonical release_date into that column so the list can
+// offer release year/month filtering (galgame §17).
 //
 // SOURCE: the detail endpoint GET /galgame/:gid, NOT /galgame/batch.
 // The batch endpoint returns a *lite* brief that omits release_date
@@ -11,13 +11,13 @@
 // batch-based version silently wrote all-NULL. Single-detail isn't
 // content-filtered (§16), so NSFW published rows return too. Fetches run
 // through a worker pool — precise to kungal's own id set and fast against
-// a local wiki.
+// a local galgame.
 //
-// Idempotent: re-running overwrites release_date with wiki's current
+// Idempotent: re-running overwrites release_date with galgame's current
 // value (dated → set, null/missing-date → NULL). release_date is
 // effectively immutable once a title ships, so an occasional re-run is
 // also the refresh mechanism (kungal has no write path that mutates it
-// locally). ids wiki returns 404 for (deleted upstream / pending stub)
+// locally). ids galgame returns 404 for (deleted upstream / pending stub)
 // are left untouched.
 //
 // Usage:
@@ -36,7 +36,7 @@ import (
 	"os"
 	"sync"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/infrastructure/database"
 	"kun-galgame-api/pkg/config"
 	"kun-galgame-api/pkg/logger"
@@ -46,8 +46,8 @@ import (
 )
 
 // detailResult carries one galgame's resolved release_date back from a
-// worker. `missing` = wiki returned an error/404 (leave the local row
-// untouched); otherwise `date` is the wiki value (nil → write SQL NULL).
+// worker. `missing` = galgame returned an error/404 (leave the local row
+// untouched); otherwise `date` is the galgame value (nil → write SQL NULL).
 type detailResult struct {
 	id      int
 	date    *string
@@ -57,7 +57,7 @@ type detailResult struct {
 // fetchReleaseDate pulls GET /galgame/:gid and extracts just release_date
 // from the `{ "galgame": { … } }` envelope. Everything else in the heavy
 // detail payload is skipped by the minimal target struct.
-func fetchReleaseDate(ctx context.Context, gc *galgameClient.GalgameClient, id int) detailResult {
+func fetchReleaseDate(ctx context.Context, gc *client.GalgameClient, id int) detailResult {
 	data, appErr := gc.Get(ctx, fmt.Sprintf("/galgame/%d", id), nil)
 	if appErr != nil {
 		// 404 (deleted / pending-not-owned) or transport error → skip.
@@ -82,11 +82,11 @@ func fetchReleaseDate(ctx context.Context, gc *galgameClient.GalgameClient, id i
 //     sits in the int-typed `WHERE id = ?` slot. (A bulk VALUES (?,?)
 //     update can't work here: pgx infers the VALUES id column as text and
 //     fails to encode the int — column-side casts don't fix param typing.
-//     The writes aren't the bottleneck anyway; the wiki fetch is.)
+//     The writes aren't the bottleneck anyway; the galgame fetch is.)
 //   - null ids → one `UPDATE … WHERE id IN (…) SET NULL` (covers the
-//     refresh case where wiki dropped a date; no-op on a fresh column).
+//     refresh case where galgame dropped a date; no-op on a fresh column).
 //
-// ids wiki 404'd aren't passed in, so they're left untouched. The whole
+// ids galgame 404'd aren't passed in, so they're left untouched. The whole
 // chunk commits atomically.
 func writeBatch(db *gorm.DB, datedIDs []int, datedVals []string, nullIDs []int) error {
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -112,11 +112,11 @@ func writeBatch(db *gorm.DB, datedIDs []int, datedVals []string, nullIDs []int) 
 func main() {
 	_ = godotenv.Load()
 
-	dryRun := flag.Bool("dry-run", false, "Fetch from wiki but do not update rows")
-	// 16 is the safe default: the wiki detail endpoint is heavy (relation
-	// preloads), and ~48 concurrent saturated a local wiki into 10s client
+	dryRun := flag.Bool("dry-run", false, "Fetch from galgame but do not update rows")
+	// 16 is the safe default: the galgame detail endpoint is heavy (relation
+	// preloads), and ~48 concurrent saturated a local galgame into 10s client
 	// timeouts. The keep-alive pool (MaxIdleConnsPerHost=64) keeps these
-	// 16 reusing connections. Bump cautiously if the wiki has headroom.
+	// 16 reusing connections. Bump cautiously if the galgame has headroom.
 	workers := flag.Int("workers", 16, "Concurrent detail fetches")
 	writeChunk := flag.Int("chunk", 500, "Rows per bulk UPDATE")
 	flag.Parse()
@@ -129,7 +129,7 @@ func main() {
 	logger.Init(cfg.Server.Mode)
 
 	db := database.NewPostgres(cfg.Database, cfg.Server.Mode)
-	gc := galgameClient.New(
+	gc := client.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
@@ -219,7 +219,7 @@ func main() {
 		verb = "dry-run"
 	}
 	fmt.Printf(
-		"%s 完成: 共 %d 行 (有日期 %d, 无日期/NULL %d, wiki 无此条 %d)\n",
+		"%s 完成: 共 %d 行 (有日期 %d, 无日期/NULL %d, galgame 无此条 %d)\n",
 		verb, processed, withDate, nullDate, missing,
 	)
 }

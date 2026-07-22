@@ -7,22 +7,22 @@ import (
 
 	"kun-galgame-api/internal/admin/dto"
 	"kun-galgame-api/internal/admin/repository"
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/pkg/errors"
 )
 
 // OverviewService produces admin overview/stats responses by combining local
-// DB counts with remote wiki-service stats.
+// DB counts with remote galgame-service stats.
 type OverviewService struct {
-	overviewRepo *repository.OverviewRepository
-	wikiGC       *galgameClient.GalgameClient
+	overviewRepo  *repository.OverviewRepository
+	galgameClient *client.GalgameClient
 }
 
 func NewOverviewService(
 	overviewRepo *repository.OverviewRepository,
-	wikiGC *galgameClient.GalgameClient,
+	galgameClient *client.GalgameClient,
 ) *OverviewService {
-	return &OverviewService{overviewRepo: overviewRepo, wikiGC: wikiGC}
+	return &OverviewService{overviewRepo: overviewRepo, galgameClient: galgameClient}
 }
 
 // ──────────────────────────────────────────
@@ -58,12 +58,12 @@ func localModels() []localModel {
 	}
 }
 
-type wikiModel struct {
+type galgameModel struct {
 	Key, Label string
 }
 
-func wikiModels() []wikiModel {
-	return []wikiModel{
+func galgameModels() []galgameModel {
+	return []galgameModel{
 		{"galgame_tag", "Galgame 标签"},
 		{"galgame_official", "Galgame 会社"},
 		{"galgame_engine", "Galgame 引擎"},
@@ -80,9 +80,9 @@ func wikiModels() []wikiModel {
 
 func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.OverviewItem, *errors.AppError) {
 	locals := localModels()
-	wikis := wikiModels()
+	galgames := galgameModels()
 
-	items := make([]dto.OverviewItem, 0, len(locals)+len(wikis))
+	items := make([]dto.OverviewItem, 0, len(locals)+len(galgames))
 	for _, m := range locals {
 		var (
 			count int64
@@ -103,12 +103,12 @@ func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.
 		})
 	}
 
-	// Merge wiki totals (non-blocking — on error we still emit zero rows).
+	// Merge galgame totals (non-blocking — on error we still emit zero rows).
 	var totals map[string]int64
-	if wikiStats, err := s.wikiGC.GetAdminStats(ctx, 1, token); err == nil && wikiStats != nil {
-		totals = wikiStats.Totals
+	if galgameStats, err := s.galgameClient.GetAdminStats(ctx, 1, token); err == nil && galgameStats != nil {
+		totals = galgameStats.Totals
 	}
-	for _, m := range wikis {
+	for _, m := range galgames {
 		items = append(items, dto.OverviewItem{
 			Name:  m.Key,
 			Label: m.Label,
@@ -138,7 +138,7 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 	since = time.Date(since.Year(), since.Month(), since.Day(), 0, 0, 0, 0, since.Location())
 
 	locals := localModels()
-	wikis := wikiModels()
+	galgames := galgameModels()
 
 	// date -> key -> count
 	dateMap := make(map[string]map[string]int64)
@@ -164,9 +164,9 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 		}
 	}
 
-	// Merge wiki daily stats (non-blocking).
-	if wikiStats, err := s.wikiGC.GetAdminStats(ctx, days, token); err == nil && wikiStats != nil {
-		for _, day := range wikiStats.Daily {
+	// Merge galgame daily stats (non-blocking).
+	if galgameStats, err := s.galgameClient.GetAdminStats(ctx, days, token); err == nil && galgameStats != nil {
+		for _, day := range galgameStats.Daily {
 			date, _ := day["date"].(string)
 			if date == "" {
 				continue
@@ -174,7 +174,7 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 			if dateMap[date] == nil {
 				dateMap[date] = make(map[string]int64)
 			}
-			for _, w := range wikis {
+			for _, w := range galgames {
 				v, ok := day[w.Key]
 				if !ok {
 					continue
@@ -190,11 +190,11 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 	}
 
 	// Build sorted flat array: [{date, user, topic, …}, …]
-	allKeys := make([]string, 0, len(locals)+len(wikis))
+	allKeys := make([]string, 0, len(locals)+len(galgames))
 	for _, t := range locals {
 		allKeys = append(allKeys, t.Name)
 	}
-	for _, w := range wikis {
+	for _, w := range galgames {
 		allKeys = append(allKeys, w.Key)
 	}
 

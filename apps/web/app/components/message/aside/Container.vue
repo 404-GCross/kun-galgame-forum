@@ -55,11 +55,11 @@ const contact = computed(
     </MessageAsideSystemItem>
 
     <!--
-      Wiki notifications — galgame submission review feedback. Data source
-      is the wiki service, not /message/nav/system, so it has its own
+      Galgame notifications — galgame submission review feedback. Data source
+      is the galgame service, not /message/nav/system, so it has its own
       component with its own fetches.
     -->
-    <MessageAsideWikiItem />
+    <MessageAsideGalgameItem />
 
     <MessageAsideItem
       v-for="(room, index) in contact"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Single wiki-message item, modeled after MessageAsideNotice.
+// Single galgame-message item, modeled after MessageAsideNotice.
 //
-// Wiki messages have a richer shape than kungal's local notice rows:
+// Galgame messages have a richer shape than kungal's local notice rows:
 // the target context is a galgame (not a forum reply / like / etc.) and
 // the action is admin-triggered moderation rather than peer interaction.
 // We translate that into a notice-style layout so the message center
@@ -9,23 +9,23 @@
 //
 // See docs/galgame_wiki/08-messages.md for the upstream payload schema.
 
-interface WikiMessageGalgame {
+interface GalgameMessageEntry {
   id: number
   name_zh_cn?: string
   name_ja_jp?: string
   name_en_us?: string
   name_zh_tw?: string
-  // K-PR6: banner_image_hash retired in wiki PR5; effective_banner_hash
+  // K-PR6: banner_image_hash retired in galgame PR5; effective_banner_hash
   // is the derived banner source (= covers[sort_order=0].image_hash).
   effective_banner_hash?: string
   status: number
 }
 
-export interface WikiMessageItem {
+export interface GalgameMessageItem {
   id: number
   type: string
   galgame_id: number
-  galgame: WikiMessageGalgame | null
+  galgame: GalgameMessageEntry | null
   actor_user_id: number
   target_user_id: number | null
   payload: Record<string, unknown> | null
@@ -33,7 +33,7 @@ export interface WikiMessageItem {
 }
 
 const props = defineProps<{
-  message: WikiMessageItem
+  message: GalgameMessageItem
 }>()
 
 const typeBadge = computed(() => {

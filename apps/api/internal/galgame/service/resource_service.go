@@ -22,12 +22,12 @@ import (
 )
 
 type ResourceService struct {
-	resourceRepo *repository.ResourceRepository
-	wikiClient   *client.GalgameClient
-	userClient   *userclient.Client
-	check        *gate.CheckService
-	scan         *gate.ScanService
-	helpers      InteractionHelpers
+	resourceRepo  *repository.ResourceRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
+	check         *gate.CheckService
+	scan          *gate.ScanService
+	helpers       InteractionHelpers
 	// linkChecker gates "report expired" on an objective netdisk-API verdict.
 	// nil when unconfigured → MarkExpired falls back to the legacy flow.
 	linkChecker *linkcheck.Client
@@ -35,19 +35,19 @@ type ResourceService struct {
 
 func NewResourceService(
 	resourceRepo *repository.ResourceRepository,
-	wikiClient *client.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	linkChecker *linkcheck.Client,
 	check *gate.CheckService,
 	scan *gate.ScanService,
 ) *ResourceService {
 	return &ResourceService{
-		resourceRepo: resourceRepo,
-		wikiClient:   wikiClient,
-		userClient:   userClient,
-		check:        check,
-		scan:         scan,
-		linkChecker:  linkChecker,
+		resourceRepo:  resourceRepo,
+		galgameClient: galgameClient,
+		userClient:    userClient,
+		check:         check,
+		scan:          scan,
+		linkChecker:   linkChecker,
 	}
 }
 
@@ -65,8 +65,8 @@ func resourceModerationText(note string, links []string) string {
 // ──────────────────────────────────────────
 
 // GetResourceList returns the public resource list. SFW gating is
-// delegated to wiki via content_limit per docs/galgame_wiki/00-handbook
-// §16 — wiki only returns briefs for galgames matching the requested
+// delegated to galgame via content_limit per docs/galgame_wiki/00-handbook
+// §16 — galgame only returns briefs for galgames matching the requested
 // content_limit, so any row whose galgame is filtered shows up as
 // "no brief returned" below. `total` over-reports in SFW mode (it's the
 // count of kungal-side rows, not the post-filter remainder).
@@ -80,7 +80,7 @@ func (s *ResourceService) GetResourceList(
 	rows := s.resourceRepo.ListPaginated(req.Page, req.Limit)
 
 	galgameIDs, userIDs := collectIDs(rows)
-	briefMap := s.fetchWikiBriefsPublic(ctx, galgameIDs, isSFW)
+	briefMap := s.fetchGalgameBriefsPublic(ctx, galgameIDs, isSFW)
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 
 	// Batch lookup of "did current user already like" so the FE can
@@ -99,7 +99,7 @@ func (s *ResourceService) GetResourceList(
 			continue
 		}
 		b, hasBrief := briefMap[r.GalgameID]
-		// Wiki dropped this row's galgame (didn't match content_limit
+		// Galgame dropped this row's galgame (didn't match content_limit
 		// or doesn't exist) → resource is unrenderable in this mode.
 		if !hasBrief {
 			continue
@@ -312,7 +312,7 @@ func (s *ResourceService) CreateResource(
 
 // SetResourcePublishBan flips the moderator kill-switch (migration 061) that
 // forbids publishing / editing download resources under a galgame. Upserts the
-// local row so a not-yet-ingested wiki game can be pre-banned.
+// local row so a not-yet-ingested galgame game can be pre-banned.
 func (s *ResourceService) SetResourcePublishBan(galgameID int, banned bool) *errors.AppError {
 	if err := s.resourceRepo.SetResourcePublishBanned(galgameID, banned); err != nil {
 		return errors.ErrInternal("更新资源发布禁止状态失败")
@@ -546,26 +546,26 @@ func (s *ResourceService) MarkExpired(ctx context.Context, userID int, resourceI
 // Internal helpers
 // ──────────────────────────────────────────
 
-func (s *ResourceService) fetchWikiBriefs(
+func (s *ResourceService) fetchGalgameBriefs(
 	ctx context.Context,
 	galgameIDs []int,
 ) map[int]client.GalgameBrief {
 	if len(galgameIDs) == 0 {
 		return map[int]client.GalgameBrief{}
 	}
-	briefMap, _ := s.wikiClient.GetBatch(ctx, galgameIDs)
+	briefMap, _ := s.galgameClient.GetBatch(ctx, galgameIDs)
 	if briefMap == nil {
 		return map[int]client.GalgameBrief{}
 	}
 	return briefMap
 }
 
-// fetchWikiBriefsPublic is the SFW-aware variant — for public list paths
+// fetchGalgameBriefsPublic is the SFW-aware variant — for public list paths
 // that must honour content_limit per docs/galgame_wiki/00-handbook §16.
-// The unfiltered fetchWikiBriefs above is kept for internal call sites
+// The unfiltered fetchGalgameBriefs above is kept for internal call sites
 // where the caller already knows the IDs are safe to show (e.g.,
 // detail-page-internal lookups by ID the user already navigated to).
-func (s *ResourceService) fetchWikiBriefsPublic(
+func (s *ResourceService) fetchGalgameBriefsPublic(
 	ctx context.Context,
 	galgameIDs []int,
 	isSFW bool,
@@ -573,7 +573,7 @@ func (s *ResourceService) fetchWikiBriefsPublic(
 	if len(galgameIDs) == 0 {
 		return map[int]client.GalgameBrief{}
 	}
-	briefMap, _ := s.wikiClient.GetBatchPublic(ctx, galgameIDs, isSFW)
+	briefMap, _ := s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	if briefMap == nil {
 		return map[int]client.GalgameBrief{}
 	}
@@ -589,7 +589,7 @@ func (s *ResourceService) buildGalgameSummary(
 		Platform: []string{}, Language: []string{}, Type: []string{},
 	}
 
-	briefMap := s.fetchWikiBriefs(ctx, []int{galgameID})
+	briefMap := s.fetchGalgameBriefs(ctx, []int{galgameID})
 	b, ok := briefMap[galgameID]
 	if !ok {
 		return summary
@@ -632,7 +632,7 @@ func (s *ResourceService) buildRecommendations(
 		resourceIDs[i] = r.ID
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
-	briefMap := s.fetchWikiBriefs(ctx, []int{galgameID})
+	briefMap := s.fetchGalgameBriefs(ctx, []int{galgameID})
 	likedSet := s.resourceRepo.FindLikedSet(currentUserID, resourceIDs)
 
 	cards := make([]dto.ResourceCard, 0, len(rows))

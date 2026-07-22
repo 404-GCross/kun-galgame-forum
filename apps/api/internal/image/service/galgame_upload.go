@@ -38,10 +38,10 @@ type UploadGalgameResult struct {
 	Deduplicated bool              `json:"deduplicated"`
 }
 
-// UploadGalgameImage proxies a galgame cover/screenshot to the WIKI's canonical
+// UploadGalgameImage proxies a galgame cover/screenshot to the GALGAME's canonical
 // upload endpoint (POST /galgame/image), forwarding the user's Bearer token.
-// The wiki uploads under its own image client (site=galgame_wiki) and returns
-// the hash, so every galgame image is OWNED by the wiki — forum no longer
+// The galgame uploads under its own image client (site=galgame_wiki) and returns
+// the hash, so every galgame image is OWNED by the galgame — forum no longer
 // uploads galgame images under its own site=kungal (which the site-scoped
 // galgame reference-ping can't keep alive). Topic/message inline images still
 // go through forum's local image_service client (those are forum's own content).
@@ -55,8 +55,8 @@ func (s *ImageService) UploadGalgameImage(
 	r io.Reader,
 	filename, preset string,
 ) (*UploadGalgameResult, *errors.AppError) {
-	if s.wikiClient == nil {
-		return nil, errors.ErrInternal("Wiki 客户端未配置")
+	if s.galgameClient == nil {
+		return nil, errors.ErrInternal("Galgame 客户端未配置")
 	}
 
 	// Re-encode the upload as multipart {file, preset}.
@@ -77,18 +77,18 @@ func (s *ImageService) UploadGalgameImage(
 	}
 
 	// PostWithToken forwards the multipart body verbatim (boundary preserved)
-	// + the user's Bearer, and returns the wiki's `data` (or its error
+	// + the user's Bearer, and returns the galgame's `data` (or its error
 	// code/status, surfaced to the caller unchanged).
-	data, appErr := s.wikiClient.PostWithToken(
+	data, appErr := s.galgameClient.PostWithToken(
 		ctx, "/galgame/image", token, buf.Bytes(), mw.FormDataContentType(),
 	)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	// Wiki returns image_service's UploadResult (snake_case wire tags); adapt
+	// Galgame returns image_service's UploadResult (snake_case wire tags); adapt
 	// it to the FE-facing UploadGalgameResult.
-	var wiki struct {
+	var uploaded struct {
 		Hash         string            `json:"hash"`
 		URL          string            `json:"url"`
 		VariantURLs  map[string]string `json:"variant_urls"`
@@ -97,16 +97,16 @@ func (s *ImageService) UploadGalgameImage(
 		SizeBytes    int64             `json:"size_bytes"`
 		Deduplicated bool              `json:"deduplicated"`
 	}
-	if err := json.Unmarshal(data, &wiki); err != nil {
-		return nil, errors.ErrInternal("解析 Wiki 上传响应失败")
+	if err := json.Unmarshal(data, &uploaded); err != nil {
+		return nil, errors.ErrInternal("解析 Galgame 上传响应失败")
 	}
 	return &UploadGalgameResult{
-		Hash:         wiki.Hash,
-		URL:          wiki.URL,
-		Width:        wiki.Width,
-		Height:       wiki.Height,
-		SizeBytes:    wiki.SizeBytes,
-		VariantURLs:  wiki.VariantURLs,
-		Deduplicated: wiki.Deduplicated,
+		Hash:         uploaded.Hash,
+		URL:          uploaded.URL,
+		Width:        uploaded.Width,
+		Height:       uploaded.Height,
+		SizeBytes:    uploaded.SizeBytes,
+		VariantURLs:  uploaded.VariantURLs,
+		Deduplicated: uploaded.Deduplicated,
 	}, nil
 }

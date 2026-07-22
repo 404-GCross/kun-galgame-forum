@@ -121,7 +121,7 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 	ratingRepo := repository.NewRatingRepository(db)
 	// Inert clients: post-commit hydration fast-fails to zero values (no panic,
 	// no network wait) — irrelevant to what we assert here.
-	wikiClient := client.New("", "nm_test", "")
+	galgameClient := client.New("", "nm_test", "")
 	uc := userclient.New(userclient.Config{})
 
 	reqOf := func() *dto.CreateRatingRequest {
@@ -133,7 +133,7 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 	}
 
 	// DENY: nothing persisted.
-	denySvc := NewRatingService(ratingRepo, wikiClient, uc,
+	denySvc := NewRatingService(ratingRepo, galgameClient, uc,
 		gate.NewCheckService(scriptedChecker{decision: gate.DecisionDeny}),
 		gate.NewScanService(nil))
 	if _, appErr := denySvc.CreateRating(context.Background(), uid, reqOf()); appErr == nil || appErr.StatusCode != 422 {
@@ -147,7 +147,7 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 
 	// ALLOW: create commits and the scan fires after commit.
 	fs := &captureScanner{done: make(chan struct{}, 1)}
-	okSvc := NewRatingService(ratingRepo, wikiClient, uc,
+	okSvc := NewRatingService(ratingRepo, galgameClient, uc,
 		gate.NewCheckService(scriptedChecker{decision: gate.DecisionAllow}),
 		gate.NewScanService(fs))
 	created, appErr := okSvc.CreateRating(context.Background(), uid, reqOf())

@@ -1,26 +1,26 @@
 <script setup lang="ts">
-// Wiki notification list. Data source is GET /api/galgame/messages/mine,
-// which proxies the wiki service. After viewing, we advance the
+// Galgame notification list. Data source is GET /api/galgame/messages/mine,
+// which proxies the galgame service. After viewing, we advance the
 // per-user read marker via PUT /api/galgame/messages/read-state so the
 // aside badge clears.
 //
 // Why this isn't /message/notice (the local notice table):
-//   - wiki messages live in the wiki service's own galgame_message table
+//   - galgame messages live in the galgame service's own galgame_message table
 //     (see docs/galgame_wiki/08-messages.md). Kungal doesn't mirror them
 //     into its local message table — dual-writes are a known anti-pattern.
 //   - Read state is per-consumer (kungal vs moyu vs admin UI), so it sits
-//     in the kungal-local wiki_message_read_state table, not in wiki.
+//     in the kungal-local wiki_message_read_state table, not in galgame.
 
-import type { WikiMessageItem } from '~/components/message/aside/Wiki.vue'
+import type { GalgameMessageItem } from '~/components/message/aside/Galgame.vue'
 
 definePageMeta({
   middleware: 'auth'
 })
 
-useKunDisableSeo('Wiki 通知')
+useKunDisableSeo('资料库通知')
 
-interface WikiMessagesEnvelope {
-  items: WikiMessageItem[]
+interface GalgameMessagesEnvelope {
+  items: GalgameMessageItem[]
   total: number
 }
 
@@ -29,9 +29,9 @@ const pageData = reactive({
   limit: 30
 })
 
-// Wiki returns id-desc; the page param here is for kungal-side
+// Galgame returns id-desc; the page param here is for kungal-side
 // pagination across long histories.
-const { data, status } = await useKunFetch<WikiMessagesEnvelope>(
+const { data, status } = await useKunFetch<GalgameMessagesEnvelope>(
   '/galgame/messages/mine',
   {
     query: computed(() => ({
@@ -62,13 +62,13 @@ onMounted(async () => {
       <KunButton size="lg" :is-icon-only="true" variant="light" href="/message">
         <KunIcon name="lucide:chevron-left" />
       </KunButton>
-      <h2 class="text-lg">Wiki 通知</h2>
+      <h2 class="text-lg">资料库通知</h2>
     </header>
 
     <KunDivider />
 
     <KunOverlayScroll v-if="data.items.length" class="h-full">
-      <MessageAsideWiki v-for="msg in data.items" :key="msg.id" :message="msg" />
+      <MessageAsideGalgame v-for="msg in data.items" :key="msg.id" :message="msg" />
     </KunOverlayScroll>
 
     <KunNull v-if="!data.total" />

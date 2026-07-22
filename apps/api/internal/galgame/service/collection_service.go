@@ -28,11 +28,11 @@ const previewCoversPerCollection = 4
 // moemoepoint/notification economics (first-add / last-remove).
 //
 // It delegates galgame-card hydration and owner-name lookup to the core
-// GalgameService (same package) so none of the wiki/OAuth fusion is duplicated.
+// GalgameService (same package) so none of the galgame/OAuth fusion is duplicated.
 type CollectionService struct {
 	collectionRepo *repository.GalgameCollectionRepository
 	galgameService *GalgameService
-	wikiClient     *client.GalgameClient
+	galgameClient  *client.GalgameClient
 	userClient     *userclient.Client
 	check          *gate.CheckService
 	scan           *gate.ScanService
@@ -42,7 +42,7 @@ type CollectionService struct {
 func NewCollectionService(
 	collectionRepo *repository.GalgameCollectionRepository,
 	galgameService *GalgameService,
-	wikiClient *client.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	check *gate.CheckService,
 	scan *gate.ScanService,
@@ -50,7 +50,7 @@ func NewCollectionService(
 	return &CollectionService{
 		collectionRepo: collectionRepo,
 		galgameService: galgameService,
-		wikiClient:     wikiClient,
+		galgameClient:  galgameClient,
 		userClient:     userClient,
 		check:          check,
 		scan:           scan,
@@ -221,7 +221,7 @@ func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID
 		return errors.ErrForbidden("收藏夹不存在或不属于您")
 	}
 
-	// Owner + display name resolved via wiki OUTSIDE the tx (network call).
+	// Owner + display name resolved via galgame OUTSIDE the tx (network call).
 	ownerID, name := s.galgameService.fetchOwnerAndName(ctx, galgameID)
 
 	txErr := s.collectionRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -258,7 +258,7 @@ func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID
 			}
 		}
 
-		// Owner economics: skip on unknown owner (wiki miss) or self.
+		// Owner economics: skip on unknown owner (galgame miss) or self.
 		if ownerID != 0 && ownerID != userID {
 			if firstAdd {
 				s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
@@ -430,8 +430,8 @@ func (s *CollectionService) ListForUser(ctx context.Context, ownerID, viewerID, 
 	return out, total, nil
 }
 
-// resolvePreviewCovers gathers up to N cover URLs per collection in one wiki
-// batch. Best-effort: a wiki miss just yields no covers (empty collage).
+// resolvePreviewCovers gathers up to N cover URLs per collection in one galgame
+// batch. Best-effort: a galgame miss just yields no covers (empty collage).
 func (s *CollectionService) resolvePreviewCovers(ctx context.Context, cols []model.GalgameCollection, isSFW bool) map[int][]string {
 	result := make(map[int][]string, len(cols))
 	colIDs := make([]int, len(cols))
@@ -449,7 +449,7 @@ func (s *CollectionService) resolvePreviewCovers(ctx context.Context, cols []mod
 	for _, gids := range previewMap {
 		allGids = append(allGids, gids...)
 	}
-	briefMap, appErr := s.wikiClient.GetBatchPublic(ctx, dedupInts(allGids), isSFW)
+	briefMap, appErr := s.galgameClient.GetBatchPublic(ctx, dedupInts(allGids), isSFW)
 	if appErr != nil {
 		return result
 	}

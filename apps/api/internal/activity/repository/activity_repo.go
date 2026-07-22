@@ -473,16 +473,16 @@ func (r *ActivityRepository) FetchGalgameCounts(galgameIDs []int) (map[int]Galga
 	return out, nil
 }
 
-// EditRevision pairs a GALGAME_EDIT activity's wiki revision row id (global —
+// EditRevision pairs a GALGAME_EDIT activity's galgame revision row id (global —
 // the input for the id→number fallback) with the per-galgame revision NUMBER
 // (what the diff endpoint's :rev expects). RevisionNumber is 0 for rows synced
-// before the wiki feed started carrying `revision`.
+// before the galgame feed started carrying `revision`.
 type EditRevision struct {
 	RevisionID     int
 	RevisionNumber int
 }
 
-// FetchEditRevisions maps galgame_activity ids → their wiki revision ref, for the
+// FetchEditRevisions maps galgame_activity ids → their galgame revision ref, for the
 // feed's edit card to lazily load the diff (directly via the number, or via the
 // id→number resolution fallback for legacy rows where the number is unknown).
 func (r *ActivityRepository) FetchEditRevisions(activityIDs []int) (map[int]EditRevision, error) {
@@ -747,7 +747,7 @@ type Cursor struct {
 //
 // Order + cut use the SAME (created, type, source_id) total order as the cursor
 // (feed_activity has UNIQUE(type, source_id)), so serveKeyset / encode / decode
-// are reused unchanged. Galgame NSFW is still dropped at enrichment (wiki-owned),
+// are reused unchanged. Galgame NSFW is still dropped at enrichment (galgame-owned),
 // bounded by activityMaxRounds.
 func (r *ActivityRepository) FetchFeed(types []string, limit int, cur *Cursor, isSFW, showNoResource bool, sectionMode string) ([]ActivityRow, error) {
 	conds := make([]string, 0, 6)

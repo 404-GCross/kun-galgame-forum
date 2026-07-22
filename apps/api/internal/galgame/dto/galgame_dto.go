@@ -25,12 +25,12 @@ type GalgameListRequest struct {
 	SortOrder            string `query:"sort_order" validate:"omitempty,oneof=asc desc"`
 	IncludeProviders     string `query:"include_providers"`
 	ExcludeOnlyProviders string `query:"exclude_only_providers"`
-	// Release-date filter, wiki §17 format: "YYYY" or "YYYY-MM" (empty =
+	// Release-date filter, galgame §17 format: "YYYY" or "YYYY-MM" (empty =
 	// no bound). Validated + resolved to date boundaries in the service;
 	// malformed input → 400.
 	ReleasedFrom string `query:"released_from"`
 	ReleasedTo   string `query:"released_to"`
-	// Discontinuous month set, wiki §17.10: csv of 1–12 (e.g. "3,7").
+	// Discontinuous month set, galgame §17.10: csv of 1–12 (e.g. "3,7").
 	// AND-combined with the year range. Malformed → 400.
 	ReleasedMonths string `query:"released_months"`
 	// Bayesian-rating advanced filters. minRatingCount = high-confidence
@@ -48,11 +48,11 @@ type GalgameListRequest struct {
 // Response: list
 // ──────────────────────────────────────────
 
-// U2: cover / screenshot rows exposed to the frontend. Mirror the wiki
+// U2: cover / screenshot rows exposed to the frontend. Mirror the galgame
 // wire shape (snake_case) — kungal doesn't rename here because the FE
 // stores these in the temp PR store and submits them back unchanged on
 // PUT/PR (presence-replace semantics; see frontend Footer). `cdn_url`
-// is injected by client.rewriteBanners on every walker pass over a wiki
+// is injected by client.rewriteBanners on every walker pass over a galgame
 // response (current + revision/PR snapshots).
 type GalgameCover struct {
 	ImageHash string `json:"image_hash"`
@@ -62,7 +62,7 @@ type GalgameCover struct {
 	Source    string `json:"source"`
 	SourceKey string `json:"source_key"`
 	// Kind is the VNDB cover type (main/pkgfront/dig/pkgback/…); empty for user
-	// uploads. Sync-managed; the wiki restores it on edit, so echoing it is optional.
+	// uploads. Sync-managed; the galgame restores it on edit, so echoing it is optional.
 	Kind      string `json:"kind,omitempty"`
 	CDNURL    string `json:"cdn_url,omitempty"`
 	Width     int    `json:"width,omitempty"`
@@ -106,7 +106,7 @@ type GalgameListCard struct {
 	ReleaseDateTBA bool    `json:"release_date_tba"`
 	// U2: list cards only need the derived banner. Full covers[] /
 	// screenshots[] are detail-only. URL injected by rewriteBanners.
-	// banner_image_hash retired in wiki PR5 (K-PR6).
+	// banner_image_hash retired in galgame PR5 (K-PR6).
 	EffectiveBannerHash      string `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
@@ -220,12 +220,12 @@ type GalgameDetail struct {
 	ContentLimit       string      `json:"content_limit"`
 	ResourceUpdateTime string      `json:"resource_update_time"`
 	View               int         `json:"view"`
-	// IsOnForum is false for a wiki-catalogue galgame the forum has never
+	// IsOnForum is false for a galgame-catalogue galgame the forum has never
 	// ingested (no local row). The detail page then shows a 未收录 notice and
 	// hides the forum-only view count, keeping the upload/rate/comment CTAs (the
 	// recording funnel — those create the local row on first use).
 	IsOnForum bool `json:"is_on_forum"`
-	// Status = wiki 草稿状态 (0=已发布, 2=VNDB 草稿, 3/4=提交者自己的待审/被拒)。
+	// Status = galgame 草稿状态 (0=已发布, 2=VNDB 草稿, 3/4=提交者自己的待审/被拒)。
 	// 未收录提示用它判断是否可认领：只有 VNDB 草稿 (status=2) 能被认领成为创建者，
 	// 已发布条目 (status=0) 已有创建者、不能再认领。
 	Status           int    `json:"status"`
@@ -238,7 +238,7 @@ type GalgameDetail struct {
 	// U2: derived effective banner (sort_order=0 cover). URL is injected
 	// by client.rewriteBanners so the FE never has to hash → URL on its
 	// own. covers/screenshots also receive a `cdn_url` per row from the
-	// same walker. banner_image_hash retired in wiki PR5 (K-PR6);
+	// same walker. banner_image_hash retired in galgame PR5 (K-PR6);
 	// covers[sort_order=0] is now the canonical banner source.
 	EffectiveBannerHash      string              `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string              `json:"effective_banner_url,omitempty"`

@@ -13,7 +13,7 @@ import (
 
 	"kun-galgame-api/internal/activity/dto"
 	"kun-galgame-api/internal/activity/repository"
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
@@ -31,36 +31,36 @@ var solutionTopicLinkRe = regexp.MustCompile(`^/topic/(\d+)`)
 
 // activityCacheTTL bounds how stale the "最新动态" feed can be. Short on purpose:
 // it collapses the home page's per-render cost (the multi-source timeline query
-// + wiki name-enrichment + OAuth identity round-trips) into one computation per
+// + galgame name-enrichment + OAuth identity round-trips) into one computation per
 // window, while still surfacing new activity within seconds.
 const activityCacheTTL = 30 * time.Second
 
 const (
 	// activityMaxRounds bounds serveKeyset's fetch-until-`limit`-survivors loop
-	// so a pathological run of enrichment drops (NSFW-in-SFW, deleted-from-wiki)
+	// so a pathological run of enrichment drops (NSFW-in-SFW, deleted-from-galgame)
 	// can't fan out unboundedly. Each round is one keyset slice of `limit` rows +
-	// a full enrichment pass (DB + wiki/OAuth), so this is the dominant per-request
+	// a full enrichment pass (DB + galgame/OAuth), so this is the dominant per-request
 	// cost multiplier — kept tight; a short page just lets the FE load one more.
 	activityMaxRounds = 5
-	// wikiBatchChunk caps ids per GetBatchPublic call — it sends every id in one
+	// nextMoeBatchChunk caps ids per GetBatchPublic call — it sends every id in one
 	// query param (no chunking). Matches the ≤100 batch convention.
-	wikiBatchChunk = 100
+	nextMoeBatchChunk = 100
 )
 
 type ActivityService struct {
-	repo       *repository.ActivityRepository
-	wikiGC     *galgameClient.GalgameClient
-	userClient *userclient.Client
-	rdb        *redis.Client
+	repo          *repository.ActivityRepository
+	galgameClient *client.GalgameClient
+	userClient    *userclient.Client
+	rdb           *redis.Client
 }
 
 func NewActivityService(
 	repo *repository.ActivityRepository,
-	gc *galgameClient.GalgameClient,
+	gc *client.GalgameClient,
 	userClient *userclient.Client,
 	rdb *redis.Client,
 ) *ActivityService {
-	return &ActivityService{repo: repo, wikiGC: gc, userClient: userClient, rdb: rdb}
+	return &ActivityService{repo: repo, galgameClient: gc, userClient: userClient, rdb: rdb}
 }
 
 // Result is one page of activity plus the opaque keyset cursor for the next
@@ -71,7 +71,7 @@ type Result struct {
 }
 
 // GetActivity returns a filtered activity feed. type "all" → the mixed
-// timeline. isSFW is forwarded to wiki so NSFW galgame names never enter the
+// timeline. isSFW is forwarded to galgame so NSFW galgame names never enter the
 // public activity stream (docs/galgame_wiki/00-handbook §16).
 func (s *ActivityService) GetActivity(ctx context.Context, typeStr, cursor string, limit int, isSFW, showNoResource bool) (*Result, *errors.AppError) {
 	if typeStr == "all" {
@@ -246,7 +246,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, cursor string, limit 
 }
 
 // cachedKeyset wraps serveKeyset with the activityCacheTTL cache-aside. Keyed by
-// cursor (the page), isSFW (which galgame names the wiki returns) and
+// cursor (the page), isSFW (which galgame names the galgame returns) and
 // showNoResource (whether resource-less GALGAME_CREATION rows are dropped) so
 // viewers with different filters never share an entry.
 func (s *ActivityService) cachedKeyset(ctx context.Context, cacheKey string, types []string, cursor string, limit int, isSFW, showNoResource bool, sectionMode string) (*Result, *errors.AppError) {
@@ -263,7 +263,7 @@ func (s *ActivityService) cachedKeyset(ctx context.Context, cacheKey string, typ
 
 // serveKeyset fills one page to `limit` survivors despite enrichment drops. It
 // seeks the deterministic keyset (created, type_str, id) from `cursor`; because
-// enrichment can drop rows (NSFW-in-SFW, deleted-from-wiki), it keeps fetching
+// enrichment can drop rows (NSFW-in-SFW, deleted-from-galgame), it keeps fetching
 // the next slice — advancing the cursor past each fully-consumed batch — until
 // it has `limit` survivors or the feed is exhausted. nextCursor is the LAST
 // survivor's keyset, so the next page resumes exactly where this one stopped:
@@ -1005,7 +1005,7 @@ func (s *ActivityService) enrichTopicItems(ctx context.Context, items []dto.Acti
 
 // rowsToItems converts DB rows into response items (no enrichment yet).
 // Identity is left blank — hydrated by hydrateActors after enrichGalgameItems
-// has had a chance to inject GALGAME_CREATION actor IDs from the wiki brief.
+// has had a chance to inject GALGAME_CREATION actor IDs from the galgame brief.
 func rowsToItems(rows []repository.ActivityRow) []dto.ActivityItem {
 	items := make([]dto.ActivityItem, len(rows))
 	for i, r := range rows {
@@ -1025,7 +1025,7 @@ func rowsToItems(rows []repository.ActivityRow) []dto.ActivityItem {
 }
 
 // enrichGalgameItems batch-fetches names for every galgame-scoped activity
-// row from the wiki service and rewrites the content string per type:
+// row from the galgame service and rewrites the content string per type:
 //
 //	GALGAME_CREATION          → "<game name>"
 //	GALGAME_RESOURCE_CREATION → "在《<game name>》发布了下载资源"
@@ -1035,9 +1035,9 @@ func rowsToItems(rows []repository.ActivityRow) []dto.ActivityItem {
 // comment text (matching the legacy API) since the type chip + link already
 // convey what it is and where it points — a "在《game》" prefix is just noise.
 //
-// Galgame-scoped rows whose galgame has NO wiki brief for this viewer — NSFW in
+// Galgame-scoped rows whose galgame has NO galgame brief for this viewer — NSFW in
 // SFW mode, or deleted — are DROPPED from the returned slice, so an NSFW galgame
-// never leaks into the public feed as "galgame#N / 未知用户". On wiki failure the
+// never leaks into the public feed as "galgame#N / 未知用户". On galgame failure the
 // items are returned untouched (graceful degradation).
 //
 // Resource-less GALGAME_CREATION rows are NOT handled here anymore — they're
@@ -1067,17 +1067,17 @@ func (s *ActivityService) enrichGalgameItems(
 
 	// Chunk: GetBatchPublic sends every id in one query param, and the over-fetch
 	// window can surface more distinct galgames than a single batch should carry.
-	briefMap := make(map[int]galgameClient.GalgameBrief, len(ids))
-	for start := 0; start < len(ids); start += wikiBatchChunk {
-		end := min(start+wikiBatchChunk, len(ids))
-		m, appErr := s.wikiGC.GetBatchPublic(ctx, ids[start:end], isSFW)
+	briefMap := make(map[int]client.GalgameBrief, len(ids))
+	for start := 0; start < len(ids); start += nextMoeBatchChunk {
+		end := min(start+nextMoeBatchChunk, len(ids))
+		m, appErr := s.galgameClient.GetBatchPublic(ctx, ids[start:end], isSFW)
 		if appErr != nil {
-			return items // graceful: wiki down, leave items untouched
+			return items // graceful: galgame down, leave items untouched
 		}
 		maps.Copy(briefMap, m)
 	}
 
-	briefName := func(b galgameClient.GalgameBrief) string {
+	briefName := func(b client.GalgameBrief) string {
 		// zh-cn > zh-tw > ja-jp > en-us — the FE getPreferredLanguageText zh-cn
 		// default; en-US (VNDB romaji) last so a JP/CN game never shows it.
 		for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
@@ -1088,7 +1088,7 @@ func (s *ActivityService) enrichGalgameItems(
 		return fmt.Sprintf("galgame#%d", b.ID)
 	}
 
-	preferredIntro := func(d galgameClient.GalgameDetailBrief) string {
+	preferredIntro := func(d client.GalgameDetailBrief) string {
 		for _, s := range []string{d.IntroZhCN, d.IntroZhTW, d.IntroJaJP, d.IntroEnUS} {
 			if s != "" {
 				return s
@@ -1125,10 +1125,10 @@ func (s *ActivityService) enrichGalgameItems(
 
 	// Detail briefs (intro + officials + release date) for the cards that render
 	// the full galgame info area — the new-galgame, edit AND PR cards, which share
-	// that area. Best-effort: if wiki view=detail is unreachable, omitted.
-	detailMap := map[int]galgameClient.GalgameDetailBrief{}
+	// that area. Best-effort: if galgame view=detail is unreachable, omitted.
+	detailMap := map[int]client.GalgameDetailBrief{}
 	if detailGIDs := append(append(append([]int{}, creationGIDs...), editGIDs...), prGIDs...); len(detailGIDs) > 0 {
-		if m, appErr := s.wikiGC.GetBatchDetailPublic(ctx, detailGIDs, isSFW); appErr == nil {
+		if m, appErr := s.galgameClient.GetBatchDetailPublic(ctx, detailGIDs, isSFW); appErr == nil {
 			detailMap = m
 		}
 	}
@@ -1224,7 +1224,7 @@ func (s *ActivityService) enrichGalgameItems(
 // hydrateActors batch-fetches identity (name/avatar) from OAuth for every
 // non-zero actor id and writes it back into the items. Runs after
 // enrichGalgameItems so GALGAME_CREATION rows whose actor was injected from
-// the wiki brief are also hydrated.
+// the galgame brief are also hydrated.
 //
 // It also DROPS any item whose actor is banned and returns the surviving
 // slice: the feed is a feed of user actions, so a banned user's actions must

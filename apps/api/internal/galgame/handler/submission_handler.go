@@ -15,7 +15,7 @@ import (
 // SubmissionHandler exposes the user submission endpoints (submit / claim /
 // patch-draft / delete-draft / list-mine / search-with-pending). All of
 // them require authentication; the OAuth access token is read from the
-// session via middleware.GetAccessToken and forwarded to wiki so the wiki
+// session via middleware.GetAccessToken and forwarded to galgame so the galgame
 // sees the authenticated kungal user, not whatever Authorization header
 // the client tried to send.
 type SubmissionHandler struct {
@@ -66,7 +66,7 @@ func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
 }
 
 // PatchDraft — PATCH /api/galgame/:gid (only valid for status IN (3,4) /
-// own row; wiki enforces both)
+// own row; galgame enforces both)
 func (h *SubmissionHandler) PatchDraft(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -88,7 +88,7 @@ func (h *SubmissionHandler) PatchDraft(c fiber.Ctx) error {
 }
 
 // DeleteDraft — DELETE /api/galgame/:gid (only valid for status IN (3,4) /
-// own row; wiki enforces both)
+// own row; galgame enforces both)
 func (h *SubmissionHandler) DeleteDraft(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -129,7 +129,7 @@ func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 //
 // Dedicated endpoint for the 发布向导 flow. Forces include_pending=true so
 // callers don't accidentally use the public search and miss the "你已经
-// 提过这个" cue. Bearer attached so wiki returns this user's pending hits.
+// 提过这个" cue. Bearer attached so galgame returns this user's pending hits.
 //
 // Default search (/api/galgame/search) stays anonymous-only — first-time
 // visitors and SSR don't want "突然在首页看到自己的 pending" UX.

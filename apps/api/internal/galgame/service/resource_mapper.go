@@ -61,7 +61,7 @@ func appendUniqueStr(slice []string, val string) []string {
 	return append(slice, val)
 }
 
-// briefToName maps a wiki GalgameBrief to the four-language KunLanguage DTO.
+// briefToName maps a galgame GalgameBrief to the four-language KunLanguage DTO.
 func briefToName(b client.GalgameBrief) dto.KunLanguage {
 	return dto.KunLanguage{
 		EnUs: b.NameEnUs, JaJp: b.NameJaJp,

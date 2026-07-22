@@ -10,7 +10,7 @@ import (
 
 // CalendarHandler serves the galgame release-calendar endpoints. Read-only and
 // SFW-default like the rest of the galgame surface — utils.IsSFW reads the
-// content-rating cookie, and the service maps it to the wiki content_limit
+// content-rating cookie, and the service maps it to the galgame content_limit
 // (sfw / all). See service.CalendarService.
 type CalendarHandler struct {
 	calendarService *service.CalendarService

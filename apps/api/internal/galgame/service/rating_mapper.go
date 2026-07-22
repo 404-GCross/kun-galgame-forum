@@ -62,8 +62,8 @@ func ratingRowToCard(
 	}
 }
 
-// wikiOfficialsToDTO maps wiki official relations into the response format.
-func wikiOfficialsToDTO(rels []dto.WikiOfficialRel) []dto.RatingOfficial {
+// nextMoeOfficialsToDTO maps galgame official relations into the response format.
+func nextMoeOfficialsToDTO(rels []dto.NextMoeOfficialRel) []dto.RatingOfficial {
 	out := make([]dto.RatingOfficial, len(rels))
 	for i, rel := range rels {
 		alias := make([]string, len(rel.Official.Alias))

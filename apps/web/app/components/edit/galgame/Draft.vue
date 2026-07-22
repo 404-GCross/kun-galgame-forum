@@ -21,7 +21,7 @@
 import { languageItems } from '~/constants/edit'
 import { patchDraftSchema } from '~/validations/galgame'
 
-interface WikiDraftDetail {
+interface NextMoeDraftDetail {
   id: number
   vndb_id: string
   name_en_us: string
@@ -49,14 +49,14 @@ interface WikiDraftDetail {
   updated: string
 }
 
-interface WikiDraftEnvelope {
-  galgame: WikiDraftDetail
+interface NextMoeDraftEnvelope {
+  galgame: NextMoeDraftDetail
 }
 
 const route = useRoute()
 const gid = computed(() => Number(route.params.gid))
 
-const { data, status, error } = await useKunFetch<WikiDraftEnvelope>(
+const { data, status, error } = await useKunFetch<NextMoeDraftEnvelope>(
   `/galgame/${gid.value}`
 )
 
@@ -221,7 +221,7 @@ const handleSave = async () => {
   }
 
   isSaving.value = true
-  const res = await kunFetch<WikiDraftDetail>(`/galgame/${gid.value}`, {
+  const res = await kunFetch<NextMoeDraftDetail>(`/galgame/${gid.value}`, {
     method: 'PATCH',
     body: payload
   })

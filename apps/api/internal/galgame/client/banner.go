@@ -8,23 +8,23 @@ import (
 
 // Banner / image resolution — server-side hash → CDN URL.
 //
-// Background: the Galgame Wiki is the SoT for galgame metadata. After
-// wiki PR5 (K-PR6) the canonical banner source is the
-// `covers[sort_order=0]` row — wiki exposes a derived `effective_banner_hash`
+// Background: the Galgame Galgame is the SoT for galgame metadata. After
+// galgame PR5 (K-PR6) the canonical banner source is the
+// `covers[sort_order=0]` row — galgame exposes a derived `effective_banner_hash`
 // on every detail / list / brief response (with hash + sort_order on
 // each covers/screenshots row). The walker below turns hashes into
-// ready-to-use CDN URLs in a single pass over the wiki response so
+// ready-to-use CDN URLs in a single pass over the galgame response so
 // downstream code never has to construct image URLs itself.
 //
-// URL layout mirrors the wiki's imageclient.MainURL exactly
+// URL layout mirrors the galgame's imageclient.MainURL exactly
 // (kun-galgame-infra/apps/api/pkg/imageclient/client.go):
 //
 //	{cdnBase}/{hash[:2]}/{hash[2:4]}/{hash}.webp
 //
-// cdnBase MUST equal the wiki's KUN_IMAGE_PUBLIC_BASE_URL.
+// cdnBase MUST equal the galgame's KUN_IMAGE_PUBLIC_BASE_URL.
 
 // bannerURLFromHash builds the main-image CDN URL for a content hash.
-// Returns "" when the hash is too short to fan out (mirrors the wiki
+// Returns "" when the hash is too short to fan out (mirrors the galgame
 // helper's len < 4 guard) so callers can fall back safely.
 func bannerURLFromHash(cdnBase, hash string) string {
 	if len(hash) < 4 {
@@ -34,12 +34,12 @@ func bannerURLFromHash(cdnBase, hash string) string {
 		hash[:2] + "/" + hash[2:4] + "/" + hash + ".webp"
 }
 
-// rewriteBanners walks the wiki response JSON and, for every object
+// rewriteBanners walks the galgame response JSON and, for every object
 // carrying U2 hash fields (`effective_banner_hash` / per-row
 // `image_hash` + `sort_order`), injects a CDN URL alongside (so the FE
 // renders without computing URLs itself). See walkResolveBanner for
 // the exact rules. The legacy `banner_image_hash → banner` fill rule
-// was retired with wiki PR5 (K-PR6).
+// was retired with galgame PR5 (K-PR6).
 //
 // Safety: any parse/encode failure returns the original bytes verbatim,
 // so a malformed or unexpected payload can never be turned into an error
@@ -88,7 +88,7 @@ func rewriteBanners(raw json.RawMessage, cdnBase string) json.RawMessage {
 //     image_service bare image record (which carries image_hash but no
 //     sort_order).
 //
-// Wiki PR5 (K-PR6) retired the legacy `banner_image_hash` → `banner`
+// Galgame PR5 (K-PR6) retired the legacy `banner_image_hash` → `banner`
 // fill rule; the wire field is gone in both responses and snapshots,
 // and `covers[sort_order=0]` is the canonical banner source.
 //
@@ -111,7 +111,7 @@ func walkResolveBanner(node any, cdnBase string) bool {
 			}
 		}
 		// Rule 2: image_hash (covers / screenshots / future) → cdn_url.
-		// Skipped when the object is the WIKI image-record itself (it has
+		// Skipped when the object is the GALGAME image-record itself (it has
 		// its own `url` field) — the heuristic: cover/screenshot rows
 		// also carry `sort_order`; image records do not. Cheap to guard.
 		if hashRaw, ok := v["image_hash"]; ok {

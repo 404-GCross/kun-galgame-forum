@@ -65,14 +65,14 @@ export const notificationCategoryGroups: NotificationCategoryGroup[] = [
   },
   {
     value: 'wiki',
-    textValue: 'Wiki',
+    textValue: '资料库',
     icon: 'lucide:book-open',
     stream: 'wiki',
     items: [
-      { key: 'wiki:approved', label: 'Wiki 编辑通过' },
-      { key: 'wiki:declined', label: 'Wiki 编辑被拒' },
-      { key: 'wiki:banned', label: 'Wiki 被封禁' },
-      { key: 'wiki:unbanned', label: 'Wiki 被解封' }
+      { key: 'wiki:approved', label: '资料库编辑通过' },
+      { key: 'wiki:declined', label: '资料库编辑被拒' },
+      { key: 'wiki:banned', label: '资料库被封禁' },
+      { key: 'wiki:unbanned', label: '资料库被解封' }
     ]
   }
 ]

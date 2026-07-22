@@ -1,7 +1,7 @@
 package service
 
 import (
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
 )
@@ -30,7 +30,7 @@ func emptyLocale() dto.KunLanguage {
 	return dto.KunLanguage{}
 }
 
-func briefToLocale(b galgameClient.GalgameBrief) dto.KunLanguage {
+func briefToLocale(b client.GalgameBrief) dto.KunLanguage {
 	return dto.KunLanguage{
 		EnUs: b.NameEnUs, JaJp: b.NameJaJp,
 		ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,

@@ -66,7 +66,7 @@ func (a *App) setupRoutes() {
 	// "search" is captured as :id). Proxies OAuth /users/search (not cached).
 	api.Get("/user/search", userAuth, a.UserHandler.SearchMention)
 
-	// Creator-role application: forum checks its eligibility (wiki PR/galgame
+	// Creator-role application: forum checks its eligibility (galgame PR/galgame
 	// stats + own 简评), then files on the central OAuth queue. Role grant +
 	// admin review live in OAuth (contract owned there, not yet mirrored here).
 	api.Get("/user/creator/status", userAuth, a.CreatorHandler.Status)
@@ -147,7 +147,7 @@ func (a *App) setupRoutes() {
 	// Toolset resource detail (public)
 	api.Get("/toolset/:id/resource/detail", a.ToolsetResourceHandler.GetResourceDetail)
 
-	// Galgame wiki proxies (public reads)
+	// Galgame galgame proxies (public reads)
 	api.Get("/galgame", a.GalgameHandler.GetList)
 	// `/galgame/check` (VNDB-ID precheck) was retired when the publish
 	// wizard moved to name-based search — no FE caller remains. Removed
@@ -166,11 +166,11 @@ func (a *App) setupRoutes() {
 		a.GalgameSubmissionHandler.SearchWithPending,
 	)
 	// Lightweight galgame search shared by the associate-galgame pickers (出题
-	// modal + series editor) via GalgameSearchAutocomplete. Public wiki
+	// modal + series editor) via GalgameSearchAutocomplete. Public galgame
 	// Meilisearch search; the handler lives on the quiz handler for historical
 	// reasons. Literal 3-segment path, registered before /galgame/:gid.
 	api.Get("/galgame/search/picker", a.GalgameQuizHandler.SearchGalgames)
-	// Galgame 发售月历 — proxies wiki /galgame/calendar(+pending/tba), enriched
+	// Galgame 发售月历 — proxies galgame /galgame/calendar(+pending/tba), enriched
 	// with forum-local card data. Public + SFW-default. Same registration-order
 	// rule as /galgame/mine above: the literal "calendar" segment must come
 	// before the /galgame/:gid catch-all or it'd bind as gid="calendar".
@@ -182,11 +182,11 @@ func (a *App) setupRoutes() {
 	// modal. Public + SFW-default, paginated. Literal "drafts" segment, so it
 	// must precede the /galgame/:gid catch-all — same rule as /galgame/calendar.
 	api.Get("/galgame/drafts", a.GalgameDraftsHandler.GetDrafts)
-	// Cross-source site statistics (wiki passthrough, ETag/304 preserved). The
+	// Cross-source site statistics (galgame passthrough, ETag/304 preserved). The
 	// literal "stats" segment must precede the /galgame/:gid catch-all (optAuth
 	// below) — same registration-order rule as /galgame/calendar above.
 	api.Get("/galgame/stats", a.GalgameCrossSourceHandler.Stats)
-	// Editing-engine reads (E3a; public like the wiki revision history always
+	// Editing-engine reads (E3a; public like the galgame revision history always
 	// was): the engine-backed history diff + per-game proposal list. The
 	// old-wire read proxies (/revisions*, /prs*, /links, /aliases) retired in
 	// E3b — every kungal consumer reads the engine now. /edit/revisions lives
@@ -195,7 +195,7 @@ func (a *App) setupRoutes() {
 	// Per-game proposal list (E3b; public like the old wire's PR list) —
 	// the owner's per-game review surface and everyone's transparency read.
 	api.Get("/galgame/:gid/edit/proposals", a.GalgameEditHandler.GameProposals)
-	// Three-source (VNDB / Bangumi / EG) rating snapshot (wiki passthrough,
+	// Three-source (VNDB / Bangumi / EG) rating snapshot (galgame passthrough,
 	// public + display-only). 3-segment, so it never collides with /galgame/:gid.
 	api.Get("/galgame/:gid/scores", a.GalgameCrossSourceHandler.Scores)
 	// `/galgame/:gid/contributors` is unused — the FE contributor view
@@ -303,7 +303,7 @@ func (a *App) setupRoutes() {
 	// anonymous-readable. Same stack-position rule as above: mounted BEFORE the
 	// mandatory-auth boundary so anonymous reads reach the handler.
 	a.ResourceCommentHandler.RegisterReads(optAuth)
-	optAuth.Get("/galgame/:gid/link/all", a.GalgameWikiHandler.GetGalgameLinks)
+	optAuth.Get("/galgame/:gid/link/all", a.GalgameProxyHandler.GetGalgameLinks)
 	// Engine-backed revision history (E3a/E3b): public read, but a logged-in
 	// reviewer (moderator / the game's creator) additionally gets can_revert.
 	optAuth.Get("/galgame/:gid/edit/revisions", a.GalgameEditHandler.Revisions)
@@ -418,7 +418,7 @@ func (a *App) setupRoutes() {
 	authed.Patch("/galgame/:gid", a.GalgameSubmissionHandler.PatchDraft)
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.DeleteDraft)
 
-	// Wiki message stream — user notifications + per-user read marker.
+	// Galgame message stream — user notifications + per-user read marker.
 	authed.Get("/galgame/messages/mine", a.GalgameMessageHandler.MessagesMine)
 	authed.Get("/galgame/messages/read-state", a.GalgameMessageHandler.GetReadState)
 	authed.Put("/galgame/messages/read-state", a.GalgameMessageHandler.SetReadState)
@@ -476,25 +476,25 @@ func (a *App) setupRoutes() {
 	authed.Get("/galgame-quiz/:id/edit", a.GalgameQuizHandler.GetQuizForEdit)
 	authed.Put("/galgame-quiz/:id", a.GalgameQuizHandler.UpdateQuiz)
 
-	// Galgame wiki writes (authenticated + token forwarding).
+	// Galgame galgame writes (authenticated + token forwarding).
 	//
 	// Note on PR submission (POST /galgame/:gid/prs): the integration guide
 	// (docs/galgame_wiki/integration-guide.md §6) suggests letting the
-	// frontend call wiki directly to skip this hop, but our kun_session
+	// frontend call galgame directly to skip this hop, but our kun_session
 	// architecture makes the OAuth access token opaque to the browser
 	// (it lives in Redis, the browser only has the session cookie). So
-	// every wiki write must traverse kungal so the middleware can attach
+	// every galgame write must traverse kungal so the middleware can attach
 	// the session-stored bearer token; ProxyWriteWithToken is the thin
 	// shim that does that. Endpoints with kungal-local side effects
 	// (Create, which seeds the kungal-local stub) go through GalgameHandler
 	// instead; the old-wire PR writes retired in E3b (the editing-engine BFF
 	// carries their side effects now).
-	// POST /galgame is the "admin direct publish" bypass — wiki gates it
+	// POST /galgame is the "admin direct publish" bypass — galgame gates it
 	// to admin/moderator (see docs/galgame_wiki/01-galgame.md §POST). Most
 	// users go through POST /galgame/submit instead. We mirror the gate
-	// here so non-admin attempts fail fast before the wiki hop.
+	// here so non-admin attempts fail fast before the galgame hop.
 	//
-	// INFRA-PROXY (mirrors infra key `galgame.create`, moderator+): the wiki
+	// INFRA-PROXY (mirrors infra key `galgame.create`, moderator+): the galgame
 	// re-checks; this RequireModerator stays a fail-fast mirror, NOT a
 	// pkg/perm boundary (truth lives in infra).
 	authed.Post("/galgame",
@@ -532,31 +532,31 @@ func (a *App) setupRoutes() {
 	// tag / official / engine for a doujin work" contribution flow and the public
 	// series creation on /galgame-series. EDIT (PUT) / DELETE / REVERT of existing
 	// taxonomy is a site-administration capability, gated to admin ⊂ ren via
-	// RequireAdmin. Both proxy to the wiki with the caller's token (which the wiki
-	// re-checks, never widened/narrowed here — 00-handbook §15.2); ToWikiPath maps
+	// RequireAdmin. Both proxy to the galgame with the caller's token (which the galgame
+	// re-checks, never widened/narrowed here — 00-handbook §15.2); ToGalgamePath maps
 	// /galgame-tag → /tag etc.
-	authed.Post("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
+	authed.Post("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
+	authed.Post("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
+	authed.Post("/galgame-engine", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
 	// INFRA-PROXY (taxonomy.edit / taxonomy.delete / taxonomy.revert): these
 	// mirror infra keys `galgame.taxonomy.edit_any` / `galgame.taxonomy.review`,
 	// which infra grants to moderator+. kungal deliberately keeps RequireAdmin
 	// (admin ⊂ ren, STRICTER than infra) per the user's ruling (commit
 	// f819503c: public create, admin-only edit/delete/revert). Not a pkg/perm
-	// key — the wiki re-checks every write; this gate is the local mirror.
+	// key — the galgame re-checks every write; this gate is the local mirror.
 	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
-	taxonomyWrite.Put("/galgame-tag", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Put("/galgame-official", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Put("/galgame-engine", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Delete("/galgame-tag/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
-	taxonomyWrite.Delete("/galgame-official/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
-	taxonomyWrite.Delete("/galgame-engine/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Put("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Put("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Put("/galgame-engine", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Delete("/galgame-tag/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Delete("/galgame-official/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
+	taxonomyWrite.Delete("/galgame-engine/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
 
-	// U3 taxonomy revisions + revert (K-PR5). ToWikiPath's kebab prefix
+	// U3 taxonomy revisions + revert (K-PR5). ToGalgamePath's kebab prefix
 	// rewrite (/galgame-tag → /tag, /galgame-series → /series) maps these
-	// to the wiki's per-entity revision endpoints.
+	// to the galgame's per-entity revision endpoints.
 	//
-	// Revision GETs forward the caller's bearer (via optAuth) — the wiki
+	// Revision GETs forward the caller's bearer (via optAuth) — the galgame
 	// gates taxonomy revision history behind auth (02-revisions §"后端透传
 	// Bearer 代理"), so a token-less GET 401's for everyone.
 	//
@@ -566,21 +566,21 @@ func (a *App) setupRoutes() {
 	// revisions — but that is still useful history, so it is no longer
 	// excluded (the prior exclusion was a stale earlier-version decision).
 	for _, ent := range []string{"galgame-tag", "galgame-official", "galgame-engine", "galgame-series"} {
-		wikiEnt := strings.TrimPrefix(ent, "galgame-")
+		galgameEnt := strings.TrimPrefix(ent, "galgame-")
 		// LIST is hydrated (real user name/avatar, camelCase {items,total});
 		// the single-revision snapshot stays a raw proxy (the FE diff builder
-		// consumes the wiki's verbatim snake_case snapshot).
-		optAuth.Get("/"+ent+"/:id/revisions", a.GalgameWikiHandler.GetTaxonomyRevisions(wikiEnt))
-		optAuth.Get("/"+ent+"/:id/revisions/:rev", a.GalgameWikiHandler.ProxyGetWithToken)
-		taxonomyWrite.Post("/"+ent+"/:id/revert", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
+		// consumes the galgame's verbatim snake_case snapshot).
+		optAuth.Get("/"+ent+"/:id/revisions", a.GalgameProxyHandler.GetTaxonomyRevisions(galgameEnt))
+		optAuth.Get("/"+ent+"/:id/revisions/:rev", a.GalgameProxyHandler.ProxyGetWithToken)
+		taxonomyWrite.Post("/"+ent+"/:id/revert", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
 	}
 	// Series create (POST) + the modal's id→name resolver stay open — the public
 	// /galgame-series page lets any logged-in user create a series; edit / delete
 	// are admin-only.
-	authed.Post("/galgame-series", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-series/modal", a.GalgameWikiHandler.ProxyWriteWithToken("POST"))
-	taxonomyWrite.Put("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Delete("/galgame-series/:id", a.GalgameWikiHandler.ProxyWriteWithToken("DELETE"))
+	authed.Post("/galgame-series", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
+	authed.Post("/galgame-series/modal", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
+	taxonomyWrite.Put("/galgame-series/:id", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
+	taxonomyWrite.Delete("/galgame-series/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
 
 	// Toolset (authenticated)
 	authed.Post("/toolset", a.ToolsetHandler.Create)
@@ -638,13 +638,13 @@ func (a *App) setupRoutes() {
 	trustAdmin.Post("/admin/trust/review-items/:id/decide", a.TrustHandler.DecideReviewItem)
 
 	// Galgame admin: a MIXED group — the submission-review routes are
-	// INFRA-PROXY (wiki re-checks), the resource-publish ban is PURE-FORUM, so
+	// INFRA-PROXY (galgame re-checks), the resource-publish ban is PURE-FORUM, so
 	// each route carries its own gate rather than a shared group middleware.
 	galgameAdmin := authed.Group("")
 	// INFRA-PROXY (mirrors infra key `galgame.review_submission`, moderator+):
-	// the wiki submission review queue. Wiki requires admin/moderator (per
+	// the galgame submission review queue. Galgame requires admin/moderator (per
 	// docs/galgame_wiki/06-admin.md + 08-messages.md); RequireModerator is the
-	// local mirror, forwarding via ProxyWriteWithToken so the wiki sees the
+	// local mirror, forwarding via ProxyWriteWithToken so the galgame sees the
 	// calling admin's identity for the revision/message side effects.
 	galgameAdmin.Get("/admin/galgame/messages", middleware.RequireModerator(), a.GalgameMessageHandler.AdminMessages)
 	// INFRA-PROXY (mirrors infra key `edit.galgame.game.status`, moderator+):
@@ -652,7 +652,7 @@ func (a *App) setupRoutes() {
 	galgameAdmin.Put(
 		"/admin/galgame/:gid/status",
 		middleware.RequireModerator(),
-		a.GalgameWikiHandler.ProxyWriteWithToken("PUT"),
+		a.GalgameProxyHandler.ProxyWriteWithToken("PUT"),
 	)
 	// PURE-FORUM: the local resource_publish_banned kill-switch (migration 061)
 	// is enforced entirely by the forum — gated on galgame.ban_resource_publish.

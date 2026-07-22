@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/user/dto"
@@ -29,7 +29,7 @@ type UserService struct {
 	stateRepo     *repository.StateRepository
 	userStatsRepo *repository.UserStatsRepository
 	rdb           *redis.Client
-	wikiClient    *galgameClient.GalgameClient
+	galgameClient *client.GalgameClient
 	userClient    *userclient.Client
 	community     *communityclient.Client
 	// commentCache memoizes per-user community visible_posts for a few minutes so
@@ -42,7 +42,7 @@ func NewUserService(
 	stateRepo *repository.StateRepository,
 	userStatsRepo *repository.UserStatsRepository,
 	rdb *redis.Client,
-	wikiClient *galgameClient.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	community *communityclient.Client,
 ) *UserService {
@@ -50,7 +50,7 @@ func NewUserService(
 		stateRepo:     stateRepo,
 		userStatsRepo: userStatsRepo,
 		rdb:           rdb,
-		wikiClient:    wikiClient,
+		galgameClient: galgameClient,
 		userClient:    userClient,
 		community:     community,
 		commentCache:  newVisiblePostsCache(),
@@ -122,10 +122,10 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID int) (*dto.User
 	profile.Dislike = stats.Dislike
 	profile.DailyTopicCount = stats.DailyTopicCount
 
-	if wikiStats, err := s.wikiClient.GetUserStats(ctx, userID); err == nil && wikiStats != nil {
-		profile.Galgame = wikiStats.GalgameCreated
-		profile.DailyGalgameCount = wikiStats.GalgameCreatedToday
-		profile.ContributeGalgame = wikiStats.GalgameContributed
+	if galgameStats, err := s.galgameClient.GetUserStats(ctx, userID); err == nil && galgameStats != nil {
+		profile.Galgame = galgameStats.GalgameCreated
+		profile.DailyGalgameCount = galgameStats.GalgameCreatedToday
+		profile.ContributeGalgame = galgameStats.GalgameContributed
 	}
 
 	return profile, nil

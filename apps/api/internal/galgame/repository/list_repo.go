@@ -293,7 +293,7 @@ func applyRatingFilter(q *gorm.DB, f model.GalgameListFilter, bayes string) *gor
 // Bounds are pre-resolved "YYYY-MM-DD" strings (PG casts the literal to
 // date). Setting either bound drops NULL release_date rows automatically
 // — PG evaluates the comparison to UNKNOWN for NULL, excluding them
-// (wiki §17.4). Both empty → no-op, returns the query unchanged.
+// (galgame §17.4). Both empty → no-op, returns the query unchanged.
 func applyReleaseFilter(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
 	if f.ReleasedFrom != "" {
 		q = q.Where("g.release_date >= ?", f.ReleasedFrom)
@@ -301,7 +301,7 @@ func applyReleaseFilter(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
 	if f.ReleasedTo != "" {
 		q = q.Where("g.release_date <= ?", f.ReleasedTo)
 	}
-	// Discontinuous month set (wiki §17.10), AND-combined with the year
+	// Discontinuous month set (galgame §17.10), AND-combined with the year
 	// range. Non-sargable EXTRACT, but it only rechecks the candidate set
 	// the release_date btree range scan already narrowed. NULL release_date
 	// → EXTRACT(NULL) → NULL → not IN → dropped, consistent with §17.4.
@@ -346,7 +346,7 @@ func providerArrayLit(providers []string) string {
 // intArrayLit renders an int slice as a Postgres array literal ("{1,2,3}", or
 // "{}" for empty) for `= ANY(?::int[])` — one bound param instead of an
 // N-placeholder IN list, so a mega-tag's tens-of-thousands of member ids stay
-// cheap. ids come from the wiki (parsed ints), never user text → injection-safe.
+// cheap. ids come from the galgame (parsed ints), never user text → injection-safe.
 func intArrayLit(ids []int) string {
 	parts := make([]string, len(ids))
 	for i, id := range ids {

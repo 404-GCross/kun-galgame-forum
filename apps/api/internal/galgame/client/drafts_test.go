@@ -12,7 +12,7 @@ import (
 // TestDraftsRequestAndPassthrough pins the /galgame/drafts client method: it
 // must hit the right path, forward page/limit, map the SFW flag to
 // content_limit, forward any entity scope (official_id / tag_id / engine_id)
-// only when non-zero, and pass the wiki's {items, total} data through verbatim.
+// only when non-zero, and pass the galgame's {items, total} data through verbatim.
 func TestDraftsRequestAndPassthrough(t *testing.T) {
 	cases := []struct {
 		name             string

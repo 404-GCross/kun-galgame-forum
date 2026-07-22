@@ -17,11 +17,11 @@ type GalgameListFilter struct {
 	// Release-date range, already resolved to inclusive "YYYY-MM-DD"
 	// boundaries by utils.ParseReleaseLowerBound/UpperBound (empty =
 	// no bound on that side). Compared against galgame.release_date;
-	// NULL rows drop out once either bound is set (wiki §17.4).
+	// NULL rows drop out once either bound is set (galgame §17.4).
 	ReleasedFrom string
 	ReleasedTo   string
 	// Discontinuous month set (1–12), AND-combined with the year range
-	// (wiki §17.10): keep only games whose release month ∈ this set,
+	// (galgame §17.10): keep only games whose release month ∈ this set,
 	// across all in-range years. Empty = no month filter.
 	ReleasedMonths []int
 	// Bayesian-rating advanced filters (Design A — computed live from a
@@ -38,8 +38,8 @@ type GalgameListFilter struct {
 	// resource-less galgames are included too.
 	ShowNoResource bool
 	// RestrictIDs, when non-empty, scopes the whole list to this id set
-	// (g.id IN (…)). Used by the wiki-entity detail pages (tag/official/engine):
-	// the wiki supplies the entity's member galgame ids, then the SAME local
+	// (g.id IN (…)). Used by the galgame-entity detail pages (tag/official/engine):
+	// the galgame supplies the entity's member galgame ids, then the SAME local
 	// filter/sort/paginate runs over them. Empty = the global /galgame list.
 	RestrictIDs []int
 	Page        int

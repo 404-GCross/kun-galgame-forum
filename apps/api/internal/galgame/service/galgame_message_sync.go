@@ -16,8 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// WikiMessageSync drives the periodic ingestion of admin-triggered events
-// (approved / declined / banned / unbanned) from wiki's /messages/feed.
+// GalgameMessageSync drives the periodic ingestion of admin-triggered events
+// (approved / declined / banned / unbanned) from galgame's /messages/feed.
 // See docs/galgame_wiki/07-submission.md §调用方 cron 同步本地 status for
 // the design rationale.
 //
@@ -46,24 +46,24 @@ import (
 // logged and skipped (returns retry=false) so one poison message can't wedge
 // the whole feed. This replaces the old "Redis SETNX before award" guard, which
 // made the award at-MOST-once (a crash between guard-set and award lost the +3).
-type WikiMessageSync struct {
-	wikiClient  *client.GalgameClient
-	galgameRepo *repository.GalgameRepository
-	stateRepo   *userRepo.StateRepository
-	rdb         *redis.Client
+type GalgameMessageSync struct {
+	galgameClient *client.GalgameClient
+	galgameRepo   *repository.GalgameRepository
+	stateRepo     *userRepo.StateRepository
+	rdb           *redis.Client
 }
 
-func NewWikiMessageSync(
-	wikiClient *client.GalgameClient,
+func NewGalgameMessageSync(
+	galgameClient *client.GalgameClient,
 	galgameRepo *repository.GalgameRepository,
 	stateRepo *userRepo.StateRepository,
 	rdb *redis.Client,
-) *WikiMessageSync {
-	return &WikiMessageSync{
-		wikiClient:  wikiClient,
-		galgameRepo: galgameRepo,
-		stateRepo:   stateRepo,
-		rdb:         rdb,
+) *GalgameMessageSync {
+	return &GalgameMessageSync{
+		galgameClient: galgameClient,
+		galgameRepo:   galgameRepo,
+		stateRepo:     stateRepo,
+		rdb:           rdb,
 	}
 }
 
@@ -74,10 +74,10 @@ const (
 	cronCursorKey = "wiki:msg:cron:since"
 
 	// messagesFeedBatch is the max number of messages requested per page.
-	// Matches the wiki's stated 1000 limit.
+	// Matches the galgame's stated 1000 limit.
 	messagesFeedBatch = 1000
 
-	// maxPagesPerRun guards against a runaway feed (wiki misbehaving and
+	// maxPagesPerRun guards against a runaway feed (galgame misbehaving and
 	// always returning has_more=true). The cursor still advances within
 	// the cap, so the next run picks up where this one stopped.
 	maxPagesPerRun = 50
@@ -87,7 +87,7 @@ const (
 // SETNX guards so duplicate processing only re-writes the cursor.
 // Designed to be cheap when there's nothing new (one HTTP GET that
 // returns has_more=false and items=[]).
-func (s *WikiMessageSync) Run() {
+func (s *GalgameMessageSync) Run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -99,14 +99,14 @@ func (s *WikiMessageSync) Run() {
 	for {
 		pages++
 		if pages > maxPagesPerRun {
-			slog.Warn("wiki message sync 翻页超过上限, 中断本轮",
+			slog.Warn("galgame message sync 翻页超过上限, 中断本轮",
 				"pages", pages, "since_id", maxSeen)
 			break
 		}
 
-		feed, appErr := s.wikiClient.MessagesFeed(ctx, sinceID, messagesFeedBatch)
+		feed, appErr := s.galgameClient.MessagesFeed(ctx, sinceID, messagesFeedBatch)
 		if appErr != nil {
-			slog.Warn("wiki message feed 拉取失败", "error", appErr, "since_id", sinceID)
+			slog.Warn("galgame message feed 拉取失败", "error", appErr, "since_id", sinceID)
 			return
 		}
 
@@ -134,18 +134,18 @@ func (s *WikiMessageSync) Run() {
 
 	if maxSeen > startedFrom {
 		s.writeCursor(ctx, maxSeen)
-		slog.Info("wiki 消息同步完成",
+		slog.Info("galgame 消息同步完成",
 			"from", startedFrom, "to", maxSeen, "pages", pages)
 	}
 }
 
-// applyMessage applies one wiki feed message's kungal-side side effects.
+// applyMessage applies one galgame feed message's kungal-side side effects.
 // retry=true means a TRANSIENT failure (DB / OAuth network) — the caller holds
 // the cursor and re-attempts next tick; this is safe because every side effect
 // here is idempotent (OnConflict stub, idempotent DeleteLocalStub, and the
 // STABLE per-message OAuth award key). retry=false means done (success, no-op,
 // or a PERMANENT failure already logged — never wedge the feed on poison).
-func (s *WikiMessageSync) applyMessage(_ context.Context, msg client.WikiMessage) (retry bool) {
+func (s *GalgameMessageSync) applyMessage(_ context.Context, msg client.NextMoeMessage) (retry bool) {
 	// Hard-deleted galgame: clean any orphan stub. Idempotent.
 	if msg.Galgame == nil {
 		s.galgameRepo.DeleteLocalStub(msg.GalgameID)
@@ -194,26 +194,26 @@ func (s *WikiMessageSync) applyMessage(_ context.Context, msg client.WikiMessage
 		// No kungal-side action — see type-doc above.
 		return false
 	default:
-		slog.Warn("收到未识别的 wiki 消息类型, 跳过",
+		slog.Warn("收到未识别的 galgame 消息类型, 跳过",
 			"type", msg.Type, "msg_id", msg.ID)
 		return false
 	}
 }
 
-func (s *WikiMessageSync) readCursor(ctx context.Context) int64 {
+func (s *GalgameMessageSync) readCursor(ctx context.Context) int64 {
 	v, err := s.rdb.Get(ctx, cronCursorKey).Int64()
 	if err == redis.Nil {
 		return 0
 	}
 	if err != nil {
-		slog.Warn("读取 wiki 消息游标失败 (从 0 开始)", "error", err)
+		slog.Warn("读取 galgame 消息游标失败 (从 0 开始)", "error", err)
 		return 0
 	}
 	return v
 }
 
-func (s *WikiMessageSync) writeCursor(ctx context.Context, id int64) {
+func (s *GalgameMessageSync) writeCursor(ctx context.Context, id int64) {
 	if err := s.rdb.Set(ctx, cronCursorKey, id, 0).Err(); err != nil {
-		slog.Warn("写入 wiki 消息游标失败", "id", id, "error", err)
+		slog.Warn("写入 galgame 消息游标失败", "id", id, "error", err)
 	}
 }

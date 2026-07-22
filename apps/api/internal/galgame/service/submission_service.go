@@ -21,58 +21,58 @@ import (
 //
 //	submit → 0 (no reward; deferred until approval to deter spam)
 //	claim  → +3 (claim publishes immediately, no review queue)
-//	approved (via cron) → +3 (handled in WikiMessageSync, not here)
+//	approved (via cron) → +3 (handled in GalgameMessageSync, not here)
 //	declined / delete → no reward to reclaim (never granted)
 type SubmissionService struct {
-	wikiClient  *client.GalgameClient
-	galgameRepo *repository.GalgameRepository
+	galgameClient *client.GalgameClient
+	galgameRepo   *repository.GalgameRepository
 }
 
 func NewSubmissionService(
-	wikiClient *client.GalgameClient,
+	galgameClient *client.GalgameClient,
 	galgameRepo *repository.GalgameRepository,
 ) *SubmissionService {
 	return &SubmissionService{
-		wikiClient:  wikiClient,
-		galgameRepo: galgameRepo,
+		galgameClient: galgameClient,
+		galgameRepo:   galgameRepo,
 	}
 }
 
-// Submit forwards a pending submission to wiki. NO local side effects:
+// Submit forwards a pending submission to galgame. NO local side effects:
 //   - no stub (status=3 isn't publicly listable, so no need to seed the
 //     local `galgame` index; if the user self-interacts later the
 //     interaction path lazy-creates the stub)
 //   - no moemoepoint (deferred to approval via cron)
 //
-// Wiki enforces the daily quota (20009) and vndb_id format/uniqueness.
+// Galgame enforces the daily quota (20009) and vndb_id format/uniqueness.
 func (s *SubmissionService) Submit(
 	ctx context.Context,
 	token string,
 	body []byte,
 	contentType string,
 ) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.SubmitDraft(ctx, token, body, contentType)
+	return s.galgameClient.SubmitDraft(ctx, token, body, contentType)
 }
 
 // Claim flips a VNDB-source draft (status=2) directly to published
-// (status=0) on the wiki, then runs two best-effort local side effects:
+// (status=0) on the galgame, then runs two best-effort local side effects:
 //   - creates the local stub so the galgame appears in kungal's list query;
 //   - awards the claimer +3 moemoepoint via OAuth.
 //
 // Idempotency does NOT rely on a local lock (there is none): re-claiming is
-// blocked wiki-side (it only accepts status=2), and the OAuth award uses a
+// blocked galgame-side (it only accepts status=2), and the OAuth award uses a
 // STABLE key per (galgame, claimer) so even a retried claim can't double-award.
 //
-// Wiki failure → no local side effect runs (correct).
-// Local failure after wiki success → log; the +3 is forfeited but the
-// publish itself stands. Avoiding a half-rollback of wiki state.
+// Galgame failure → no local side effect runs (correct).
+// Local failure after galgame success → log; the +3 is forfeited but the
+// publish itself stands. Avoiding a half-rollback of galgame state.
 func (s *SubmissionService) Claim(
 	ctx context.Context,
 	userID int,
 	token string,
 	gid int,
 ) (json.RawMessage, *errors.AppError) {
-	data, appErr := s.wikiClient.ClaimDraft(ctx, token, gid)
+	data, appErr := s.galgameClient.ClaimDraft(ctx, token, gid)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -93,7 +93,7 @@ func (s *SubmissionService) Claim(
 }
 
 // PatchDraft forwards an edit to the user's own pending/declined draft.
-// No local side effects — wiki holds all metadata and the row remains
+// No local side effects — galgame holds all metadata and the row remains
 // invisible to other users until approval.
 func (s *SubmissionService) PatchDraft(
 	ctx context.Context,
@@ -102,20 +102,20 @@ func (s *SubmissionService) PatchDraft(
 	body []byte,
 	contentType string,
 ) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.PatchDraft(ctx, token, gid, body, contentType)
+	return s.galgameClient.PatchDraft(ctx, token, gid, body, contentType)
 }
 
 // DeleteDraft hard-deletes the user's own pending/declined draft on the
-// wiki, then defensively removes any kungal stub the user may have
+// galgame, then defensively removes any kungal stub the user may have
 // lazy-created by self-interacting with the pending row. Idempotent.
 //
-// Wiki failure → don't touch local state.
+// Galgame failure → don't touch local state.
 func (s *SubmissionService) DeleteDraft(
 	ctx context.Context,
 	token string,
 	gid int,
 ) *errors.AppError {
-	if appErr := s.wikiClient.DeleteDraft(ctx, token, gid); appErr != nil {
+	if appErr := s.galgameClient.DeleteDraft(ctx, token, gid); appErr != nil {
 		return appErr
 	}
 	s.galgameRepo.DeleteLocalStub(gid)
@@ -129,17 +129,17 @@ func (s *SubmissionService) ListMine(
 	token string,
 	query url.Values,
 ) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.GetWithToken(ctx, "/galgame/mine", token, query)
+	return s.galgameClient.GetWithToken(ctx, "/galgame/mine", token, query)
 }
 
 // SearchWithPending proxies GET /galgame/search?include_pending=true — the
 // "发布向导" flow. The handler is expected to have already set the
-// include_pending flag; we forward as-is so wiki sees the caller's JWT.userID
+// include_pending flag; we forward as-is so galgame sees the caller's JWT.userID
 // and merges the caller's pending hits into the response.
 func (s *SubmissionService) SearchWithPending(
 	ctx context.Context,
 	token string,
 	query url.Values,
 ) (json.RawMessage, *errors.AppError) {
-	return s.wikiClient.GetWithToken(ctx, "/galgame/search", token, query)
+	return s.galgameClient.GetWithToken(ctx, "/galgame/search", token, query)
 }

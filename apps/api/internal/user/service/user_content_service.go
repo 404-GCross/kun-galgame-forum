@@ -6,7 +6,7 @@ import (
 	stderrors "errors"
 	"strconv"
 
-	galgameClient "kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
@@ -17,20 +17,20 @@ import (
 
 type UserContentService struct {
 	userContentRepo *repository.UserContentRepository
-	wikiClient      *galgameClient.GalgameClient
+	galgameClient   *client.GalgameClient
 	userClient      *userclient.Client
 	community       *communityclient.Client
 }
 
 func NewUserContentService(
 	userContentRepo *repository.UserContentRepository,
-	wikiClient *galgameClient.GalgameClient,
+	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	community *communityclient.Client,
 ) *UserContentService {
 	return &UserContentService{
 		userContentRepo: userContentRepo,
-		wikiClient:      wikiClient,
+		galgameClient:   galgameClient,
 		userClient:      userClient,
 		community:       community,
 	}
@@ -55,7 +55,7 @@ func (s *UserContentService) hideTarget(ctx context.Context, userID int) bool {
 // GetUserGalgameCards returns enriched galgame cards for the user's list
 // (created / liked / favorited / commented depending on req.Type).
 //
-// SFW gating delegated to wiki via content_limit per
+// SFW gating delegated to galgame via content_limit per
 // docs/galgame_wiki/00-handbook §16; rows whose galgame is filtered come
 // back as "no brief returned" and get dropped below. `total` over-reports
 // in SFW mode (it counts kungal-side relation rows pre-filter).
@@ -68,25 +68,25 @@ func (s *UserContentService) GetUserGalgameCards(
 	if s.hideTarget(ctx, userID) {
 		return []dto.UserGalgameCard{}, 0, nil
 	}
-	// "已发布" (galgame_publish): ownership lives in the wiki — kungal's local
+	// "已发布" (galgame_publish): ownership lives in the galgame — kungal's local
 	// galgame mirror has no user_id after the OAuth migration — so the list
-	// comes straight from the wiki endpoint (already ordered, paginated and
+	// comes straight from the galgame endpoint (already ordered, paginated and
 	// NSFW-filtered there). Other types (like / favorite / comment) still join
-	// local relation tables for the IDs, then enrich via the wiki batch.
+	// local relation tables for the IDs, then enrich via the galgame batch.
 	if req.Type == "galgame_publish" {
-		briefs, total, wikiErr := s.wikiClient.GetUserGalgames(ctx, userID, req.Page, req.Limit, isSFW)
-		if wikiErr != nil {
+		briefs, total, galgameErr := s.galgameClient.GetUserGalgames(ctx, userID, req.Page, req.Limit, isSFW)
+		if galgameErr != nil {
 			return []dto.UserGalgameCard{}, 0, nil
 		}
 		return s.buildGalgameCards(ctx, briefs), total, nil
 	}
 
-	// "贡献的" (galgame_contributed): created ∪ edited — also wiki-owned, same
-	// wiki-paginated/NSFW-filtered list shape as 已发布, just a different
+	// "贡献的" (galgame_contributed): created ∪ edited — also galgame-owned, same
+	// galgame-paginated/NSFW-filtered list shape as 已发布, just a different
 	// endpoint. Superset of galgame_publish.
 	if req.Type == "galgame_contributed" {
-		briefs, total, wikiErr := s.wikiClient.GetUserContributedGalgames(ctx, userID, req.Page, req.Limit, isSFW)
-		if wikiErr != nil {
+		briefs, total, galgameErr := s.galgameClient.GetUserContributedGalgames(ctx, userID, req.Page, req.Limit, isSFW)
+		if galgameErr != nil {
 			return []dto.UserGalgameCard{}, 0, nil
 		}
 		return s.buildGalgameCards(ctx, briefs), total, nil
@@ -100,15 +100,15 @@ func (s *UserContentService) GetUserGalgameCards(
 		return []dto.UserGalgameCard{}, total, nil
 	}
 
-	briefMap, wikiErr := s.wikiClient.GetBatchPublic(ctx, ids, isSFW)
-	if wikiErr != nil {
-		// Wiki failure → return empty list but preserve total count.
+	briefMap, galgameErr := s.galgameClient.GetBatchPublic(ctx, ids, isSFW)
+	if galgameErr != nil {
+		// Galgame failure → return empty list but preserve total count.
 		return []dto.UserGalgameCard{}, total, nil
 	}
 
 	// Preserve the local ordering (FindUserGalgameIDs returns newest-first);
-	// drop IDs the wiki filtered out (NSFW miss / deleted).
-	briefs := make([]galgameClient.GalgameBrief, 0, len(ids))
+	// drop IDs the galgame filtered out (NSFW miss / deleted).
+	briefs := make([]client.GalgameBrief, 0, len(ids))
 	for _, id := range ids {
 		if b, ok := briefMap[id]; ok {
 			briefs = append(briefs, b)
@@ -117,13 +117,13 @@ func (s *UserContentService) GetUserGalgameCards(
 	return s.buildGalgameCards(ctx, briefs), total, nil
 }
 
-// buildGalgameCards turns an ORDERED slice of wiki briefs into profile cards,
+// buildGalgameCards turns an ORDERED slice of galgame briefs into profile cards,
 // fusing in kungal-local stats (view / like), resource meta (platform /
 // language) and author identity. Shared by every galgame tab so the card shape
 // stays identical across 已发布 / 点赞 / 收藏 / 评论.
 func (s *UserContentService) buildGalgameCards(
 	ctx context.Context,
-	briefs []galgameClient.GalgameBrief,
+	briefs []client.GalgameBrief,
 ) []dto.UserGalgameCard {
 	if len(briefs) == 0 {
 		return []dto.UserGalgameCard{}
@@ -137,7 +137,7 @@ func (s *UserContentService) buildGalgameCards(
 	metaRows := s.userContentRepo.FindResourceMetaByGalgameIDs(ids)
 	platformMap, languageMap := groupResourceMeta(metaRows)
 
-	userIDs := collectUniqueIDs(briefs, func(b galgameClient.GalgameBrief) int { return b.UserID })
+	userIDs := collectUniqueIDs(briefs, func(b client.GalgameBrief) int { return b.UserID })
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 
 	cards := make([]dto.UserGalgameCard, 0, len(briefs))
@@ -157,7 +157,7 @@ func (s *UserContentService) buildGalgameCards(
 			Language:           emptyStrSlice(languageMap[b.ID]),
 			ReleaseDate:        b.ReleaseDate,
 			ReleaseDateTBA:     b.ReleaseDateTBA,
-			// U2: pass through the wiki-derived banner so the FE card
+			// U2: pass through the galgame-derived banner so the FE card
 			// can pick `_mini` instead of falling back to empty legacy
 			// `banner` for newly-uploaded galgames.
 			EffectiveBannerHash: b.EffectiveBannerHash,
@@ -213,7 +213,7 @@ func (s *UserContentService) GetUserComments(ctx context.Context, userID int, re
 // community degrades to an empty page (fail-closed).
 //
 // isSFW is intentionally NOT applied here: keyset pagination cannot afford the
-// per-galgame wiki brief filter the old offset path used (it would yield ragged
+// per-galgame galgame brief filter the old offset path used (it would yield ragged
 // pages), and both tabs only expose galgame_id + comment text — the click-
 // through /galgame/:id target is itself SFW-gated.
 func (s *UserContentService) GetUserGalgameComments(
@@ -372,12 +372,12 @@ func (s *UserContentService) GetUserResources(
 		linkMap, _ = s.userContentRepo.FindResourceLinks(resourceIDs)
 	}
 
-	// SFW gating via wiki content_limit per
+	// SFW gating via galgame content_limit per
 	// docs/galgame_wiki/00-handbook §16. Rows whose galgame is filtered
 	// come back as "no brief returned" and get dropped below.
-	var briefMap map[int]galgameClient.GalgameBrief
+	var briefMap map[int]client.GalgameBrief
 	if len(galgameIDs) > 0 {
-		briefMap, _ = s.wikiClient.GetBatchPublic(ctx, galgameIDs, isSFW)
+		briefMap, _ = s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	}
 
 	items := make([]dto.UserResourceItem, 0, len(rows))
@@ -430,11 +430,11 @@ func (s *UserContentService) GetUserRatings(
 	}
 
 	galgameIDs := collectUniqueIDs(rows, func(r repository.UserRating) int { return r.GalgameID })
-	// SFW gating via wiki content_limit per
+	// SFW gating via galgame content_limit per
 	// docs/galgame_wiki/00-handbook §16.
-	var briefMap map[int]galgameClient.GalgameBrief
+	var briefMap map[int]client.GalgameBrief
 	if len(galgameIDs) > 0 {
-		briefMap, _ = s.wikiClient.GetBatchPublic(ctx, galgameIDs, isSFW)
+		briefMap, _ = s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
 	}
 
 	uids := collectUniqueIDs(rows, func(r repository.UserRating) int { return r.UserID })

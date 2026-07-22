@@ -51,9 +51,9 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 	return nil
 }
 
-// fakeWiki serves the galgame batch read (owner lookup + naming): one game,
+// fakeGalgame serves the galgame batch read (owner lookup + naming): one game,
 // id 1, created by uid 7.
-func fakeWiki(t *testing.T) *httptest.Server {
+func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Reads go to the internal face + X-API-Key → /internal/galgame/batch.
@@ -137,16 +137,16 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 	return editTestAppFull(t, catalogURL, "", user, nil)
 }
 
-// editTestAppFull additionally wires a fake wiki (owner lookup / naming) and
-// a notifier sink (decision notices). Empty wikiURL / nil notifier = off.
-func editTestAppFull(t *testing.T, catalogURL, wikiURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
+// editTestAppFull additionally wires a fake galgame (owner lookup / naming) and
+// a notifier sink (decision notices). Empty galgameURL / nil notifier = off.
+func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
-	var wiki *client.GalgameClient
-	if wikiURL != "" {
-		wiki = client.New(wikiURL, "nm_test", "")
+	var galgameClient *client.GalgameClient
+	if galgameURL != "" {
+		galgameClient = client.New(galgameURL, "nm_test", "")
 	}
-	h := NewEditHandler(cc, wiki, nil, notifier, nil) // nil user client/repo = best-effort off
+	h := NewEditHandler(cc, galgameClient, nil, notifier, nil) // nil user client/repo = best-effort off
 
 	app := fiber.New()
 	authStub := func(c fiber.Ctx) error {
@@ -307,8 +307,8 @@ func TestEditReviewEntryGates(t *testing.T) {
 	// user is 8): every proposal-directed surface 403s after the entry check
 	// and no write ever reaches the face.
 	nonOwner := &middleware.UserInfo{ID: 8, Name: "bystander", Roles: nil}
-	wiki := fakeWiki(t)
-	app = editTestAppFull(t, fake.server(t).URL, wiki.URL, nonOwner, nil)
+	nm := fakeGalgame(t)
+	app = editTestAppFull(t, fake.server(t).URL, nm.URL, nonOwner, nil)
 	for _, tc := range []struct{ method, path string }{
 		{"GET", "/api/galgame-edit/proposals/7"},
 		{"POST", "/api/galgame-edit/proposals/7/amend"},
@@ -339,9 +339,9 @@ func TestEditReviewEntryGates(t *testing.T) {
 // (the merged revision carries an amender).
 func TestEditOwnerReview(t *testing.T) {
 	fake := &fakeEditFace{}
-	wiki := fakeWiki(t)
+	nm := fakeGalgame(t)
 	sink := &fakeNotifier{}
-	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, plainUser, sink) // uid 7 = the creator
+	app := editTestAppFull(t, fake.server(t).URL, nm.URL, plainUser, sink) // uid 7 = the creator
 
 	status, raw := doJSON(t, app, "GET", "/api/galgame-edit/proposals/7", "")
 	if status != http.StatusOK {
@@ -393,12 +393,12 @@ func TestEditOwnerReview(t *testing.T) {
 // the decline notice (E3b ruling 1).
 func TestEditDeclineNotification(t *testing.T) {
 	fake := &fakeEditFace{}
-	wiki := fakeWiki(t)
+	nm := fakeGalgame(t)
 	sink := &fakeNotifier{}
 
 	// A plain moderator (not the owner) may VIEW but not DECIDE: decline 403s
 	// locally, before any decline write reaches the S2S face.
-	modApp := editTestAppFull(t, fake.server(t).URL, wiki.URL, moderatorUser, sink)
+	modApp := editTestAppFull(t, fake.server(t).URL, nm.URL, moderatorUser, sink)
 	if status, raw := doJSON(t, modApp, "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"x"}`); status != http.StatusForbidden {
 		t.Fatalf("moderator decline: status = %d body %s, want 403", status, raw)
 	}
@@ -408,7 +408,7 @@ func TestEditDeclineNotification(t *testing.T) {
 		}
 	}
 
-	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, adminUser, sink)
+	app := editTestAppFull(t, fake.server(t).URL, nm.URL, adminUser, sink)
 	status, raw := doJSON(t, app, "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"资料来源不可靠，请补充出处"}`)
 	if status != http.StatusOK {
 		t.Fatalf("decline: status = %d body %s", status, raw)
@@ -432,10 +432,10 @@ func TestEditDeclineNotification(t *testing.T) {
 // with the ownership assertion.
 func TestEditRevertEntry(t *testing.T) {
 	fake := &fakeEditFace{}
-	wiki := fakeWiki(t)
+	nm := fakeGalgame(t)
 
 	nonOwner := &middleware.UserInfo{ID: 8, Name: "bystander", Roles: nil}
-	app := editTestAppFull(t, fake.server(t).URL, wiki.URL, nonOwner, nil)
+	app := editTestAppFull(t, fake.server(t).URL, nm.URL, nonOwner, nil)
 	status, _ := doJSON(t, app, "POST", "/api/galgame/1/edit/revert", `{"to_seq":3}`)
 	if status != http.StatusForbidden {
 		t.Fatalf("non-owner revert: status = %d, want 403", status)
@@ -446,7 +446,7 @@ func TestEditRevertEntry(t *testing.T) {
 		}
 	}
 
-	owner := editTestAppFull(t, fake.server(t).URL, wiki.URL, plainUser, nil) // uid 7 = creator
+	owner := editTestAppFull(t, fake.server(t).URL, nm.URL, plainUser, nil) // uid 7 = creator
 	status, raw := doJSON(t, owner, "POST", "/api/galgame/1/edit/revert", `{"to_seq":3,"note":"回滚测试"}`)
 	if status != http.StatusOK {
 		t.Fatalf("owner revert: status = %d body %s", status, raw)

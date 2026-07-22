@@ -1,22 +1,22 @@
 <script setup lang="ts">
-// Wiki notification aside entry — separate component from SystemItem
-// because the data source is different: this one talks to wiki-managed
+// Galgame notification aside entry — separate component from SystemItem
+// because the data source is different: this one talks to galgame-managed
 // /galgame/messages/mine (and the kungal-local /galgame/messages/read-state
 // for unread counts), whereas SystemItem feeds off /message/nav/system.
 //
 // See docs/galgame_wiki/08-messages.md for the upstream message shape and
 // the rationale for keeping per-consumer read state local rather than in
-// the wiki itself (the same message can surface in kungal/moyu/admin UI
+// the galgame itself (the same message can surface in kungal/moyu/admin UI
 // with independent read state).
 
-interface WikiMessageItem {
+interface GalgameMessageItem {
   id: number
   type: string
   created_at: string
 }
 
-interface WikiMessagesEnvelope {
-  items: WikiMessageItem[]
+interface GalgameMessagesEnvelope {
+  items: GalgameMessageItem[]
   total: number
 }
 
@@ -27,8 +27,8 @@ interface ReadStateResp {
 // Pull the top message + the read marker. limit=1 keeps it cheap; we
 // only need the latest id to derive `hasUnread` and a small preview.
 // Lazy + client-only — aside lives in a layout, the SSR pass shouldn't
-// pay for a wiki round-trip per request.
-const { data: feed } = useKunFetch<WikiMessagesEnvelope>(
+// pay for a galgame round-trip per request.
+const { data: feed } = useKunFetch<GalgameMessagesEnvelope>(
   '/galgame/messages/mine',
   {
     query: { since_id: 0, limit: 1 },
@@ -41,14 +41,14 @@ const { data: readState } = useKunFetch<ReadStateResp>(
   { server: false, lazy: true }
 )
 
-// Notification preferences (BE migration 053). Wiki is the one stream that
+// Notification preferences (BE migration 053). Galgame is the one stream that
 // never feeds the top-bar red dot (that's server-computed from local/system/
 // chat only), so its "wiki:*" mutes are enforced here on the client instead.
 const { data: prefs } = useKunFetch<NotificationPreference>(
   '/user/notification-preferences',
   { server: false, lazy: true }
 )
-const mutedWikiTypes = computed(
+const mutedGalgameTypes = computed(
   () =>
     new Set(
       (prefs.value?.muted_types ?? [])
@@ -63,7 +63,7 @@ const hasUnread = computed(() => {
   if (!latest.value) return false
   // A muted category doesn't light the badge (matches the latest-message
   // granularity this component already uses).
-  if (mutedWikiTypes.value.has(latest.value.type)) return false
+  if (mutedGalgameTypes.value.has(latest.value.type)) return false
   return latest.value.id > lastReadId.value
 })
 
@@ -93,7 +93,7 @@ const typeLabel = (t: string | undefined) => {
     <KunImage src="/apple-touch-icon.png" class="h-12 w-12 shrink-0 rounded-full" />
     <div class="justify-space flex w-full flex-col">
       <div class="flex items-center justify-between">
-        <span class="font-bold">Wiki 通知</span>
+        <span class="font-bold">资料库通知</span>
         <span class="text-default-500 text-sm" v-if="latest">
           <KunTime :time="latest.created_at" />
         </span>

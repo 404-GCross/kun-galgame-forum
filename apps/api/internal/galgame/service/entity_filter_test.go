@@ -66,7 +66,7 @@ func TestBuildEntityFilterDefaults(t *testing.T) {
 }
 
 // Local-subset cards are always on-forum (a game with no local row can't survive
-// the list_repo filter), so no card renders as a wiki-only "未收录" entry.
+// the list_repo filter), so no card renders as a galgame-only "未收录" entry.
 func TestListCardsToEntityCardsIsOnForum(t *testing.T) {
 	out := listCardsToEntityCards([]dto.GalgameListCard{{ID: 1, View: 10}})
 	if len(out) != 1 || out[0].ID != 1 || out[0].View != 10 {

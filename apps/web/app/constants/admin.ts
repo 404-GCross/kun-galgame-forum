@@ -98,7 +98,7 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
   },
   {
     name: 'taxonomy',
-    label: 'Wiki 条目管理',
+    label: '资料库条目管理',
     icon: 'lucide:tags',
     router: 'taxonomy'
   },

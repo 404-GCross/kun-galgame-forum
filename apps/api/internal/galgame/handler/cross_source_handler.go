@@ -11,9 +11,9 @@ import (
 )
 
 // CrossSourceHandler serves the galgame detail page's cross-source read face
-// (step 36): the three-source scores + site stats (wiki passthrough) and the
+// (step 36): the three-source scores + site stats (galgame passthrough) and the
 // catalog credits / entity reverse-lookups (catalog S2S passthrough). All
-// endpoints are public GET proxies — the wiki / catalog response shape is
+// endpoints are public GET proxies — the galgame / catalog response shape is
 // forwarded verbatim, so the 37 frontend reads the infra contract directly
 // (docs/integration/galgame_wiki/10 + docs/catalog).
 type CrossSourceHandler struct {
@@ -25,7 +25,7 @@ func NewCrossSourceHandler(svc *service.CrossSourceService) *CrossSourceHandler 
 }
 
 // ──────────────────────────────────────────
-// Scores / stats (wiki passthrough)
+// Scores / stats (galgame passthrough)
 // ──────────────────────────────────────────
 
 // Scores — GET /galgame/:gid/scores
@@ -41,7 +41,7 @@ func (h *CrossSourceHandler) Scores(c fiber.Ctx) error {
 	return response.OK(c, data)
 }
 
-// Stats — GET /galgame/stats. Forwards the wiki's ETag and honours
+// Stats — GET /galgame/stats. Forwards the galgame's ETag and honours
 // If-None-Match so the browser's conditional cache (304) survives the BFF hop.
 func (h *CrossSourceHandler) Stats(c fiber.Ctx) error {
 	res, appErr := h.service.Stats(c.Context(), c.Get("If-None-Match"))
