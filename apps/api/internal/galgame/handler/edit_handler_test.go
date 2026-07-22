@@ -56,9 +56,10 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Reads go to the internal face + X-API-Key → /internal/galgame/batch.
-		if r.URL.Path == "/internal/galgame/batch" {
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":[{"id":1,"user_id":7,"name_zh_cn":"测试游戏"}]}`))
+		// The batch brief read migrated to the /v1 public face (Phase-2 07 W4):
+		// thin item + include=meta, {items:[...]} envelope. user_id lives in meta.
+		if r.URL.Path == "/v1/galgame/batch" {
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":1,"names":{"zh-cn":"测试游戏"},"meta":{"user_id":7}}]}}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

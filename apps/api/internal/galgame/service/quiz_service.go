@@ -842,11 +842,15 @@ func (s *QuizService) SearchGalgameOptions(
 	q := url.Values{}
 	q.Set("q", keywords)
 	q.Set("limit", strconv.Itoa(quizGalgameSearchLimit))
-	q.Set("fields", "id")
+	// Only the hit ids are read here (the picker hydrates them via a batch-detail
+	// call below); the /v1 thin item always carries id. content_limit must be
+	// explicit on both branches — /v1 search defaults to sfw.
 	if isSFW {
 		q.Set("content_limit", "sfw")
+	} else {
+		q.Set("content_limit", "all")
 	}
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/search", q)
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/search", q)
 	if appErr != nil {
 		return empty
 	}

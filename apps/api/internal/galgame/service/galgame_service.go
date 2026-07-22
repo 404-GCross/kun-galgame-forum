@@ -177,23 +177,37 @@ func (s *GalgameService) GetMyInteractions(userID int) dto.MyGalgameInteractions
 // is LAST on purpose: a JP/CN-titled game must never surface its VNDB English
 // name when a Chinese or Japanese name exists.
 func (s *GalgameService) fetchOwnerAndName(ctx context.Context, galgameID int) (int, string) {
-	data, err := s.galgameClient.Get(ctx, fmt.Sprintf("/galgame/%d", galgameID), nil)
+	// /v1 aggregate detail: names are always present; user_id lives in the meta
+	// block (include=meta). content_limit=all keeps an NSFW title resolvable (the
+	// default sfw would 404 it, and a like/favorite notification can target any
+	// game); the key's galgame:nsfw scope makes `all` effective.
+	data, err := s.galgameClient.GetV1(
+		ctx, fmt.Sprintf("/galgame/%d", galgameID),
+		url.Values{"include": {"meta"}, "content_limit": {"all"}},
+	)
 	if err != nil {
 		return 0, ""
 	}
-	var env struct {
-		Galgame struct {
-			UserID   int    `json:"user_id"`
-			NameZhCn string `json:"name_zh_cn"`
-			NameEnUs string `json:"name_en_us"`
-			NameJaJp string `json:"name_ja_jp"`
-			NameZhTw string `json:"name_zh_tw"`
-		} `json:"galgame"`
+	var g struct {
+		Names struct {
+			EnUS *string `json:"en-us"`
+			JaJP *string `json:"ja-jp"`
+			ZhCN *string `json:"zh-cn"`
+			ZhTW *string `json:"zh-tw"`
+		} `json:"names"`
+		Meta struct {
+			UserID int `json:"user_id"`
+		} `json:"meta"`
 	}
-	_ = json.Unmarshal(data, &env)
-	g := env.Galgame
-	name := firstNonEmpty(g.NameZhCn, g.NameZhTw, g.NameJaJp, g.NameEnUs)
-	return g.UserID, truncate(name, constants.TextPreviewLength)
+	_ = json.Unmarshal(data, &g)
+	deref := func(p *string) string {
+		if p == nil {
+			return ""
+		}
+		return *p
+	}
+	name := firstNonEmpty(deref(g.Names.ZhCN), deref(g.Names.ZhTW), deref(g.Names.JaJP), deref(g.Names.EnUS))
+	return g.Meta.UserID, truncate(name, constants.TextPreviewLength)
 }
 
 // firstNonEmpty returns the first non-blank argument, or "".

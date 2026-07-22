@@ -31,12 +31,16 @@ const statsETag = `W/"gstats-1752200700"`
 func newFakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Reads go to the internal face + X-API-Key, so paths arrive prefixed
-		// with /internal.
+		// The A-bucket cross-source reads migrated to the /v1 public face
+		// (Phase-2 07 W4): scores is folded into the aggregate detail under
+		// include=scores (the client extracts the `.scores` sub-object); stats is
+		// a /v1 base-swap that keeps the weak ETag / 304 relay.
 		switch r.URL.Path {
-		case "/internal/galgame/1/scores":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + nextMoeScoresData + `}`))
-		case "/internal/galgame/stats":
+		case "/v1/galgame/1":
+			// include=scores → the detail carries the scores block; the client
+			// pulls it out and forwards it verbatim.
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":1,"scores":` + nextMoeScoresData + `}}`))
+		case "/v1/galgame/stats":
 			// Mirror the galgame's ETag / 304 behaviour exactly.
 			w.Header().Set("ETag", statsETag)
 			if r.Header.Get("If-None-Match") == statsETag {

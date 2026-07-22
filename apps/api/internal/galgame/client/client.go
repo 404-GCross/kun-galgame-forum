@@ -111,9 +111,17 @@ func cachedBatch[T any](
 // alongside the service key in X-API-Key (dual-credential transport).
 type GalgameClient struct {
 	internalBase string
-	legacyBase   string
-	apiKey       string
-	httpClient   *http.Client
+	// v1Base = {base}/v1 — the frozen public data contract. The A-bucket galgame
+	// reads (batch / search / calendar / taxonomy list+detail / galgame-ids /
+	// scores / stats / links) migrated here in Phase-2 07 W4; the internal bridge
+	// (internalBase) keeps only the B-bucket platform-workflow reads, the two cron
+	// feeds, the user write set, and the four reads whose FE-consumed fields have
+	// no /v1 source (galgame detail, rating-galgame summary, series detail,
+	// batch view=detail) pending an infra enrichment.
+	v1Base     string
+	legacyBase string
+	apiKey     string
+	httpClient *http.Client
 	// imageCDNBase resolves image hashes → CDN URLs inside doRequest (see
 	// banner.go). Empty disables resolution (responses pass through untouched).
 	imageCDNBase string
@@ -159,6 +167,7 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 
 	return &GalgameClient{
 		internalBase: base + "/internal",
+		v1Base:       base + "/v1",
 		legacyBase:   base + "/api",
 		apiKey:       apiKey,
 		httpClient: &http.Client{
@@ -263,13 +272,32 @@ func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, qu
 	return c.getFace(ctx, base, path, token, query, apiKey)
 }
 
+// GetV1 performs an anonymous GET against the /v1 public data face with the
+// service X-API-Key. `path` is the /v1-relative path (e.g. "/galgame/tags") —
+// the caller passes the curated /v1 endpoint, not the legacy bridge path. Used
+// by the A-bucket read migration (Phase-2 07 W4): the service layer re-shapes
+// the curated /v1 response back into kungal's own DTOs.
+func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
+	return c.getFace(ctx, c.v1Base, path, "", query, c.apiKey)
+}
+
+// GetV1WithToken is GetV1 with the caller's Bearer forwarded alongside the
+// X-API-Key (dual-credential transport) — for the /v1 reads whose response
+// depends on the caller's identity (search?include_pending).
+func (c *GalgameClient) GetV1WithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
+	return c.getFace(ctx, c.v1Base, path, token, query, c.apiKey)
+}
+
 // EntityGalgameIDs fetches the member galgame ids of a galgame entity
 // (kind = "tag" | "official" | "engine") so the forum can run its OWN local
 // resource-based filtering over them — the galgame has no resource concept. The
 // result is always non-nil so the caller's RestrictIDs guard distinguishes
 // "restrict to this (possibly empty) set" from "no restriction".
 func (c *GalgameClient) EntityGalgameIDs(ctx context.Context, kind string, id int) ([]int, *errors.AppError) {
-	data, appErr := c.Get(ctx, fmt.Sprintf("/%s/%d/galgame-ids", kind, id), nil)
+	// /v1 exposes the reverse-lookup under the plural entity segment
+	// (/v1/galgame/{tags,officials,engines}/{id}/galgame-ids); the {ids} envelope
+	// is byte-identical to the bridge's /{tag,official,engine}/{id}/galgame-ids.
+	data, appErr := c.GetV1(ctx, fmt.Sprintf("/galgame/%ss/%d/galgame-ids", kind, id), nil)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -678,23 +706,30 @@ func (c *GalgameClient) GetBatchWithOptions(ctx context.Context, ids []int, toke
 	for i, id := range ids {
 		idStrs[i] = strconv.Itoa(id)
 	}
-	query := url.Values{"ids": {joinStrings(idStrs, ",")}}
-	if contentLimit != "" {
-		query.Set("content_limit", contentLimit)
+	// /v1 batch: thin items + include=meta carry every scalar the bridge brief
+	// exposed (names/vndb_id/status/content_limit/user_id/resource_update_time/
+	// original_language/age_limit/release_date + banner pin). The kungal "" =
+	// permissive convention maps to /v1 `all` (needs the key's galgame:nsfw
+	// scope; kungal's internal key carries it since W1a P5).
+	query := url.Values{
+		"ids":           {joinStrings(idStrs, ",")},
+		"include":       {"meta"},
+		"content_limit": {v1ContentLimit(contentLimit)},
 	}
 
-	data, appErr := c.GetWithToken(ctx, "/galgame/batch", token, query)
+	data, appErr := c.GetV1WithToken(ctx, "/galgame/batch", token, query)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var briefs []GalgameBrief
-	if err := json.Unmarshal(data, &briefs); err != nil {
+	var batch v1BatchData
+	if err := json.Unmarshal(data, &batch); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 批量响应失败")
 	}
 
-	result := make(map[int]GalgameBrief, len(briefs))
-	for _, b := range briefs {
+	result := make(map[int]GalgameBrief, len(batch.Items))
+	for i := range batch.Items {
+		b := V1ItemToBrief(&batch.Items[i])
 		result[b.ID] = b
 	}
 	return result, nil
@@ -859,7 +894,24 @@ func bodySnippet(b []byte) string {
 // verbatim (naming = contract; the 37 frontend reads the infra shape directly).
 // Missing sources are null server-side; a galgame with no rows returns all-null.
 func (c *GalgameClient) Scores(ctx context.Context, gid int) (json.RawMessage, *errors.AppError) {
-	return c.Get(ctx, "/galgame/"+strconv.Itoa(gid)+"/scores", nil)
+	// /v1 folds the cross-source scores snapshot into the aggregate detail under
+	// include=scores (there is no standalone /v1 scores route). content_limit=all
+	// keeps an NSFW title's detail resolvable (else it 404s and the scores panel
+	// disappears); the key's galgame:nsfw scope makes `all` effective. The
+	// `.scores` sub-object is the same GalgameScores shape the bridge's
+	// /galgame/:gid/scores returned verbatim.
+	query := url.Values{"include": {"scores"}, "content_limit": {"all"}}
+	data, appErr := c.GetV1(ctx, "/galgame/"+strconv.Itoa(gid), query)
+	if appErr != nil {
+		return nil, appErr
+	}
+	var wrap struct {
+		Scores json.RawMessage `json:"scores"`
+	}
+	if err := json.Unmarshal(data, &wrap); err != nil {
+		return nil, errors.ErrInternal("解析 Galgame 评分响应失败")
+	}
+	return wrap.Scores, nil
 }
 
 // StatsResult carries a stats fetch: the verbatim `data` payload plus the galgame's
@@ -880,15 +932,16 @@ type StatsResult struct {
 // doRequest because it needs the raw status code + ETag header, which the
 // envelope-only doRequest hides.
 func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsResult, *errors.AppError) {
-	// A read: routes to the internal face + X-API-Key. Kept off the shared
+	// A read: routes to the /v1 public face + X-API-Key. Kept off the shared
 	// getFace/doRequest path because it needs the raw status code + ETag header.
-	base, apiKey := c.readTarget("/galgame/stats")
-	req, err := http.NewRequestWithContext(ctx, "GET", base+"/galgame/stats", nil)
+	// /v1/galgame/stats mirrors the bridge's GalgameStatsData + the same weak
+	// ETag, so the conditional-cache relay survives the swap unchanged.
+	req, err := http.NewRequestWithContext(ctx, "GET", c.v1Base+"/galgame/stats", nil)
 	if err != nil {
 		return nil, errors.ErrInternal("创建请求失败")
 	}
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("X-API-Key", c.apiKey)
 	}
 	if ifNoneMatch != "" {
 		req.Header.Set("If-None-Match", ifNoneMatch)

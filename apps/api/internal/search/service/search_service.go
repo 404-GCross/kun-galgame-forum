@@ -199,30 +199,38 @@ func (s *SearchService) SearchGalgames(
 	q.Set("q", raw)
 	q.Set("page", strconv.Itoa(page))
 	q.Set("limit", strconv.Itoa(limit))
-	// Field projection: list view only needs the basics. Drop intro_* (1–10KB
-	// each, 4 langs) + tag/official/engine name arrays. Saves ~95% bandwidth.
-	// K-PR6: banner_image_hash retired; effective_banner_hash is the
-	// derived banner source. release_date/release_date_tba added per U1.
-	q.Set("fields", "id,vndb_id,name_zh_cn,name_ja_jp,name_en_us,name_zh_tw,banner,effective_banner_hash,content_limit,view,resource_update_time,user_id,original_language,age_limit,release_date,release_date_tba")
+	// /v1 thin item + include=meta carries every scalar the enricher reads (the
+	// heavy intro_* / taxonomy name arrays are never on the thin item, so the old
+	// `fields=` bandwidth trim is now inherent to the curated shape). Content
+	// limit MUST be explicit on BOTH branches: /v1 search defaults to sfw when
+	// omitted, so NSFW mode has to say `all` aloud (needs the key's galgame:nsfw
+	// scope) or NSFW hits silently disappear.
+	q.Set("include", "meta")
 	if isSFW {
 		q.Set("content_limit", "sfw")
+	} else {
+		q.Set("content_limit", "all")
 	}
 
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/search", q)
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/search", q)
 	if appErr != nil {
 		return nil, appErr
 	}
 
 	var resp struct {
-		Items []galgameDto.NextMoeGalgameItem `json:"items"`
-		Total int64                           `json:"total"`
+		Items []client.V1Item `json:"items"`
+		Total int64           `json:"total"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, errors.ErrInternal(fmt.Sprintf("解析 Galgame 搜索响应失败: %v", err))
 	}
+	items := make([]galgameDto.NextMoeGalgameItem, len(resp.Items))
+	for i := range resp.Items {
+		items[i] = client.V1ItemToNextMoeItem(&resp.Items[i])
+	}
 
 	// Defensive: if galgame ignores the SFW filter we still strip NSFW here.
-	filtered := s.enricher.FilterSFW(resp.Items, isSFW)
+	filtered := s.enricher.FilterSFW(items, isSFW)
 	cards := s.enricher.ToCards(ctx, filtered)
 
 	return &dto.PaginatedResult[galgameDto.GalgameCard]{

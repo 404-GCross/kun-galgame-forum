@@ -80,7 +80,7 @@ func (s *CalendarService) fetchMonthRaw(
 	if month != "" {
 		q.Set("month", month)
 	}
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar", withSFWFilter(q, isSFW))
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/calendar", withSFWFilter(q, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -126,7 +126,7 @@ func (s *CalendarService) GetPending(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.CalendarPendingPage, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar/pending", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/calendar/pending", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -149,7 +149,7 @@ func (s *CalendarService) GetTBA(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.CalendarTBAPage, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/calendar/tba", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/calendar/tba", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}

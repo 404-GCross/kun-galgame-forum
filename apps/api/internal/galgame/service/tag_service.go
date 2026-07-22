@@ -35,20 +35,6 @@ type nextMoeTagListResp struct {
 	Total int64                `json:"total"`
 }
 
-type nextMoeTagDetail struct {
-	ID          int                `json:"id"`
-	Name        string             `json:"name"`
-	Category    string             `json:"category"`
-	Description string             `json:"description"`
-	Alias       []dto.NextMoeAlias `json:"alias"`
-}
-
-type nextMoeTagDetailResp struct {
-	Tag      nextMoeTagDetail         `json:"tag"`
-	Galgames []dto.NextMoeGalgameItem `json:"galgames"`
-	Total    int64                    `json:"total"`
-}
-
 // nextMoeMultiTagResp is the {items, total} shape galgame returns for /tag/multi.
 type nextMoeMultiTagResp struct {
 	Items []dto.NextMoeGalgameItem `json:"items"`
@@ -77,7 +63,7 @@ func (s *TagService) Search(
 	rawQuery url.Values,
 	isSFW bool,
 ) ([]dto.TagListItem, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/tag/search", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/search", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -148,7 +134,7 @@ func (s *TagService) GetList(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagListPage, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/tag", withSFWFilter(rawQuery, isSFW))
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags", withSFWFilter(rawQuery, isSFW))
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -179,22 +165,17 @@ func (s *TagService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagDetail, *errors.AppError) {
-	q := withSFWFilter(rawQuery, isSFW)
-	// Resolve by the tag_id QUERY param (the :name path is cosmetic — 04-taxonomy),
-	// sourced from the path so the lookup never depends on the FE echoing it.
-	q.Set("tag_id", name)
-	q.Set("page", "1")
-	q.Set("limit", "1")
-	data, appErr := s.galgameClient.Get(ctx, "/tag/"+name, q)
+	// /v1 tag entity is by-id (the :name segment carries the numeric id) and needs
+	// no query params — the curated record has the full metadata + aliases (as a
+	// plain []string). The kungal member list is recomputed locally below.
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/"+name, nil)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed nextMoeTagDetailResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	var t v1TagEntity
+	if err := json.Unmarshal(data, &t); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
-
-	t := parsed.Tag
 
 	// Member ids from the galgame, then the SAME local filter/sort/paginate as
 	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
@@ -212,8 +193,20 @@ func (s *TagService) GetDetail(
 		Name:         t.Name,
 		Category:     t.Category,
 		Description:  t.Description,
-		Alias:        aliasesToNames(t.Alias),
+		Alias:        emptyStrSliceIfNil(t.Aliases),
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
+}
+
+// v1TagEntity is the /v1 curated tag record (GET /v1/galgame/tags/{id}); only the
+// metadata the entity page renders is typed (the member list is recomputed
+// locally). Aliases is a plain name slice ([]string), unlike the bridge's
+// alias-row objects.
+type v1TagEntity struct {
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	Category    string   `json:"category"`
+	Description string   `json:"description"`
+	Aliases     []string `json:"aliases"`
 }

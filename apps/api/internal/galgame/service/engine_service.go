@@ -4,11 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
+
+// enginePageLimit is the /v1 engines list page size (the curated engine list is
+// page/limit paginated, capped at 100 — the bridge's unpaginated bare array does
+// not carry over). GetList walks every page to reproduce the full list the FE
+// engine index expects.
+const enginePageLimit = 100
 
 type EngineService struct {
 	galgameClient *client.GalgameClient
@@ -39,21 +46,31 @@ type nextMoeEngineDetail struct {
 	Alias       []string `json:"alias"`
 }
 
-type nextMoeEngineDetailResp struct {
-	Engine   nextMoeEngineDetail      `json:"engine"`
-	Galgames []dto.NextMoeGalgameItem `json:"galgames"`
-	Total    int64                    `json:"total"`
-}
-
 // GetList — GET /galgame-engine
 func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/engine", nil)
-	if appErr != nil {
-		return nil, appErr
-	}
+	// /v1 engines is page/limit paginated ({items,total}); walk every page and
+	// concatenate to reproduce the full bare list the FE engine index consumes.
 	var engines []nextMoeEngineListItem
-	if err := json.Unmarshal(data, &engines); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
+	for page := 1; ; page++ {
+		q := url.Values{
+			"page":  {strconv.Itoa(page)},
+			"limit": {strconv.Itoa(enginePageLimit)},
+		}
+		data, appErr := s.galgameClient.GetV1(ctx, "/galgame/engines", q)
+		if appErr != nil {
+			return nil, appErr
+		}
+		var resp struct {
+			Items []nextMoeEngineListItem `json:"items"`
+			Total int64                   `json:"total"`
+		}
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return nil, errors.ErrInternal("解析 Galgame 响应失败")
+		}
+		engines = append(engines, resp.Items...)
+		if len(resp.Items) == 0 || int64(len(engines)) >= resp.Total {
+			break
+		}
 	}
 
 	items := make([]dto.EngineListItem, len(engines))
@@ -80,22 +97,17 @@ func (s *EngineService) GetDetail(
 	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
 	// engine's metadata is used from the galgame here (cheapest page); the galgame
 	// list is recomputed locally from the member ids below.
-	q := withSFWFilter(rawQuery, isSFW)
-	// Resolve by the engine_id QUERY param (the :name path is cosmetic — 04-taxonomy),
-	// sourced from the path so the lookup never depends on the FE echoing it.
-	q.Set("engine_id", name)
-	q.Set("page", "1")
-	q.Set("limit", "1")
-	data, appErr := s.galgameClient.Get(ctx, "/engine/"+name, q)
+	// /v1 engine entity is by-id (the :name segment carries the numeric id) and
+	// needs no query params — the curated record has name/description/alias/
+	// galgame_count. The kungal member list is recomputed locally below.
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/engines/"+name, nil)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed nextMoeEngineDetailResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	var e nextMoeEngineDetail
+	if err := json.Unmarshal(data, &e); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
-
-	e := parsed.Engine
 
 	// Member ids from the galgame, then the SAME local filter/sort/paginate as
 	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.

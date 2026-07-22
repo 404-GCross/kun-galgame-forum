@@ -27,14 +27,17 @@ func NewOfficialService(galgameClient *client.GalgameClient, galgameSvc *Galgame
 // Galgame response shapes
 // ──────────────────────────────────────────
 
+// nextMoeOfficialListItem is the /v1 curated maker record (GET
+// /v1/galgame/officials list item = PublicOfficialEntity). Aliases is a plain
+// name slice ([]string) on /v1, unlike the bridge's alias-row objects.
 type nextMoeOfficialListItem struct {
-	ID           int                `json:"id"`
-	Name         string             `json:"name"`
-	Link         string             `json:"link"`
-	Category     string             `json:"category"`
-	Lang         string             `json:"lang"`
-	Alias        []dto.NextMoeAlias `json:"alias"`
-	GalgameCount int                `json:"galgame_count"`
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	Link         string   `json:"link"`
+	Category     string   `json:"category"`
+	Lang         string   `json:"lang"`
+	Aliases      []string `json:"aliases"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 type nextMoeOfficialListResp struct {
@@ -42,26 +45,32 @@ type nextMoeOfficialListResp struct {
 	Total int64                     `json:"total"`
 }
 
-type nextMoeOfficialDetail struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	// Original-language name (added by galgame PR4 sub-change, K-PR6).
-	// Pointer because galgame may omit / null when the field hasn't been
-	// set yet; the FE edit modal needs to round-trip the current
-	// value, so dropping it on the floor here makes the modal default
-	// to an empty input every open.
-	Original    *string            `json:"original"`
-	Link        string             `json:"link"`
-	Category    string             `json:"category"`
-	Lang        string             `json:"lang"`
-	Description string             `json:"description"`
-	Alias       []dto.NextMoeAlias `json:"alias"`
+// nextMoeOfficialSearchItem is one /v1 Meilisearch maker hit
+// (PublicOfficialSearchItem). It carries no `link` (the search curation drops
+// it) — the search-result cards do not render a maker website, so Link falls to
+// "" (the entity detail page keeps link via the full record below).
+type nextMoeOfficialSearchItem struct {
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	Category     string   `json:"category"`
+	Lang         string   `json:"lang"`
+	Aliases      []string `json:"aliases"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
-type nextMoeOfficialDetailResp struct {
-	Official nextMoeOfficialDetail    `json:"official"`
-	Galgames []dto.NextMoeGalgameItem `json:"galgames"`
-	Total    int64                    `json:"total"`
+// nextMoeOfficialDetail is the /v1 curated maker record
+// (GET /v1/galgame/officials/{id} = PublicOfficialEntity). Original is a plain
+// string ("" when unset) on /v1; the FE edit modal round-trips it.
+type nextMoeOfficialDetail struct {
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	Original     string   `json:"original"`
+	Link         string   `json:"link"`
+	Category     string   `json:"category"`
+	Lang         string   `json:"lang"`
+	Description  string   `json:"description"`
+	Aliases      []string `json:"aliases"`
+	GalgameCount int      `json:"galgame_count"`
 }
 
 // ──────────────────────────────────────────
@@ -72,7 +81,7 @@ func (s *OfficialService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 ) (*dto.OfficialListPage, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/official", rawQuery)
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/officials", rawQuery)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -90,7 +99,7 @@ func (s *OfficialService) GetList(
 			Link:         o.Link,
 			Category:     o.Category,
 			Lang:         o.Lang,
-			Alias:        aliasesToNames(o.Alias),
+			Alias:        emptyStrSliceIfNil(o.Aliases),
 			GalgameCount: o.GalgameCount,
 		}
 	}
@@ -116,12 +125,12 @@ func (s *OfficialService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
 ) ([]dto.OfficialListItem, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/official/search", rawQuery)
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/officials/search", rawQuery)
 	if appErr != nil {
 		return nil, appErr
 	}
 	var resp struct {
-		Items []nextMoeOfficialListItem `json:"items"`
+		Items []nextMoeOfficialSearchItem `json:"items"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 响应失败")
@@ -131,12 +140,14 @@ func (s *OfficialService) Search(
 	items := make([]dto.OfficialListItem, len(raw))
 	for i, o := range raw {
 		items[i] = dto.OfficialListItem{
-			ID:           o.ID,
-			Name:         o.Name,
-			Link:         o.Link,
+			ID:   o.ID,
+			Name: o.Name,
+			// The /v1 maker-search hit drops `link` (curation) — the search-result
+			// cards don't render a website, so Link stays "" here (the entity
+			// detail page keeps it via the full record).
 			Category:     o.Category,
 			Lang:         o.Lang,
-			Alias:        aliasesToNames(o.Alias),
+			Alias:        emptyStrSliceIfNil(o.Aliases),
 			GalgameCount: o.GalgameCount,
 		}
 	}
@@ -157,27 +168,18 @@ func (s *OfficialService) GetDetail(
 	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
 	// official's metadata is used from the galgame here (cheapest page); the galgame
 	// list is recomputed locally from the member ids below.
-	q := withSFWFilter(rawQuery, isSFW)
-	// The galgame resolves the entity by the official_id QUERY param (the :name path
-	// segment is cosmetic — 04-taxonomy). Source it from the path so the lookup
-	// never depends on the FE echoing it in the query string.
-	q.Set("official_id", name)
-	q.Set("page", "1")
-	q.Set("limit", "1")
-	data, appErr := s.galgameClient.Get(ctx, "/official/"+name, q)
+	// /v1 maker entity is by-id (the :name segment carries the numeric id) and
+	// needs no query params — the curated record has the full metadata
+	// (original / link / lang / description / aliases). The kungal member list is
+	// recomputed locally below.
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/officials/"+name, nil)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed nextMoeOfficialDetailResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	var o nextMoeOfficialDetail
+	if err := json.Unmarshal(data, &o); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-
-	o := parsed.Official
-	original := ""
-	if o.Original != nil {
-		original = *o.Original
 	}
 
 	// Member ids from the galgame, then the SAME local filter/sort/paginate as
@@ -194,12 +196,12 @@ func (s *OfficialService) GetDetail(
 	return &dto.OfficialDetail{
 		ID:           o.ID,
 		Name:         o.Name,
-		Original:     original,
+		Original:     o.Original,
 		Link:         o.Link,
 		Category:     o.Category,
 		Lang:         o.Lang,
 		Description:  o.Description,
-		Alias:        aliasesToNames(o.Alias),
+		Alias:        emptyStrSliceIfNil(o.Aliases),
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
