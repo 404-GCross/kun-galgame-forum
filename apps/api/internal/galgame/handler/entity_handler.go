@@ -180,4 +180,3 @@ func collectQuery(c fiber.Ctx) url.Values {
 	}
 	return q
 }
-
