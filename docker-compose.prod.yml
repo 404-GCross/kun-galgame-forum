@@ -82,8 +82,9 @@ x-kungal-api-env: &kungal-api-env
   # derives {base}/internal (internal-tier read face, X-API-Key) + {base}/api
   # (legacy face for writes / admin / feeds).
   KUN_NEXTMOE_API_BASE: http://catalog:9281
-  # internal-tier devapi key for the read face (X-API-Key). Empty → reads fall
-  # back to the legacy /api face (rollback valve). Set in Dokploy; plaintext in
+  # internal-tier devapi key for the read face (X-API-Key). REQUIRED whenever a
+  # base is set: an empty key fail-fasts at config load (the legacy /api rollback
+  # valve was retired in open-API phase 2 wave 05). Set in Dokploy; plaintext in
   # kungal-neo /root/phase2-internal-keys.env (kungal-forum-internal-s2s).
   KUN_NEXTMOE_API_KEY: ${KUN_NEXTMOE_API_KEY:-}
   # catalog read proxy (step 36): credits / entity reverse-lookups. Reuses the
@@ -179,7 +180,6 @@ services:
       NUXT_PUBLIC_OAUTH_FRONTEND_URL: https://oauth.kungal.com
       NUXT_PUBLIC_OAUTH_CLIENT_ID: 4ed9bc99ec0a789a4796b83e22bd84c5
       NUXT_PUBLIC_OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
-      NUXT_PUBLIC_GALGAME_WIKI_URL: https://wiki.kungal.com/api
       NUXT_PUBLIC_KUN_GALGAME_URL: https://www.kungal.com
     expose: ["7777"]
     depends_on:
