@@ -126,8 +126,9 @@ type ImageClientConfig struct {
 // galgame surface. BaseURL is the HOST base (no /api or /internal suffix); the
 // galgame client derives {base}/internal (internal-tier read face, X-API-Key)
 // and {base}/api (legacy face for writes / admin / feeds). APIKey is the
-// internal-tier devapi key sent as X-API-Key on read calls; empty makes reads
-// fall back to the legacy /api face (the rollback valve — no code change).
+// internal-tier devapi key sent as X-API-Key on read calls and both feeds. It
+// is REQUIRED — Load() fail-fasts when a base is configured without a key;
+// there is no keyless-fallback valve any more (wave 05).
 type NextMoeAPIConfig struct {
 	BaseURL string
 	APIKey  string
@@ -215,6 +216,20 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	// The catalog galgame read face (the internal face) hard-depends on an
+	// internal-tier API key — there is no keyless-fallback valve any more
+	// (wave 05). A base configured without a key is a misconfiguration: fail
+	// fast at startup, loudly naming the env var, rather than silently 401 on
+	// every read at runtime. No silent degradation.
+	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:19281")
+	nextMoeKey := envOrDefault("KUN_NEXTMOE_API_KEY", "")
+	if nextMoeBase != "" && nextMoeKey == "" {
+		return nil, fmt.Errorf(
+			"KUN_NEXTMOE_API_KEY 未设置: catalog galgame 读面 (internal 面) 硬依赖 internal-tier API key; 已配置 KUN_NEXTMOE_API_BASE=%q 但 KUN_NEXTMOE_API_KEY 为空 (keyless 回退阀已在 wave 05 移除, 不做静默降级)",
+			nextMoeBase,
+		)
+	}
+
 	return &Config{
 		Server: ServerConfig{
 			Port: envOrDefault("SERVER_PORT", "2334"),
@@ -268,12 +283,12 @@ func Load() (*Config, error) {
 		},
 		NextMoeAPI: NextMoeAPIConfig{
 			// Host base, no /api suffix; the galgame client derives
-			// {base}/internal (read face) + {base}/api (legacy face). Dev
-			// default = local catalog dev instance on :19281.
-			BaseURL: envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:19281"),
-			// Internal-tier devapi key (X-API-Key) for the read face. Empty →
-			// reads fall back to the legacy /api face (rollback valve).
-			APIKey: envOrDefault("KUN_NEXTMOE_API_KEY", ""),
+			// {base}/internal (read face + feeds) + {base}/api (legacy face).
+			// Dev default = local catalog dev instance on :19281.
+			BaseURL: nextMoeBase,
+			// Internal-tier devapi key (X-API-Key) for the read face + feeds.
+			// REQUIRED — validated above (fail-fast; no keyless fallback).
+			APIKey: nextMoeKey,
 			// Must match the service's KUN_IMAGE_PUBLIC_BASE_URL exactly —
 			// both build the same {base}/{hh}/{hh}/{hash}.webp layout.
 			ImageCDNBase: envOrDefault("KUN_IMAGE_PUBLIC_BASE_URL", "https://image.kungal.iloveren.link"),
