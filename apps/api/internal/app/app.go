@@ -354,6 +354,18 @@ func New(cfg *config.Config) *App {
 		slog.Warn("catalog service client NOT configured; catalog credits proxy returns 未启用 — set KUN_CATALOG_API_BASE + OAuth creds")
 	}
 
+	// Catalog PLATFORM propose client — the editing engine's /internal/edit/*
+	// dogfood bridge (Phase-2 06b). Dual-credential: the SAME NextMoe internal-tier
+	// base + X-API-Key the 06a galgame write chain uses (no new env), paired with
+	// the end user's Bearer per request. The plain-actor proposal subset (submit /
+	// mine / withdraw / snapshot / schema) routes here; staff/owner writes + the
+	// whole review chain stay on the S2S actor-assertion client above (see P6 in
+	// galgame/handler/edit_handler.go).
+	platformEditCli := catalogclient.NewPlatform(catalogclient.PlatformConfig{
+		BaseURL: cfg.NextMoeAPI.BaseURL,
+		APIKey:  cfg.NextMoeAPI.APIKey,
+	})
+
 	// Community primitive client — the galgame comment area reroute (charter step
 	// 03; kun-galgame-infra cmd/community :9282). Basic auth reuses the OAuth
 	// client_id/secret (the community service derives kungal's tenant from
@@ -650,7 +662,7 @@ func New(cfg *config.Config) *App {
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameMessageHandler:      galgameHandler.NewGalgameMessageHandler(galgameMessageSvc),
 		GalgameCrossSourceHandler:  galgameHandler.NewCrossSourceHandler(galgameCrossSourceSvc),
-		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
+		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, platformEditCli, gc, uc, notifier, galgameLocalRepo),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, gc)),
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),

@@ -79,7 +79,16 @@ type recordedRequest struct {
 	Path   string
 	Query  string
 	Body   map[string]any
+	// Face is "platform" for the /internal/edit/* devapi face, "s2s" for the
+	// Basic-authed /api/v1/catalog/edit/* face — the axis the P6 split tests pin.
+	Face   string
+	APIKey string // X-API-Key header (set only on the platform dual-credential face)
+	Auth   string // Authorization header (Basic on S2S, Bearer on platform)
 }
+
+// platformFace reports whether a path targets the /internal/edit/* platform
+// propose face (vs. the S2S /api/v1/catalog/edit/* face).
+func platformFace(path string) bool { return strings.HasPrefix(path, "/internal/edit/") }
 
 func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -89,16 +98,41 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 		if len(raw) > 0 {
 			_ = json.Unmarshal(raw, &body)
 		}
+		face := "s2s"
+		if platformFace(r.URL.Path) {
+			face = "platform"
+		}
 		f.mu.Lock()
 		f.requests = append(f.requests, recordedRequest{
 			Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Body: body,
+			Face: face, APIKey: r.Header.Get("X-API-Key"), Auth: r.Header.Get("Authorization"),
 		})
 		f.mu.Unlock()
-		if r.Header.Get("Authorization") == "" {
+		// The platform face is dual-credential (X-API-Key + Bearer): reject a call
+		// missing either, mirroring the real devapi chain (ResolveCredential → 401,
+		// jwtAuth → 401). The S2S face just needs its Basic header.
+		if face == "platform" {
+			if r.Header.Get("X-API-Key") == "" || !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		} else if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		switch {
+		// ── Platform propose face (/internal/edit/*) — byte-identical envelopes,
+		// minus Huma's "$schema" decoration (invisible to the BFF's decode). ──
+		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"merged":false,"proposal":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","patch":{}}}}`))
+		case r.Method == "GET" && r.URL.Path == "/internal/edit/proposals":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[]}}`))
+		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals/7/withdraw":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"withdrawn","patch":{}}}`))
+		case r.Method == "GET" && r.URL.Path == "/internal/edit/snapshot":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"galgame.game","entity_id":1,"values":{"galgame.game.name_zh_cn":"现值"}}}`))
+		case r.Method == "GET" && r.URL.Path == "/internal/edit/schema/galgame.game":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"galgame.game","fields":[{"key":"galgame.game.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/7":
@@ -142,11 +176,15 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
+	// The platform propose client shares the fake's base (it appends /internal/edit
+	// itself) and carries the internal-tier X-API-Key. An empty catalogURL leaves
+	// it unconfigured too, so the degradation test 503s on the platform paths.
+	pc := catalogclient.NewPlatform(catalogclient.PlatformConfig{BaseURL: catalogURL, APIKey: "nm_test"})
 	var galgameClient *client.GalgameClient
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")
 	}
-	h := NewEditHandler(cc, galgameClient, nil, notifier, nil) // nil user client/repo = best-effort off
+	h := NewEditHandler(cc, pc, galgameClient, nil, notifier, nil) // nil user client/repo = best-effort off
 
 	app := fiber.New()
 	authStub := func(c fiber.Ctx) error {
@@ -154,6 +192,9 @@ func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middlewa
 			return c.Status(401).JSON(fiber.Map{"code": 205, "message": "用户登录失效"})
 		}
 		c.Locals(string(middleware.UserInfoKey), user)
+		// Mirror middleware.Auth: expose the session's OAuth access token so the
+		// platform propose calls forward a Bearer (the dual-credential transport).
+		c.Locals(string(middleware.OAuthAccessTokenKey), "user-jwt")
 		return c.Next()
 	}
 	api := app.Group("/api")
@@ -214,56 +255,40 @@ func TestEditDegradesWhenUnconfigured(t *testing.T) {
 	}
 }
 
-// TestEditActorAssertionShape pins the S2S actor: a moderator's roles pass
-// through verbatim with the staff trust tier, a plain user asserts an empty
-// role set at tier 0, and the dirty-field patch reaches the face untouched.
+// TestEditActorAssertionShape pins the S2S actor for the STAFF submit path (P6:
+// staff/owner stay on the actor-assertion channel): a moderator's roles pass
+// through verbatim with the staff trust tier, site is kungal, and the
+// dirty-field patch reaches the face untouched. (The plain-actor submit no longer
+// asserts an actor — it routes to the platform; see TestEditSubmitSplit.)
 func TestEditActorAssertionShape(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		user      *middleware.UserInfo
-		wantRoles []any
-		wantTier  float64
-	}{
-		{"moderator", moderatorUser, []any{"moderator"}, 3},
-		{"plain user", plainUser, nil, 0},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fake := &fakeEditFace{}
-			app := editTestApp(t, fake.server(t).URL, tc.user)
-			status, raw := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals",
-				`{"patch":{"galgame.game.name_zh_cn":"新标题"},"note":"typo"}`)
-			if status != http.StatusOK {
-				t.Fatalf("submit: status = %d body %s", status, raw)
-			}
-			if len(fake.requests) != 1 {
-				t.Fatalf("want exactly one S2S call, got %d", len(fake.requests))
-			}
-			body := fake.requests[0].Body
-			if body["entity_type"] != "galgame.game" || body["site"] != "kungal" {
-				t.Fatalf("entity/site assertion wrong: %v", body)
-			}
-			patch := body["patch"].(map[string]any)
-			if patch["galgame.game.name_zh_cn"] != "新标题" {
-				t.Fatalf("patch not passed through verbatim: %v", patch)
-			}
-			actor := body["actor"].(map[string]any)
-			if actor["user_id"] != float64(tc.user.ID) {
-				t.Fatalf("actor user_id = %v", actor["user_id"])
-			}
-			tier, _ := actor["trust_tier"].(float64)
-			if tier != tc.wantTier {
-				t.Fatalf("trust_tier = %v, want %v", actor["trust_tier"], tc.wantTier)
-			}
-			roles, _ := actor["roles"].([]any)
-			if len(roles) != len(tc.wantRoles) {
-				t.Fatalf("roles = %v, want %v", roles, tc.wantRoles)
-			}
-			for i := range roles {
-				if roles[i] != tc.wantRoles[i] {
-					t.Fatalf("roles = %v, want %v", roles, tc.wantRoles)
-				}
-			}
-		})
+	fake := &fakeEditFace{}
+	app := editTestApp(t, fake.server(t).URL, moderatorUser)
+	status, raw := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals",
+		`{"patch":{"galgame.game.name_zh_cn":"新标题"},"note":"typo"}`)
+	if status != http.StatusOK {
+		t.Fatalf("submit: status = %d body %s", status, raw)
+	}
+	if len(fake.requests) != 1 || fake.requests[0].Face != "s2s" {
+		t.Fatalf("staff submit must be a single S2S call, got %+v", fake.requests)
+	}
+	body := fake.requests[0].Body
+	if body["entity_type"] != "galgame.game" || body["site"] != "kungal" {
+		t.Fatalf("entity/site assertion wrong: %v", body)
+	}
+	patch := body["patch"].(map[string]any)
+	if patch["galgame.game.name_zh_cn"] != "新标题" {
+		t.Fatalf("patch not passed through verbatim: %v", patch)
+	}
+	actor := body["actor"].(map[string]any)
+	if actor["user_id"] != float64(moderatorUser.ID) {
+		t.Fatalf("actor user_id = %v", actor["user_id"])
+	}
+	if tier, _ := actor["trust_tier"].(float64); tier != 3 {
+		t.Fatalf("trust_tier = %v, want 3", actor["trust_tier"])
+	}
+	roles, _ := actor["roles"].([]any)
+	if len(roles) != 1 || roles[0] != "moderator" {
+		t.Fatalf("roles = %v, want [moderator]", roles)
 	}
 }
 
