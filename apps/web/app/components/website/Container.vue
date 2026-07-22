@@ -86,8 +86,8 @@ const handleCreateWebsite = async (
 <template>
   <div class="space-y-6">
     <KunHeader
-      name="Galgame 网站 Wiki"
-      description="世界上最全的 Galgame 资源网站, 社区网站, 论坛网站, 资讯网站, Galgame Wiki, Telegram 社群 等 Galgame 网站汇总, 仅收录 Galgame 相关的网站。本 Wiki 仅会收录免费网站, 并且严格禁止任何有付费行为的网站。"
+      name="Galgame 网站资料库"
+      description="世界上最全的 Galgame 资源网站, 社区网站, 论坛网站, 资讯网站, Galgame 资料库, Telegram 社群 等 Galgame 网站汇总, 仅收录 Galgame 相关的网站。本资料库仅会收录免费网站, 并且严格禁止任何有付费行为的网站。"
     >
       <template #endContent>
         <div class="space-y-3">
@@ -96,9 +96,9 @@ const handleCreateWebsite = async (
             网站请在设置面板打开 NSFW 开关。
           </p>
           <p class="text-default-500">
-            关于 Galgame 网站 Wiki 请查看
+            关于 Galgame 网站资料库请查看
             <KunLink to="/doc/galgame-website-wiki">
-              Galgame 网站 Wiki
+              Galgame 网站资料库
             </KunLink>
             , 如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。

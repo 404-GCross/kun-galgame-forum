@@ -136,7 +136,7 @@ watch(
 <template>
   <div class="space-y-6">
     <KunHeader
-      name="Galgame 标签 Wiki"
+      name="Galgame 标签资料库"
       description="这里展示了绝大多数 Galgame 的标签, 并附带有标签的别名, 您可以点击标签以查看所有含有这个标签的 Galgame"
     >
       <template #endContent>

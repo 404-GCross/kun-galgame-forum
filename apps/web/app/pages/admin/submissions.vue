@@ -182,7 +182,7 @@ const applyStatus = async (
 const handleApprove = async (msg: AdminQueueMessage) => {
   const ok = await useComponentMessageStore().alert(
     `通过《${displayName(msg)}》?`,
-    '通过后该 Galgame 立即公开发布, 提交者会收到通知并自动获得 +3 萌萌点 (通过 wiki cron 同步)。'
+    '通过后该 Galgame 立即公开发布, 提交者会收到通知并自动获得 +3 萌萌点 (通过资料库 cron 同步)。'
   )
   if (!ok) return
   await applyStatus(msg.galgame_id, msg.id, 0, '')

@@ -89,7 +89,7 @@ export const kunLayoutItem: KunLayoutItem[] = [
         name: 'website',
         icon: 'lucide:globe',
         router: '/website',
-        label: 'Gal 网站 Wiki',
+        label: 'Gal 网站资料库',
         hint: '起飞!'
       },
       {
@@ -420,7 +420,7 @@ export const kunSidebarRail: KunRailGroup[] = [
             router: '/galgame-calendar',
             icon: 'lucide:calendar-days'
           },
-          { label: 'Gal 网站 Wiki', router: '/website', icon: 'lucide:globe' },
+          { label: 'Gal 网站资料库', router: '/website', icon: 'lucide:globe' },
           { label: 'Gal 工具资源', router: '/toolset', icon: 'lucide:wrench' },
           {
             label: 'Gal 资源列表',

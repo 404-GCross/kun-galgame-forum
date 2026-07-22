@@ -7,8 +7,8 @@ const { data } = await useKunFetch<GalgameEngineItem[]>(`/galgame-engine`, {
 <template>
   <div class="space-y-6">
     <KunHeader
-      name="Galgame 引擎 Wiki"
-      description="Galgame 引擎 Wiki, 这里展示了世界上大多数常见的 Galgame 制作引擎, 例如 KRKR 引擎, YU-RIS 引擎, 椎名理绪引擎等"
+      name="Galgame 引擎资料库"
+      description="Galgame 引擎资料库, 这里展示了世界上大多数常见的 Galgame 制作引擎, 例如 KRKR 引擎, YU-RIS 引擎, 椎名理绪引擎等"
     >
       <template #endContent>
         <span>

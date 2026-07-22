@@ -66,7 +66,7 @@ if (data.value) {
         <div class="space-y-3">
           <div class="flex items-center space-x-3">
             <KunChip color="primary">
-              {{ `本 Wiki 拥有 ${data.website_count} 个 ${data.label}` }}
+              {{ `本资料库拥有 ${data.website_count} 个 ${data.label}` }}
             </KunChip>
             <KunChip>
               更新于 <KunTime :time="data.updated" type="date" show-year />

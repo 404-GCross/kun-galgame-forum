@@ -94,9 +94,9 @@ const handleLoadMore = async () => {
           当前的搜索会一并搜索 NSFW 内容, 如果您要按照 Galgame 厂商 / 会社 /
           标签搜索, 或者需要 <KunLink to="/galgame-tag">多标签搜索</KunLink> ,
           请前往
-          <KunLink to="/galgame-official"> Galgame 会社 Wiki </KunLink>
+          <KunLink to="/galgame-official"> Galgame 会社资料库 </KunLink>
           或者
-          <KunLink to="/galgame-tag"> Galgame 标签 Wiki </KunLink>
+          <KunLink to="/galgame-tag"> Galgame 标签资料库 </KunLink>
           的页面进行搜索。
         </div>
       </template>

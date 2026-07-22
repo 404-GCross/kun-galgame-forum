@@ -72,7 +72,7 @@ watch([() => route.fullPath, showKUNGalgameNoResource], () => {
   <div class="flex flex-col gap-3">
     <template v-if="data">
       <div class="z-10">
-        <KunHeader name="Galgame 资源 Wiki">
+        <KunHeader name="Galgame 资源资料库">
           <template #endContent>
             <GalgameCardNav :is-show-advanced="true" />
           </template>

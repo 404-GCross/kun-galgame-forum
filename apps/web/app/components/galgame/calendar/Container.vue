@@ -150,7 +150,7 @@ const goNextYear = () => {
   <div class="flex flex-col gap-4">
     <KunHeader
       name="Galgame 发售月历"
-      description="按发售月份浏览即将与已发售的 Galgame。数据来自 Galgame Wiki, 月份边界按日本时间 (JST) 计; 标记「未收录」的作品本站暂无本地数据。"
+      description="按发售月份浏览即将与已发售的 Galgame。数据来自 Galgame 资料库, 月份边界按日本时间 (JST) 计; 标记「未收录」的作品本站暂无本地数据。"
     />
 
     <KunTab :items="tabs" v-model="view" variant="bordered" />
@@ -158,7 +158,7 @@ const goNextYear = () => {
     <KunInfo
       color="info"
       title="未在论坛发布的游戏"
-      description="标记「未在论坛发布」的作品来自 Galgame Wiki, 本站尚未收录。点击这类卡片即可前往「发布 Galgame」页面认领并发布, 成为该游戏的创建者。"
+      description="标记「未在论坛发布」的作品来自 Galgame 资料库, 本站尚未收录。点击这类卡片即可前往「发布 Galgame」页面认领并发布, 成为该游戏的创建者。"
     />
 
     <!-- 未发售 · 已定档的发售排期 (release_date >= today, day/month precision) -->
