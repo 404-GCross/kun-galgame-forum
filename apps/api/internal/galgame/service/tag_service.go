@@ -35,12 +35,6 @@ type nextMoeTagListResp struct {
 	Total int64                `json:"total"`
 }
 
-// nextMoeMultiTagResp is the {items, total} shape galgame returns for /tag/multi.
-type nextMoeMultiTagResp struct {
-	Items []dto.NextMoeGalgameItem `json:"items"`
-	Total int64                    `json:"total"`
-}
-
 // TagMultiPage is the enriched response for GET /galgame-tag/multi.
 type TagMultiPage struct {
 	Galgames []dto.GalgameCard `json:"galgames"`
@@ -96,23 +90,36 @@ func (s *TagService) GetByMultiTag(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*TagMultiPage, *errors.AppError) {
-	q := withSFWFilter(rawQuery, isSFW)
-	// tagIds → tag_ids (galgame uses snake_case)
-	if v := q.Get("tagIds"); v != "" {
-		q.Del("tagIds")
-		q.Set("tag_ids", v)
+	src := withSFWFilter(rawQuery, isSFW)
+	// FE sends tagIds (camelCase); /v1 tags/multi takes `ids`. include=meta (W1d)
+	// so the embedded thin items carry content_limit for FilterSFW + user_id for
+	// the enricher.
+	ids := src.Get("tagIds")
+	if ids == "" {
+		ids = src.Get("tag_ids")
+	}
+	q := url.Values{"content_limit": {src.Get("content_limit")}, "include": {"meta"}}
+	if ids != "" {
+		q.Set("ids", ids)
 	}
 
-	data, appErr := s.galgameClient.Get(ctx, "/tag/multi", q)
+	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/multi", q)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed nextMoeMultiTagResp
+	var parsed struct {
+		Items []client.V1Item `json:"items"`
+		Total int64           `json:"total"`
+	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		return nil, errors.ErrInternal("解析 Galgame 响应失败")
 	}
+	items := make([]dto.NextMoeGalgameItem, 0, len(parsed.Items))
+	for i := range parsed.Items {
+		items = append(items, client.V1ItemToNextMoeItem(&parsed.Items[i]))
+	}
 
-	filtered := s.enricher.FilterSFW(parsed.Items, isSFW)
+	filtered := s.enricher.FilterSFW(items, isSFW)
 	return &TagMultiPage{
 		Galgames: s.enricher.ToCards(ctx, filtered),
 		Total:    parsed.Total,

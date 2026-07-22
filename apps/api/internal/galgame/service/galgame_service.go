@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/constants"
@@ -246,20 +247,14 @@ func (s *GalgameService) GetDetail(
 	token string,
 	isSFW bool,
 ) (*dto.GalgameDetail, *errors.AppError) {
-	galgameData, appErr := s.galgameClient.GetWithToken(
-		ctx, fmt.Sprintf("/galgame/%d", galgameID), token, nil,
-	)
+	// content_limit=all (permissive): /galgame/:gid is "不过滤" (§16.2 direct URL
+	// access is 有意为之) — the FE decides the NSFW interstitial. /v1 serves only
+	// published rows, so a banned (status=1) or unknown id comes back as a
+	// not-found AppError (the bridge's "该 Galgame 已被封禁" message is subsumed by
+	// the standard not-found — /v1 never returns a banned row).
+	g, appErr := s.galgameClient.GalgameDetailV1(ctx, galgameID, token, "all")
 	if appErr != nil {
 		return nil, appErr
-	}
-
-	var parsed dto.NextMoeGalgameDetailFullResp
-	if err := json.Unmarshal(galgameData, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-	g := parsed.Galgame
-	if g.Status == 1 {
-		return nil, errors.ErrNotFound("该 Galgame 已被封禁")
 	}
 
 	// Async view bump (don't block the response).
@@ -277,7 +272,11 @@ func (s *GalgameService) GetDetail(
 
 	ratings := s.buildDetailRatings(ctx, galgameID, currentUserID, g)
 
-	detail := galgameDetailFromNextMoe(g, parsed.Users)
+	// /v1 carries no users map — resolve the author + contributors from OAuth so
+	// galgameDetailFromNextMoe can attach their briefs (same source the bridge's
+	// users map came from).
+	users := s.hydrateDetailUsers(ctx, g)
+	detail := galgameDetailFromNextMoe(g, users)
 	detail.View = local.View
 	detail.LikeCount = local.LikeCount
 	detail.FavoriteCount = local.FavoriteCount
@@ -296,32 +295,44 @@ func (s *GalgameService) GetDetail(
 	return &detail, nil
 }
 
+// hydrateDetailUsers resolves the author + every contributor from OAuth into the
+// uid-keyed users map galgameDetailFromNextMoe consumes (the /v1 detail carries
+// no users map — the bridge's map was itself an OAuth resolution, so this is the
+// same source).
+func (s *GalgameService) hydrateDetailUsers(ctx context.Context, g dto.NextMoeGalgameDetailFull) map[string]dto.NextMoeUser {
+	uids := make([]int, 0, len(g.Contributor)+1)
+	uids = append(uids, g.UserID)
+	for _, c := range g.Contributor {
+		uids = append(uids, c.UserID)
+	}
+	umap := s.userClient.Hydrate(ctx, uids)
+	users := make(map[string]dto.NextMoeUser, len(umap))
+	for id, u := range umap {
+		users[strconv.Itoa(id)] = dto.NextMoeUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
+	}
+	return users
+}
+
 // fetchSeriesBrief loads a minimal series summary (used on galgame detail page).
 //
 // content_limit MUST be sent: /series/:id defaults to sfw when omitted, so an
 // all-NSFW series reports 0 members + isNSFW=false on the detail page (the
 // series block looks empty / mislabeled SFW even while viewing an NSFW title).
-// Mirror series_service: SFW → sfw; NSFW → all.
+// Mirror series_service: SFW → sfw; NSFW → all. The /v1 series entity carries
+// created/updated (W1d) + the gated member previews (with meta) the samples need.
 func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isSFW bool) *dto.GalgameDetailSeries {
 	contentLimit := "all"
 	if isSFW {
 		contentLimit = "sfw"
 	}
-	data, err := s.galgameClient.Get(
-		ctx, fmt.Sprintf("/series/%d", seriesID),
-		url.Values{"content_limit": {contentLimit}},
-	)
-	if err != nil {
-		return nil
-	}
-	var brief dto.NextMoeSeriesBrief
-	if jsonErr := json.Unmarshal(data, &brief); jsonErr != nil {
+	entry, found, appErr := s.galgameClient.SeriesEntryV1(ctx, strconv.Itoa(seriesID), contentLimit)
+	if appErr != nil || !found {
 		return nil
 	}
 
 	isNSFW := false
-	samples := make([]dto.GalgameSample, 0, min(len(brief.Galgame), 5))
-	for i, sg := range brief.Galgame {
+	samples := make([]dto.GalgameSample, 0, min(len(entry.Galgame), 5))
+	for i, sg := range entry.Galgame {
 		if sg.ContentLimit == "nsfw" {
 			isNSFW = true
 		}
@@ -341,14 +352,14 @@ func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isS
 		}
 	}
 	return &dto.GalgameDetailSeries{
-		ID:            brief.ID,
-		Name:          brief.Name,
-		Description:   brief.Description,
+		ID:            entry.ID,
+		Name:          entry.Name,
+		Description:   entry.Description,
 		IsNSFW:        isNSFW,
 		SampleGalgame: samples,
-		GalgameCount:  len(brief.Galgame),
-		Created:       brief.Created,
-		Updated:       brief.Updated,
+		GalgameCount:  len(entry.Galgame),
+		Created:       entry.Created,
+		Updated:       entry.Updated,
 	}
 }
 

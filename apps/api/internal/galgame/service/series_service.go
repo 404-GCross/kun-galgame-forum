@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/url"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
@@ -24,30 +22,6 @@ func NewSeriesService(galgameClient *client.GalgameClient, enricher *GalgameEnri
 // Galgame response shapes (parsing-only)
 // ──────────────────────────────────────────
 
-type nextMoeSeriesListItem struct {
-	ID           int                      `json:"id"`
-	Name         string                   `json:"name"`
-	Description  string                   `json:"description"`
-	Galgame      []dto.NextMoeGalgameItem `json:"galgame"`
-	GalgameCount int                      `json:"galgame_count"`
-	Created      string                   `json:"created"`
-	Updated      string                   `json:"updated"`
-}
-
-type nextMoeSeriesListResp struct {
-	Items []nextMoeSeriesListItem `json:"items"`
-	Total int64                   `json:"total"`
-}
-
-type nextMoeSeriesDetail struct {
-	ID          int                      `json:"id"`
-	Name        string                   `json:"name"`
-	Description string                   `json:"description"`
-	Galgame     []dto.NextMoeGalgameItem `json:"galgame"`
-	Created     string                   `json:"created"`
-	Updated     string                   `json:"updated"`
-}
-
 // ──────────────────────────────────────────
 // GetList — GET /galgame-series
 // ──────────────────────────────────────────
@@ -61,37 +35,29 @@ func (s *SeriesService) GetList(
 	req *dto.SeriesListRequest,
 	isSFW bool,
 ) (*dto.SeriesListPage, *errors.AppError) {
-	// NSFW gating MUST be reflected as content_limit to the galgame (single source
-	// of truth; §16) — it defaults to sfw when omitted. On the LIST this makes
-	// galgame_count reflect the right rating: without it an all-NSFW series
-	// reports count 0 in NSFW mode, so the count-gated backfill below never runs
-	// and the series shows empty / looks SFW. SFW → sfw; NSFW → all. The
-	// per-series backfill + GetDetail carry the SAME content_limit.
+	// NSFW gating MUST be reflected as content_limit (single source of truth; §16).
+	// On the LIST this makes galgame_count reflect the right rating: without it an
+	// all-NSFW series reports count 0 in NSFW mode, so the count-gated backfill
+	// below never runs and the series shows empty / looks SFW. SFW → sfw; NSFW →
+	// all. The per-series backfill + GetDetail carry the SAME content_limit.
 	contentLimit := "all"
 	if isSFW {
 		contentLimit = "sfw"
 	}
-	query := url.Values{
-		"page": {"1"}, "limit": {"500"}, "include": {"galgame"},
-		"content_limit": {contentLimit},
-	}
-	data, appErr := s.galgameClient.Get(ctx, "/series", query)
+	// /v1 series entities carry the gated galgame_count + created/updated + a
+	// capped member preview (with meta). SeriesListV1 pages the whole catalogue.
+	entries, appErr := s.galgameClient.SeriesListV1(ctx, contentLimit)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	var parsed nextMoeSeriesListResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
+	// Backfill full members where the capped preview is short of galgame_count, so
+	// the sfw-mode count (len(filtered)) + isNSFW reflect every member.
+	s.backfillGalgames(ctx, entries, contentLimit)
 
-	// Backfill galgame arrays where the list endpoint omitted them — with the
-	// SAME content_limit, or the per-series /series/:id fetch defaults to sfw and
-	// an all-NSFW series backfills to ZERO games (the NSFW-mode bug).
-	s.backfillGalgames(ctx, parsed.Items, contentLimit)
-
-	items := make([]dto.SeriesListItem, 0, len(parsed.Items))
-	for _, item := range parsed.Items {
+	items := make([]dto.SeriesListItem, 0, len(entries))
+	for i := range entries {
+		item := &entries[i]
 		filtered := s.enricher.FilterSFW(item.Galgame, isSFW)
 		if isSFW && len(filtered) == 0 {
 			continue
@@ -119,29 +85,21 @@ func (s *SeriesService) GetList(
 	return &dto.SeriesListPage{Series: items, Total: total}, nil
 }
 
-// backfillGalgames fetches the full galgame list for series whose included
-// galgame slice is INCOMPLETE (fewer than galgame_count). The galgame list endpoint
-// returns sparse galgame arrays — usually empty, but sometimes PARTIAL (e.g. 2
-// of 14, as for series 51). The old "only when empty" check left those partial
-// series stuck at their handful of games, so the card's 5-cover montage showed
-// far fewer covers than the series has. Backfilling whenever len < count fixes
-// both the empty and the partial case.
-func (s *SeriesService) backfillGalgames(ctx context.Context, items []nextMoeSeriesListItem, contentLimit string) {
-	q := url.Values{"content_limit": {contentLimit}}
-	for i := range items {
-		if items[i].GalgameCount == 0 || len(items[i].Galgame) >= items[i].GalgameCount {
+// backfillGalgames fetches the full member list for series whose /v1 list preview
+// is INCOMPLETE (capped below galgame_count) — the /v1 series list caps the
+// embedded preview (Preload Limit), so any series with more than the cap needs
+// the /series/:id fetch to compute an accurate sfw count + isNSFW + 5-cover
+// montage. Same content_limit so an all-NSFW series doesn't backfill to zero.
+func (s *SeriesService) backfillGalgames(ctx context.Context, entries []client.NextMoeSeriesEntry, contentLimit string) {
+	for i := range entries {
+		if entries[i].GalgameCount == 0 || len(entries[i].Galgame) >= entries[i].GalgameCount {
 			continue
 		}
-		data, err := s.galgameClient.Get(ctx, fmt.Sprintf("/series/%d", items[i].ID), q)
-		if err != nil {
+		full, found, appErr := s.galgameClient.SeriesEntryV1(ctx, strconv.Itoa(entries[i].ID), contentLimit)
+		if appErr != nil || !found {
 			continue
 		}
-		var parsed struct {
-			Galgame []dto.NextMoeGalgameItem `json:"galgame"`
-		}
-		if json.Unmarshal(data, &parsed) == nil {
-			items[i].Galgame = parsed.Galgame
-		}
+		entries[i].Galgame = full.Galgame
 	}
 }
 
@@ -160,28 +118,26 @@ func (s *SeriesService) GetDetail(
 	if isSFW {
 		contentLimit = "sfw"
 	}
-	data, appErr := s.galgameClient.Get(ctx, "/series/"+seriesID, url.Values{"content_limit": {contentLimit}})
+	entry, found, appErr := s.galgameClient.SeriesEntryV1(ctx, seriesID, contentLimit)
 	if appErr != nil {
 		return nil, appErr
 	}
-
-	var parsed nextMoeSeriesDetail
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
+	if !found {
+		return nil, errors.ErrNotFound("未找到该系列")
 	}
 
-	filtered := s.enricher.FilterSFW(parsed.Galgame, isSFW)
+	filtered := s.enricher.FilterSFW(entry.Galgame, isSFW)
 
 	return &dto.SeriesDetail{
-		ID:            parsed.ID,
-		Name:          parsed.Name,
-		Description:   parsed.Description,
+		ID:            entry.ID,
+		Name:          entry.Name,
+		Description:   entry.Description,
 		IsNSFW:        s.enricher.HasNSFW(filtered),
 		SampleGalgame: s.enricher.Samples(filtered, 5),
 		GalgameCount:  len(filtered),
 		Galgame:       s.enricher.ToCards(ctx, filtered),
-		Created:       parsed.Created,
-		Updated:       parsed.Updated,
+		Created:       entry.Created,
+		Updated:       entry.Updated,
 	}, nil
 }
 

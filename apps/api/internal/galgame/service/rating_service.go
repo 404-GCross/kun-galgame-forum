@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -496,29 +494,27 @@ func (s *RatingService) buildRatingGalgame(
 	}
 	var seriesBrief *dto.SeriesListItem
 
-	data, err := s.galgameClient.Get(ctx, fmt.Sprintf("/galgame/%d", galgameID), nil)
-	if err == nil {
-		var envelope dto.NextMoeGalgameDetailResponse
-		if jsonErr := json.Unmarshal(data, &envelope); jsonErr == nil {
-			g := envelope.Galgame
-			summary.ID = g.ID
-			summary.Banner = g.Banner
-			summary.EffectiveBannerHash = g.EffectiveBannerHash
-			summary.EffectiveBannerURL = g.EffectiveBannerURL
-			summary.EffectiveBannerWidth = g.EffectiveBannerWidth
-			summary.EffectiveBannerHeight = g.EffectiveBannerHeight
-			summary.EffectiveBannerThumbhash = g.EffectiveBannerThumbhash
-			summary.ContentLimit = g.ContentLimit
-			summary.AgeLimit = g.AgeLimit
-			summary.OriginalLanguage = g.OriginalLanguage
-			summary.Name = dto.KunLanguage{
-				EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-			}
-			summary.Official = nextMoeOfficialsToDTO(g.Official)
-			if g.SeriesID != nil {
-				seriesBrief = s.fetchSeriesBrief(ctx, *g.SeriesID)
-			}
+	// content_limit=all (permissive): the rating page doesn't gate NSFW here (FE
+	// confirm card). Best-effort — an unreachable / not-found galgame leaves the
+	// summary at its zero-ish defaults + local rating stats below.
+	if g, appErr := s.galgameClient.GalgameDetailV1(ctx, galgameID, "", "all"); appErr == nil {
+		summary.ID = g.ID
+		summary.Banner = g.Banner
+		summary.EffectiveBannerHash = g.EffectiveBannerHash
+		summary.EffectiveBannerURL = g.EffectiveBannerURL
+		summary.EffectiveBannerWidth = g.EffectiveBannerWidth
+		summary.EffectiveBannerHeight = g.EffectiveBannerHeight
+		summary.EffectiveBannerThumbhash = g.EffectiveBannerThumbhash
+		summary.ContentLimit = g.ContentLimit
+		summary.AgeLimit = g.AgeLimit
+		summary.OriginalLanguage = g.OriginalLanguage
+		summary.Name = dto.KunLanguage{
+			EnUs: g.NameEnUs, JaJp: g.NameJaJp,
+			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
+		}
+		summary.Official = nextMoeOfficialsToDTO(g.Official)
+		if g.SeriesID != nil {
+			seriesBrief = s.fetchSeriesBrief(ctx, *g.SeriesID)
 		}
 	}
 
@@ -544,31 +540,16 @@ func (s *RatingService) buildRatingGalgame(
 // to sfw when omitted, which would drop NSFW members (an all-NSFW series
 // would report 0 / look SFW) — the opposite of the intent.
 func (s *RatingService) fetchSeriesBrief(ctx context.Context, seriesID int) *dto.SeriesListItem {
-	data, err := s.galgameClient.Get(
-		ctx, fmt.Sprintf("/series/%d", seriesID),
-		url.Values{"content_limit": {"all"}},
-	)
-	if err != nil {
+	entry, found, appErr := s.galgameClient.SeriesEntryV1(ctx, strconv.Itoa(seriesID), "all")
+	if appErr != nil || !found || entry.ID == 0 {
 		return nil
 	}
-	var envelope dto.NextMoeSeriesBrief
-	if jsonErr := json.Unmarshal(data, &envelope); jsonErr != nil {
-		return nil
-	}
-	if envelope.ID == 0 {
-		return nil
-	}
-	// NextMoeSeriesBrief.Galgame is []NextMoeSeriesSample (no content_limit),
-	// so we can't reuse enricher.FilterSFW directly. The series detail
-	// endpoint uses the richer /series/:id galgame shape with full
-	// NextMoeGalgameItem; here we keep the cheaper SeriesSample path and
-	// derive isNSFW from the samples that already carry the flag.
+	// The /v1 series entity's member previews are full NextMoeGalgameItem (with
+	// meta.content_limit under include=meta), so isNSFW derives from the flag each
+	// preview carries — same shape the detail-page series brief uses.
 	isNSFW := false
-	samples := make([]dto.GalgameSample, 0, len(envelope.Galgame))
-	for _, g := range envelope.Galgame {
-		// Galgame's series-sample payload carries the flat name_<locale> +
-		// banner/effective_banner triple; the FE GalgameSample expects
-		// a nested KunLanguage `name` plus the U2 banner pair.
+	samples := make([]dto.GalgameSample, 0, len(entry.Galgame))
+	for _, g := range entry.Galgame {
 		samples = append(samples, dto.GalgameSample{
 			Name: dto.KunLanguage{
 				EnUs: g.NameEnUs,
@@ -591,13 +572,13 @@ func (s *RatingService) fetchSeriesBrief(ctx context.Context, seriesID int) *dto
 		samples = samples[:5]
 	}
 	return &dto.SeriesListItem{
-		ID:            envelope.ID,
-		Name:          envelope.Name,
-		Description:   envelope.Description,
+		ID:            entry.ID,
+		Name:          entry.Name,
+		Description:   entry.Description,
 		IsNSFW:        isNSFW,
 		SampleGalgame: samples,
-		GalgameCount:  len(envelope.Galgame),
-		Created:       envelope.Created,
-		Updated:       envelope.Updated,
+		GalgameCount:  len(entry.Galgame),
+		Created:       entry.Created,
+		Updated:       entry.Updated,
 	}
 }

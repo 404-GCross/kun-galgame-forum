@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
@@ -286,6 +287,114 @@ func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values
 // depends on the caller's identity (search?include_pending).
 func (c *GalgameClient) GetV1WithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
 	return c.getFace(ctx, c.v1Base, path, token, query, c.apiKey)
+}
+
+// GalgameDetailV1 fetches one galgame's full aggregate from /v1 (all the include
+// blocks the detail page needs, incl. the W1d refs galgame_count / official
+// link+aliases + contributors) and projects it onto NextMoeGalgameDetailFull. The
+// token is forwarded so a submitter can view their own pending row. content_limit
+// "" maps to "all" (permissive), so an nsfw title is not gate-dropped — the
+// service decides the FE interstitial. The users map is NOT carried by /v1; the
+// caller hydrates author + contributors from OAuth.
+func (c *GalgameClient) GalgameDetailV1(ctx context.Context, gid int, token, contentLimit string) (dto.NextMoeGalgameDetailFull, *errors.AppError) {
+	query := url.Values{
+		"include":       {"intro,taxonomy,tag_refs,official_refs,engine_refs,meta,covers,screenshots,links,series,contributors"},
+		"content_limit": {v1ContentLimit(contentLimit)},
+	}
+	data, appErr := c.GetV1WithToken(ctx, "/galgame/"+strconv.Itoa(gid), token, query)
+	if appErr != nil {
+		return dto.NextMoeGalgameDetailFull{}, appErr
+	}
+	var d v1Detail
+	if err := json.Unmarshal(data, &d); err != nil {
+		return dto.NextMoeGalgameDetailFull{}, errors.ErrInternal("解析 Galgame 响应失败")
+	}
+	return v1DetailToFull(&d), nil
+}
+
+// GalgameLinksV1 fetches a galgame's curated external links from the /v1 detail
+// include=links block (W1d carries user_id for the banned-author filter). Returns
+// the raw curated rows; the caller resolves the user + drops banned authors.
+func (c *GalgameClient) GalgameLinksV1(ctx context.Context, gid string) ([]v1Link, *errors.AppError) {
+	query := url.Values{"include": {"links"}, "content_limit": {"all"}}
+	data, appErr := c.GetV1(ctx, "/galgame/"+gid, query)
+	if appErr != nil {
+		return nil, appErr
+	}
+	var d struct {
+		Links *[]v1Link `json:"links"`
+	}
+	if err := json.Unmarshal(data, &d); err != nil {
+		return nil, errors.ErrInternal("解析 Galgame 链接响应失败")
+	}
+	if d.Links == nil {
+		return []v1Link{}, nil
+	}
+	return *d.Links, nil
+}
+
+// seriesListPageV1 is one page of the /v1 series list (internal paging helper).
+func (c *GalgameClient) seriesListPageV1(ctx context.Context, page, limit int, contentLimit string) (v1SeriesListData, *errors.AppError) {
+	query := url.Values{
+		"page":          {strconv.Itoa(page)},
+		"limit":         {strconv.Itoa(limit)},
+		"content_limit": {contentLimit},
+		"include":       {"meta"},
+	}
+	data, appErr := c.GetV1(ctx, "/galgame/series", query)
+	if appErr != nil {
+		return v1SeriesListData{}, appErr
+	}
+	var d v1SeriesListData
+	if err := json.Unmarshal(data, &d); err != nil {
+		return v1SeriesListData{}, errors.ErrInternal("解析 Galgame 系列响应失败")
+	}
+	return d, nil
+}
+
+// SeriesListV1 pages the /v1 series list (which caps page size, unlike the
+// bridge's limit=500) into the full set of series entries, each carrying its
+// gated galgame_count + created/updated + thin member previews (with meta). The
+// SeriesService maps these to its cards + backfills full members where the capped
+// preview is short.
+func (c *GalgameClient) SeriesListV1(ctx context.Context, contentLimit string) ([]NextMoeSeriesEntry, *errors.AppError) {
+	const pageSize = 50
+	var out []NextMoeSeriesEntry
+	for page := 1; page <= 200; page++ { // 200*50 = 10k series ceiling (well above the catalogue)
+		d, appErr := c.seriesListPageV1(ctx, page, pageSize, contentLimit)
+		if appErr != nil {
+			return nil, appErr
+		}
+		for i := range d.Items {
+			out = append(out, v1SeriesEntityToEntry(&d.Items[i]))
+		}
+		if len(d.Items) < pageSize || int64(len(out)) >= d.Total {
+			break
+		}
+	}
+	return out, nil
+}
+
+// SeriesEntryV1 fetches one series' full gated member set from /v1 (the member
+// previews carry meta) — the backfill source for SeriesList and the SeriesService
+// detail page. found=false on an unknown id.
+func (c *GalgameClient) SeriesEntryV1(ctx context.Context, seriesID string, contentLimit string) (*NextMoeSeriesEntry, bool, *errors.AppError) {
+	query := url.Values{"content_limit": {contentLimit}, "include": {"meta"}}
+	data, appErr := c.GetV1(ctx, "/galgame/series/"+seriesID, query)
+	if appErr != nil {
+		// A missing series comes back as a not-found AppError; surface it as
+		// found=false so the caller can null the panel rather than 500.
+		if appErr.StatusCode == 404 {
+			return nil, false, nil
+		}
+		return nil, false, appErr
+	}
+	var e v1SeriesEntity
+	if err := json.Unmarshal(data, &e); err != nil {
+		return nil, false, errors.ErrInternal("解析 Galgame 系列响应失败")
+	}
+	entry := v1SeriesEntityToEntry(&e)
+	return &entry, true, nil
 }
 
 // EntityGalgameIDs fetches the member galgame ids of a galgame entity
@@ -626,21 +735,26 @@ func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isS
 		for i, id := range miss {
 			idStrs[i] = strconv.Itoa(id)
 		}
+		// /v1 batch with the intro (W1d) + officials + meta item-includes rebuilds
+		// GalgameDetailBrief (intro_* + maker names + brief fields). The embedded
+		// brief's release_date is null on the batch face (a pre-existing /v1 thin
+		// limitation the list face does not share).
 		query := url.Values{
 			"ids":           {joinStrings(idStrs, ",")},
-			"content_limit": {limit},
-			"view":          {"detail"},
+			"content_limit": {v1ContentLimit(limit)},
+			"include":       {"intro,officials,meta"},
 		}
-		data, appErr := c.Get(ctx, "/galgame/batch", query)
+		data, appErr := c.GetV1(ctx, "/galgame/batch", query)
 		if appErr != nil {
 			return nil, appErr
 		}
-		var briefs []GalgameDetailBrief
-		if err := json.Unmarshal(data, &briefs); err != nil {
+		var parsed v1BatchData
+		if err := json.Unmarshal(data, &parsed); err != nil {
 			return nil, errors.ErrInternal("解析 Galgame 批量详情响应失败")
 		}
-		result := make(map[int]GalgameDetailBrief, len(briefs))
-		for _, b := range briefs {
+		result := make(map[int]GalgameDetailBrief, len(parsed.Items))
+		for i := range parsed.Items {
+			b := V1ItemToDetailBrief(&parsed.Items[i])
 			result[b.ID] = b
 		}
 		return result, nil

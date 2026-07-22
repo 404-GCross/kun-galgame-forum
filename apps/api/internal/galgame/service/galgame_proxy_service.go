@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"kun-galgame-api/internal/galgame/client"
@@ -223,14 +224,11 @@ func (s *GalgameProxyService) GetGalgameLinks(
 	ctx context.Context,
 	gid string,
 ) ([]dto.GalgameLink, *errors.AppError) {
-	data, appErr := s.galgameClient.Get(ctx, "/galgame/"+gid+"/links", nil)
+	// /v1 detail include=links carries user_id (W1d) for the banned-author filter;
+	// galgame_id is not on the curated row (the id is the path param).
+	rows, appErr := s.galgameClient.GalgameLinksV1(ctx, gid)
 	if appErr != nil {
 		return nil, appErr
-	}
-
-	var rows []nextMoeLinkRow
-	if err := json.Unmarshal(data, &rows); err != nil {
-		return []dto.GalgameLink{}, nil
 	}
 
 	ids := make([]int, len(rows))
@@ -238,6 +236,7 @@ func (s *GalgameProxyService) GetGalgameLinks(
 		ids[i] = r.UserID
 	}
 	userMap := s.userClient.Hydrate(ctx, ids)
+	gidInt, _ := strconv.Atoi(gid)
 
 	// Drop links added by a banned user.
 	out := make([]dto.GalgameLink, 0, len(rows))
@@ -248,7 +247,7 @@ func (s *GalgameProxyService) GetGalgameLinks(
 		out = append(out, dto.GalgameLink{
 			ID:        r.ID,
 			User:      userBriefToDTO(userMap[r.UserID]),
-			GalgameID: r.GalgameID,
+			GalgameID: gidInt,
 			Name:      r.Name,
 			Link:      r.Link,
 		})
