@@ -1,9 +1,11 @@
 package client
 
 // Face-selection tests: prove the galgame client routes each call to the right
-// face by ROUTE membership, not HTTP method — reads + the two cron feeds go to
-// the internal face with X-API-Key, while writes and /admin/* reads stay on the
-// legacy /api face. There is no keyless-fallback valve any more (wave 05).
+// face by ROUTE membership, not HTTP method — reads, the two cron feeds, and
+// (since Phase-2 06a) the user write set (galgame-content mutations under
+// /galgame) go to the internal face with X-API-Key, while taxonomy writes
+// (/tag /official /engine /series) and /admin/* reads+writes stay on the legacy
+// /api staff face. There is no keyless-fallback valve any more.
 
 import (
 	"context"
@@ -97,15 +99,66 @@ func TestFaceSelection_WithKey(t *testing.T) {
 		}
 	})
 
-	t.Run("write → legacy, no key", func(t *testing.T) {
+	t.Run("user write (create) → internal + key + user JWT (dual credential)", func(t *testing.T) {
 		if _, err := c.PostWithToken(ctx, "/galgame", "user-jwt", map[string]any{"x": 1}, ""); err != nil {
 			t.Fatalf("PostWithToken: %v", err)
 		}
-		if rec.path != "/api/galgame" {
-			t.Errorf("path = %q, want /api/galgame", rec.path)
+		if rec.path != "/internal/galgame" {
+			t.Errorf("path = %q, want /internal/galgame", rec.path)
+		}
+		if rec.apiKey != "nm_test_key" {
+			t.Errorf("X-API-Key = %q, want nm_test_key on internal write face", rec.apiKey)
+		}
+		if rec.auth != "Bearer user-jwt" {
+			t.Errorf("Authorization = %q, want Bearer user-jwt", rec.auth)
+		}
+	})
+
+	t.Run("user write (draft delete /galgame/:gid) → internal + key", func(t *testing.T) {
+		if _, err := c.DeleteWithToken(ctx, "/galgame/321", "user-jwt", nil, ""); err != nil {
+			t.Fatalf("DeleteWithToken: %v", err)
+		}
+		if rec.path != "/internal/galgame/321" {
+			t.Errorf("path = %q, want /internal/galgame/321", rec.path)
+		}
+		if rec.apiKey != "nm_test_key" {
+			t.Errorf("X-API-Key = %q, want nm_test_key on internal write face", rec.apiKey)
+		}
+	})
+
+	t.Run("taxonomy write (PUT /tag) → legacy, no key", func(t *testing.T) {
+		if _, err := c.PutWithToken(ctx, "/tag", "user-jwt", map[string]any{"tag_id": 1}, ""); err != nil {
+			t.Fatalf("PutWithToken(/tag): %v", err)
+		}
+		if rec.path != "/api/tag" {
+			t.Errorf("path = %q, want /api/tag on legacy staff face", rec.path)
 		}
 		if rec.apiKey != "" {
-			t.Errorf("X-API-Key = %q, want empty on legacy write face", rec.apiKey)
+			t.Errorf("X-API-Key = %q, want empty on legacy taxonomy-write face", rec.apiKey)
+		}
+	})
+
+	t.Run("taxonomy write (POST /series) → legacy, no key", func(t *testing.T) {
+		if _, err := c.PostWithToken(ctx, "/series", "user-jwt", map[string]any{"name": "x"}, ""); err != nil {
+			t.Fatalf("PostWithToken(/series): %v", err)
+		}
+		if rec.path != "/api/series" {
+			t.Errorf("path = %q, want /api/series on legacy staff face", rec.path)
+		}
+		if rec.apiKey != "" {
+			t.Errorf("X-API-Key = %q, want empty on legacy taxonomy-write face", rec.apiKey)
+		}
+	})
+
+	t.Run("admin write (PUT /admin/galgame/:gid/status) → legacy, no key", func(t *testing.T) {
+		if _, err := c.PutWithToken(ctx, "/admin/galgame/5/status", "admin-jwt", map[string]any{"status": 0}, ""); err != nil {
+			t.Fatalf("PutWithToken(/admin/...): %v", err)
+		}
+		if rec.path != "/api/admin/galgame/5/status" {
+			t.Errorf("path = %q, want /api/admin/galgame/5/status on legacy staff face", rec.path)
+		}
+		if rec.apiKey != "" {
+			t.Errorf("X-API-Key = %q, want empty on legacy admin-write face", rec.apiKey)
 		}
 	})
 

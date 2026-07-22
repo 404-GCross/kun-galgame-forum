@@ -90,16 +90,20 @@ func cachedBatch[T any](
 //
 // The service exposes two faces derived from one host base
 // (KUN_NEXTMOE_API_BASE):
-//   - internalBase = {base}/internal — the internal-tier rich READ face plus
-//     the two service-to-service cron feeds (/galgame/messages/feed,
-//     /galgame/revisions/recent), all gated by an X-API-Key; every read-set
-//     call and both feeds go here.
-//   - legacyBase   = {base}/api      — the legacy face; writes / submissions
-//     and admin (/admin/*) reads stay here (wave 06 territory).
+//   - internalBase = {base}/internal — the internal-tier rich READ face, the
+//     two service-to-service cron feeds (/galgame/messages/feed,
+//     /galgame/revisions/recent), AND (since Phase-2 06a) the user write set:
+//     galgame-content mutations under /galgame (create / update / image /
+//     links / aliases / contributors-del / submit / claim / draft
+//     patch+delete). Every internal-face call carries an X-API-Key.
+//   - legacyBase   = {base}/api      — the legacy staff face; taxonomy writes
+//     (/tag /official /engine /series create/modal/update/delete/revert) and
+//     admin (/admin/*) reads+writes stay here (the staff set — 06a keeps it).
 //
-// Face selection is by ROUTE membership, not HTTP method (see readTarget). The
-// read face hard-depends on apiKey — there is no keyless-fallback valve; a
-// deployment configured with a base but no key fail-fasts at config load.
+// Face selection is by ROUTE membership, not HTTP method (see readTarget for
+// reads, writeTarget for writes). The internal face hard-depends on apiKey —
+// there is no keyless-fallback valve; a deployment configured with a base but
+// no key fail-fasts at config load.
 //
 // Holds the user's per-request Bearer token (forwarded from the kungal
 // session) for user-identity endpoints like submit / claim / patch-draft and
@@ -125,15 +129,17 @@ type GalgameClient struct {
 //
 // baseURL is the NextMoe host base (e.g. http://catalog:9281, no /api or
 // /internal suffix); the client derives {base}/internal (the internal-tier
-// read face + the two cron feeds, gated by X-API-Key) and {base}/api (the
-// legacy face: writes / submissions and /admin/* reads).
+// read face, the two cron feeds, and the user write set, all gated by
+// X-API-Key) and {base}/api (the legacy staff face: taxonomy writes +
+// /admin/* reads).
 //
-// apiKey is the internal-tier devapi key sent as X-API-Key on every read-face
-// call and on the message / revision feeds. It is REQUIRED: the read face
-// rejects keyless calls with 401 and there is no keyless-fallback valve any
-// more (config load fail-fasts when a base is configured without a key). The
-// user's Bearer JWT rides Authorization in parallel with X-API-Key on
-// personalized reads / submissions (dual-credential transport).
+// apiKey is the internal-tier devapi key sent as X-API-Key on every
+// internal-face call — reads, both feeds, and the user write set. It is
+// REQUIRED: the internal face rejects keyless calls with 401 and there is no
+// keyless-fallback valve any more (config load fail-fasts when a base is
+// configured without a key). The user's Bearer JWT rides Authorization in
+// parallel with X-API-Key on personalized reads / submissions / writes
+// (dual-credential transport).
 //
 // imageCDNBase must match the service's KUN_IMAGE_PUBLIC_BASE_URL so
 // hash-backed banners resolve to the same CDN URLs the service would build.
@@ -179,6 +185,34 @@ func (c *GalgameClient) readTarget(path string) (base, apiKey string) {
 		return c.legacyBase, ""
 	}
 	return c.internalBase, c.apiKey
+}
+
+// writeTarget picks the base URL + X-API-Key for a mutating request
+// (POST/PUT/PATCH/DELETE) by ROUTE membership (not HTTP method), the write-side
+// mirror of readTarget (Phase-2 06a write-face platformization):
+//   - the user write set — galgame-content mutations under /galgame (create,
+//     image upload, links/aliases, contributors-del, submit, claim, draft
+//     patch+delete) — goes to the internal face with X-API-Key attached; the
+//     user's Bearer rides Authorization in parallel (dual-credential transport);
+//   - taxonomy writes (/tag, /official, /engine, /series family: create / modal
+//     / update / delete / revert) and /admin/* writes are the STAFF set and
+//     stay on the legacy /api face with no key (06a keeps them; W3 does not
+//     retire them).
+//
+// The user write set is exactly the paths under "/galgame" (create is the bare
+// "/galgame", the rest are "/galgame/..."). Taxonomy paths map to
+// /tag|/official|/engine|/series and admin paths to /admin/* — none begin with
+// /galgame — so they fall through to legacy. The internal write face
+// hard-depends on apiKey (no keyless-fallback valve): a keyless deployment
+// fail-fasts at config load, so c.apiKey is non-empty here in any running
+// service.
+func (c *GalgameClient) writeTarget(path string) (base, apiKey string) {
+	if path == "/galgame" ||
+		strings.HasPrefix(path, "/galgame/") ||
+		strings.HasPrefix(path, "/galgame?") {
+		return c.internalBase, c.apiKey
+	}
+	return c.legacyBase, ""
 }
 
 // getFace performs a GET against the given base, attaching a Bearer user token
@@ -308,15 +342,21 @@ func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token
 		}
 	}
 
-	// Writes / submissions always target the legacy /api face (the internal
-	// face is read-only; wave 05 territory).
-	req, err := http.NewRequestWithContext(ctx, method, c.legacyBase+path, bodyReader)
+	// Face by ROUTE membership (writeTarget): the user write set goes to the
+	// internal face + X-API-Key (Phase-2 06a); taxonomy / admin writes stay on
+	// the legacy /api face with no key. The user's Bearer rides Authorization
+	// on both (dual-credential transport on the internal face).
+	base, apiKey := c.writeTarget(path)
+	req, err := http.NewRequestWithContext(ctx, method, base+path, bodyReader)
 	if err != nil {
 		return nil, errors.ErrInternal("创建请求失败")
 	}
 	req.Header.Set("Content-Type", contentType)
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
 	}
 
 	return c.doRequest(req)
