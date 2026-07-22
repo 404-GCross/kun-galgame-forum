@@ -56,8 +56,8 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 func fakeWiki(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Empty API key ⇒ reads fall back to the legacy /api face → /api/galgame/batch.
-		if r.URL.Path == "/api/galgame/batch" {
+		// Reads go to the internal face + X-API-Key → /internal/galgame/batch.
+		if r.URL.Path == "/internal/galgame/batch" {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":[{"id":1,"user_id":7,"name_zh_cn":"测试游戏"}]}`))
 			return
 		}
@@ -144,7 +144,7 @@ func editTestAppFull(t *testing.T, catalogURL, wikiURL string, user *middleware.
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
 	var wiki *client.GalgameClient
 	if wikiURL != "" {
-		wiki = client.NewGalgameClient(wikiURL, "")
+		wiki = client.New(wikiURL, "nm_test", "")
 	}
 	h := NewEditHandler(cc, wiki, nil, notifier, nil) // nil user client/repo = best-effort off
 

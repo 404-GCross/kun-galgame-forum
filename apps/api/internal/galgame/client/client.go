@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -91,30 +90,26 @@ func cachedBatch[T any](
 //
 // The service exposes two faces derived from one host base
 // (KUN_NEXTMOE_API_BASE):
-//   - internalBase = {base}/internal — the internal-tier rich READ face,
-//     gated by an X-API-Key; every read-set call goes here.
-//   - legacyBase   = {base}/api      — the legacy face; writes / submissions,
-//     admin (/admin/*) reads, and the Basic-Auth cron feeds stay here.
+//   - internalBase = {base}/internal — the internal-tier rich READ face plus
+//     the two service-to-service cron feeds (/galgame/messages/feed,
+//     /galgame/revisions/recent), all gated by an X-API-Key; every read-set
+//     call and both feeds go here.
+//   - legacyBase   = {base}/api      — the legacy face; writes / submissions
+//     and admin (/admin/*) reads stay here (wave 06 territory).
 //
-// With apiKey empty, read-face calls fall back to legacyBase — the rollback
-// valve: clearing KUN_NEXTMOE_API_KEY reverts every read to /api with zero
-// code change. Face selection is by ROUTE membership, not HTTP method (see
-// readTarget).
+// Face selection is by ROUTE membership, not HTTP method (see readTarget). The
+// read face hard-depends on apiKey — there is no keyless-fallback valve; a
+// deployment configured with a base but no key fail-fasts at config load.
 //
-// Holds two authentication contexts:
-//   - per-request Bearer token (forwarded from the user's kungal session) —
-//     for user-identity endpoints like submit / claim / patch-draft, and for
-//     personalized reads (the internal face accepts the user JWT in
-//     Authorization alongside the service key in X-API-Key);
-//   - a pre-built HTTP Basic header (OAuth client_id:secret, reused from
-//     pkg/userclient credentials per decision 3 in 07-submission docs) —
-//     for service-to-service endpoints like /galgame/messages/feed.
+// Holds the user's per-request Bearer token (forwarded from the kungal
+// session) for user-identity endpoints like submit / claim / patch-draft and
+// for personalized reads: the internal face accepts that JWT in Authorization
+// alongside the service key in X-API-Key (dual-credential transport).
 type GalgameClient struct {
 	internalBase string
 	legacyBase   string
 	apiKey       string
 	httpClient   *http.Client
-	basicAuth    string
 	// imageCDNBase resolves image hashes → CDN URLs inside doRequest (see
 	// banner.go). Empty disables resolution (responses pass through untouched).
 	imageCDNBase string
@@ -126,22 +121,23 @@ type GalgameClient struct {
 	detailCache map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]
 }
 
-// NewGalgameClient builds a client with no internal-tier API key: read-face
-// calls fall back to the legacy /api face. Suitable for anonymous + Bearer use
-// and for tests. baseURL is the NextMoe host base (no path suffix).
+// New builds a galgame client for the NextMoe catalog service.
+//
+// baseURL is the NextMoe host base (e.g. http://catalog:9281, no /api or
+// /internal suffix); the client derives {base}/internal (the internal-tier
+// read face + the two cron feeds, gated by X-API-Key) and {base}/api (the
+// legacy face: writes / submissions and /admin/* reads).
+//
+// apiKey is the internal-tier devapi key sent as X-API-Key on every read-face
+// call and on the message / revision feeds. It is REQUIRED: the read face
+// rejects keyless calls with 401 and there is no keyless-fallback valve any
+// more (config load fail-fasts when a base is configured without a key). The
+// user's Bearer JWT rides Authorization in parallel with X-API-Key on
+// personalized reads / submissions (dual-credential transport).
 //
 // imageCDNBase must match the service's KUN_IMAGE_PUBLIC_BASE_URL so
 // hash-backed banners resolve to the same CDN URLs the service would build.
-func NewGalgameClient(baseURL, imageCDNBase string) *GalgameClient {
-	return newGalgameClient(baseURL, "", imageCDNBase)
-}
-
-// newGalgameClient is the shared constructor. baseURL is the NextMoe host base
-// (e.g. http://catalog:9281, no /api or /internal suffix); the client derives
-// {base}/internal (read face) and {base}/api (legacy face). apiKey is the
-// internal-tier X-API-Key attached to read-face calls; empty routes reads to
-// the legacy face instead (rollback valve).
-func newGalgameClient(baseURL, apiKey, imageCDNBase string) *GalgameClient {
+func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	base := strings.TrimRight(baseURL, "/")
 
 	// Clone the default transport and lift the per-host idle-connection
@@ -169,27 +165,17 @@ func newGalgameClient(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	}
 }
 
-// NewGalgameClientWithBasicAuth additionally enables the Basic-Auth cron feeds
-// (/galgame/messages/feed, /galgame/revisions/recent on the legacy face) by
-// pre-computing the Basic header. Pass the same OAuth Client ID/secret used by
-// pkg/userclient. apiKey is the internal-tier read-face key (empty → reads
-// fall back to legacy).
-func NewGalgameClientWithBasicAuth(baseURL, apiKey, imageCDNBase, clientID, clientSecret string) *GalgameClient {
-	c := newGalgameClient(baseURL, apiKey, imageCDNBase)
-	c.basicAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(clientID+":"+clientSecret))
-	return c
-}
-
 // readTarget picks the base URL + X-API-Key for a read GET by ROUTE
 // membership (not HTTP method):
-//   - /admin/* is never part of the internal read face — those reads
-//     (GetAdminStats, AdminMessages) stay on the legacy /api face;
-//   - with an internal-tier apiKey configured, every other read goes to the
-//     internal face with X-API-Key attached;
-//   - with apiKey empty (the rollback valve), reads fall back to legacy /api
-//     and no key header is sent.
+//   - /admin/* reads stay on the legacy /api face with no key (GetAdminStats,
+//     AdminMessages) — wave 06 territory;
+//   - every other read goes to the internal face with X-API-Key attached.
+//
+// The read face hard-depends on apiKey (no keyless-fallback valve): a keyless
+// deployment fail-fasts at config load, so c.apiKey is non-empty here in any
+// running service.
 func (c *GalgameClient) readTarget(path string) (base, apiKey string) {
-	if c.apiKey == "" || strings.HasPrefix(path, "/admin/") {
+	if strings.HasPrefix(path, "/admin/") {
 		return c.legacyBase, ""
 	}
 	return c.internalBase, c.apiKey
@@ -236,8 +222,8 @@ func (c *GalgameClient) Get(ctx context.Context, path string, query url.Values) 
 //
 // token "" reduces to an anonymous GET (same as Get).
 //
-// Reads route to the internal face + X-API-Key (or legacy /api when no key is
-// configured); /admin/* reads stay on the legacy face. See readTarget.
+// Reads route to the internal face + X-API-Key; /admin/* reads stay on the
+// legacy face. See readTarget.
 func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
 	base, apiKey := c.readTarget(path)
 	return c.getFace(ctx, base, path, token, query, apiKey)
@@ -721,7 +707,7 @@ func (c *GalgameClient) DeleteDraft(ctx context.Context, token string, gid int) 
 }
 
 // ──────────────────────────────────────────
-// Message feed (service identity, Basic auth)
+// Message feed (service identity, X-API-Key)
 // ──────────────────────────────────────────
 
 // WikiMessageGalgameBrief is the brief embed inside each WikiMessage.
@@ -751,26 +737,18 @@ type WikiMessageFeed struct {
 }
 
 // MessagesFeed pulls a batch of admin-triggered events (approved /
-// declined / banned / unbanned) using OAuth Client Basic Auth. Used by
-// the wiki-message sync cron. Returns ErrInternal if the client wasn't
-// constructed with NewGalgameClientWithBasicAuth.
+// declined / banned / unbanned) from the internal face using the service
+// X-API-Key. Used by the wiki-message sync cron.
 func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit int) (*WikiMessageFeed, *errors.AppError) {
-	if c.basicAuth == "" {
-		return nil, errors.ErrInternal("wiki client 未配置 Basic Auth 凭证")
-	}
 	if limit <= 0 {
 		limit = 1000
 	}
 
-	reqURL := c.legacyBase + "/galgame/messages/feed?since_id=" +
-		strconv.FormatInt(sinceID, 10) + "&limit=" + strconv.Itoa(limit)
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
+	query := url.Values{
+		"since_id": {strconv.FormatInt(sinceID, 10)},
+		"limit":    {strconv.Itoa(limit)},
 	}
-	req.Header.Set("Authorization", c.basicAuth)
-
-	data, appErr := c.doRequest(req)
+	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/messages/feed", "", query, c.apiKey)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -798,27 +776,19 @@ type WikiRevisionFeed struct {
 	HasMore bool           `json:"has_more"`
 }
 
-// RecentRevisions pulls a batch of merged-revision (edit) events using OAuth
-// Client Basic Auth — the wiki-revision sync cron's source for mirroring galgame
-// edits into the local activity timeline. Returns ErrInternal if the client
-// wasn't constructed with NewGalgameClientWithBasicAuth.
+// RecentRevisions pulls a batch of merged-revision (edit) events from the
+// internal face using the service X-API-Key — the wiki-revision sync cron's
+// source for mirroring galgame edits into the local activity timeline.
 func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limit int) (*WikiRevisionFeed, *errors.AppError) {
-	if c.basicAuth == "" {
-		return nil, errors.ErrInternal("wiki client 未配置 Basic Auth 凭证")
-	}
 	if limit <= 0 {
 		limit = 1000
 	}
 
-	reqURL := c.legacyBase + "/galgame/revisions/recent?since_id=" +
-		strconv.FormatInt(sinceID, 10) + "&limit=" + strconv.Itoa(limit)
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
+	query := url.Values{
+		"since_id": {strconv.FormatInt(sinceID, 10)},
+		"limit":    {strconv.Itoa(limit)},
 	}
-	req.Header.Set("Authorization", c.basicAuth)
-
-	data, appErr := c.doRequest(req)
+	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/revisions/recent", "", query, c.apiKey)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -870,9 +840,8 @@ type StatsResult struct {
 // doRequest because it needs the raw status code + ETag header, which the
 // envelope-only doRequest hides.
 func (c *GalgameClient) Stats(ctx context.Context, ifNoneMatch string) (*StatsResult, *errors.AppError) {
-	// A read: routes to the internal face + X-API-Key (or legacy /api when no
-	// key is configured). Kept off the shared getFace/doRequest path because it
-	// needs the raw status code + ETag header.
+	// A read: routes to the internal face + X-API-Key. Kept off the shared
+	// getFace/doRequest path because it needs the raw status code + ETag header.
 	base, apiKey := c.readTarget("/galgame/stats")
 	req, err := http.NewRequestWithContext(ctx, "GET", base+"/galgame/stats", nil)
 	if err != nil {

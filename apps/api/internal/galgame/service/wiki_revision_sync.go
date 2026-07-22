@@ -23,7 +23,7 @@ import (
 //
 // Why a separate sync from WikiMessageSync: different feed (/revisions/recent vs
 // /messages/feed), different cursor, different target table. They share only the
-// Basic-Auth wiki client.
+// internal-face galgame client (X-API-Key).
 type WikiRevisionSync struct {
 	wikiClient *client.GalgameClient
 	db         *gorm.DB

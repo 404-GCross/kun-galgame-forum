@@ -129,12 +129,10 @@ func main() {
 	logger.Init(cfg.Server.Mode)
 
 	db := database.NewPostgres(cfg.Database, cfg.Server.Mode)
-	gc := galgameClient.NewGalgameClientWithBasicAuth(
+	gc := galgameClient.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
-		cfg.OAuth.ClientID,
-		cfg.OAuth.ClientSecret,
 	)
 
 	ctx := context.Background()

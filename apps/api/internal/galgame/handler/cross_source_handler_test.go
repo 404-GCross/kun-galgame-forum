@@ -31,12 +31,12 @@ const statsETag = `W/"gstats-1752200700"`
 func newFakeWiki(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Empty API key ⇒ the client's read calls fall back to the legacy /api
-		// face, so paths arrive prefixed with /api.
+		// Reads go to the internal face + X-API-Key, so paths arrive prefixed
+		// with /internal.
 		switch r.URL.Path {
-		case "/api/galgame/1/scores":
+		case "/internal/galgame/1/scores":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + wikiScoresData + `}`))
-		case "/api/galgame/stats":
+		case "/internal/galgame/stats":
 			// Mirror the wiki's ETag / 304 behaviour exactly.
 			w.Header().Set("ETag", statsETag)
 			if r.Header.Get("If-None-Match") == statsETag {
@@ -73,7 +73,7 @@ func newFakeCatalog(t *testing.T) *httptest.Server {
 // buildApp wires the handler exactly as router.go does, over the given upstreams.
 func buildApp(t *testing.T, wikiURL, catalogURL string) *fiber.App {
 	t.Helper()
-	gc := galgameClient.NewGalgameClient(wikiURL, "") // empty CDN base = banner walker off
+	gc := galgameClient.New(wikiURL, "nm_test", "") // empty CDN base = banner walker off
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
 	h := NewCrossSourceHandler(service.NewCrossSourceService(gc, cc))
 

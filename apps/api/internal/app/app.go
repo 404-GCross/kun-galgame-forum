@@ -175,17 +175,15 @@ func New(cfg *config.Config) *App {
 	messageRepository := msgRepo.NewMessageRepository(db)
 	chatRepository := msgRepo.NewChatRepository(db)
 
-	// Galgame wiki client (shared — user service needs it too). The
-	// Basic-auth variant carries OAuth Client credentials so the
-	// wiki-message sync cron can call /galgame/messages/feed (service
-	// identity). Bearer-required endpoints still use a per-request token
-	// forwarded from the user session.
-	gc := galgameClient.NewGalgameClientWithBasicAuth(
+	// Galgame catalog client (shared — user service needs it too). Reads go to
+	// the internal face with the internal-tier X-API-Key; the two sync-cron
+	// feeds (/galgame/messages/feed, /galgame/revisions/recent) ride the same
+	// internal face + key (service identity). Bearer-required endpoints still
+	// use a per-request token forwarded from the user session.
+	gc := galgameClient.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
-		cfg.OAuth.ClientID,
-		cfg.OAuth.ClientSecret,
 	)
 
 	// OAuth client (used by auth service).

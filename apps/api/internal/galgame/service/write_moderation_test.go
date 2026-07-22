@@ -121,7 +121,7 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 	ratingRepo := repository.NewRatingRepository(db)
 	// Inert clients: post-commit hydration fast-fails to zero values (no panic,
 	// no network wait) — irrelevant to what we assert here.
-	wikiClient := client.NewGalgameClient("", "")
+	wikiClient := client.New("", "nm_test", "")
 	uc := userclient.New(userclient.Config{})
 
 	reqOf := func() *dto.CreateRatingRequest {

@@ -60,7 +60,7 @@ func TestProxyWrite_ForwardsForceQuery(t *testing.T) {
 	got, srv := newFakeWiki(t)
 	// CDN base intentionally empty: rewriteBanners must not interfere
 	// with the success-envelope body when there are no banner fields.
-	gc := client.NewGalgameClient(srv.URL, "")
+	gc := client.New(srv.URL, "nm_test", "")
 	svc := NewWikiService(gc, nil, nil)
 
 	q := url.Values{"force": {"true"}}
@@ -96,7 +96,7 @@ func TestProxyWrite_ForwardsForceQuery(t *testing.T) {
 
 func TestProxyWrite_OmitsQueryWhenEmpty(t *testing.T) {
 	got, srv := newFakeWiki(t)
-	gc := client.NewGalgameClient(srv.URL, "")
+	gc := client.New(srv.URL, "nm_test", "")
 	svc := NewWikiService(gc, nil, nil)
 
 	_, err := svc.ProxyWrite(
@@ -119,7 +119,7 @@ func TestProxyWrite_OmitsQueryWhenEmpty(t *testing.T) {
 
 func TestProxyWrite_ForwardsBodyAndContentType(t *testing.T) {
 	got, srv := newFakeWiki(t)
-	gc := client.NewGalgameClient(srv.URL, "")
+	gc := client.New(srv.URL, "nm_test", "")
 	svc := NewWikiService(gc, nil, nil)
 
 	body := []byte(`{"alias":["a","b"]}`)
