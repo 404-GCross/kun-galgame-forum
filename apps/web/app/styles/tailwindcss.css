@@ -150,7 +150,6 @@ html {
  *                        not data-kun-overlay (kun-ui 2.x; alert was see-through)
  *   .z-kun-popover     → Dropdown · ContextMenu · Popover · Tooltip ·
  *                        Select / Autocomplete lists · DatePicker calendar
- *   .kun-rail-flyout   → the desktop sidebar icon-rail hover menus (side-bar/RailGroup.vue)
  *   .kun-sidebar-drawer → the mobile hamburger drawer (force-expanded Sidebar.vue)
  *   .kun-reply-panel   → the desktop topic reply pop-up panel (topic/reply/Panel.vue)
  * The loli (KunLoliProvider / useKunLoliInfo) carries NONE of these classes, so it
@@ -162,7 +161,6 @@ html {
 .z-kun-modal,
 .z-kun-alert,
 .z-kun-message,
-.kun-rail-flyout,
 .kun-sidebar-drawer,
 .kun-reply-panel {
   --color-content1: oklch(var(--content1) / 1);

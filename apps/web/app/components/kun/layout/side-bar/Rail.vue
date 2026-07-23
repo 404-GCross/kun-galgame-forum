@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Desktop sidebar icon rail: four groups (icon + label), each a RailGroup whose
-// hover reveals a flyout of links to its right. Hover handling lives in RailGroup
-// (kun-ui 2.1 useKunPointerMenu — safe-triangle + shared group). Mobile never
-// renders this — it keeps the expanded drawer.
+// hover reveals a flyout of links to its right. Hover + positioning both live in
+// RailGroup's KunPopover (kun-ui 2.17 trigger="hover" group + right-start,
+// collision-aware). Mobile never renders this — it keeps the expanded drawer.
 import { kunSidebarRail } from '~/constants/layout'
 
 // 发售月历 quick entry, pinned below the last group (其他). Turns primary +
