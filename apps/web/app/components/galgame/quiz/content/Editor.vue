@@ -57,6 +57,13 @@ const setCorrect = (i: number, checked: boolean) => {
     multiAnswers.value = multiAnswers.value.filter((x) => x !== i)
   }
 }
+// A labeled, highlighted per-row action drives correctness instead of a bare
+// radio/checkbox — the old control looked identical to the ANSWERING UI, so
+// "mark this option correct" read as "select this option". single = move the
+// sole mark; multiple = toggle it. Correct label differs so the state is obvious.
+const correctLabel = computed(() => (props.type === 'single' ? '正确答案' : '已选'))
+const toggleCorrect = (i: number) =>
+  setCorrect(i, props.type === 'single' ? true : !isCorrect(i))
 
 const addBlank = () => blanks.value.push([])
 const removeBlank = (i: number) => {
@@ -174,12 +181,15 @@ defineExpose({ getContent, validate, reset, load })
 
 <template>
   <div class="space-y-3">
-    <!-- single / multiple — correctness marked inline on each row -->
+    <!-- single / multiple — correctness set by a labeled action + row highlight,
+         NOT a bare radio/checkbox (which looked like the answering UI). -->
     <template v-if="type === 'single' || type === 'multiple'">
       <div class="flex items-center justify-between">
         <label class="text-sm font-medium">选项</label>
         <span class="text-default-400 text-xs">
-          在左侧勾选正确答案（{{ type === 'single' ? '单选题唯一' : '多选题可多个' }}）
+          点「设为正确答案」标记（{{
+            type === 'single' ? '单选题唯一' : '多选题可多个'
+          }}）
         </span>
       </div>
 
@@ -187,15 +197,28 @@ defineExpose({ getContent, validate, reset, load })
         <div
           v-for="(_, i) in options"
           :key="i"
-          class="flex items-center gap-2"
+          :class="
+            cn(
+              'flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
+              isCorrect(i) && 'bg-success/10 ring-1 ring-inset ring-success/40'
+            )
+          "
         >
-          <KunCheckBox
-            :type="type === 'single' ? 'single' : 'multiple'"
-            :model-value="isCorrect(i)"
-            size="lg"
-            color="success"
-            @update:model-value="(v) => setCorrect(i, v)"
-          />
+          <KunButton
+            :variant="isCorrect(i) ? 'flat' : 'light'"
+            :color="isCorrect(i) ? 'success' : 'default'"
+            size="sm"
+            class-name="w-28 shrink-0 justify-start"
+            :aria-pressed="isCorrect(i)"
+            @click="toggleCorrect(i)"
+          >
+            <span class="flex items-center gap-1">
+              <KunIcon
+                :name="isCorrect(i) ? 'lucide:circle-check' : 'lucide:circle'"
+              />
+              {{ isCorrect(i) ? correctLabel : '设为正确' }}
+            </span>
+          </KunButton>
 
           <KunInput
             v-model="options[i]"
