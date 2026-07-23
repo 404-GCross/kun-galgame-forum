@@ -2,8 +2,16 @@
 
 > 本仓自有工程笔记（**非** infra 镜像）。对应 infra `todos.md` 第 2 项
 > 「OpenAPI → 类型化客户端」的论坛落地部分（该项曾标注「forum 仍未消费(其团队)」）。
-> **当前状态：Phase A（生成 + 防漂移闸）已完成并提交；Phase B（替换手写类型）暂缓——
-> 见下方「关键结论」：论坛架构与 moyu 不同,整体 Phase B 不适用,但排查中发现一个真 bug。**
+>
+> **🏁 全管线已随上游退役(2026-07-23,开放 API Phase 2 路线 B W5)**:galgame-wiki
+> read/calendar spec 及其门户发布随桥面读退役删除,论坛的 Phase A 管线
+> (gen 脚本 / 生成物 / `openapi-types.yml` 防漂移闸 / lint 排除)同波拆除——
+> 生成物本就零 importer(Phase B 从未落地),纯管线移除零运行时影响。
+> galgame 数据现经论坛 BFF 消费 infra 的 `/v1` 公开契约(真值=infra
+> `docs/galgame_wiki/public-openapi.yaml`)。以下为历史记录。
+>
+> ~~当前状态:Phase A(生成 + 防漂移闸)已完成并提交;Phase B(替换手写类型)暂缓——
+> 见下方「关键结论」:论坛架构与 moyu 不同,整体 Phase B 不适用,但排查中发现一个真 bug。~~
 
 ## 背景
 
