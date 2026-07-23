@@ -104,9 +104,15 @@ const submitFix = async (index: number) => {
           v-for="(res, index) in data.resources"
           :key="index"
         >
-          <div class="mb-2 text-lg font-medium">
+          <KunLink
+            :to="`/galgame/${res.galgame_id}?tab=resource`"
+            underline="hover"
+            color="default"
+            class-name="mb-2 inline-flex items-center gap-1 text-lg font-medium hover:text-primary"
+          >
             {{ getPreferredLanguageText(res.galgame_name) }}
-          </div>
+            <KunIcon name="lucide:arrow-up-right" class="text-base opacity-60" />
+          </KunLink>
 
           <div class="mb-2 flex flex-wrap items-center gap-2">
             <KunChip color="primary">
@@ -157,7 +163,7 @@ const submitFix = async (index: number) => {
         <KunCard
           v-for="(res, index) in data.resources"
           :key="index"
-          :href="`/galgame/${res.galgame_id}`"
+          :href="`/galgame/${res.galgame_id}?tab=resource`"
         >
           <div>
             {{ getPreferredLanguageText(res.galgame_name) }}
