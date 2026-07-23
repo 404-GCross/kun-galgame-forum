@@ -13,14 +13,20 @@ import { answerGalgameQuizSchema } from '~/validations/galgame-quiz'
 
 const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
-const route = useRoute()
-// 返回题库 restores the browse page the user came from (List forwards it as
-// ?from=N on the quiz link). No ?from (a deep link, or the galgame-detail quiz
-// panel) falls back to the library root.
-const backToLibrary = computed(() => {
-  const from = Number(route.query.from)
-  return from > 1 ? `/galgame-quiz?page=${from}` : '/galgame-quiz'
-})
+const router = useRouter()
+// 返回题库: prefer a history round-trip so the exact browse page + filters +
+// scroll position the user left are restored (the list is fully URL-driven —
+// see quiz/Container.vue). Fall back to the library root for deep links or
+// arrivals from the galgame-detail quiz panel, where the previous history entry
+// isn't the list.
+const returnToLibrary = () => {
+  const back = window.history.state?.back
+  if (typeof back === 'string' && /^\/galgame-quiz(\?|#|$)/.test(back)) {
+    router.back()
+  } else {
+    navigateTo('/galgame-quiz')
+  }
+}
 
 // Local mutable copy so answering / rating updates the view without a refetch.
 const state = ref<GalgameQuizPlay>({ ...props.quiz })
@@ -118,7 +124,7 @@ const remove = async () => {
   isDeleting.value = false
   if (res) {
     useMessage('已删除', 'success')
-    navigateTo(backToLibrary.value)
+    returnToLibrary()
   }
 }
 
@@ -132,7 +138,7 @@ const correctRate = computed(() =>
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between gap-2">
-      <KunButton variant="light" size="sm" :href="backToLibrary">
+      <KunButton variant="light" size="sm" @click="returnToLibrary">
         <span class="flex items-center gap-1">
           <KunIcon name="lucide:arrow-left" />返回题库
         </span>
