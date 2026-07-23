@@ -10,9 +10,15 @@ import {
 const userStore = usePersistUserStore()
 const isLoggedIn = computed(() => !!userStore.id)
 
+// Page lives in the URL (?page=N) so the browse position survives a round-trip to
+// a quiz's answer page: List forwards it as ?from=N on the quiz link and 返回题库
+// restores it. It also makes the list shareable / refresh-stable.
+const route = useRoute()
+const router = useRouter()
+
 const tab = ref<'all' | 'mine'>('all')
 const params = reactive({
-  page: 1,
+  page: Number(route.query.page) || 1,
   limit: 50,
   sort_field: 'update_time',
   sort_order: 'desc',
@@ -20,6 +26,14 @@ const params = reactive({
   type: 'all',
   difficulty: 0
 })
+watch(
+  () => params.page,
+  (page) => {
+    router.replace({
+      query: { ...route.query, page: page > 1 ? page : undefined }
+    })
+  }
+)
 
 // A ref URL so switching tabs re-targets the endpoint (useKunFetch re-fetches
 // on url / query change). `mine` is self-only and ignores the filters.
@@ -123,6 +137,7 @@ const onPublished = () => {
     <GalgameQuizList
       v-if="data && data.quiz_data.length"
       :quizzes="data.quiz_data"
+      :page="params.page"
     />
     <KunNull
       v-else-if="status !== 'pending'"

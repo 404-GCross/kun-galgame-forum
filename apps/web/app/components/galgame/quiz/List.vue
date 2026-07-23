@@ -12,7 +12,9 @@ import {
   kunQuizDifficultyColor
 } from '~/constants/galgame-quiz'
 
-defineProps<{ quizzes: GalgameQuizCard[] }>()
+// `page` is the current browse page, forwarded onto each quiz link as ?from=N so
+// its answer page's 返回题库 can restore this page instead of resetting to 1.
+defineProps<{ quizzes: GalgameQuizCard[]; page?: number }>()
 
 const correctRate = (q: GalgameQuizCard) =>
   q.answer_count > 0
@@ -25,7 +27,11 @@ const correctRate = (q: GalgameQuizCard) =>
     <NuxtLink
       v-for="quiz in quizzes"
       :key="quiz.id"
-      :to="`/galgame-quiz/${quiz.id}`"
+      :to="
+        page && page > 1
+          ? `/galgame-quiz/${quiz.id}?from=${page}`
+          : `/galgame-quiz/${quiz.id}`
+      "
       class="hover:bg-default-100 flex items-center gap-3 px-2 py-3 transition-colors"
     >
       <!-- left: the viewer's own status -->

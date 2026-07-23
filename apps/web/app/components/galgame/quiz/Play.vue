@@ -13,6 +13,15 @@ import { answerGalgameQuizSchema } from '~/validations/galgame-quiz'
 
 const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
+const route = useRoute()
+// 返回题库 restores the browse page the user came from (List forwards it as
+// ?from=N on the quiz link). No ?from (a deep link, or the galgame-detail quiz
+// panel) falls back to the library root.
+const backToLibrary = computed(() => {
+  const from = Number(route.query.from)
+  return from > 1 ? `/galgame-quiz?page=${from}` : '/galgame-quiz'
+})
+
 // Local mutable copy so answering / rating updates the view without a refetch.
 const state = ref<GalgameQuizPlay>({ ...props.quiz })
 // Edit fetches the answer key (quiz.edit_any); delete removes the quiz and its
@@ -109,7 +118,7 @@ const remove = async () => {
   isDeleting.value = false
   if (res) {
     useMessage('已删除', 'success')
-    navigateTo('/galgame-quiz')
+    navigateTo(backToLibrary.value)
   }
 }
 
@@ -123,7 +132,7 @@ const correctRate = computed(() =>
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between gap-2">
-      <KunButton variant="light" size="sm" href="/galgame-quiz">
+      <KunButton variant="light" size="sm" :href="backToLibrary">
         <span class="flex items-center gap-1">
           <KunIcon name="lucide:arrow-left" />返回题库
         </span>
