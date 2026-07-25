@@ -48,12 +48,22 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("oauth: http=%d msg=%q", e.HTTPStatus, e.Message)
 }
 
-// IsBanned reports whether err is a 10014 "account banned" response.
+// IsBanned reports whether err is an "account banned" response.
 // Callers should surface this distinctly (e.g. show a banned page rather
 // than redirecting to /login, since logging in again hits the same error).
+//
+// Two shapes mean the same thing: the enveloped 10014, and — once
+// /oauth/userinfo speaks RFC 6750, where no error code carries "banned" — a
+// bare HTTP 403. The OAuth server uses 403 on these routes only for a banned
+// account, so keying on it preserves the distinct banned page across the wire
+// cutover instead of degrading it to a generic re-login. (moyu already
+// classifies the ban this way.)
 func IsBanned(err error) bool {
 	var oe *Error
-	return stderrors.As(err, &oe) && oe.Code == CodeAccountBanned
+	if !stderrors.As(err, &oe) {
+		return false
+	}
+	return oe.Code == CodeAccountBanned || oe.HTTPStatus == http.StatusForbidden
 }
 
 // IsRefreshTokenDead reports whether err means the refresh token is
@@ -163,15 +173,25 @@ func decodeEnvelope(resp *http.Response) (json.RawMessage, error) {
 	return nil, &Error{Code: oauthErrToCode(p.Error), HTTPStatus: resp.StatusCode, Message: msg}
 }
 
-// oauthErrToCode maps a standard RFC 6749 error string to the legacy envelope
-// code kungal branches on. invalid_grant / unauthorized_client (the OAuth
-// server's grant-allowlist rejection, legacy 15005) / invalid_client all mean
-// the refresh token is unusable (→ re-login); anything else maps to 0
-// (unknown → transient). A banned user surfaces as invalid_grant on the token
-// endpoint and is then re-blocked at /userinfo (which still returns the
-// enveloped 10014).
+// oauthErrToCode maps a standard RFC 6749 §5.2 / RFC 6750 §3.1 error string to
+// the legacy envelope code kungal branches on. invalid_token (a rejected bearer
+// token on /oauth/userinfo, legacy 10002), invalid_grant / unauthorized_client
+// (the OAuth server's grant-allowlist rejection, legacy 15005) and
+// invalid_client all mean the credential is unusable (→ re-login); anything
+// else maps to 0 (unknown → transient).
+//
+// Ban handling: once /oauth/userinfo speaks RFC 6750, a banned user arrives as
+// invalid_token rather than the enveloped 10014, so the distinct banned page
+// degrades to the generic re-login path on that route — the same trade-off the
+// token endpoint already made (a ban surfaces there as invalid_grant). The ban
+// is still enforced; only the wording the user sees changes.
 func oauthErrToCode(errStr string) int {
 	switch errStr {
+	case "invalid_token":
+		// Without this a 401 from /oauth/userinfo lands on code 0, which
+		// IsTransient reads as retryable — kungal would keep a session with a
+		// permanently dead token alive and retry it forever.
+		return CodeInvalidToken
 	case "invalid_grant", "unauthorized_client":
 		return CodeInvalidGrant
 	case "invalid_client":
