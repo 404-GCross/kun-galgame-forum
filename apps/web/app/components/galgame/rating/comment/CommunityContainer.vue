@@ -40,7 +40,7 @@ const target: CommunityCommentTarget = {
       scale="h2"
     />
 
-    <div class="space-y-3">
+    <div class="space-y-5">
       <!-- Top-level comments on a rating are addressed to its author. -->
       <CommentCommunityComposer
         :target="target"
@@ -52,7 +52,7 @@ const target: CommunityCommentTarget = {
 
       <KunNull v-else-if="isEmpty" />
 
-      <div v-else-if="groups.length" class="space-y-6">
+      <div v-else-if="groups.length" class="space-y-8">
         <CommentCommunityRow
           v-for="group in groups"
           :key="group.root.id"

@@ -30,7 +30,7 @@ const target: CommunityCommentTarget = {
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div class="space-y-5">
     <KunHeader
       name="评论"
       description="如果您对该工具有任何的使用疑问, 欢迎发布评论"
@@ -43,7 +43,7 @@ const target: CommunityCommentTarget = {
 
     <KunNull v-else-if="isEmpty" />
 
-    <div v-else-if="groups.length" class="space-y-6">
+    <div v-else-if="groups.length" class="space-y-8">
       <CommentCommunityRow
         v-for="group in groups"
         :key="group.root.id"

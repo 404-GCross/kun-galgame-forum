@@ -138,7 +138,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div class="space-y-5">
     <KunHeader name="游戏评论" scale="h2">
       <template #endContent>
         <KunLink size="sm" to="/topic/1482">
@@ -156,7 +156,7 @@ onMounted(() => {
       description="没人评论, 是没人要这个 Galgame 的小只可爱软萌女孩子了吗, 呜呜呜呜呜呜！！"
     />
 
-    <div v-else-if="groups.length" class="space-y-6">
+    <div v-else-if="groups.length" class="space-y-8">
       <CommentCommunityRow
         v-for="group in groups"
         :key="group.root.id"

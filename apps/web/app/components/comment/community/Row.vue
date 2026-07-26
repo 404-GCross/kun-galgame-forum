@@ -1,17 +1,28 @@
 <script setup lang="ts">
 // One post row in a community-primitive comment area — the SINGLE node component
-// behind all four surfaces (galgame + rating / website / toolset). The galgame
-// comment area's look is the reference; everything area-specific (endpoints,
-// content cap, moderation key, anchor prefix, flat-vs-tree, mention support) comes
-// from the target's descriptor in utils/communityComment.ts.
+// behind all six surfaces (galgame + rating / website / toolset / galgame-resource
+// / quiz). Everything area-specific (endpoints, content cap, moderation key,
+// anchor prefix, flat-vs-tree, mention support) comes from the target's descriptor
+// in utils/communityComment.ts.
 //
-// The visual model stays FLAT — two tiers:
+// The structural model is two tiers:
 //
 //   depth 0 = root; depth 1 = reply (any DB depth, rendered as one flat group)
 //
 // The container does the grouping and passes a root's replies down via `replies`;
 // a reply node never receives children. Mutations bubble up as events; the
 // container owns the list state.
+//
+// LAYOUT NOTES (the 2026-07 density pass). Three things carry the rhythm:
+//   1. One action strip of uniform KunReaction pills, with every secondary action
+//      behind ⋯. Previously the like pill sat beside taller icon buttons, so the
+//      row never read as a single line.
+//   2. An explicit meta → body → actions cadence (2 / 2.5) instead of a flat
+//      space-y, so the body is the element with room around it.
+//   3. Tier grouping is carried purely by SPACING CONTRAST — 4 inside a reply group
+//      against 8 between roots (set by the containers). A rule + indent was tried
+//      and deliberately dropped: the spacing alone separates the tiers, and the
+//      extra chrome cost more than it bought.
 const props = withDefaults(
   defineProps<{
     comment: GalgameCommunityComment
@@ -57,6 +68,13 @@ const isShowDelete = computed(
 )
 // Report entry: not on your own post, and never on a tombstone.
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
+
+// The ⋯ menu collects every secondary action (edit / report / delete), so the
+// visible row stays three uniform pills. Hidden entirely when it would be empty —
+// e.g. the author looking at their own tombstone.
+const isShowMenu = computed(
+  () => isShowEdit.value || isShowFlag.value || isShowDelete.value
+)
 
 // The "→ 对方" chip: only where the area actually wants it (never on galgame,
 // which retired 「评论给」in favour of @mentions even though its replies still
@@ -155,33 +173,37 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
   <div :id="`${surface.anchorPrefix}-${comment.id}`" class="flex gap-3">
     <KunAvatar :user="comment.user" :size="depth === 0 ? 'md' : 'sm'" />
 
-    <div class="min-w-0 flex-1 space-y-1.5">
-      <div class="flex flex-wrap items-baseline gap-1.5">
+    <div class="min-w-0 flex-1">
+      <!-- Meta line. gap-x is wider than gap-y so a wrapped line still reads as
+           one strip, and the name carries the only strong weight here. -->
+      <div
+        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs leading-5"
+      >
         <span class="text-default-800 text-sm font-medium">
           {{ comment.user.name }}
         </span>
         <template v-if="replyTarget">
-          <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
+          <KunIcon name="lucide:arrow-right" class="text-default-400" />
           <KunLink underline="hover" size="sm" :to="`/user/${replyTarget.id}`">
             {{ replyTarget.name }}
           </KunLink>
         </template>
-        <span class="text-default-400 text-xs">
+        <span class="text-default-400">
           <KunTime :time="comment.created" />
         </span>
-        <span v-if="editedLabel" class="text-default-400 text-xs italic">
-          ({{ editedLabel }})
+        <span v-if="editedLabel" class="text-default-400 italic">
+          {{ editedLabel }}
         </span>
         <span
           v-if="comment.held"
-          class="bg-warning-100 text-warning-600 rounded px-1.5 py-0.5 text-xs"
+          class="bg-warning-100 text-warning-600 rounded-full px-2 py-0.5"
         >
           审核中
         </span>
       </div>
 
       <!-- Tombstone: keep the floor, gray the body. -->
-      <p v-if="comment.deleted" class="text-default-400 text-sm italic">
+      <p v-if="comment.deleted" class="text-default-400 mt-2 text-sm italic">
         [已删除]
       </p>
 
@@ -189,12 +211,13 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
            renders content_html for every area from the same pipeline. -->
       <KunContent
         v-else-if="!isEditing"
+        class="mt-2"
         compact
         :content="renderKatex(comment.content_html)"
       />
 
       <!-- Edit mode: same editor as the composer, pre-loaded with the source. -->
-      <div v-else class="space-y-2">
+      <div v-else class="mt-2 space-y-2">
         <KunMilkdownDualEditorProvider
           :value-markdown="editingContent"
           @set-markdown="(val) => (editingContent = val)"
@@ -218,57 +241,70 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
         </div>
       </div>
 
+      <!-- Action row: ONE strip of uniform KunReaction pills. Everything here is
+           the same component in the same skin (`:toggle="false"` = one-shot action
+           in the like pill's clothing), so the like button finally sits flush with
+           its neighbours instead of next to taller icon buttons. Secondary actions
+           live behind ⋯ — same shape as the topic reply footer, which is where this
+           pattern is already established. -->
       <div
         v-if="!comment.deleted && !isEditing"
-        class="-ml-2 flex items-center gap-1"
+        class="mt-2.5 flex items-center gap-1"
       >
-        <KunButton
-          variant="light"
-          size="sm"
-          class-name="gap-1"
-          @click="isShowReply = !isShowReply"
-        >
-          <KunIcon name="lucide:reply" />
-          回复
-        </KunButton>
+        <KunTooltip text="回复">
+          <KunReaction
+            :toggle="false"
+            icon="lucide:reply"
+            label="回复"
+            @click="isShowReply = !isShowReply"
+          />
+        </KunTooltip>
 
         <CommentCommunityLike :comment="comment" />
 
-        <KunTooltip v-if="isShowFlag" text="举报">
-          <KunButton
-            :is-icon-only="true"
-            color="danger"
-            variant="light"
-            size="sm"
-            @click="handleFlag"
-          >
-            <KunIcon name="lucide:flag" />
-          </KunButton>
-        </KunTooltip>
+        <KunPopover v-if="isShowMenu" position="bottom-start">
+          <template #trigger>
+            <KunReaction :toggle="false" icon="lucide:ellipsis" label="更多" />
+          </template>
 
-        <KunTooltip v-if="isShowEdit" text="编辑">
-          <KunButton
-            :is-icon-only="true"
-            variant="light"
-            color="default"
-            size="sm"
-            @click="handleStartEdit"
-          >
-            <KunIcon name="lucide:pencil" />
-          </KunButton>
-        </KunTooltip>
+          <div class="flex w-44 flex-col gap-2 p-2">
+            <KunButton
+              v-if="isShowEdit"
+              variant="light"
+              color="default"
+              size="sm"
+              class-name="w-full justify-start gap-2 whitespace-nowrap"
+              @click="handleStartEdit"
+            >
+              <KunIcon class-name="text-lg" name="lucide:pencil" />
+              编辑评论
+            </KunButton>
 
-        <KunTooltip v-if="isShowDelete" text="删除">
-          <KunButton
-            :is-icon-only="true"
-            variant="light"
-            color="danger"
-            size="sm"
-            @click="handleDelete"
-          >
-            <KunIcon name="lucide:trash-2" />
-          </KunButton>
-        </KunTooltip>
+            <KunButton
+              v-if="isShowFlag"
+              variant="light"
+              color="danger"
+              size="sm"
+              class-name="w-full justify-start gap-2 whitespace-nowrap"
+              @click="handleFlag"
+            >
+              <KunIcon class-name="text-lg" name="lucide:flag" />
+              举报评论
+            </KunButton>
+
+            <KunButton
+              v-if="isShowDelete"
+              variant="light"
+              color="danger"
+              size="sm"
+              class-name="w-full justify-start gap-2 whitespace-nowrap"
+              @click="handleDelete"
+            >
+              <KunIcon class-name="text-lg" name="lucide:trash-2" />
+              删除评论
+            </KunButton>
+          </div>
+        </KunPopover>
       </div>
 
       <KunFadeCard>
@@ -276,6 +312,7 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
              THIS post's author and the new post lands flat in the list. -->
         <CommentCommunityComposer
           v-if="isShowReply"
+          class="mt-3"
           :target="target"
           :reply-to-post-id="surface.isFlat ? null : comment.id"
           :target-user-id="comment.user.id"
@@ -285,10 +322,13 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
         />
       </KunFadeCard>
 
-      <!-- Replies render flush — single visual tier, smaller avatar the only cue. -->
+      <!-- Reply tier. Replies render flush — the smaller avatar plus the tighter
+           spacing inside the group (4 here against 8 between roots) is what marks
+           them; the grouping is carried by that spacing contrast rather than by any
+           rule or indent. -->
       <div
         v-if="!surface.isFlat && depth === 0 && replies.length"
-        class="mt-3 space-y-4"
+        class="mt-4 space-y-4"
       >
         <CommentCommunityRow
           v-for="reply in replies"

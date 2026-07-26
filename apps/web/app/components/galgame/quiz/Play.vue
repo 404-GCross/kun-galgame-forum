@@ -303,17 +303,6 @@ const correctRate = computed(() =>
       </div>
     </KunCard>
 
-    <!-- Attribution -->
-    <div
-      class="text-default-400 flex items-center justify-center gap-1.5 text-sm"
-    >
-      本题出自
-      <img src="/favicon.webp" alt="鲲 Galgame 论坛" class="h-4 w-4 rounded" />
-      <KunLink to="/galgame-quiz" class="text-sm">
-        鲲 Galgame 论坛 Galgame 题库
-      </KunLink>
-    </div>
-
     <GalgameQuizPublish
       v-model="showEdit"
       :edit-data="editData"

@@ -60,12 +60,12 @@ const onPublished = (post: GalgameCommunityComment) => {
       description="这道题目含有剧透, 作答后即可查看并参与讨论"
     />
 
-    <div v-else class="space-y-3">
+    <div v-else class="space-y-5">
       <CommentCommunityComposer :target="target" @submitted="onPublished" />
 
       <KunNull v-if="isEmpty" description="还没有人讨论这道题目" />
 
-      <div v-else-if="groups.length" class="space-y-6">
+      <div v-else-if="groups.length" class="space-y-8">
         <CommentCommunityRow
           v-for="group in groups"
           :key="group.root.id"

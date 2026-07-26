@@ -52,14 +52,14 @@ const onPublished = (post: GalgameCommunityComment) => {
       </template>
     </KunHeader>
 
-    <div class="space-y-3">
+    <div class="space-y-5">
       <CommentCommunityComposer :target="target" @submitted="onPublished" />
 
       <KunLoading v-if="status === 'pending' && !seeded" />
 
       <KunNull v-else-if="isEmpty" description="还没有人评论这个资源" />
 
-      <div v-else-if="groups.length" class="space-y-6">
+      <div v-else-if="groups.length" class="space-y-8">
         <CommentCommunityRow
           v-for="group in groups"
           :key="group.root.id"
