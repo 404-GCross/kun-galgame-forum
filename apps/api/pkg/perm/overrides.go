@@ -32,7 +32,7 @@ type Override struct {
 
 // catalog is the full ordered permission vocabulary — every overridable key in
 // declaration order. adminPerms IS that list by construction (admin holds
-// everything: the 41 moderator keys plus the two admin-only keys), so we derive
+// everything: the 45 moderator keys plus the two admin-only keys), so we derive
 // catalog from it rather than maintain a third hand-copied list.
 var catalog = append([]Permission{}, adminPerms...)
 
@@ -131,7 +131,7 @@ func orderedFrom(set map[Permission]struct{}) []Permission {
 	return out
 }
 
-// Catalog returns the 43 permission keys in declaration order (a copy).
+// Catalog returns the 47 permission keys in declaration order (a copy).
 func Catalog() []Permission {
 	return append([]Permission{}, catalog...)
 }
@@ -143,7 +143,7 @@ func IsKnownPermission(p Permission) bool {
 }
 
 // Baseline returns a role's COMPILED baseline set in catalog order (a copy),
-// ignoring any runtime overrides. Empty for creator/user/unknown; all 43 for
+// ignoring any runtime overrides. Empty for creator/user/unknown; all 47 for
 // admin/ren.
 func Baseline(role string) []Permission {
 	set := make(map[Permission]struct{}, len(Bundles[role]))

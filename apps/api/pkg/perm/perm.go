@@ -12,7 +12,7 @@
 // The forum's authority splits into two kinds of operation, and only one of
 // them lives in this package:
 //
-//   - PURE-FORUM permissions (the 43 constants below): the forum's own
+//   - PURE-FORUM permissions (the 47 constants below): the forum's own
 //     resolver is the authoritative gate. These are the content-moderation and
 //     site-management powers whose truth lives entirely here.
 //   - INFRA-PROXY operations (deliberately ABSENT here): operations the forum
@@ -85,6 +85,14 @@ const (
 	CommentToolsetEdit Permission = "comment.toolset.edit"
 	// CommentToolsetDelete: delete any toolset comment.
 	CommentToolsetDelete Permission = "comment.toolset.delete"
+	// CommentResourceEdit: edit any galgame-resource comment.
+	CommentResourceEdit Permission = "comment.resource.edit"
+	// CommentResourceDelete: delete any galgame-resource comment.
+	CommentResourceDelete Permission = "comment.resource.delete"
+	// CommentQuizEdit: edit any galgame-quiz comment.
+	CommentQuizEdit Permission = "comment.quiz.edit"
+	// CommentQuizDelete: delete any galgame-quiz comment.
+	CommentQuizDelete Permission = "comment.quiz.delete"
 
 	// PollCreateAny: create a poll on someone else's topic.
 	PollCreateAny Permission = "poll.create_any"
@@ -176,6 +184,10 @@ var moderatorPerms = []Permission{
 	CommentWebsiteDelete,
 	CommentToolsetEdit,
 	CommentToolsetDelete,
+	CommentResourceEdit,
+	CommentResourceDelete,
+	CommentQuizEdit,
+	CommentQuizDelete,
 	PollCreateAny,
 	PollEditAny,
 	PollDeleteAny,

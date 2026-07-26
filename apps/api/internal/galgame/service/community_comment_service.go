@@ -93,6 +93,11 @@ type CommunityCommentPage struct {
 	Posts      []*CommunityPostItem `json:"posts"`
 	NextCursor string               `json:"next_cursor"`
 	Total      int                  `json:"total"`
+	// Locked reports that the area is withheld from THIS viewer behind a spoiler
+	// gate (currently only an unanswered, concealing quiz — see
+	// resource_comment_gate.go). Always false for every other area. When true the
+	// page carries no posts and the client renders the gate placeholder.
+	Locked bool `json:"locked"`
 }
 
 // ──────────────────────────────────────────
@@ -252,6 +257,13 @@ func nzPtr64(id int64) *int64 {
 
 func emptyCommentPage() *CommunityCommentPage {
 	return &CommunityCommentPage{Posts: []*CommunityPostItem{}}
+}
+
+// lockedCommentPage is the withheld page a spoiler-gated area serves: no posts,
+// no counts, and Locked=true so the client renders the "answer first" placeholder
+// from the server's ruling rather than re-deriving the rule.
+func lockedCommentPage() *CommunityCommentPage {
+	return &CommunityCommentPage{Posts: []*CommunityPostItem{}, Locked: true}
 }
 
 // truncate clamps a string to maxLen runes (CJK-safe). Package-shared preview

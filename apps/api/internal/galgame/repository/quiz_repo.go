@@ -24,7 +24,8 @@ func (r *QuizRepository) DB() *gorm.DB { return r.db }
 // heavy `content` JSONB (cards never expose the payload).
 const quizCardColumns = `q.id, q.user_id, q.category, q.spoiler_level,
 	q.type, q.difficulty, q.question, q.view, q.answer_count, q.correct_count,
-	q.favorite_count, q.quality_sum, q.quality_count, q.status_update_time,
+	q.favorite_count, q.quality_sum, q.quality_count, q.comment_count,
+	q.status_update_time,
 	q.created, q.updated`
 
 // ──────────────────────────────────────────

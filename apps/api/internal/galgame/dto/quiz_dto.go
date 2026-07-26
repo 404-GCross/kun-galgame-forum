@@ -132,6 +132,9 @@ type QuizStats struct {
 	FavoriteCount  int     `json:"favorite_count"`
 	QualityAverage float64 `json:"quality_average"`
 	QualityCount   int     `json:"quality_count"`
+	// CommentCount is the quiz discussion counter (migration 065), maintained ±1
+	// by the community comment BFF. A tolerated display counter.
+	CommentCount int `json:"comment_count"`
 }
 
 // ──────────────────────────────────────────

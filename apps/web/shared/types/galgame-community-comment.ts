@@ -42,13 +42,19 @@ export interface GalgameCommunityComment {
   held: boolean
 }
 
-// A flat keyset page of a galgame's comments. next_cursor is an opaque
-// post_number sentinel ("" = last page); total is the thread's posts_count.
+// A flat keyset page of a comment area. next_cursor is an opaque post_number
+// sentinel ("" = last page); total is the thread's posts_count.
 export interface GalgameCommunityCommentPage {
   thread_id: number
   posts: GalgameCommunityComment[]
   next_cursor: string
   total: number
+  // The area is withheld from THIS viewer behind a spoiler gate — currently only
+  // a concealing quiz they have not answered (api
+  // service/resource_comment_gate.go). The page then carries no posts and no
+  // counts. Always false for every other area. The gate is decided server-side
+  // BECAUSE the list is a public GET; the client only renders the ruling.
+  locked: boolean
 }
 
 // The legacy-id → community-post resolution used for old deep-link continuity.

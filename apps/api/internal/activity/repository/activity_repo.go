@@ -36,6 +36,10 @@ var knownActivityTypes = map[string]struct{}{
 	"TOOLSET_RESOURCE_CREATION": {}, "TOOLSET_COMMENT_CREATION": {},
 	"TODO_CREATION": {}, "UPDATE_LOG_CREATION": {},
 	"GALGAME_QUIZ_CREATION": {},
+	// The galgame-resource / quiz comment areas (migration 065) project into the
+	// feed from the BFF rather than a table trigger — the posts live in the
+	// community primitive, so no trigger can fire for them.
+	"GALGAME_RESOURCE_COMMENT_CREATION": {}, "GALGAME_QUIZ_COMMENT_CREATION": {},
 }
 
 // ──────────────────────────────────────────

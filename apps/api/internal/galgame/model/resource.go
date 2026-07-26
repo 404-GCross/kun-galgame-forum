@@ -23,6 +23,9 @@ type GalgameResource struct {
 	GalgameID int    `gorm:"column:galgame_id;not null" json:"galgame_id"`
 	UserID    int    `gorm:"column:user_id;not null" json:"user_id"`
 	LikeCount int    `gorm:"column:like_count;default:0" json:"like_count"`
+	// CommentCount is the resource comment counter (migration 065), maintained ±1
+	// by the community comment BFF — a tolerated display counter.
+	CommentCount int `gorm:"column:comment_count;default:0" json:"comment_count"`
 
 	Edited    *time.Time `gorm:"column:edited" json:"edited"`
 	CreatedAt time.Time  `gorm:"column:created" json:"created"`
@@ -73,6 +76,7 @@ type GalgameResourceRow struct {
 	Status       int             `gorm:"column:status"`
 	Download     int             `gorm:"column:download"`
 	LikeCount    int             `gorm:"column:like_count"`
+	CommentCount int             `gorm:"column:comment_count"`
 	Code         string          `gorm:"column:code"`
 	Password     string          `gorm:"column:password"`
 	Note         string          `gorm:"column:note"`

@@ -76,6 +76,19 @@ func TestResourceNotifyPlan(t *testing.T) {
 		{"toolset reply to parent", sourceToolset, 1, post(5, 3), 9, 3, "replied", true},
 		{"toolset owner-is-self suppress", sourceToolset, 9, post(0, 0), 9, 0, "", false},
 		{"toolset no owner", sourceToolset, 1, post(0, 0), 0, 0, "", false},
+
+		// resource / quiz: introduced on the primitive, so no legacy notifier to
+		// match — they deliberately adopt the toolset shape (owner on a top-level
+		// comment, parent author on a reply).
+		{"resource top-level to uploader", sourceResource, 1, post(0, 0), 9, 9, "commented", true},
+		{"resource reply to parent", sourceResource, 1, post(5, 3), 9, 3, "replied", true},
+		{"resource uploader-is-self suppress", sourceResource, 9, post(0, 0), 9, 0, "", false},
+		{"resource no uploader", sourceResource, 1, post(0, 0), 0, 0, "", false},
+
+		{"quiz top-level to author", sourceQuiz, 1, post(0, 0), 9, 9, "commented", true},
+		{"quiz reply to parent", sourceQuiz, 1, post(5, 3), 9, 3, "replied", true},
+		{"quiz author-is-self suppress", sourceQuiz, 9, post(0, 0), 9, 0, "", false},
+		{"quiz no author", sourceQuiz, 1, post(0, 0), 0, 0, "", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

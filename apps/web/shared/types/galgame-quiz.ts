@@ -47,6 +47,9 @@ export interface QuizStats {
   favorite_count: number
   quality_average: number
   quality_count: number
+  // Discussion counter (migration 065), maintained ±1 by the community comment
+  // BFF — a tolerated display counter, not a source of truth.
+  comment_count: number
 }
 
 export interface GalgameQuizCard extends QuizStats {

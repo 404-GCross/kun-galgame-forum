@@ -11,8 +11,9 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// ResourceCommentHandler serves the community-backed comment routes for the THREE
-// resource areas — rating / website / toolset (the `/comments` plural prefix).
+// ResourceCommentHandler serves the community-backed comment routes for the FIVE
+// resource areas — rating / website / toolset / galgame-resource / quiz (the
+// `/comments` plural prefix).
 // Community is now the unconditional comment backend (the legacy singular
 // `/comment` routes were retired in charter step 06a); an unconfigured client
 // degrades reads to empty pages and writes to 503. Reads are anonymous (optAuth,
@@ -38,6 +39,11 @@ func (h *ResourceCommentHandler) RegisterReads(optAuth fiber.Router) {
 	optAuth.Get("/galgame-rating/:id/comments", h.RatingList)
 	optAuth.Get("/website/:domain/comments", h.WebsiteList)
 	optAuth.Get("/toolset/:id/comments", h.ToolsetList)
+	// These two must be registered BEFORE the 2-segment /galgame-resource/:id and
+	// /galgame-quiz/:id detail reads (router.go does this) — Fiber matches in
+	// registration order.
+	optAuth.Get("/galgame-resource/:id/comments", h.ResourceList)
+	optAuth.Get("/galgame-quiz/:id/comments", h.QuizList)
 }
 
 // RegisterWrites mounts the create + region-delete routes. These sit AFTER the
@@ -49,6 +55,10 @@ func (h *ResourceCommentHandler) RegisterWrites(authed fiber.Router) {
 	authed.Delete("/website/:domain/comments/:postId", h.WebsiteDelete)
 	authed.Post("/toolset/:id/comments", h.ToolsetCreate)
 	authed.Delete("/toolset/:id/comments/:postId", h.ToolsetDelete)
+	authed.Post("/galgame-resource/:id/comments", h.ResourceCreate)
+	authed.Delete("/galgame-resource/:id/comments/:postId", h.ResourceDelete)
+	authed.Post("/galgame-quiz/:id/comments", h.QuizCreate)
+	authed.Delete("/galgame-quiz/:id/comments/:postId", h.QuizDelete)
 }
 
 // ──────────────────────────────────────────
@@ -222,4 +232,90 @@ func (h *ResourceCommentHandler) ToolsetDelete(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("非法的工具 ID"))
 	}
 	return h.remove(c, service.SourceToolset(), id, perm.CommentToolsetDelete)
+}
+
+// ──────────────────────────────────────────
+// Galgame resource (tree; addressed by :id)
+// ──────────────────────────────────────────
+
+func (h *ResourceCommentHandler) ResourceList(c fiber.Ctx) error {
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的资源 ID"))
+	}
+	return h.list(c, service.SourceResource(), id)
+}
+
+func (h *ResourceCommentHandler) ResourceCreate(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的资源 ID"))
+	}
+	var req struct {
+		Content       string `json:"content" validate:"required,min=1,max=1007"`
+		ReplyToPostID *int64 `json:"reply_to_post_id"`
+	}
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	item, appErr := h.service.CreateComment(c.Context(), service.SourceResource(), id, user.ID, req.Content, req.ReplyToPostID, nil)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, item)
+}
+
+func (h *ResourceCommentHandler) ResourceDelete(c fiber.Ctx) error {
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的资源 ID"))
+	}
+	return h.remove(c, service.SourceResource(), id, perm.CommentResourceDelete)
+}
+
+// ──────────────────────────────────────────
+// Galgame quiz (tree; addressed by :id, spoiler-gated)
+// ──────────────────────────────────────────
+
+func (h *ResourceCommentHandler) QuizList(c fiber.Ctx) error {
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的题目 ID"))
+	}
+	return h.list(c, service.SourceQuiz(), id)
+}
+
+func (h *ResourceCommentHandler) QuizCreate(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的题目 ID"))
+	}
+	var req struct {
+		Content       string `json:"content" validate:"required,min=1,max=1007"`
+		ReplyToPostID *int64 `json:"reply_to_post_id"`
+	}
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	item, appErr := h.service.CreateComment(c.Context(), service.SourceQuiz(), id, user.ID, req.Content, req.ReplyToPostID, nil)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, item)
+}
+
+func (h *ResourceCommentHandler) QuizDelete(c fiber.Ctx) error {
+	id, ok := parsePositive(c.Params("id"))
+	if !ok {
+		return response.Error(c, errors.ErrBadRequest("非法的题目 ID"))
+	}
+	return h.remove(c, service.SourceQuiz(), id, perm.CommentQuizDelete)
 }

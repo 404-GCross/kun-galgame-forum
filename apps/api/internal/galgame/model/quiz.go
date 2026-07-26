@@ -30,8 +30,11 @@ type GalgameQuiz struct {
 	AnswerCount   int `gorm:"column:answer_count;default:0" json:"answer_count"`
 	CorrectCount  int `gorm:"column:correct_count;default:0" json:"correct_count"`
 	FavoriteCount int `gorm:"column:favorite_count;default:0" json:"favorite_count"`
-	QualitySum    int `gorm:"column:quality_sum;default:0" json:"quality_sum"`
-	QualityCount  int `gorm:"column:quality_count;default:0" json:"quality_count"`
+	// CommentCount is the discussion counter (migration 065), maintained ±1 by the
+	// community comment BFF — a tolerated display counter, not a source of truth.
+	CommentCount int `gorm:"column:comment_count;default:0" json:"comment_count"`
+	QualitySum   int `gorm:"column:quality_sum;default:0" json:"quality_sum"`
+	QualityCount int `gorm:"column:quality_count;default:0" json:"quality_count"`
 
 	// StatusUpdateTime is the last-activity time (mirrors topic): defaults to
 	// created, bumped when a user answers or the author edits — drives the 题库
@@ -110,6 +113,7 @@ type GalgameQuizRow struct {
 	AnswerCount      int    `gorm:"column:answer_count"`
 	CorrectCount     int    `gorm:"column:correct_count"`
 	FavoriteCount    int    `gorm:"column:favorite_count"`
+	CommentCount     int    `gorm:"column:comment_count"`
 	QualitySum       int    `gorm:"column:quality_sum"`
 	QualityCount     int    `gorm:"column:quality_count"`
 	StatusUpdateTime string `gorm:"column:status_update_time"`

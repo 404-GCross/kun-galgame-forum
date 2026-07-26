@@ -175,14 +175,16 @@ func (s *CommunityCommentService) resolveModEdit(ctx context.Context, userID int
 	return perm.CanUser(userID, roles, perm.CommentGalgameEdit) ||
 		perm.CanUser(userID, roles, perm.CommentRatingEdit) ||
 		perm.CanUser(userID, roles, perm.CommentWebsiteEdit) ||
-		perm.CanUser(userID, roles, perm.CommentToolsetEdit)
+		perm.CanUser(userID, roles, perm.CommentToolsetEdit) ||
+		perm.CanUser(userID, roles, perm.CommentResourceEdit) ||
+		perm.CanUser(userID, roles, perm.CommentQuizEdit)
 }
 
 // commentEditPermForAnchor maps a post's community anchor to the pure-forum edit
 // permission that governs its surface: galgame comments anchor site_game, while
-// rating/website/toolset ride site_resource with a prefixed anchor id
-// (rating: / website: / toolset:). ok=false for an anchor we don't recognize
-// (the caller then applies the defensive union).
+// the resource areas ride site_resource with a prefixed anchor id (rating: /
+// website: / toolset: / resource: / quiz:). ok=false for an anchor we don't
+// recognize (the caller then applies the defensive union).
 func commentEditPermForAnchor(anchorKind int32, anchorID string) (perm.Permission, bool) {
 	switch anchorKind {
 	case communityclient.AnchorSiteGame:
@@ -195,6 +197,10 @@ func commentEditPermForAnchor(anchorKind int32, anchorID string) (perm.Permissio
 			return perm.CommentWebsiteEdit, true
 		case strings.HasPrefix(anchorID, "toolset:"):
 			return perm.CommentToolsetEdit, true
+		case strings.HasPrefix(anchorID, "resource:"):
+			return perm.CommentResourceEdit, true
+		case strings.HasPrefix(anchorID, "quiz:"):
+			return perm.CommentQuizEdit, true
 		}
 	}
 	return "", false

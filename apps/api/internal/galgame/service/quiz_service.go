@@ -206,7 +206,7 @@ func (s *QuizService) GetQuizPlay(
 		Question:        quiz.Question,
 		DescriptionHtml: markdown.Render(quiz.Description),
 		Content:         stripQuizContent(quiz.Type, quiz.Content),
-		QuizStats:       quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.FavoriteCount, quiz.QualitySum, quiz.QualityCount),
+		QuizStats:       quizStats(quiz.View, quiz.AnswerCount, quiz.CorrectCount, quiz.FavoriteCount, quiz.QualitySum, quiz.QualityCount, quiz.CommentCount),
 		Created:         quiz.CreatedAt.Format(time.RFC3339),
 		Updated:         quiz.UpdatedAt.Format(time.RFC3339),
 		HideGalgame:     quiz.HideGalgame,
@@ -299,7 +299,7 @@ func (s *QuizService) CreateQuiz(
 		Type:         quiz.Type,
 		Difficulty:   quiz.Difficulty,
 		Question:     quiz.Question,
-		QuizStats:    quizStats(0, 0, 0, 0, 0, 0),
+		QuizStats:    quizStats(0, 0, 0, 0, 0, 0, 0),
 		Created:      quiz.CreatedAt.Format(time.RFC3339),
 		Updated:      quiz.UpdatedAt.Format(time.RFC3339),
 	}, nil

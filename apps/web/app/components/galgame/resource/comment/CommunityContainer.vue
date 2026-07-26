@@ -1,30 +1,22 @@
 <script setup lang="ts">
-// Community-primitive website comment section (charter step 08) — the
-// unconditional website comment UI, rendered from pages/website/[domain].vue (the
-// legacy comment components were retired in charter step 06a).
+// Community-primitive comment section for a galgame RESOURCE — rendered from
+// pages/galgame-resource/[id]/index.vue.
 //
-// Paging / grouping / optimistic mutation come from useCommunityCommentList. The
-// addressing website_id rides the query; the :domain path segment is decorative
-// (read from the route — this section only ever renders on /website/[domain], so
-// the target is resolved once at setup like the paging URLs).
+// A new area introduced directly on the primitive (no frozen local table behind
+// it), so it has no legacy parity to preserve: it renders through the shared
+// comment family and gets its paging from useCommunityCommentList. The resource's
+// uploader is notified of top-level comments and may delete any comment here (both
+// server-side), which is why this container needs no owner prop.
 const props = defineProps<{
-  websiteId: number
+  resourceId: number
 }>()
-
-const route = useRoute()
-const domain = (route.params as { domain: string }).domain
-
-const target: CommunityCommentTarget = {
-  kind: 'website',
-  websiteId: props.websiteId,
-  domain
-}
 
 const {
   status,
   seeded,
   groups,
   isEmpty,
+  total,
   hasMore,
   loadingMore,
   loadMore,
@@ -32,9 +24,14 @@ const {
   handleUpdated,
   handleTombstoned,
   scrollToPost
-} = useCommunityCommentList(target)
+} = useCommunityCommentList({ kind: 'resource', resourceId: props.resourceId })
 
-// Scroll to + highlight a just-published root (parity with _scrollIntoComment).
+const target: CommunityCommentTarget = {
+  kind: 'resource',
+  resourceId: props.resourceId
+}
+
+// Scroll to a freshly published root so the author sees their own post land.
 const onPublished = (post: GalgameCommunityComment) => {
   handleNewComment(post)
   if (post.root_comment_id == null) {
@@ -46,17 +43,21 @@ const onPublished = (post: GalgameCommunityComment) => {
 <template>
   <KunCard :is-transparent="false" :is-hoverable="false">
     <KunHeader
-      name="用户评论"
-      description="说说你对这个网站的使用体验"
+      name="资源评论"
+      description="这个资源能正常使用吗? 有问题欢迎在这里反馈"
       scale="h2"
-    />
+    >
+      <template v-if="total > 0" #endContent>
+        <span class="text-default-500 text-sm">{{ total }} 条评论</span>
+      </template>
+    </KunHeader>
 
     <div class="space-y-3">
       <CommentCommunityComposer :target="target" @submitted="onPublished" />
 
       <KunLoading v-if="status === 'pending' && !seeded" />
 
-      <KunNull v-else-if="isEmpty" />
+      <KunNull v-else-if="isEmpty" description="还没有人评论这个资源" />
 
       <div v-else-if="groups.length" class="space-y-6">
         <CommentCommunityRow
@@ -85,7 +86,7 @@ const onPublished = (post: GalgameCommunityComment) => {
       </KunButton>
     </div>
 
-    <!-- Single community-comment flag modal (reused, region agnostic). -->
+    <!-- Single community-comment flag modal for this section (region agnostic). -->
     <CommentCommunityFlagModal />
   </KunCard>
 </template>

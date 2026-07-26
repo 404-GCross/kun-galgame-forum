@@ -134,13 +134,18 @@ var homeTabTypes = map[string][]string{
 		"GALGAME_RATING_COMMENT_CREATION", "GALGAME_WEBSITE_CREATION",
 		"GALGAME_WEBSITE_COMMENT_CREATION", "TOOLSET_CREATION",
 		"TOOLSET_RESOURCE_CREATION", "TOOLSET_COMMENT_CREATION",
-		"GALGAME_QUIZ_CREATION",
+		"GALGAME_QUIZ_CREATION", "GALGAME_QUIZ_COMMENT_CREATION",
 	},
-	// 资源和求助 tab: newly published galgame resources + 资源/求助 topics (the
-	// sectionMode in FetchFeed scopes TOPIC_CREATION to g-seeking/g-other/t-help
-	// here, and excludes them from every other tab).
-	"resource": {"GALGAME_RESOURCE_CREATION", "TOPIC_CREATION"},
-	"others":   {"TODO_CREATION", "UPDATE_LOG_CREATION"},
+	// 资源和求助 tab: newly published galgame resources + their comments + 资源/求助
+	// topics (the sectionMode in FetchFeed scopes TOPIC_CREATION to
+	// g-seeking/g-other/t-help here, and excludes them from every other tab).
+	// Resource COMMENTS ride this tab rather than the galgame one so they stay next
+	// to the resource they discuss.
+	"resource": {
+		"GALGAME_RESOURCE_CREATION", "GALGAME_RESOURCE_COMMENT_CREATION",
+		"TOPIC_CREATION",
+	},
+	"others": {"TODO_CREATION", "UPDATE_LOG_CREATION"},
 }
 
 // homeTabSourceTypes resolves a tab to its type list ("all" = every non-resource

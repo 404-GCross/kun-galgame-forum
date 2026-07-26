@@ -299,9 +299,14 @@ func (a *App) setupRoutes() {
 	// unconditional comment backend (the legacy /comment reads were retired in
 	// charter step 06a); an unconfigured client degrades reads to empty pages.
 	a.GalgameCommunityCommentHandler.RegisterReads(optAuth)
-	// Community-backed resource comment READS (rating / website / toolset),
-	// anonymous-readable. Same stack-position rule as above: mounted BEFORE the
-	// mandatory-auth boundary so anonymous reads reach the handler.
+	// Community-backed resource comment READS (rating / website / toolset /
+	// galgame-resource / quiz), anonymous-readable. Same stack-position rule as
+	// above: mounted BEFORE the mandatory-auth boundary so anonymous reads reach
+	// the handler. The galgame-resource / quiz comment paths are 3-segment, so they
+	// never collide with the 2-segment /galgame-resource/:id and /galgame-quiz/:id
+	// detail reads registered earlier (a Fiber `:param` never spans a `/`). The
+	// quiz area additionally gates itself server-side for a viewer who has not
+	// answered a spoiler-bearing quiz — see service/resource_comment_gate.go.
 	a.ResourceCommentHandler.RegisterReads(optAuth)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameProxyHandler.GetGalgameLinks)
 	// Engine-backed revision history (E3a/E3b): public read, but a logged-in
@@ -443,10 +448,11 @@ func (a *App) setupRoutes() {
 	// The anonymous read half is mounted before the auth boundary (see optAuth).
 	a.GalgameCommunityCommentHandler.RegisterWrites(authed)
 
-	// Community-backed resource comment WRITES (rating / website / toolset
-	// `/comments` create + region-aware delete). Post-addressed edit / like / flag
-	// are NOT re-registered here — those reuse the galgame `/galgame/comments/:postId*`
-	// routes above (region-agnostic; charter deliverable C).
+	// Community-backed resource comment WRITES (rating / website / toolset /
+	// galgame-resource / quiz `/comments` create + region-aware delete).
+	// Post-addressed edit / like / flag are NOT re-registered here — those reuse the
+	// galgame `/galgame/comments/:postId*` routes above (region-agnostic; charter
+	// deliverable C).
 	a.ResourceCommentHandler.RegisterWrites(authed)
 
 	// Galgame resource (authenticated, local)

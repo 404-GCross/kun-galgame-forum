@@ -66,6 +66,8 @@ if (data.value && data.value !== 'not found') {
           :recommendations="data.recommendations"
         />
       </div>
+
+      <GalgameResourceCommentCommunityContainer :resource-id="resourceId" />
     </template>
 
     <KunNull

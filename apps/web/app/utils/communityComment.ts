@@ -18,6 +18,8 @@ export type CommunityCommentTarget =
   | { kind: 'rating'; ratingId: number }
   | { kind: 'website'; websiteId: number; domain: string }
   | { kind: 'toolset'; toolsetId: number }
+  | { kind: 'resource'; resourceId: number }
+  | { kind: 'quiz'; quizId: number }
 
 export interface CommunityCommentSurface {
   key: CommunityCommentTarget['kind']
@@ -164,6 +166,56 @@ export const communityCommentSurface = (
         editQuery: {},
         deleteUrl: (postId) =>
           `/toolset/${target.toolsetId}/comments/${postId}`,
+        deleteQuery: {},
+        createBody: (content, replyToPostId) => ({
+          content,
+          reply_to_post_id: replyToPostId
+        })
+      }
+
+    case 'resource':
+      return {
+        key: 'resource',
+        maxLength: 1007,
+        anchorPrefix: 'resource-comment',
+        deletePermission: 'comment.resource.delete',
+        composerPlaceholder: '这个资源能正常使用吗？有问题可以在这里反馈～',
+        isFlat: false,
+        showsReplyTarget: true,
+        supportsMentions: false,
+        listUrl: `/galgame-resource/${target.resourceId}/comments`,
+        addressQuery: {},
+        editUrl: (postId) => `/galgame/comments/${postId}`,
+        editQuery: {},
+        deleteUrl: (postId) =>
+          `/galgame-resource/${target.resourceId}/comments/${postId}`,
+        deleteQuery: {},
+        createBody: (content, replyToPostId) => ({
+          content,
+          reply_to_post_id: replyToPostId
+        })
+      }
+
+    // The quiz area is spoiler-gated SERVER-side: a viewer who has not answered a
+    // concealing quiz receives an empty page with locked=true, and a create is
+    // 403'd. The client renders only what that ruling says — it never re-derives
+    // the rule (see api service/resource_comment_gate.go).
+    case 'quiz':
+      return {
+        key: 'quiz',
+        maxLength: 1007,
+        anchorPrefix: 'quiz-comment',
+        deletePermission: 'comment.quiz.delete',
+        composerPlaceholder: '聊聊这道题目吧～请不要直接剧透答案',
+        isFlat: false,
+        showsReplyTarget: true,
+        supportsMentions: false,
+        listUrl: `/galgame-quiz/${target.quizId}/comments`,
+        addressQuery: {},
+        editUrl: (postId) => `/galgame/comments/${postId}`,
+        editQuery: {},
+        deleteUrl: (postId) =>
+          `/galgame-quiz/${target.quizId}/comments/${postId}`,
         deleteQuery: {},
         createBody: (content, replyToPostId) => ({
           content,

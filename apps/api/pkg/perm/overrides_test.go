@@ -36,7 +36,7 @@ func TestOverridesApply(t *testing.T) {
 }
 
 // TestRenImmunity proves ren is pinned to the full catalog: even a revoke-every-key
-// override for ren is ignored, so ren still grants all 43.
+// override for ren is ignored, so ren still grants all 47.
 func TestRenImmunity(t *testing.T) {
 	resetOverrides(t)
 	renRevokeAll := make([]Override, 0, len(allPerms))
@@ -92,7 +92,7 @@ func TestNilResetRestoresBaseline(t *testing.T) {
 }
 
 // TestEffectiveBundlesShape pins the pure-baseline bundle shape: creator empty,
-// moderator 41, admin 43, ren 43 — all in catalog order.
+// moderator 45, admin 47, ren 47 — all in catalog order.
 func TestEffectiveBundlesShape(t *testing.T) {
 	resetOverrides(t)
 	SetOverrides(nil)

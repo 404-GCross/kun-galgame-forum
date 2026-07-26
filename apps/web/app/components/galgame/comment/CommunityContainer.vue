@@ -1,11 +1,14 @@
 <script setup lang="ts">
 // Community-primitive comment section (charter step 04) — the unconditional
 // galgame comment UI, rendered from Galgame.vue (the legacy comment components
-// were retired in charter step 06a).
+// were retired in charter step 06a). This area's look is the reference the other
+// comment areas conform to.
 //
-// The list is a keyset "load more" growth list: page 1 comes from the resolve
-// (get-or-create), later pages from the cursor. Posts accumulate flat and are
-// grouped into two tiers (root + one flat reply group) for rendering.
+// Paging / grouping / optimistic mutation come from useCommunityCommentList. What
+// stays here is what only this area has: the tab-panel loading emit, the
+// un-ingested-galgame empty-state guard, and the LEGACY deep-link resolve (old
+// notification links carry a pre-migration galgame_comment id, which has to be
+// mapped through the community map before it can be scrolled to).
 const emit = defineEmits<{
   // Surface the (lazy, client-side) fetch state so the tab panel dims while it
   // loads — same contract as the legacy container.
@@ -16,8 +19,6 @@ const route = useRoute()
 const config = useRuntimeConfig()
 const gid = parseInt((route.params as { gid: string }).gid)
 
-// This area is the reference style for all four comment surfaces; the shared
-// Row / Composer read everything area-specific off this target.
 const target: CommunityCommentTarget = { kind: 'galgame', galgameId: gid }
 
 // See GalgameResource: for a wiki-catalogue game the forum hasn't ingested, hide
@@ -25,147 +26,30 @@ const target: CommunityCommentTarget = { kind: 'galgame', galgameId: gid }
 // composer — commenting creates the local row, part of the recording funnel.
 const galgame = inject<GalgameDetail>('galgame')
 
-const PAGE_LIMIT = 30
+const {
+  posts,
+  status,
+  seeded,
+  groups,
+  isEmpty,
+  hasMore,
+  loadingMore,
+  loadMore,
+  handleNewComment,
+  handleUpdated,
+  handleTombstoned,
+  scrollToPost
+} = useCommunityCommentList(target)
 
-const posts = ref<GalgameCommunityComment[]>([])
-const total = ref(0)
-const nextCursor = ref('')
-const seeded = ref(false)
-const loadingMore = ref(false)
-
-// Page 1 via useKunFetch so SSR + hydration + the tab-dim `status` all work.
-const { data, status } = await useKunFetch<GalgameCommunityCommentPage>(
-  `/galgame/${gid}/comments`,
-  { lazy: true, method: 'GET', query: { limit: PAGE_LIMIT } }
-)
 watchEffect(() => emit('update:loading', status.value === 'pending'))
 
-// Seed local state once page 1 lands; guarded so later optimistic mutations are
-// never clobbered by a re-run.
-watch(
-  data,
-  (page) => {
-    if (!page || seeded.value) {
-      return
-    }
-    posts.value = [...page.posts]
-    total.value = page.total
-    nextCursor.value = page.next_cursor
-    seeded.value = true
-  },
-  { immediate: true }
+const showEmpty = computed(
+  () => isEmpty.value && galgame?.is_on_forum !== false
 )
-
-const hasMore = computed(() => nextCursor.value !== '')
-
-const loadMore = async () => {
-  if (!hasMore.value || loadingMore.value) {
-    return
-  }
-  loadingMore.value = true
-  const page = await kunFetch<GalgameCommunityCommentPage>(
-    `/galgame/${gid}/comments`,
-    { method: 'GET', query: { cursor: nextCursor.value, limit: PAGE_LIMIT } }
-  )
-  loadingMore.value = false
-  if (page) {
-    // De-dup against optimistic inserts already present in the list.
-    const seen = new Set(posts.value.map((p) => p.id))
-    posts.value = [...posts.value, ...page.posts.filter((p) => !seen.has(p.id))]
-    nextCursor.value = page.next_cursor
-    total.value = page.total
-  }
-}
-
-// ──────────────────────────────────────────
-// Two-tier grouping
-// ──────────────────────────────────────────
-
-interface CommentGroup {
-  root: GalgameCommunityComment
-  replies: GalgameCommunityComment[]
-}
-
-// Group the flat, arrival-ordered list into root + one flat reply group. Because
-// post_number is monotonic and a root always precedes its replies in ascending
-// keyset order, a reply's root is already present in forward pagination — so
-// orphans don't occur in normal flow. Defensively, an orphan reply (deep-cursor
-// edge) renders as its own standalone group at its arrival position.
-const groups = computed<CommentGroup[]>(() => {
-  const list: CommentGroup[] = []
-  const byRootId = new Map<number, CommentGroup>()
-  for (const p of posts.value) {
-    if (p.root_comment_id == null) {
-      const group: CommentGroup = { root: p, replies: [] }
-      byRootId.set(p.id, group)
-      list.push(group)
-    } else {
-      const owner = byRootId.get(p.root_comment_id)
-      if (owner) {
-        owner.replies.push(p)
-      } else {
-        list.push({ root: p, replies: [] })
-      }
-    }
-  }
-  return list
-})
-
-const isEmpty = computed(
-  () => seeded.value && total.value === 0 && galgame?.is_on_forum !== false
-)
-
-// ──────────────────────────────────────────
-// Optimistic updates
-// ──────────────────────────────────────────
-
-const handleNewComment = (post: GalgameCommunityComment) => {
-  if (posts.value.some((p) => p.id === post.id)) {
-    return
-  }
-  // Append in arrival order: a new root lands at the end; a new reply groups
-  // under its (already-present) root. total tracks the thread's posts_count.
-  posts.value = [...posts.value, post]
-  total.value += 1
-}
-
-const handleUpdated = (updated: GalgameCommunityComment) => {
-  posts.value = posts.value.map((p) => (p.id === updated.id ? updated : p))
-}
-
-const handleTombstoned = (postId: number) => {
-  // Tombstone keeps the floor: flip the row to deleted, blank the body. The
-  // thread's posts_count is unchanged (charter ruling 11), so total stays.
-  posts.value = posts.value.map((p) =>
-    p.id === postId
-      ? { ...p, deleted: true, held: false, content: '', content_html: '' }
-      : p
-  )
-}
 
 // ──────────────────────────────────────────
 // Deep-link continuity (charter ruling 9)
 // ──────────────────────────────────────────
-
-const scrollToPost = (postId: number) => {
-  nextTick(() => {
-    setTimeout(() => {
-      const el = document.getElementById(`galgame-comment-${postId}`)
-      if (!el) {
-        return
-      }
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      const ring = [
-        'outline-2',
-        'outline-offset-2',
-        'outline-primary',
-        'rounded-lg'
-      ]
-      el.classList.add(...ring)
-      setTimeout(() => el.classList.remove(...ring), 3000)
-    }, 200)
-  })
-}
 
 // Silent legacy-id resolve: a 404 (old content not imported yet) is ignored,
 // so a raw $fetch swallows it instead of kunFetch's error toast.
@@ -222,17 +106,8 @@ const resolveDeepLink = async () => {
     const raw = Number(hashMatch[1])
     // Old external anchors (#galgame-comment-<id>) may carry either a new post
     // id or a legacy id: try it as a post id first, then fall back to locate.
-    let guard = 0
-    while (
-      !posts.value.some((p) => p.id === raw) &&
-      hasMore.value &&
-      guard < 50
-    ) {
-      await loadMore()
-      guard += 1
-    }
+    await ensureLoadedAndScroll(raw)
     if (posts.value.some((p) => p.id === raw)) {
-      scrollToPost(raw)
       return
     }
     const mapped = await locateLegacy(raw)
@@ -277,7 +152,7 @@ onMounted(() => {
     <KunLoading v-if="status === 'pending'" />
 
     <KunNull
-      v-else-if="isEmpty"
+      v-else-if="showEmpty"
       description="没人评论, 是没人要这个 Galgame 的小只可爱软萌女孩子了吗, 呜呜呜呜呜呜！！"
     />
 

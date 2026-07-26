@@ -50,11 +50,7 @@ const correctRate = (q: GalgameQuizCard) =>
           name="lucide:circle-check"
           class="text-default-400"
         />
-        <KunIcon
-          v-else
-          name="lucide:circle-dashed"
-          class="text-default-400"
-        />
+        <KunIcon v-else name="lucide:circle-dashed" class="text-default-400" />
       </div>
 
       <!-- middle: title + meta -->
@@ -94,6 +90,9 @@ const correctRate = (q: GalgameQuizCard) =>
           </span>
           <span v-if="quiz.favorite_count" class="flex items-center gap-1">
             <KunIcon name="lucide:heart" />{{ quiz.favorite_count }}
+          </span>
+          <span v-if="quiz.comment_count" class="flex items-center gap-1">
+            <KunIcon name="lucide:message-square" />{{ quiz.comment_count }}
           </span>
         </div>
       </div>

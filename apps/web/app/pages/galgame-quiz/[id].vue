@@ -56,8 +56,13 @@ useKunSeoMeta({
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl">
-    <GalgameQuizPlay v-if="data" :quiz="data" />
+  <div class="mx-auto max-w-3xl space-y-3">
+    <template v-if="data">
+      <GalgameQuizPlay :quiz="data" />
+      <!-- Discussion is spoiler-gated server-side for a concealing quiz the
+           viewer has not answered; the section renders that ruling itself. -->
+      <GalgameQuizCommentCommunityContainer :quiz-id="data.id" />
+    </template>
     <KunNull v-else description="题目不存在或已被删除" />
   </div>
 </template>

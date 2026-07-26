@@ -67,6 +67,13 @@ defineProps<{
             <KunIcon name="lucide:eye" class="h-4 w-4" />
             {{ resource.view }}
           </div>
+          <div
+            v-if="resource.comment_count"
+            class="text-default-500 flex items-center gap-1 text-sm"
+          >
+            <KunIcon name="lucide:message-square" class="h-4 w-4" />
+            {{ resource.comment_count }}
+          </div>
         </div>
       </div>
     </div>

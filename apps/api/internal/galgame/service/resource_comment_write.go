@@ -17,8 +17,11 @@ import (
 // createCtx carries the per-area data resolved once at create time (so the
 // notification / counter / feed side effects don't re-query it).
 type createCtx struct {
-	galgameID    int // rating: the rated galgame (notification deep-link target)
-	toolsetOwner int // toolset: the toolset owner (top-level "commented" receiver)
+	galgameID int // rating: the rated galgame (notification deep-link target)
+	// ownerID is the resource's owner — the top-level "commented" receiver for the
+	// three owner-addressed areas: the toolset owner, the galgame-resource
+	// uploader, or the quiz author.
+	ownerID int
 }
 
 // ──────────────────────────────────────────
@@ -37,6 +40,14 @@ func (s *ResourceCommentService) CreateComment(ctx context.Context, src CommentS
 	cc, appErr := s.resolveCreateCtx(src, resourceID)
 	if appErr != nil {
 		return nil, appErr
+	}
+
+	// A spoiler-gated quiz refuses writes as well as reads: someone who cannot see
+	// the discussion would be posting blind, and letting them post is also a way to
+	// probe the thread. Checked AFTER resolveCreateCtx so a missing resource still
+	// reports 404 rather than 403.
+	if s.commentAreaLocked(ctx, src, resourceID, userID) {
+		return nil, errors.ErrForbidden("作答后才能参与这道题目的讨论")
 	}
 
 	thread, err := s.community.ResolveComments(ctx, communityclient.ResolveCommentsRequest{
@@ -71,9 +82,10 @@ func (s *ResourceCommentService) CreateComment(ctx context.Context, src CommentS
 
 // resolveCreateCtx does the per-area existence check + resolves the data the side
 // effects need. rating: the rating must exist (its galgame id feeds the
-// notification link, parity with the old ErrNotFound); toolset: the toolset must
-// exist (its owner is the top-level "commented" receiver); website: no existence
-// check (parity — the old website create never verified it).
+// notification link, parity with the old ErrNotFound); toolset / resource / quiz:
+// the resource must exist (its owner/author is the top-level "commented"
+// receiver); website: no existence check (parity — the old website create never
+// verified it).
 func (s *ResourceCommentService) resolveCreateCtx(src CommentSource, resourceID int) (createCtx, *errors.AppError) {
 	switch src.key {
 	case sourceRating.key:
@@ -87,7 +99,19 @@ func (s *ResourceCommentService) resolveCreateCtx(src CommentSource, resourceID 
 		if owner == 0 {
 			return createCtx{}, errors.ErrNotFound("未找到该工具")
 		}
-		return createCtx{toolsetOwner: owner}, nil
+		return createCtx{ownerID: owner}, nil
+	case sourceResource.key:
+		owner := s.galgameResourceOwner(resourceID)
+		if owner == 0 {
+			return createCtx{}, errors.ErrNotFound("未找到该资源")
+		}
+		return createCtx{ownerID: owner}, nil
+	case sourceQuiz.key:
+		author := s.quizAuthor(resourceID)
+		if author == 0 {
+			return createCtx{}, errors.ErrNotFound("未找到该题目")
+		}
+		return createCtx{ownerID: author}, nil
 	default: // website
 		return createCtx{}, nil
 	}
@@ -102,11 +126,14 @@ type notifyPlan struct {
 // resourceNotifyPlan is the PURE per-area notification decision (unit-tested for
 // parity, charter ruling 20): rating → the explicit "A → B" target ("commented");
 // website → the parent author ONLY on a reply ("commented"), a top-level comment
-// notifies nobody; toolset → the parent author on a reply ("replied") else the
-// toolset owner ("commented"). ok=false means notify nobody — a suppressed
-// self-notification, a missing receiver, or a top-level website comment. The
-// derived reply target is the primitive-completed post.TargetUserID.
-func resourceNotifyPlan(src CommentSource, senderID int, post *communityclient.PostView, toolsetOwner int) (notifyPlan, bool) {
+// notifies nobody; toolset / resource / quiz → the parent author on a reply
+// ("replied") else the owner/author ("commented"). ok=false means notify nobody —
+// a suppressed self-notification, a missing receiver, or a top-level website
+// comment. The derived reply target is the primitive-completed post.TargetUserID.
+//
+// ownerID is the owner-addressed receiver (toolset owner / resource uploader /
+// quiz author); it is ignored by the rating and website branches.
+func resourceNotifyPlan(src CommentSource, senderID int, post *communityclient.PostView, ownerID int) (notifyPlan, bool) {
 	var p notifyPlan
 	switch src.key {
 	case sourceRating.key:
@@ -116,11 +143,11 @@ func resourceNotifyPlan(src CommentSource, senderID int, post *communityclient.P
 			return notifyPlan{}, false // a top-level website comment notifies nobody
 		}
 		p = notifyPlan{receiver: int(post.TargetUserID), msgType: "commented"}
-	case sourceToolset.key:
+	case sourceToolset.key, sourceResource.key, sourceQuiz.key:
 		if post.ReplyToPostID != 0 && post.TargetUserID != 0 {
 			p = notifyPlan{receiver: int(post.TargetUserID), msgType: "replied"}
 		} else {
-			p = notifyPlan{receiver: toolsetOwner, msgType: "commented"}
+			p = notifyPlan{receiver: ownerID, msgType: "commented"}
 		}
 	}
 	if p.receiver <= 0 || p.receiver == senderID {
@@ -133,7 +160,7 @@ func resourceNotifyPlan(src CommentSource, senderID int, post *communityclient.P
 // post. Best-effort throughout (charter ruling 11 — the display counter tolerates
 // drift; a notification / feed failure never fails the reply).
 func (s *ResourceCommentService) afterCreate(src CommentSource, resourceID int, cc createCtx, userID int, content string, post *communityclient.PostView) {
-	plan, notify := resourceNotifyPlan(src, userID, post, cc.toolsetOwner)
+	plan, notify := resourceNotifyPlan(src, userID, post, cc.ownerID)
 	switch src.key {
 	case sourceRating.key:
 		// Reused galgame helper: dedup on (sender,receiver,type,link=/galgame/<gid>).
@@ -156,6 +183,22 @@ func (s *ResourceCommentService) afterCreate(src CommentSource, resourceID int, 
 			s.notifyToolset(userID, plan.receiver, plan.msgType, content, resourceID)
 		}
 		s.feedUpsert(src.feedType, post.ID, userID, content, fmt.Sprintf("/toolset/%d", resourceID), false, post.CreatedAt)
+
+	case sourceResource.key:
+		s.bumpCountColumn("galgame_resource", resourceID, 1)
+		link := fmt.Sprintf("/galgame-resource/%d", resourceID)
+		if notify {
+			s.notifyDeduped(userID, plan.receiver, plan.msgType, content, link)
+		}
+		s.feedUpsert(src.feedType, post.ID, userID, content, link, false, post.CreatedAt)
+
+	case sourceQuiz.key:
+		s.bumpCountColumn("galgame_quiz", resourceID, 1)
+		link := fmt.Sprintf("/galgame-quiz/%d", resourceID)
+		if notify {
+			s.notifyDeduped(userID, plan.receiver, plan.msgType, content, link)
+		}
+		s.feedUpsert(src.feedType, post.ID, userID, content, link, false, post.CreatedAt)
 	}
 }
 
@@ -197,6 +240,10 @@ func (s *ResourceCommentService) DeleteComment(ctx context.Context, src CommentS
 		s.bumpWebsiteCommentCount(resourceID, -1)
 	case sourceToolset.key:
 		s.bumpToolsetCommentCount(resourceID, -1) // charter ruling 21 (migration 059)
+	case sourceResource.key:
+		s.bumpCountColumn("galgame_resource", resourceID, -1) // migration 065
+	case sourceQuiz.key:
+		s.bumpCountColumn("galgame_quiz", resourceID, -1) // migration 065
 	}
 	s.feedDelete(src, postID)
 	return nil
@@ -204,7 +251,8 @@ func (s *ResourceCommentService) DeleteComment(ctx context.Context, src CommentS
 
 // resourceOwner returns the user who may delete any comment in this area beyond
 // its author: rating → the rated galgame's owner; toolset → the toolset owner;
-// website → none (charter ruling 20). 0 = no owner branch / resource missing.
+// resource → the resource's uploader; quiz → the quiz's author; website → none
+// (charter ruling 20). 0 = no owner branch / resource missing.
 func (s *ResourceCommentService) resourceOwner(src CommentSource, resourceID int) int {
 	switch src.key {
 	case sourceRating.key:
@@ -215,6 +263,10 @@ func (s *ResourceCommentService) resourceOwner(src CommentSource, resourceID int
 		return s.galgameOwner(gid)
 	case sourceToolset.key:
 		return s.toolsetOwner(resourceID)
+	case sourceResource.key:
+		return s.galgameResourceOwner(resourceID)
+	case sourceQuiz.key:
+		return s.quizAuthor(resourceID)
 	default: // website — no owner branch
 		return 0
 	}
@@ -278,6 +330,20 @@ func (s *ResourceCommentService) toolsetOwner(toolsetID int) int {
 	return uid
 }
 
+// galgameResourceOwner returns the resource's uploader (0 when it is gone).
+func (s *ResourceCommentService) galgameResourceOwner(resourceID int) int {
+	var uid int
+	s.db.Table("galgame_resource").Select("user_id").Where("id = ?", resourceID).Scan(&uid)
+	return uid
+}
+
+// quizAuthor returns the quiz's author (0 when it is gone).
+func (s *ResourceCommentService) quizAuthor(quizID int) int {
+	var uid int
+	s.db.Table("galgame_quiz").Select("user_id").Where("id = ?", quizID).Scan(&uid)
+	return uid
+}
+
 // websiteMeta resolves the website's url slug + nsfw flag, mirroring the feed
 // trigger's projection EXACTLY: a present row is nsfw when age_limit <> 'all'; a
 // missing row yields an empty slug (link "/website/") + not-nsfw (the trigger's
@@ -314,6 +380,18 @@ func (s *ResourceCommentService) bumpToolsetCommentCount(toolsetID, delta int) {
 	}
 }
 
+// bumpCountColumn adjusts a resource table's comment_count, floored at 0 — the
+// generic form used by the two areas introduced with migration 065
+// (galgame_resource / galgame_quiz). `table` is a package-internal literal, never
+// caller input. Best-effort: a tolerated display counter (charter ruling 11).
+func (s *ResourceCommentService) bumpCountColumn(table string, resourceID, delta int) {
+	if err := s.db.Table(table).Where("id = ?", resourceID).
+		Update("comment_count", gorm.Expr("GREATEST(comment_count + ?, 0)", delta)).Error; err != nil {
+		slog.Warn("comment counter adjust failed (best-effort)",
+			"table", table, "resource_id", resourceID, "delta", delta, "error", err)
+	}
+}
+
 // ──────────────────────────────────────────
 // Notifications (per-area parity)
 // ──────────────────────────────────────────
@@ -336,6 +414,29 @@ func (s *ResourceCommentService) notifyWebsiteReply(senderID, receiverID int, co
 	s.db.Create(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: "commented", Content: preview, Link: link, Status: "unread",
+	})
+}
+
+// notifyDeduped is the notifier for the two areas introduced WITHOUT a legacy
+// table to match (resource / quiz). It follows the website shape — plain-text
+// preview capped at constants.TextPreviewLength, deduped on the full
+// (sender, receiver, type, content, link) tuple — deliberately rather than the
+// toolset shape, whose missing dedup is frozen parity with its old notifier, not
+// a behaviour worth copying into a new area. The receiver is already validated
+// (non-self, >0) by resourceNotifyPlan.
+func (s *ResourceCommentService) notifyDeduped(senderID, receiverID int, msgType, content, link string) {
+	preview := markdown.ToPlainText(content, constants.TextPreviewLength)
+	var count int64
+	s.db.Model(&msgModel.Message{}).
+		Where("sender_id = ? AND receiver_id = ? AND type = ? AND content = ? AND link = ?",
+			senderID, receiverID, msgType, preview, link).
+		Count(&count)
+	if count > 0 {
+		return
+	}
+	s.db.Create(&msgModel.Message{
+		SenderID: senderID, ReceiverID: receiverID,
+		Type: msgType, Content: preview, Link: link, Status: "unread",
 	})
 }
 

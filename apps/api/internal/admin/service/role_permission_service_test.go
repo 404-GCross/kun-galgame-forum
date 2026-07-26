@@ -217,8 +217,9 @@ func TestReplaceHappyPath(t *testing.T) {
 	if !matrix.Roles["ren"].Locked {
 		t.Error("ren must be marked locked in the matrix")
 	}
-	if len(matrix.Catalog) != 43 {
-		t.Errorf("matrix catalog has %d keys, want 43", len(matrix.Catalog))
+	// Pins the matrix to the full pkg/perm vocabulary (perm_test.go's totalPerms).
+	if want := len(perm.Catalog()); len(matrix.Catalog) != want {
+		t.Errorf("matrix catalog has %d keys, want %d", len(matrix.Catalog), want)
 	}
 }
 

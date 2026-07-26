@@ -1,8 +1,9 @@
 package service
 
-// ResourceCommentService is the BFF for the THREE resource comment areas —
-// rating / website / toolset — once they are rerouted onto the infra community
-// primitive (charter step 07). It mirrors CommunityCommentService (the proven
+// ResourceCommentService is the BFF for the resource comment areas — rating /
+// website / toolset (rerouted off frozen local tables in charter step 07) plus
+// galgame-resource / quiz (introduced directly on the primitive, so they have no
+// legacy parity to preserve). It mirrors CommunityCommentService (the proven
 // galgame comment reroute in this package) and REUSES its pure render helpers
 // (buildCommunityItem / visibleTo / collectPostUserIDs / mapCommunityError /
 // isCommunityDown / clampReadLimit) verbatim, so the two stay behaviourally
@@ -58,22 +59,29 @@ func NewResourceCommentService(
 // (rating 1314, website/toolset 1007 — parity with the old DTO) is enforced by
 // the handler's validate tags, the single enforcement point.
 type CommentSource struct {
-	key        string // "rating" | "website" | "toolset"
-	anchorPref string // "rating:" | "website:" | "toolset:"
-	feedType   string // GALGAME_RATING_COMMENT_CREATION | GALGAME_WEBSITE_COMMENT_CREATION | TOOLSET_COMMENT_CREATION
+	key        string // "rating" | "website" | "toolset" | "resource" | "quiz"
+	anchorPref string // "rating:" | "website:" | "toolset:" | "resource:" | "quiz:"
+	feedType   string // GALGAME_RATING_COMMENT_CREATION | GALGAME_WEBSITE_COMMENT_CREATION | TOOLSET_COMMENT_CREATION | GALGAME_RESOURCE_COMMENT_CREATION | GALGAME_QUIZ_COMMENT_CREATION
 }
 
 var (
 	sourceRating  = CommentSource{key: "rating", anchorPref: "rating:", feedType: "GALGAME_RATING_COMMENT_CREATION"}
 	sourceWebsite = CommentSource{key: "website", anchorPref: "website:", feedType: "GALGAME_WEBSITE_COMMENT_CREATION"}
 	sourceToolset = CommentSource{key: "toolset", anchorPref: "toolset:", feedType: "TOOLSET_COMMENT_CREATION"}
+	// resource / quiz are NEW areas (not migrated from a frozen table), so they
+	// have no legacy feed trigger to mirror — their feed types are introduced with
+	// them, and the anchor prefixes follow the same short-domain convention.
+	sourceResource = CommentSource{key: "resource", anchorPref: "resource:", feedType: "GALGAME_RESOURCE_COMMENT_CREATION"}
+	sourceQuiz     = CommentSource{key: "quiz", anchorPref: "quiz:", feedType: "GALGAME_QUIZ_COMMENT_CREATION"}
 )
 
-// SourceRating / SourceWebsite / SourceToolset expose the three strategies to the
-// handler layer (which selects one per route).
-func SourceRating() CommentSource  { return sourceRating }
-func SourceWebsite() CommentSource { return sourceWebsite }
-func SourceToolset() CommentSource { return sourceToolset }
+// SourceRating / SourceWebsite / SourceToolset / SourceResource / SourceQuiz
+// expose the strategies to the handler layer (which selects one per route).
+func SourceRating() CommentSource   { return sourceRating }
+func SourceWebsite() CommentSource  { return sourceWebsite }
+func SourceToolset() CommentSource  { return sourceToolset }
+func SourceResource() CommentSource { return sourceResource }
+func SourceQuiz() CommentSource     { return sourceQuiz }
 
 // anchorID builds the site_resource anchor for a resource id, e.g. "rating:42".
 func (src CommentSource) anchorID(resourceID int) string {
@@ -89,8 +97,18 @@ func (src CommentSource) anchorID(resourceID int) string {
 // reuses the two-tier grouping. Page 1 comes from the thread resolve
 // (get-or-create); later pages from listPosts. A down/unconfigured community
 // degrades to an empty page (fail-closed to the face). resourceID is the
-// rating/website/toolset id; cursor is the post_number `after`; limit ≤50.
+// rating/website/toolset/resource/quiz id; cursor is the post_number `after`;
+// limit ≤50.
+//
+// A spoiler-gated quiz (see resource_comment_gate.go) returns an EMPTY page with
+// Locked=true for a viewer who has not answered it, short-circuiting before the
+// thread resolve — so the answer never reaches the wire and no empty thread is
+// created for a viewer who cannot post anyway.
 func (s *ResourceCommentService) GetComments(ctx context.Context, src CommentSource, resourceID, viewerID int, cursor string, limit int) (*CommunityCommentPage, *errors.AppError) {
+	if s.commentAreaLocked(ctx, src, resourceID, viewerID) {
+		return lockedCommentPage(), nil
+	}
+
 	thread, err := s.community.ResolveComments(ctx, communityclient.ResolveCommentsRequest{
 		AnchorKind: communityclient.AnchorSiteResource, AnchorID: src.anchorID(resourceID), ContentRating: communityclient.RatingAll,
 	})

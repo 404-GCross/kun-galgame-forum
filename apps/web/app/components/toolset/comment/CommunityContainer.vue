@@ -3,126 +3,29 @@
 // unconditional toolset comment UI, rendered from ToolsetDetail.vue (the legacy
 // comment components were retired in charter step 06a).
 //
-// The read is a flat keyset "load more" growth list grouped into two tiers (root +
-// one flat reply group), mirroring the galgame community container. The toolset
-// owner's delete authority is a server-side superset (charter ruling 20), so the
-// container needs no owner-id — the UI shows delete on author||canModerate only.
+// Paging / grouping / optimistic mutation come from useCommunityCommentList; the
+// toolset owner's delete authority is a server-side superset (charter ruling 20),
+// so this container needs no owner id — the UI shows delete on author||canModerate.
 const props = defineProps<{
   toolsetId: number
 }>()
 
-// Renders through the shared comment family (CommentCommunityRow / Composer), so
-// this area looks identical to the galgame reference.
+const {
+  status,
+  seeded,
+  groups,
+  isEmpty,
+  hasMore,
+  loadingMore,
+  loadMore,
+  handleNewComment,
+  handleUpdated,
+  handleTombstoned
+} = useCommunityCommentList({ kind: 'toolset', toolsetId: props.toolsetId })
+
 const target: CommunityCommentTarget = {
   kind: 'toolset',
   toolsetId: props.toolsetId
-}
-
-const PAGE_LIMIT = 30
-
-const posts = ref<GalgameCommunityComment[]>([])
-const total = ref(0)
-const nextCursor = ref('')
-const seeded = ref(false)
-const loadingMore = ref(false)
-
-const { data, status } = await useKunFetch<GalgameCommunityCommentPage>(
-  `/toolset/${props.toolsetId}/comments`,
-  { lazy: true, method: 'GET', query: { limit: PAGE_LIMIT } }
-)
-
-const seedFrom = (page: GalgameCommunityCommentPage) => {
-  posts.value = [...page.posts]
-  total.value = page.total
-  nextCursor.value = page.next_cursor
-  seeded.value = true
-}
-
-// Check the current value first, then arm a non-immediate watch (the step-04 TDZ
-// lesson — no self-stopping immediate watch).
-if (data.value && !seeded.value) {
-  seedFrom(data.value)
-}
-watch(data, (page) => {
-  if (page && !seeded.value) {
-    seedFrom(page)
-  }
-})
-
-const hasMore = computed(() => nextCursor.value !== '')
-
-const loadMore = async () => {
-  if (!hasMore.value || loadingMore.value) {
-    return
-  }
-  loadingMore.value = true
-  const page = await kunFetch<GalgameCommunityCommentPage>(
-    `/toolset/${props.toolsetId}/comments`,
-    { method: 'GET', query: { cursor: nextCursor.value, limit: PAGE_LIMIT } }
-  )
-  loadingMore.value = false
-  if (page) {
-    const seen = new Set(posts.value.map((p) => p.id))
-    posts.value = [...posts.value, ...page.posts.filter((p) => !seen.has(p.id))]
-    nextCursor.value = page.next_cursor
-    total.value = page.total
-  }
-}
-
-// Two-tier grouping: root + one flat reply group (a reply's root always precedes
-// it in forward keyset order; a deep-cursor orphan renders as its own group).
-interface CommentGroup {
-  root: GalgameCommunityComment
-  replies: GalgameCommunityComment[]
-}
-
-const groups = computed<CommentGroup[]>(() => {
-  const list: CommentGroup[] = []
-  const byRootId = new Map<number, CommentGroup>()
-  for (const p of posts.value) {
-    if (p.root_comment_id == null) {
-      const group: CommentGroup = { root: p, replies: [] }
-      byRootId.set(p.id, group)
-      list.push(group)
-    } else {
-      const owner = byRootId.get(p.root_comment_id)
-      if (owner) {
-        owner.replies.push(p)
-      } else {
-        list.push({ root: p, replies: [] })
-      }
-    }
-  }
-  return list
-})
-
-const isEmpty = computed(() => seeded.value && total.value === 0)
-
-const handleNewComment = (post: GalgameCommunityComment) => {
-  if (posts.value.some((p) => p.id === post.id)) {
-    return
-  }
-  posts.value = [...posts.value, post]
-  total.value += 1
-}
-
-const handleUpdated = (updated: GalgameCommunityComment) => {
-  // The edit response is built without the target_user enrichment (the server's
-  // UpdateComment returns buildCommunityItem directly). An edit changes only the
-  // body, never the reply relationship, so keep the prior "A → B" target.
-  posts.value = posts.value.map((p) =>
-    p.id === updated.id
-      ? { ...updated, target_user: updated.target_user ?? p.target_user }
-      : p
-  )
-}
-
-const handleTombstoned = (postId: number) => {
-  posts.value = posts.value.map((p) =>
-    p.id === postId
-      ? { ...p, deleted: true, held: false, content: '', content_html: '' }
-      : p
-  )
 }
 </script>
 

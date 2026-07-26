@@ -87,18 +87,21 @@ type KunLanguage struct {
 
 // ResourceCard is the shape returned in list views (no links/code/password).
 type ResourceCard struct {
-	ID            int         `json:"id"`
-	View          int         `json:"view"`
-	GalgameID     int         `json:"galgame_id"`
-	User          UserBrief   `json:"user"`
-	Type          string      `json:"type"`
-	Language      string      `json:"language"`
-	Platform      string      `json:"platform"`
-	Size          string      `json:"size"`
-	Status        int         `json:"status"`
-	Download      int         `json:"download"`
-	LikeCount     int         `json:"like_count"`
-	IsLiked       bool        `json:"is_liked"`
+	ID        int       `json:"id"`
+	View      int       `json:"view"`
+	GalgameID int       `json:"galgame_id"`
+	User      UserBrief `json:"user"`
+	Type      string    `json:"type"`
+	Language  string    `json:"language"`
+	Platform  string    `json:"platform"`
+	Size      string    `json:"size"`
+	Status    int       `json:"status"`
+	Download  int       `json:"download"`
+	LikeCount int       `json:"like_count"`
+	IsLiked   bool      `json:"is_liked"`
+	// CommentCount is the resource comment counter (migration 065), maintained ±1
+	// by the community comment BFF. A tolerated display counter.
+	CommentCount  int         `json:"comment_count"`
 	LinkDomain    string      `json:"link_domain"`
 	ProviderNames []string    `json:"provider_names"`
 	Note          string      `json:"note"`
@@ -133,6 +136,7 @@ type ResourceMeta struct {
 	Download      int       `json:"download"`
 	LikeCount     int       `json:"like_count"`
 	IsLiked       bool      `json:"is_liked"`
+	CommentCount  int       `json:"comment_count"`
 	LinkDomain    string    `json:"link_domain"`
 	ProviderNames []string  `json:"provider_names"`
 	Note          string    `json:"note"`

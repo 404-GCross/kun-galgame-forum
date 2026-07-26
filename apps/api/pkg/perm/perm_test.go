@@ -2,7 +2,7 @@ package perm
 
 import "testing"
 
-// allPerms is the full 43-key vocabulary, listed explicitly so this test is a
+// allPerms is the full 47-key vocabulary, listed explicitly so this test is a
 // second, independent copy of the matrix — if a constant is added/removed
 // without updating both this list and the bundles, a count assertion trips.
 var allPerms = []Permission{
@@ -13,6 +13,8 @@ var allPerms = []Permission{
 	CommentRatingEdit, CommentRatingDelete,
 	CommentWebsiteEdit, CommentWebsiteDelete,
 	CommentToolsetEdit, CommentToolsetDelete,
+	CommentResourceEdit, CommentResourceDelete,
+	CommentQuizEdit, CommentQuizDelete,
 	PollCreateAny, PollEditAny, PollDeleteAny, PollViewRestricted,
 	GalgameBanResourcePublish,
 	QuizEditAny, QuizDeleteAny,
@@ -35,14 +37,14 @@ var adminOnly = map[Permission]bool{
 }
 
 const (
-	totalPerms = 43
-	modPerms   = 41 // total minus the two admin-only keys
+	totalPerms = 47
+	modPerms   = 45 // total minus the two admin-only keys
 )
 
 // isAdminOnly reports whether p is one of the two admin-tier permissions.
 func isAdminOnly(p Permission) bool { return adminOnly[p] }
 
-// TestVocabularySize pins the vocabulary at exactly 43 distinct keys.
+// TestVocabularySize pins the vocabulary at exactly 47 distinct keys.
 func TestVocabularySize(t *testing.T) {
 	if len(allPerms) != totalPerms {
 		t.Fatalf("allPerms has %d keys, want %d", len(allPerms), totalPerms)
@@ -77,7 +79,7 @@ func bundleSet(t *testing.T, roleName string) map[Permission]bool {
 	return set
 }
 
-// TestBundleSizes pins the exact grant counts: moderator 41, admin 43, ren 43.
+// TestBundleSizes pins the exact grant counts: moderator 45, admin 47, ren 47.
 func TestBundleSizes(t *testing.T) {
 	cases := []struct {
 		role string
@@ -138,7 +140,7 @@ func wantGranted(roleName string, p Permission) bool {
 }
 
 // TestMatrix table-drives the entire role×permission matrix through Can: every
-// one of the 43 keys against user/creator/moderator/admin/ren/unknown, plus the
+// one of the 47 keys against user/creator/moderator/admin/ren/unknown, plus the
 // empty (plain logged-in user) role set.
 func TestMatrix(t *testing.T) {
 	singleRoles := []string{"user", "creator", "moderator", "admin", "ren", "unknown"}

@@ -11,6 +11,9 @@ export interface GalgameResource {
   download: number
   like_count: number
   is_liked: boolean
+  // Comment counter (migration 065), maintained ±1 by the community comment BFF
+  // — a tolerated display counter, not a source of truth.
+  comment_count: number
   link_domain: string
   /**
    * Pre-computed display labels for the resource's hosting providers
