@@ -229,7 +229,9 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               size="sm"
               @click="isRatingOpen = true"
             >
-              添加评分
+              <span class="flex items-center gap-1">
+                <KunIcon name="lucide:star" />添加评分
+              </span>
             </KunButton>
 
             <!-- 正版购买 (DLsite affiliate). Only for galgames that actually

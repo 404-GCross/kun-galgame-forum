@@ -50,14 +50,20 @@ const onChange = async (next: boolean) => {
 
 <template>
   <KunTooltip text="点赞">
-    <KunReaction
-      v-model="isLiked"
-      v-model:count="likesCount"
-      :disabled="pending"
-      icon="lucide:thumbs-up"
-      color="primary"
-      label="点赞"
-      @change="onChange"
-    />
+    <!-- The span is load-bearing: KunTooltip wraps its child in an inline-block,
+         whose line-height leading pushes the pill ~1.6px above its neighbours in
+         the header's `items-center` row. A flex wrapper has no line box, so the
+         pill sits flush — 收藏 already does this, and 点赞 was the odd one out. -->
+    <span class="flex">
+      <KunReaction
+        v-model="isLiked"
+        v-model:count="likesCount"
+        :disabled="pending"
+        icon="lucide:thumbs-up"
+        color="primary"
+        label="点赞"
+        @change="onChange"
+      />
+    </span>
   </KunTooltip>
 </template>
