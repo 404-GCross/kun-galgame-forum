@@ -30,6 +30,22 @@ export interface GalgameResource {
   note_html: string
   created: Date | string
   edited: Date | string | null
+  /**
+   * Ready-to-use DLsite affiliate purchase link for the 补票 prompt, assembled
+   * server-side from the galgame's catalog `refs.dlsite` work number. It rides the
+   * RESOURCE rather than the galgame because both 补票 surfaces are
+   * resource-scoped — the download modal is opened from contexts holding no
+   * galgame object. Absent when the galgame has no DLsite id or the affiliate is
+   * unconfigured. Never build this URL in the frontend: the affiliate template
+   * lives in server config.
+   */
+  dlsite_purchase_url?: string
+  /**
+   * The partnership's coupon landing page (a GLOBAL benefit, not per-work).
+   * Emitted only together with `dlsite_purchase_url`, since the notice shows them
+   * as one offer. Absent until configured — it must be a shortened URL.
+   */
+  dlsite_coupon_url?: string
 }
 
 export interface GalgameResourceDetailLink extends GalgameResource {

@@ -89,6 +89,10 @@ type V1Item struct {
 	Meta        *v1Meta            `json:"meta"`
 	Intro       *v1Intro           `json:"intro"`
 	Officials   *[]v1OfficialBrief `json:"officials"`
+	// Refs are the work's external identities keyed by catalog source
+	// ("dlsite" → the DLsite workno verbatim). Open map, not named fields: the
+	// source registry grows and an unknown key must be carried, not rejected.
+	Refs map[string]string `json:"refs"`
 }
 
 // v1BatchData is the batch envelope ({items}, no total).
@@ -193,6 +197,8 @@ func V1ItemToBrief(it *V1Item) GalgameBrief {
 	b.EffectiveBannerHash, b.EffectiveBannerURL,
 		b.EffectiveBannerWidth, b.EffectiveBannerHeight,
 		b.EffectiveBannerThumbhash = bannerFields(it.Banner)
+	// External identities (kungal reads refs.dlsite for the 补票 purchase link).
+	b.Refs = it.Refs
 	return b
 }
 
@@ -308,6 +314,9 @@ type v1Detail struct {
 	Contributors     *[]v1Contributor `json:"contributors"`
 	Meta             *v1Meta          `json:"meta"`
 	Updated          string           `json:"updated"`
+	// Refs are the work's external identities keyed by catalog source
+	// ("dlsite" → the DLsite workno verbatim). See GalgameBrief.Refs.
+	Refs map[string]string `json:"refs"`
 }
 
 // derefInt returns *p, or 0 when p is nil — the /v1 rating levels are pointer
@@ -378,6 +387,7 @@ func v1ScreenshotsToNextMoe(shots []v1Image) []dto.NextMoeGalgameScreenshot {
 func v1DetailToFull(d *v1Detail) dto.NextMoeGalgameDetailFull {
 	f := dto.NextMoeGalgameDetailFull{
 		ID:               d.ID,
+		Refs:             d.Refs,
 		NameEnUs:         str(d.Names.EnUS),
 		NameJaJp:         str(d.Names.JaJP),
 		NameZhCn:         str(d.Names.ZhCN),

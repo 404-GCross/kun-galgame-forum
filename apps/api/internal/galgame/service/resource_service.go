@@ -12,6 +12,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/trust/gate"
+	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/userclient"
@@ -31,6 +32,11 @@ type ResourceService struct {
 	// linkChecker gates "report expired" on an objective netdisk-API verdict.
 	// nil when unconfigured → MarkExpired falls back to the legacy flow.
 	linkChecker *linkcheck.Client
+	// dlsiteLinkTemplate is the affiliate purchase-link template for the 补票
+	// prompt. Empty = no purchase link is emitted.
+	dlsiteLinkTemplate string
+	// dlsiteCouponURL is the partnership's (already shortened) coupon page.
+	dlsiteCouponURL string
 }
 
 func NewResourceService(
@@ -40,15 +46,32 @@ func NewResourceService(
 	linkChecker *linkcheck.Client,
 	check *gate.CheckService,
 	scan *gate.ScanService,
+	dlsiteLinkTemplate string,
+	dlsiteCouponURL string,
 ) *ResourceService {
 	return &ResourceService{
-		resourceRepo:  resourceRepo,
-		galgameClient: galgameClient,
-		userClient:    userClient,
-		check:         check,
-		scan:          scan,
-		linkChecker:   linkChecker,
+		resourceRepo:       resourceRepo,
+		galgameClient:      galgameClient,
+		userClient:         userClient,
+		check:              check,
+		scan:               scan,
+		linkChecker:        linkChecker,
+		dlsiteLinkTemplate: dlsiteLinkTemplate,
+		dlsiteCouponURL:    dlsiteCouponURL,
 	}
+}
+
+// dlsiteLinks builds the 补票 block's two links for a galgame brief: the per-work
+// purchase URL and the global coupon URL. Both are empty when the galgame has no
+// DLsite work number or the affiliate template is unconfigured — the coupon rides
+// along because the notice presents them as one offer, so emitting a coupon with
+// nothing to buy would be a dead end.
+func (s *ResourceService) dlsiteLinks(b client.GalgameBrief) (purchase, coupon string) {
+	purchase = dlsite.LinkFor(s.dlsiteLinkTemplate, b.ID, b.DlsiteWorkno())
+	if purchase == "" {
+		return "", ""
+	}
+	return purchase, s.dlsiteCouponURL
 }
 
 // resourceModerationText composes the RAW text the trust gate sees for a galgame
@@ -106,6 +129,7 @@ func (s *ResourceService) GetResourceList(
 		}
 		card := rowToCard(r, u, likedSet[r.ID])
 		card.GalgameName = briefToName(b)
+		card.DlsitePurchaseURL, card.DlsiteCouponURL = s.dlsiteLinks(b)
 		cards = append(cards, card)
 	}
 
@@ -151,6 +175,12 @@ func (s *ResourceService) GetResourceDetail(
 	isLiked := s.resourceRepo.IsLikedBy(resourceID, currentUserID)
 
 	resource := rowToMeta(row, links, isLiked, ownerUser)
+
+	// 补票 purchase link for this resource's galgame (empty when it has no DLsite
+	// work number or the affiliate template is unconfigured).
+	if b, ok := s.fetchGalgameBriefs(ctx, []int{row.GalgameID})[row.GalgameID]; ok {
+		resource.DlsitePurchaseURL, resource.DlsiteCouponURL = s.dlsiteLinks(b)
+	}
 
 	// Galgame summary
 	galgameSummary := s.buildGalgameSummary(ctx, row.GalgameID)
@@ -218,13 +248,27 @@ func (s *ResourceService) GetGalgameResources(
 	// Per-row like state for the logged-in viewer; anonymous → empty set.
 	likedSet := s.resourceRepo.FindLikedSet(currentUserID, resourceIDs)
 
+	// Every row here belongs to the SAME galgame, so one brief covers the whole
+	// list — it is fetched only for the 补票 purchase link the download modal
+	// renders (this list feeds the modal from the galgame detail page, where no
+	// galgame object is in scope). Empty on any miss; the prompt then renders as
+	// it does today.
+	dlsiteURL, dlsiteCoupon := "", ""
+	if len(rows) > 0 {
+		if b, ok := s.fetchGalgameBriefs(ctx, []int{req.GalgameID})[req.GalgameID]; ok {
+			dlsiteURL, dlsiteCoupon = s.dlsiteLinks(b)
+		}
+	}
+
 	cards := make([]dto.ResourceCard, 0, len(rows))
 	for _, r := range rows {
 		u := userMap[r.UserID]
 		if !userclient.IsRenderable(u) {
 			continue
 		}
-		cards = append(cards, rowToCard(r, u, likedSet[r.ID]))
+		card := rowToCard(r, u, likedSet[r.ID])
+		card.DlsitePurchaseURL, card.DlsiteCouponURL = dlsiteURL, dlsiteCoupon
+		cards = append(cards, card)
 	}
 	return cards, nil
 }

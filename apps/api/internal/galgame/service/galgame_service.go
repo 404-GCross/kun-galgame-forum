@@ -16,6 +16,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
 	userRepo "kun-galgame-api/internal/user/repository"
+	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 	"kun-galgame-api/pkg/utils"
@@ -35,6 +36,10 @@ type GalgameService struct {
 	galgameClient    *client.GalgameClient
 	userClient       *userclient.Client
 	helpers          InteractionHelpers
+	// DLsite affiliate wiring for the header's 正版购买 button. Empty template =
+	// the button never renders.
+	dlsiteLinkTemplate string
+	dlsiteCouponURL    string
 }
 
 func NewGalgameService(
@@ -46,16 +51,20 @@ func NewGalgameService(
 	stateRepo *userRepo.StateRepository,
 	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
+	dlsiteLinkTemplate string,
+	dlsiteCouponURL string,
 ) *GalgameService {
 	return &GalgameService{
-		galgameRepo:      galgameRepo,
-		interactionRepo:  interactionRepo,
-		listRepo:         listRepo,
-		resourceMetaRepo: resourceMetaRepo,
-		detailRatingRepo: detailRatingRepo,
-		stateRepo:        stateRepo,
-		galgameClient:    galgameClient,
-		userClient:       userClient,
+		galgameRepo:        galgameRepo,
+		interactionRepo:    interactionRepo,
+		listRepo:           listRepo,
+		resourceMetaRepo:   resourceMetaRepo,
+		dlsiteLinkTemplate: dlsiteLinkTemplate,
+		dlsiteCouponURL:    dlsiteCouponURL,
+		detailRatingRepo:   detailRatingRepo,
+		stateRepo:          stateRepo,
+		galgameClient:      galgameClient,
+		userClient:         userClient,
 	}
 }
 
@@ -277,6 +286,12 @@ func (s *GalgameService) GetDetail(
 	// users map came from).
 	users := s.hydrateDetailUsers(ctx, g)
 	detail := galgameDetailFromNextMoe(g, users)
+	// 正版购买 (DLsite affiliate) — empty unless this galgame carries a DLsite work
+	// number AND the affiliate template is configured.
+	if purchase := dlsite.LinkFor(s.dlsiteLinkTemplate, g.ID, g.Refs["dlsite"]); purchase != "" {
+		detail.DlsitePurchaseURL = purchase
+		detail.DlsiteCouponURL = s.dlsiteCouponURL
+	}
 	detail.View = local.View
 	detail.LikeCount = local.LikeCount
 	detail.FavoriteCount = local.FavoriteCount

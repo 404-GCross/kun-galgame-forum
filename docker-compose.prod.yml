@@ -61,6 +61,14 @@ x-kungal-api-env: &kungal-api-env
   # comment tables still back profile / admin / search reads and await a later
   # deploy-then-drop migration.
   KUN_COMMUNITY_API_BASE: http://community:9282/api/v1/community
+  # ── DLsite 联盟补票链接 (合作公告 topic/3867) ──
+  # {workno} 由 catalog 的 refs.dlsite 原样替换。整段模板走 env 而非拼装:
+  # DLsite 的联盟路径可能按站点段不同 (/soft/ 是 pro/VJ 路径), 换路径只改这里。
+  # 空模板 = 功能关闭, 补票提示回落成原来的纯文案。
+  KUN_DLSITE_LINK_TEMPLATE: ${KUN_DLSITE_LINK_TEMPLATE:-https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/locale/zh_CN/id/{workno}.html/?locale=zh_CN}
+  # 优惠券落地页。必须是短链 (合作方要求, 防网络审查拦截) —— 自建短链服务就绪前
+  # 先用 umami 短链承载。
+  KUN_DLSITE_COUPON_URL: ${KUN_DLSITE_COUPON_URL:-https://umami.kungal.org/q/N3TmTZJ9X}
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # toolset archive uploads (Backblaze B2). 空则上传路由仍注册、调用 500(应用只 warn 不拦);要开 toolset 上传就填全 5 个
   # (内嵌/内容图不走这里 — 全部经 image_service,详见 KUN_IMAGE_CLIENT_*)

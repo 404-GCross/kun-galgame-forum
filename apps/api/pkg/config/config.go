@@ -22,6 +22,7 @@ type Config struct {
 	Trust          TrustConfig
 	Catalog        CatalogClientConfig
 	Community      CommunityConfig
+	Dlsite         DlsiteConfig
 }
 
 // CommunityConfig holds what kungal needs to reach the infra community primitive
@@ -141,6 +142,36 @@ type NextMoeAPIConfig struct {
 	// docs/image_service/06-integration-guide.md.
 	ImageCDNBase string
 }
+
+// DlsiteConfig holds the DLsite affiliate wiring for the 补票 (buy-legit) prompt.
+// kungal has an affiliate partnership; where a galgame resolves to a DLsite work
+// number, the prompt offers a direct purchase link instead of only pointing at the
+// 制作商 section.
+//
+// The whole link is assembled SERVER-side and shipped as a ready URL. Two reasons:
+// the affiliate id / template stay out of the browser bundle, and this project's
+// frontend build cannot be trusted with env vars (NUXT_PUBLIC_* / process.env.*
+// come out undefined in the generic prod image — the same trap that bit the web
+// build before), so a template baked into the frontend would silently produce
+// broken links in production.
+//
+// LinkTemplate carries a `{workno}` placeholder and is deliberately a whole
+// template rather than assembled parts: DLsite's affiliate path may differ per
+// site segment (`/soft/` is the pro/VJ path; doujin/RJ may need another), so a
+// path change stays an env edit instead of a code change.
+type DlsiteConfig struct {
+	// LinkTemplate is the per-work affiliate deep link, e.g.
+	// https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/locale/zh_CN/id/{workno}.html/?locale=zh_CN
+	// Empty = the feature is off and no link is ever emitted.
+	LinkTemplate string
+	// CouponURL is the partnership's coupon landing page. It MUST be a shortened
+	// URL — the partner's requirement, so the raw domain does not get blocked by
+	// network censorship. Empty = no coupon entry rendered.
+	CouponURL string
+}
+
+// Configured reports whether per-work purchase links can be built.
+func (c DlsiteConfig) Configured() bool { return c.LinkTemplate != "" }
 
 type ServerConfig struct {
 	Port string
@@ -326,6 +357,12 @@ func Load() (*Config, error) {
 			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),
 			ClientID:     envOrDefault("KUN_COMMUNITY_CLIENT_ID", ""),
 			ClientSecret: envOrDefault("KUN_COMMUNITY_CLIENT_SECRET", ""),
+		},
+		Dlsite: DlsiteConfig{
+			// Both empty by default: no template = no purchase link is emitted, so
+			// an unconfigured deployment simply keeps today's 补票 prompt.
+			LinkTemplate: envOrDefault("KUN_DLSITE_LINK_TEMPLATE", ""),
+			CouponURL:    envOrDefault("KUN_DLSITE_COUPON_URL", ""),
 		},
 	}, nil
 }

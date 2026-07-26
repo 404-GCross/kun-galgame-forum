@@ -351,20 +351,11 @@ const handleEditDone = () => {
             </p>
           </KunInfo>
 
-          <KunInfo color="danger" variant="bordered" title="补票提示">
-            <p class="text-sm">
-              Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭,
-              可见经济并不宽裕。 如果条件允许, 请尽可能前往
-              <KunLink
-                size="sm"
-                :to="`/galgame/${resource.galgame_id}`"
-                class-name="inline"
-              >
-                Galgame 详情
-              </KunLink>
-              中的制作商部分进行正版补票, 感谢您对 Galgame 业界做出的贡献。
-            </p>
-          </KunInfo>
+          <GalgameResourceBuyLegitNotice
+            :galgame-id="resource.galgame_id"
+            :purchase-url="resource.dlsite_purchase_url"
+            :coupon-url="resource.dlsite_coupon_url"
+          />
         </template>
 
         <div class="flex flex-wrap items-center justify-between gap-1">

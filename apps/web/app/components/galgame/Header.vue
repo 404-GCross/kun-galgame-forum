@@ -232,6 +232,17 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               添加评分
             </KunButton>
 
+            <!-- 正版购买 (DLsite affiliate). Only for galgames that actually
+                 resolve to a DLsite work; the component owns the coupon-then-buy
+                 popover. `flat` rather than another `shadow`: two solid primaries
+                 side by side would fight, and 添加评分 stays this page's own
+                 primary action. -->
+            <GalgameDlsitePurchase
+              v-if="galgame.dlsite_purchase_url"
+              :purchase-url="galgame.dlsite_purchase_url"
+              :coupon-url="galgame.dlsite_coupon_url"
+            />
+
             <!-- The schema-driven proposal editor (the engine review queue).
                  The legacy rewrite editor retired in E3b. -->
             <KunButton

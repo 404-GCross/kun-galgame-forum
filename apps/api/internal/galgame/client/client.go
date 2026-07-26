@@ -704,7 +704,20 @@ type GalgameBrief struct {
 	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
+	// Refs are the work's external identities keyed by catalog source
+	// ("dlsite" → the DLsite workno verbatim, and whatever the catalog adds
+	// later). Modeled as an open map rather than named fields on purpose: the
+	// source registry grows, and an unknown key must be carried, not a decode
+	// error. kungal reads only "dlsite" today (the 补票 purchase link).
+	//
+	// Sourced catalog-side by direct galgame_id lookup, so it is populated for
+	// r18 and claimed works too — which is the whole feature, since 98.3% of
+	// kungal's DLsite-mapped titles are r18.
+	Refs map[string]string `json:"refs,omitempty"`
 }
+
+// DlsiteWorkno returns the brief's DLsite work number, or "" when absent.
+func (b GalgameBrief) DlsiteWorkno() string { return b.Refs["dlsite"] }
 
 // GalgameDetailBrief is GalgameBrief plus the introduction + officials a richer
 // list view needs (the "new galgame" feed card). Served by

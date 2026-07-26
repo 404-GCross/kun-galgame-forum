@@ -71,6 +71,7 @@ import (
 	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/config"
+	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/linkcheck"
@@ -395,6 +396,17 @@ func New(cfg *config.Config) *App {
 	} else {
 		slog.Warn("community comment backend NOT configured; comments degrade (reads empty / writes 503) — set KUN_COMMUNITY_API_BASE + OAuth creds")
 	}
+
+	// DLsite affiliate 补票 link. The vendored whitelist count is logged so a
+	// mis-vendored (empty / truncated) verified.tsv shows up at boot instead of
+	// silently dropping the purchase button on ~1,400 games.
+	if cfg.Dlsite.Configured() {
+		slog.Info("dlsite affiliate link configured",
+			"verified_whitelist", dlsite.VerifiedCount(),
+			"coupon", cfg.Dlsite.CouponURL != "")
+	} else {
+		slog.Info("dlsite affiliate link off (KUN_DLSITE_LINK_TEMPLATE unset); 补票提示 renders its plain form")
+	}
 	// Login-time trust Boost reporter (staff/veteran). Self-gates on client
 	// config, so no Boost fires when the community client is unconfigured.
 	communityBooster := communitytrust.New(communityCli, rdb, db)
@@ -453,7 +465,7 @@ func New(cfg *config.Config) *App {
 	// region-agnostic).
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
-	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker, trustCheck, trustScan)
+	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker, trustCheck, trustScan, cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
 	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc, trustCheck, trustScan)
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)
@@ -471,6 +483,7 @@ func New(cfg *config.Config) *App {
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc,
+		cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL,
 	)
 	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
 	// owner-name lookup to galgameCoreSvc so nothing is duplicated.

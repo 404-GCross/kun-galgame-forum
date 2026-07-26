@@ -101,14 +101,19 @@ type ResourceCard struct {
 	IsLiked   bool      `json:"is_liked"`
 	// CommentCount is the resource comment counter (migration 065), maintained ±1
 	// by the community comment BFF. A tolerated display counter.
-	CommentCount  int         `json:"comment_count"`
-	LinkDomain    string      `json:"link_domain"`
-	ProviderNames []string    `json:"provider_names"`
-	Note          string      `json:"note"`
-	NoteHtml      string      `json:"note_html"`
-	Created       string      `json:"created"`
-	Edited        *string     `json:"edited"`
-	GalgameName   KunLanguage `json:"galgame_name,omitempty"`
+	CommentCount int `json:"comment_count"`
+	// DlsitePurchaseURL — see the field of the same name on ResourceMeta. Present
+	// here because the download modal is also opened from the resource CARD on a
+	// galgame detail page, where no galgame object is in scope.
+	DlsitePurchaseURL string      `json:"dlsite_purchase_url,omitempty"`
+	DlsiteCouponURL   string      `json:"dlsite_coupon_url,omitempty"`
+	LinkDomain        string      `json:"link_domain"`
+	ProviderNames     []string    `json:"provider_names"`
+	Note              string      `json:"note"`
+	NoteHtml          string      `json:"note_html"`
+	Created           string      `json:"created"`
+	Edited            *string     `json:"edited"`
+	GalgameName       KunLanguage `json:"galgame_name,omitempty"`
 }
 
 // ResourceMeta is the safe (no credentials) view of a single resource —
@@ -124,25 +129,42 @@ type ResourceCard struct {
 // what bumps the download counter — if the page already shipped the
 // link, the counter never moves.
 type ResourceMeta struct {
-	ID            int       `json:"id"`
-	View          int       `json:"view"`
-	GalgameID     int       `json:"galgame_id"`
-	User          UserBrief `json:"user"`
-	Type          string    `json:"type"`
-	Language      string    `json:"language"`
-	Platform      string    `json:"platform"`
-	Size          string    `json:"size"`
-	Status        int       `json:"status"`
-	Download      int       `json:"download"`
-	LikeCount     int       `json:"like_count"`
-	IsLiked       bool      `json:"is_liked"`
-	CommentCount  int       `json:"comment_count"`
-	LinkDomain    string    `json:"link_domain"`
-	ProviderNames []string  `json:"provider_names"`
-	Note          string    `json:"note"`
-	NoteHtml      string    `json:"note_html"`
-	Created       string    `json:"created"`
-	Edited        *string   `json:"edited"`
+	ID           int       `json:"id"`
+	View         int       `json:"view"`
+	GalgameID    int       `json:"galgame_id"`
+	User         UserBrief `json:"user"`
+	Type         string    `json:"type"`
+	Language     string    `json:"language"`
+	Platform     string    `json:"platform"`
+	Size         string    `json:"size"`
+	Status       int       `json:"status"`
+	Download     int       `json:"download"`
+	LikeCount    int       `json:"like_count"`
+	IsLiked      bool      `json:"is_liked"`
+	CommentCount int       `json:"comment_count"`
+	// DlsitePurchaseURL is the ready-to-use DLsite affiliate purchase link shown
+	// in the 补票 prompt, assembled server-side (pkg/dlsite) from the galgame's
+	// catalog refs.dlsite work number. It rides the RESOURCE rather than the
+	// galgame because both 补票 surfaces (the download modal and the resource
+	// detail panel) are resource-scoped — the modal is opened from contexts that
+	// hold no galgame object, so putting it here avoids drilling the URL through
+	// several component layers.
+	//
+	// Empty when the galgame has no DLsite id, the affiliate template is
+	// unconfigured, or this payload comes from a path that renders no 补票 prompt.
+	// The frontend never builds this URL: the affiliate template stays in server
+	// config, out of the browser bundle.
+	DlsitePurchaseURL string `json:"dlsite_purchase_url,omitempty"`
+	// DlsiteCouponURL is the partnership's coupon landing page (a GLOBAL benefit,
+	// not per-work). Emitted only together with a purchase link, since the notice
+	// shows them as one block. Must already be a shortened URL — see DlsiteConfig.
+	DlsiteCouponURL string   `json:"dlsite_coupon_url,omitempty"`
+	LinkDomain      string   `json:"link_domain"`
+	ProviderNames   []string `json:"provider_names"`
+	Note            string   `json:"note"`
+	NoteHtml        string   `json:"note_html"`
+	Created         string   `json:"created"`
+	Edited          *string  `json:"edited"`
 }
 
 // ResourceDownloadDetail is returned by GET /galgame-resource/:id/detail.

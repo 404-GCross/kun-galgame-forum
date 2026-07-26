@@ -253,6 +253,10 @@ type NextMoeGalgameDetailFull struct {
 	Contributor              []NextMoeContributor       `json:"contributor"`
 	Created                  string                     `json:"created"`
 	Updated                  string                     `json:"updated"`
+	// Refs are the work's external identities keyed by catalog source
+	// ("dlsite" → the DLsite workno). Carried through so the service can build the
+	// 正版购买 link for the galgame header.
+	Refs map[string]string `json:"refs,omitempty"`
 }
 
 // NextMoeEngineWithAlias matches the engine-embedded-in-galgame shape (alias is []string).

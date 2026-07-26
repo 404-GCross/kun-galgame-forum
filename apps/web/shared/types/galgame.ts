@@ -88,6 +88,14 @@ export interface GalgameDetail {
   // Moderators have forbidden publishing download resources under this game
   // (copyright / third-party). The resource tab shows a notice + hides publish.
   resource_publish_banned: boolean
+  /**
+   * DLsite affiliate links for the header's 正版购买 button, assembled server-side
+   * from the catalog's `refs.dlsite` work number. Absent when this galgame has no
+   * DLsite id or the affiliate is unconfigured — the button then does not render.
+   * Never build these in the frontend: the affiliate template is server config.
+   */
+  dlsite_purchase_url?: string
+  dlsite_coupon_url?: string
   alias: string[]
   series: GalgameSeries | null
   engine: GalgameEngineItem[]

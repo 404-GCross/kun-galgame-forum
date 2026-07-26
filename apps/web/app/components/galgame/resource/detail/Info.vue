@@ -16,13 +16,6 @@ const props = defineProps<{
 // comment for the full diagnosis).
 const isEditOpen = ref(false)
 
-// All async paths below cross at least one user-awaited boundary
-// (confirm alert) which drops the Nuxt app context. Capture once so
-// the post-alert kunFetch / useMessage / refresh calls can re-enter
-// it via runWithContext — otherwise kunFetch's useRuntimeConfig hits
-// `$nuxt of null` and the request silently fails.
-const nuxtApp = useNuxtApp()
-
 // Backend-computed labels (e.g. "百度网盘 / OneDrive"). Falls back to the
 // raw domain when the resource pre-dates the backfill or matches no rule.
 const providerName = computed(() => {
@@ -179,17 +172,11 @@ const handleEditDone = () => {
             />
           </div>
 
-          <KunInfo title="补票提示信息" color="danger">
-            <p>
-              须知 Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭,
-              可见经济并不宽裕。如果条件允许, 请尽可能前往
-              <KunLink size="sm" :to="`/galgame/${resource.galgame_id}`">
-                Galgame 详情
-              </KunLink>
-              中的 Galgame 制作商部分 进行正版 Galgame 补票, 感谢您对 Galgame
-              业界做出的贡献
-            </p>
-          </KunInfo>
+          <GalgameResourceBuyLegitNotice
+            :galgame-id="resource.galgame_id"
+            :purchase-url="resource.dlsite_purchase_url"
+            :coupon-url="resource.dlsite_coupon_url"
+          />
 
           <div class="flex justify-end">
             <KunChip

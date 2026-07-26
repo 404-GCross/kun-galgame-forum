@@ -267,4 +267,10 @@ type GalgameDetail struct {
 	Ratings               []GalgameDetailRating   `json:"ratings"`
 	Created               string                  `json:"created"`
 	Updated               string                  `json:"updated"`
+	// DlsitePurchaseURL / DlsiteCouponURL power the 正版购买 button in the galgame
+	// header, assembled server-side (pkg/dlsite) from the catalog's refs.dlsite
+	// work number. Empty when the galgame has no DLsite id or the affiliate is
+	// unconfigured — the button then does not render.
+	DlsitePurchaseURL string `json:"dlsite_purchase_url,omitempty"`
+	DlsiteCouponURL   string `json:"dlsite_coupon_url,omitempty"`
 }
