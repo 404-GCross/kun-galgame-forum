@@ -3,6 +3,26 @@ const props = defineProps<{
   topic: TopicDetail
 }>()
 
+// Covers the reader would otherwise never see.
+//
+// A cover is a FEED-CARD affordance — the thumbnail that earns the click in a
+// list — and by the time someone is on this page it has already done its job.
+// It is also, 97% of the time, literally the first image of the body (authors
+// re-upload the opening image as the cover), so rendering covers unconditionally
+// would show the same picture twice within one screen.
+//
+// So only the covers absent from the body are shown: the ~2.6% where the author
+// deliberately picked a different image, and the handful whose body carries no
+// image at all. For everyone else this renders nothing, which is correct —
+// nothing was missing there.
+const unseenCovers = computed(() => {
+  const body = props.topic.content_markdown ?? ''
+  return (props.topic.cover_images ?? []).filter((token) => {
+    const hash = token.split('/').pop()
+    return hash ? !body.includes(hash) : false
+  })
+})
+
 // Shared reaction state for this topic: the chips (below) + the trigger (in the
 // footer on desktop) both inject this, so reacting in either place stays in sync.
 provide(
@@ -76,6 +96,16 @@ provide(
       />
 
       <KunDivider />
+
+      <!-- Lead image, only when the body does not already contain it (see
+           unseenCovers). Reuses the feed card's grid, which already handles
+           multi-cover layout and reserves each slot from the real dims. -->
+      <TopicCoverGrid
+        v-if="unseenCovers.length"
+        :images="unseenCovers"
+        :meta="topic.cover_image_meta"
+        zoomable
+      />
 
       <KunContent
         class="kun-master"

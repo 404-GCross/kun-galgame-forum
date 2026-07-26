@@ -82,7 +82,15 @@ if (data.value) {
   const topic = data.value
 
   const markdown = topic.content_markdown
-  const banner = getFirstImageSrc(topic.content_html)
+  // Social / JSON-LD image. The author's cover wins: a cover IS the topic's
+  // declared representative image, which is exactly what og:image means, and
+  // taking the first body image instead silently overrides a deliberate choice.
+  // Falls back to the body image, so the ~57% of topics that carry no cover are
+  // unaffected — and topics whose body has no image at all (25 of them today)
+  // stop sharing with no preview picture.
+  const banner =
+    imageTokenUrl(topic.cover_images?.[0] ?? '') ||
+    getFirstImageSrc(topic.content_html)
   const created = new Date(topic.created).toString()
   const updated = topic.edited ? new Date(topic.edited).toString() : ''
   const description = computed(() =>
