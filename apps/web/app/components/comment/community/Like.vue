@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Like button for a community-backed comment. Unlike the legacy one-way heart,
 // the community reaction is a real TOGGLE: the server returns the authoritative
-// { liked, like_count } and we reconcile the optimistic state to it.
+// { liked, like_count } and we reconcile the optimistic state to it. Region-
+// agnostic — the like route is post-addressed, so all four comment areas share it.
 const props = defineProps<{
   comment: GalgameCommunityComment
 }>()

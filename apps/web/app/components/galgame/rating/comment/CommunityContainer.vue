@@ -11,6 +11,14 @@ const props = defineProps<{
   ratingAuthor: KunUser
 }>()
 
+// Renders through the shared comment family (CommentCommunityRow / Composer), so
+// this area looks identical to the galgame reference; `isFlat` on the descriptor
+// keeps its no-nesting / explicit-recipient semantics.
+const target: CommunityCommentTarget = {
+  kind: 'rating',
+  ratingId: props.ratingId
+}
+
 const PAGE_LIMIT = 30
 
 const posts = ref<GalgameCommunityComment[]>([])
@@ -102,8 +110,8 @@ const handleTombstoned = (postId: number) => {
     />
 
     <div class="space-y-3">
-      <GalgameRatingCommentCommunityComposer
-        :rating-id="ratingId"
+      <CommentCommunityComposer
+        :target="target"
         :target-user-id="ratingAuthor.id"
         @submitted="handleNewComment"
       />
@@ -112,12 +120,14 @@ const handleTombstoned = (postId: number) => {
 
       <KunNull v-else-if="isEmpty" />
 
-      <div v-else-if="posts.length" class="space-y-3">
-        <GalgameRatingCommentCommunityComment
+      <!-- space-y-6 matches the galgame reference rhythm: the rows are bare
+           avatar+body rows now (they used to be individually carded). -->
+      <div v-else-if="posts.length" class="space-y-6">
+        <CommentCommunityRow
           v-for="post in posts"
           :key="post.id"
           :comment="post"
-          :rating-id="ratingId"
+          :target="target"
           @reply-added="handleNewComment"
           @updated="handleUpdated"
           @tombstoned="handleTombstoned"
@@ -139,6 +149,6 @@ const handleTombstoned = (postId: number) => {
 
     <!-- Single community-comment flag modal for this section (reused, region
          agnostic — post-id addressed). -->
-    <GalgameCommentCommunityFlagModal />
+    <CommentCommunityFlagModal />
   </KunCard>
 </template>

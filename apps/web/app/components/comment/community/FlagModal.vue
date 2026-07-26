@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The single community-comment flag modal (charter ruling 13). Replaces the
-// legacy ReportButton → trust direct-report path on galgame comments: a report
+// legacy ReportButton → trust direct-report path on community comments: a report
 // now goes to the community moderation primitive (TL-weighted, auto-hide on
-// threshold). Mounted once by GalgameCommentCommunityContainer; driven by
+// threshold). Region-agnostic — the flag route is post-addressed, so all four
+// comment areas mount this once per section and drive it through
 // useGalgameCommentFlag(). Follows the KunModal + KunSelect + KunTextarea shape
 // of the shared report/Modal.vue.
 const { isOpen, targetPostId } = useGalgameCommentFlag()
@@ -77,7 +78,7 @@ const submit = async () => {
       <div class="space-y-2">
         <span class="text-default-600 text-sm font-medium">补充说明</span>
         <KunTextarea
-          name="galgame-comment-flag-note"
+          name="community-comment-flag-note"
           placeholder="请尽量清晰、详细地描述问题：违规的具体内容是什么、为什么违规。描述越具体，我们越能快速准确地处理。"
           :rows="5"
           v-model="note"

@@ -14,6 +14,15 @@ const props = defineProps<{
 const route = useRoute()
 const domain = computed(() => (route.params as { domain: string }).domain)
 
+// Renders through the shared comment family (CommentCommunityRow / Composer), so
+// this area looks identical to the galgame reference. Resolved once at setup, like
+// the paging URLs below — this section only ever mounts on /website/[domain].
+const target: CommunityCommentTarget = {
+  kind: 'website',
+  websiteId: props.websiteId,
+  domain: domain.value
+}
+
 const PAGE_LIMIT = 30
 
 const posts = ref<GalgameCommunityComment[]>([])
@@ -24,7 +33,11 @@ const loadingMore = ref(false)
 
 const { data, status } = await useKunFetch<GalgameCommunityCommentPage>(
   `/website/${domain.value}/comments`,
-  { lazy: true, method: 'GET', query: { website_id: props.websiteId, limit: PAGE_LIMIT } }
+  {
+    lazy: true,
+    method: 'GET',
+    query: { website_id: props.websiteId, limit: PAGE_LIMIT }
+  }
 )
 
 const seedFrom = (page: GalgameCommunityCommentPage) => {
@@ -128,6 +141,17 @@ const handleNewComment = (post: GalgameCommunityComment) => {
   }
 }
 
+const handleUpdated = (updated: GalgameCommunityComment) => {
+  // The edit response is built without the target_user enrichment (the server's
+  // UpdateComment returns buildCommunityItem directly). An edit changes only the
+  // body, never the reply relationship, so keep the prior "A → B" target.
+  posts.value = posts.value.map((p) =>
+    p.id === updated.id
+      ? { ...updated, target_user: updated.target_user ?? p.target_user }
+      : p
+  )
+}
+
 const handleTombstoned = (postId: number) => {
   posts.value = posts.value.map((p) =>
     p.id === postId
@@ -138,49 +162,51 @@ const handleTombstoned = (postId: number) => {
 </script>
 
 <template>
-  <KunCard :is-transparent="false" :is-hoverable="false" class-name="p-6">
-    <h2 class="text-default-900 mb-6 text-2xl font-bold">用户评论</h2>
+  <KunCard :is-transparent="false" :is-hoverable="false">
+    <KunHeader
+      name="用户评论"
+      description="说说你对这个网站的使用体验"
+      scale="h2"
+    />
 
-    <div class="mb-8">
-      <WebsiteCommentCommunityComposer
-        :website-id="websiteId"
-        :domain="domain"
+    <div class="space-y-3">
+      <CommentCommunityComposer
+        :target="target"
         @submitted="handleNewComment"
       />
+
+      <KunLoading v-if="status === 'pending' && !seeded" />
+
+      <KunNull v-else-if="isEmpty" />
+
+      <div v-else-if="groups.length" class="space-y-6">
+        <CommentCommunityRow
+          v-for="group in groups"
+          :key="group.root.id"
+          :comment="group.root"
+          :replies="group.replies"
+          :target="target"
+          :depth="0"
+          @reply-added="handleNewComment"
+          @updated="handleUpdated"
+          @tombstoned="handleTombstoned"
+        />
+      </div>
+
+      <KunButton
+        v-if="hasMore"
+        variant="light"
+        color="primary"
+        full-width
+        :loading="loadingMore"
+        @click="loadMore"
+      >
+        <KunIcon name="lucide:chevron-down" />
+        加载更多评论
+      </KunButton>
     </div>
-
-    <KunLoading v-if="status === 'pending' && !seeded" />
-
-    <KunNull v-else-if="isEmpty" />
-
-    <div v-else-if="groups.length" class="space-y-6">
-      <WebsiteCommentCommunityComment
-        v-for="group in groups"
-        :key="group.root.id"
-        :comment="group.root"
-        :replies="group.replies"
-        :website-id="websiteId"
-        :domain="domain"
-        :depth="0"
-        @reply-added="handleNewComment"
-        @tombstoned="handleTombstoned"
-      />
-    </div>
-
-    <KunButton
-      v-if="hasMore"
-      variant="light"
-      color="primary"
-      full-width
-      class-name="mt-6"
-      :loading="loadingMore"
-      @click="loadMore"
-    >
-      <KunIcon name="lucide:chevron-down" />
-      加载更多评论
-    </KunButton>
 
     <!-- Single community-comment flag modal (reused, region agnostic). -->
-    <GalgameCommentCommunityFlagModal />
+    <CommentCommunityFlagModal />
   </KunCard>
 </template>

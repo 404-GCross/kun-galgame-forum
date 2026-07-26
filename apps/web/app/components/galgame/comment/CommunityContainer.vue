@@ -16,6 +16,10 @@ const route = useRoute()
 const config = useRuntimeConfig()
 const gid = parseInt((route.params as { gid: string }).gid)
 
+// This area is the reference style for all four comment surfaces; the shared
+// Row / Composer read everything area-specific off this target.
+const target: CommunityCommentTarget = { kind: 'galgame', galgameId: gid }
+
 // See GalgameResource: for a wiki-catalogue game the forum hasn't ingested, hide
 // the empty-state (the detail page's 未收录 notice covers it) but KEEP the
 // composer — commenting creates the local row, part of the recording funnel.
@@ -151,7 +155,12 @@ const scrollToPost = (postId: number) => {
         return
       }
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      const ring = ['outline-2', 'outline-offset-2', 'outline-primary', 'rounded-lg']
+      const ring = [
+        'outline-2',
+        'outline-offset-2',
+        'outline-primary',
+        'rounded-lg'
+      ]
       el.classList.add(...ring)
       setTimeout(() => el.classList.remove(...ring), 3000)
     }, 200)
@@ -214,7 +223,11 @@ const resolveDeepLink = async () => {
     // Old external anchors (#galgame-comment-<id>) may carry either a new post
     // id or a legacy id: try it as a post id first, then fall back to locate.
     let guard = 0
-    while (!posts.value.some((p) => p.id === raw) && hasMore.value && guard < 50) {
+    while (
+      !posts.value.some((p) => p.id === raw) &&
+      hasMore.value &&
+      guard < 50
+    ) {
       await loadMore()
       guard += 1
     }
@@ -259,10 +272,7 @@ onMounted(() => {
       </template>
     </KunHeader>
 
-    <GalgameCommentCommunityComposer
-      :galgame-id="gid"
-      @submitted="handleNewComment"
-    />
+    <CommentCommunityComposer :target="target" @submitted="handleNewComment" />
 
     <KunLoading v-if="status === 'pending'" />
 
@@ -272,12 +282,12 @@ onMounted(() => {
     />
 
     <div v-else-if="groups.length" class="space-y-6">
-      <GalgameCommentCommunityComment
+      <CommentCommunityRow
         v-for="group in groups"
         :key="group.root.id"
         :comment="group.root"
         :replies="group.replies"
-        :galgame-id="gid"
+        :target="target"
         :depth="0"
         @reply-added="handleNewComment"
         @updated="handleUpdated"
@@ -298,6 +308,6 @@ onMounted(() => {
     </KunButton>
 
     <!-- Single community-comment flag modal for this section. -->
-    <GalgameCommentCommunityFlagModal />
+    <CommentCommunityFlagModal />
   </div>
 </template>

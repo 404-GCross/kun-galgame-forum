@@ -11,6 +11,13 @@ const props = defineProps<{
   toolsetId: number
 }>()
 
+// Renders through the shared comment family (CommentCommunityRow / Composer), so
+// this area looks identical to the galgame reference.
+const target: CommunityCommentTarget = {
+  kind: 'toolset',
+  toolsetId: props.toolsetId
+}
+
 const PAGE_LIMIT = 30
 
 const posts = ref<GalgameCommunityComment[]>([])
@@ -127,22 +134,19 @@ const handleTombstoned = (postId: number) => {
       scale="h2"
     />
 
-    <ToolsetCommentCommunityComposer
-      :toolset-id="toolsetId"
-      @submitted="handleNewComment"
-    />
+    <CommentCommunityComposer :target="target" @submitted="handleNewComment" />
 
     <KunLoading v-if="status === 'pending' && !seeded" />
 
     <KunNull v-else-if="isEmpty" />
 
     <div v-else-if="groups.length" class="space-y-6">
-      <ToolsetCommentCommunityComment
+      <CommentCommunityRow
         v-for="group in groups"
         :key="group.root.id"
         :comment="group.root"
         :replies="group.replies"
-        :toolset-id="toolsetId"
+        :target="target"
         :depth="0"
         @reply-added="handleNewComment"
         @updated="handleUpdated"
@@ -163,6 +167,6 @@ const handleTombstoned = (postId: number) => {
     </KunButton>
 
     <!-- Single community-comment flag modal (reused, region agnostic). -->
-    <GalgameCommentCommunityFlagModal />
+    <CommentCommunityFlagModal />
   </div>
 </template>

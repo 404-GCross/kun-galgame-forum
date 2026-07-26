@@ -1,14 +1,24 @@
 <script setup lang="ts">
-// One node in the community-backed toolset comment view. Two flat tiers (grouped
-// by the container): depth 0 = root, depth 1 = reply (any DB depth flattened into
-// one group). Edit is author-only (parity); delete is author||canModerate (the
-// toolset owner is a server-side superset, not a new UI entry — charter ruling 20).
-// Like + flag reuse the region-agnostic galgame community components.
+// One post row in a community-primitive comment area — the SINGLE node component
+// behind all four surfaces (galgame + rating / website / toolset). The galgame
+// comment area's look is the reference; everything area-specific (endpoints,
+// content cap, moderation key, anchor prefix, flat-vs-tree, mention support) comes
+// from the target's descriptor in utils/communityComment.ts.
+//
+// The visual model stays FLAT — two tiers:
+//
+//   depth 0 = root; depth 1 = reply (any DB depth, rendered as one flat group)
+//
+// The container does the grouping and passes a root's replies down via `replies`;
+// a reply node never receives children. Mutations bubble up as events; the
+// container owns the list state.
 const props = withDefaults(
   defineProps<{
     comment: GalgameCommunityComment
-    toolsetId: number
+    target: CommunityCommentTarget
     depth?: number
+    // Root-only: the flat reply group beneath this post (grouped by the
+    // container). Always empty on a flat area and on a reply node.
     replies?: GalgameCommunityComment[]
   }>(),
   { depth: 0, replies: () => [] }
@@ -16,12 +26,19 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   replyAdded: [reply: GalgameCommunityComment]
+  // Author edit success — the patched node, spliced in by id.
   updated: [post: GalgameCommunityComment]
+  // Delete tombstones the post in place (the floor is kept); the container flips
+  // its `deleted` flag rather than removing the row.
   tombstoned: [postId: number]
 }>()
 
+// A mounted section's target never changes kind, so the descriptor (and the
+// permission check derived from it) is resolved once here rather than per render.
+const surface = communityCommentSurface(props.target)
+
 const { id } = usePersistUserStore()
-const canDeleteToolsetComment = useCan('comment.toolset.delete')
+const canDeleteComment = useCan(surface.deletePermission)
 const { open: openFlag } = useGalgameCommentFlag()
 
 const isShowReply = ref(false)
@@ -31,13 +48,24 @@ const isSavingEdit = ref(false)
 
 const isAuthor = computed(() => props.comment.user?.id === id)
 
+// Authority is aligned with the server: only the author edits from the UI; the
+// author OR a moderator deletes. A moderator CAN edit others server-side (the
+// mod-actor variant), but no area ever offered that as a button, so it stays out.
 const isShowEdit = computed(() => isAuthor.value && !props.comment.deleted)
 const isShowDelete = computed(
-  () =>
-    (isAuthor.value || canDeleteToolsetComment.value) && !props.comment.deleted
+  () => (isAuthor.value || canDeleteComment.value) && !props.comment.deleted
 )
+// Report entry: not on your own post, and never on a tombstone.
 const isShowFlag = computed(() => !isAuthor.value && !props.comment.deleted)
 
+// The "→ 对方" chip: only where the area actually wants it (never on galgame,
+// which retired 「评论给」in favour of @mentions even though its replies still
+// carry a server-completed target_user).
+const replyTarget = computed(() =>
+  surface.showsReplyTarget ? props.comment.target_user : null
+)
+
+// "已编辑" / "已编辑（管理）" — a moderator rewrite wins the label.
 const editedLabel = computed(() => {
   if (props.comment.edited == null && !props.comment.edited_by_moderator) {
     return null
@@ -69,8 +97,8 @@ const handleSubmitEdit = async () => {
     useMessage(10540, 'warn')
     return
   }
-  if (text.length > 1007) {
-    useMessage(10541, 'warn')
+  if (text.length > surface.maxLength) {
+    useMessage(`评论最大长度为 ${surface.maxLength} 个字符`, 'warn')
     return
   }
   if (text === props.comment.content) {
@@ -79,16 +107,18 @@ const handleSubmitEdit = async () => {
   }
 
   isSavingEdit.value = true
-  // Edit reuses the region-agnostic, post-addressed galgame route; no ?gid — the
-  // toolset area has no galgame display counter to keep in sync.
   const updated = await kunFetch<GalgameCommunityComment>(
-    `/galgame/comments/${props.comment.id}`,
-    { method: 'PUT', body: { content: text } }
+    surface.editUrl(props.comment.id),
+    {
+      method: 'PUT',
+      query: surface.editQuery,
+      body: { content: text }
+    }
   )
   isSavingEdit.value = false
 
   if (updated) {
-    useMessage('已更新评论', 'success')
+    useMessage('评论已更新', 'success')
     emit('updated', updated)
     handleCancelEdit()
   }
@@ -101,12 +131,12 @@ const handleDelete = async () => {
   if (!ok) {
     return
   }
-  // Region-specific delete: the resource id is pinned by the path so the server
-  // decides authority (author / toolset owner / moderator).
-  const result = await kunFetch(
-    `/toolset/${props.toolsetId}/comments/${props.comment.id}`,
-    { method: 'DELETE' }
-  )
+
+  const result = await kunFetch(surface.deleteUrl(props.comment.id), {
+    method: 'DELETE',
+    query: surface.deleteQuery
+  })
+
   if (result) {
     useMessage(10538, 'success')
     emit('tombstoned', props.comment.id)
@@ -120,7 +150,9 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
 </script>
 
 <template>
-  <div class="flex gap-3">
+  <!-- Anchor for notification / external deep-links and the post-publish scroll
+       (?comment=<post_id> and #<prefix>-<post_id>); the container targets it. -->
+  <div :id="`${surface.anchorPrefix}-${comment.id}`" class="flex gap-3">
     <KunAvatar :user="comment.user" :size="depth === 0 ? 'md' : 'sm'" />
 
     <div class="min-w-0 flex-1 space-y-1.5">
@@ -128,14 +160,10 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
         <span class="text-default-800 text-sm font-medium">
           {{ comment.user.name }}
         </span>
-        <template v-if="comment.target_user">
+        <template v-if="replyTarget">
           <KunIcon name="lucide:arrow-right" class="text-default-400 text-xs" />
-          <KunLink
-            underline="hover"
-            size="sm"
-            :to="`/user/${comment.target_user.id}`"
-          >
-            {{ comment.target_user.name }}
+          <KunLink underline="hover" size="sm" :to="`/user/${replyTarget.id}`">
+            {{ replyTarget.name }}
           </KunLink>
         </template>
         <span class="text-default-400 text-xs">
@@ -157,20 +185,24 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
         [已删除]
       </p>
 
-      <!-- Plain-text view (parity — the toolset area was never markdown). -->
-      <div
+      <!-- View mode: kungal-rendered Markdown (KunContent → DOMPurify). The BFF
+           renders content_html for every area from the same pipeline. -->
+      <KunContent
         v-else-if="!isEditing"
-        class="text-default-700 text-sm break-all whitespace-pre-line"
-      >
-        {{ comment.content }}
-      </div>
+        compact
+        :content="renderKatex(comment.content_html)"
+      />
 
+      <!-- Edit mode: same editor as the composer, pre-loaded with the source. -->
       <div v-else class="space-y-2">
-        <KunTextarea v-model="editingContent" :rows="3" />
-        <div class="flex justify-end gap-1">
+        <KunMilkdownDualEditorProvider
+          :value-markdown="editingContent"
+          @set-markdown="(val) => (editingContent = val)"
+        />
+        <div class="flex justify-end gap-2">
           <KunButton
             variant="light"
-            color="danger"
+            color="default"
             size="sm"
             @click="handleCancelEdit"
           >
@@ -200,7 +232,7 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
           回复
         </KunButton>
 
-        <GalgameCommentCommunityLike :comment="comment" />
+        <CommentCommunityLike :comment="comment" />
 
         <KunTooltip v-if="isShowFlag" text="举报">
           <KunButton
@@ -218,6 +250,7 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
           <KunButton
             :is-icon-only="true"
             variant="light"
+            color="default"
             size="sm"
             @click="handleStartEdit"
           >
@@ -239,23 +272,29 @@ const handleReplyAdded = (reply: GalgameCommunityComment) => {
       </div>
 
       <KunFadeCard>
-        <div v-if="isShowReply" class="mt-2">
-          <ToolsetCommentCommunityComposer
-            :toolset-id="toolsetId"
-            :reply-to-post-id="comment.id"
-            @close="isShowReply = false"
-            @submitted="handleReplyAdded"
-          />
-        </div>
+        <!-- A flat area has no parent pointer: replying there simply pre-targets
+             THIS post's author and the new post lands flat in the list. -->
+        <CommentCommunityComposer
+          v-if="isShowReply"
+          :target="target"
+          :reply-to-post-id="surface.isFlat ? null : comment.id"
+          :target-user-id="comment.user.id"
+          :is-reply="true"
+          @close="isShowReply = false"
+          @submitted="handleReplyAdded"
+        />
       </KunFadeCard>
 
       <!-- Replies render flush — single visual tier, smaller avatar the only cue. -->
-      <div v-if="depth === 0 && replies.length" class="mt-3 space-y-4">
-        <ToolsetCommentCommunityComment
+      <div
+        v-if="!surface.isFlat && depth === 0 && replies.length"
+        class="mt-3 space-y-4"
+      >
+        <CommentCommunityRow
           v-for="reply in replies"
           :key="reply.id"
           :comment="reply"
-          :toolset-id="toolsetId"
+          :target="target"
           :depth="1"
           @reply-added="(r) => emit('replyAdded', r)"
           @updated="(u) => emit('updated', u)"
