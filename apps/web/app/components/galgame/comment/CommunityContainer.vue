@@ -39,7 +39,7 @@ const {
   handleUpdated,
   handleTombstoned,
   scrollToPost
-} = useCommunityCommentList(target)
+} = await useCommunityCommentList(target)
 
 watchEffect(() => emit('update:loading', status.value === 'pending'))
 

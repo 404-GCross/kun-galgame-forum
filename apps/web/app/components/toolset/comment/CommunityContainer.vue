@@ -21,7 +21,10 @@ const {
   handleNewComment,
   handleUpdated,
   handleTombstoned
-} = useCommunityCommentList({ kind: 'toolset', toolsetId: props.toolsetId })
+} = await useCommunityCommentList({
+  kind: 'toolset',
+  toolsetId: props.toolsetId
+})
 
 const target: CommunityCommentTarget = {
   kind: 'toolset',

@@ -20,7 +20,16 @@ export interface CommunityCommentGroup {
 // screen cheap while still filling a typical thread in one request.
 const PAGE_LIMIT = 30
 
-export const useCommunityCommentList = (target: CommunityCommentTarget) => {
+// ASYNC ON PURPOSE — callers MUST `await` this. The await makes the calling
+// component's setup async, which is what keeps SSR and hydration agreeing: the
+// server then waits for the first page to settle before rendering, so it picks the
+// same branch of the loading / empty / list chain that the client hydrates. Drop
+// the await and the server renders KunLoading while the client hydrates KunNull —
+// a "Hydration node mismatch" at KunNull (the galgame comment tab regressed exactly
+// this way; every container in this family awaited before the logic moved here).
+export const useCommunityCommentList = async (
+  target: CommunityCommentTarget
+) => {
   const surface = communityCommentSurface(target)
 
   const posts = ref<GalgameCommunityComment[]>([])
@@ -33,7 +42,7 @@ export const useCommunityCommentList = (target: CommunityCommentTarget) => {
   // here — the server owns it, since the list is a public GET.
   const locked = ref(false)
 
-  const { data, status } = useKunFetch<GalgameCommunityCommentPage>(
+  const { data, status } = await useKunFetch<GalgameCommunityCommentPage>(
     surface.listUrl,
     {
       lazy: true,

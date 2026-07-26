@@ -24,7 +24,7 @@ const {
   handleNewComment,
   handleUpdated,
   handleTombstoned
-} = useCommunityCommentList({ kind: 'rating', ratingId: props.ratingId })
+} = await useCommunityCommentList({ kind: 'rating', ratingId: props.ratingId })
 
 const target: CommunityCommentTarget = {
   kind: 'rating',

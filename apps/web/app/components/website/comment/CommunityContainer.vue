@@ -32,7 +32,7 @@ const {
   handleUpdated,
   handleTombstoned,
   scrollToPost
-} = useCommunityCommentList(target)
+} = await useCommunityCommentList(target)
 
 // Scroll to + highlight a just-published root (parity with _scrollIntoComment).
 const onPublished = (post: GalgameCommunityComment) => {

@@ -24,7 +24,10 @@ const {
   handleUpdated,
   handleTombstoned,
   scrollToPost
-} = useCommunityCommentList({ kind: 'resource', resourceId: props.resourceId })
+} = await useCommunityCommentList({
+  kind: 'resource',
+  resourceId: props.resourceId
+})
 
 const target: CommunityCommentTarget = {
   kind: 'resource',
