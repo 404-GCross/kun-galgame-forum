@@ -209,6 +209,7 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-tag", a.GalgameEntityHandler.GetTagList)
 	api.Get("/galgame-tag/search", a.GalgameEntityHandler.SearchTags)
 	api.Get("/galgame-tag/multi", a.GalgameEntityHandler.GetMultiTagGalgames)
+	api.Get("/galgame-tag/multi-contains", a.GalgameEntityHandler.GetMultiTagGalgamesContains)
 	api.Get("/galgame-tag/:name", a.GalgameEntityHandler.GetTagDetail)
 	api.Get("/galgame-official", a.GalgameEntityHandler.GetOfficialList)
 	api.Get("/galgame-official/search", a.GalgameEntityHandler.SearchOfficials)

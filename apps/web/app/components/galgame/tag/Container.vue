@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
 const pageData = reactive({
@@ -24,12 +24,18 @@ const searchModeOptions = [
   { label: '多标签搜索', value: 'multi' }
 ] as const
 
+const matchMode = ref<'exact' | 'contains'>('exact')
+const matchModeOptions = [
+  { label: '精确模式', value: 'exact' },
+  { label: '包含模式', value: 'contains' }
+] as const
+
 const displayTags = computed(() => {
   if (searchMode.value === 'single') {
     if (searchQuery.value.trim()) return searchResult.value
-    return data.value!.tags
+    return data.value?.tags ?? []
   }
-  return data.value!.tags
+  return data.value?.tags ?? []
 })
 
 // True when we're showing the FULL paginated tag list (the BE returns the
@@ -94,17 +100,37 @@ const fetchGames = async () => {
     return
   }
   loadingGames.value = true
-  const res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
-    `/galgame-tag/multi`,
-    {
-      method: 'GET',
-      query: {
-        page: gamesPage.value,
-        limit: gamesLimit,
-        tagIds: selectedTags.value.map((t) => t.id).join(',')
+
+  let res: { galgames: GalgameCard[]; total: number } | null = null
+
+  //Add contains mode
+  if (matchMode.value === 'contains') {
+    res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
+      '/galgame-tag/multi-contains',
+      {
+        method: 'GET',
+        query: {
+          page: gamesPage.value,
+          limit: gamesLimit,
+          tagNames:selectedTags.value.map((t) => t.name).join(',')
+        }
       }
-    }
-  )
+    )
+  } else {
+    //default mode
+    res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
+      `/galgame-tag/multi`,
+      {
+        method: 'GET',
+        query: {
+          page: gamesPage.value,
+          limit: gamesLimit,
+          tagIds: selectedTags.value.map((t) => t.id).join(',')
+        }
+      }
+    )
+  }
+
   loadingGames.value = false
   if (res) {
     resultGames.value = res.galgames
@@ -174,6 +200,14 @@ watch(
               v-model="searchMode"
               :options="searchModeOptions"
               aria-label="search-mode"
+              class-name="w-36"
+            />
+
+            <KunSelect
+              v-if="searchMode === 'multi'"
+              v-model="matchMode"
+              :options="matchModeOptions"
+              aria-label="match-mode"
               class-name="w-36"
             />
 
