@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"strconv"
-
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
@@ -61,91 +59,28 @@ func (s *TagService) Search(
 	rawQuery url.Values,
 	isSFW bool,
 ) ([]dto.TagListItem, *errors.AppError) {
-	searchQuery := rawQuery.Get("q")
-
-	// Try Meilisearch first.
 	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/search", withSFWFilter(rawQuery, isSFW))
-	if appErr == nil {
-		var resp struct {
-			Items []nextMoeTagListItem `json:"items"`
-		}
-		if err := json.Unmarshal(data, &resp); err != nil {
-			return nil, errors.ErrInternal("解析 Galgame 响应失败")
-		}
-		items := make([]dto.TagListItem, 0, len(resp.Items))
-		for _, t := range resp.Items {
-			if isSFW && t.Category == "sexual" {
-				continue
-			}
-			items = append(items, dto.TagListItem{
-				ID: t.ID, Name: t.Name, Category: t.Category,
-				GalgameCount: t.GalgameCount,
-			})
-		}
-		return items, nil
-	}
-
-	// Meilisearch unavailable — fall back to client-side substring search.
-	if searchQuery == "" {
+	if appErr != nil {
 		return nil, appErr
 	}
-	return s.searchContains(ctx, searchQuery, isSFW)
-}
-
-// searchContains fetches all tags (paginated) and returns those whose Name
-// contains the query as a substring. Used as a fallback when Meilisearch is
-// unavailable in dev.
-func (s *TagService) searchContains(
-	ctx context.Context,
-	query string,
-	isSFW bool,
-) ([]dto.TagListItem, *errors.AppError) {
-	const maxPages = 5
-	const perPage = 200
-	seen := make(map[int]bool)
-	var result []dto.TagListItem
-
-	queryLower := strings.ToLower(query)
-
-	for page := 1; page <= maxPages; page++ {
-		q := url.Values{
-			"page":  {strconv.Itoa(page)},
-			"limit": {strconv.Itoa(perPage)},
-		}
-		if isSFW {
-			q.Set("content_limit", "sfw")
-		}
-		data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags", q)
-		if appErr != nil {
-			return nil, appErr
-		}
-		var parsed nextMoeTagListResp
-		if err := json.Unmarshal(data, &parsed); err != nil {
-			return nil, errors.ErrInternal("解析 Galgame 响应失败")
-		}
-		if len(parsed.Items) == 0 {
-			break
-		}
-		for _, t := range parsed.Items {
-			if seen[t.ID] {
-				continue
-			}
-			if isSFW && t.Category == "sexual" {
-				continue
-			}
-			if strings.Contains(strings.ToLower(t.Name), queryLower) {
-				seen[t.ID] = true
-				result = append(result, dto.TagListItem{
-					ID: t.ID, Name: t.Name, Category: t.Category,
-					GalgameCount: t.GalgameCount,
-				})
-			}
-		}
+	var resp struct {
+		Items []nextMoeTagListItem `json:"items"`
 	}
-
-	return result, nil
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, errors.ErrInternal("解析 Galgame 响应失败")
+	}
+	items := make([]dto.TagListItem, 0, len(resp.Items))
+	for _, t := range resp.Items {
+		if isSFW && t.Category == "sexual" {
+			continue
+		}
+		items = append(items, dto.TagListItem{
+			ID: t.ID, Name: t.Name, Category: t.Category,
+			GalgameCount: t.GalgameCount,
+		})
+	}
+	return items, nil
 }
-
 
 // GetByMultiTag — GET /galgame-tag/multi
 //
