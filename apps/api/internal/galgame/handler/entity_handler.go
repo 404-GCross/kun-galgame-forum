@@ -1,12 +1,10 @@
-﻿package handler
+package handler
 
 import (
 	"net/url"
-	"strconv"
 
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/service"
-	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -156,28 +154,6 @@ func (h *EntityHandler) GetMultiTagGalgames(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// GetMultiTagGalgamesContains — GET /galgame-tag/multi-contains
-//
-// Contains-mode multi-tag endpoint. Accepts comma-separated human-readable
-// tag names (not numeric IDs), splits each into CJK characters, expands via
-// substring matching, computes the Cartesian product, and returns the
-// deduplicated + paginated union of all combination results.
-func (h *EntityHandler) GetMultiTagGalgamesContains(c fiber.Ctx) error {
-	tagNamesStr := c.Query("tagNames")
-	if tagNamesStr == "" {
-		return response.Error(c, errors.ErrBadRequest("缺少 tagNames 参数"))
-	}
-	page := atoiOr(c.Query("page"), 1)
-	limit := atoiOr(c.Query("limit"), 24)
-	result, appErr := h.tagService.GetByMultiTagContains(
-		c.Context(), tagNamesStr, utils.IsSFW(c), page, limit,
-	)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, result)
-}
-
 // GetTagDetail — GET /galgame-tag/:name
 func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 	detail, appErr := h.tagService.GetDetail(
@@ -203,16 +179,4 @@ func collectQuery(c fiber.Ctx) url.Values {
 		q.Set(k, v)
 	}
 	return q
-}
-
-// atoiOr parses s as an int or returns def on failure / zero / negative.
-func atoiOr(s string, def int) int {
-	if s == "" {
-		return def
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil || v <= 0 {
-		return def
-	}
-	return v
 }

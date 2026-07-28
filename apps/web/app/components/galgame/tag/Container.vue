@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
 const pageData = reactive({
@@ -100,37 +100,20 @@ const fetchGames = async () => {
     return
   }
   loadingGames.value = true
-
-  let res: { galgames: GalgameCard[]; total: number } | null = null
-
-  //Add contains mode
-  if (matchMode.value === 'contains') {
-    res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
-      '/galgame-tag/multi-contains',
-      {
-        method: 'GET',
-        query: {
-          page: gamesPage.value,
-          limit: gamesLimit,
-          tagNames:selectedTags.value.map((t) => t.name).join(',')
-        }
+  // Both modes are the same query; `mode` decides whether the backend asks the
+  // galgame to expand each tag to its descendants (科幻 also admitting 硬科幻).
+  const res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
+    `/galgame-tag/multi`,
+    {
+      method: 'GET',
+      query: {
+        page: gamesPage.value,
+        limit: gamesLimit,
+        mode: matchMode.value,
+        tagIds: selectedTags.value.map((t) => t.id).join(',')
       }
-    )
-  } else {
-    //default mode
-    res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
-      `/galgame-tag/multi`,
-      {
-        method: 'GET',
-        query: {
-          page: gamesPage.value,
-          limit: gamesLimit,
-          tagIds: selectedTags.value.map((t) => t.id).join(',')
-        }
-      }
-    )
-  }
-
+    }
+  )
   loadingGames.value = false
   if (res) {
     resultGames.value = res.galgames
@@ -157,6 +140,14 @@ watch(
     fetchGames()
   }
 )
+
+// Switching 精确/包含 changes the result set, so it has to refetch — without this
+// the dropdown looks inert until you happen to add or remove a tag. Page resets
+// because the current page number means nothing against a different result set.
+watch(matchMode, () => {
+  gamesPage.value = 1
+  fetchGames()
+})
 </script>
 
 <template>

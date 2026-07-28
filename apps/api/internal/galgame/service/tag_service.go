@@ -1,12 +1,10 @@
-﻿package service
+package service
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/url"
-	"sort"
-	"strings"
+
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
@@ -87,6 +85,23 @@ func (s *TagService) Search(
 // Proxies to the galgame /tag/multi endpoint with param renamed to the
 // snake_case the galgame expects and content_limit forwarded in SFW mode,
 // then enriches the resulting galgames with local like counts etc.
+//
+// Two match modes, and the difference is one upstream parameter:
+//
+//   - exact (default) — flat AND: a galgame must carry every selected tag.
+//   - contains (mode=contains) — each selected tag additionally matches its
+//     descendants, so 科幻 also admits 硬科幻 / 科幻奇幻. AND across the selected
+//     tags, OR within each tag's descendant set.
+//
+// The expansion is the galgame's job, not ours (galgame_tag_edge, backfilled
+// from the VNDB tag DAG). It resolves in one query, so total and pagination stay
+// exact. Do NOT reintroduce a forum-side approximation: matching tag names by
+// substring looks equivalent and is not — it expands 恋爱 into 无恋爱剧情, the
+// literal opposite, because name similarity is not a semantic relation.
+//
+// Old galgame builds ignore an unrecognised `expand`, degrading to flat AND
+// rather than erroring, so this is safe to ship before the galgame side is
+// deployed and backfilled.
 func (s *TagService) GetByMultiTag(
 	ctx context.Context,
 	rawQuery url.Values,
@@ -103,6 +118,18 @@ func (s *TagService) GetByMultiTag(
 	q := url.Values{"content_limit": {src.Get("content_limit")}, "include": {"meta"}}
 	if ids != "" {
 		q.Set("ids", ids)
+	}
+	// Pagination belongs upstream — it owns the tag index, so it alone knows the
+	// real total. These were never forwarded, which pinned every result set to the
+	// galgame's default first page: `page=2` silently returned page 1 again.
+	if page := src.Get("page"); page != "" {
+		q.Set("page", page)
+	}
+	if limit := src.Get("limit"); limit != "" {
+		q.Set("limit", limit)
+	}
+	if src.Get("mode") == "contains" {
+		q.Set("expand", "descendants")
 	}
 
 	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/multi", q)
@@ -125,166 +152,6 @@ func (s *TagService) GetByMultiTag(
 	return &TagMultiPage{
 		Galgames: s.enricher.ToCards(ctx, filtered),
 		Total:    parsed.Total,
-	}, nil
-}
-
-// cartesianProduct computes the cartesian product of a slice of slices.
-// Example: [[1,2], [3]] → [[1,3], [2,3]]
-func cartesianProduct(sets [][]int) [][]int {
-	if len(sets) == 0 {
-		return nil
-	}
-	result := [][]int{{}}
-	for _, set := range sets {
-		var next [][]int
-		for _, existing := range result {
-			for _, id := range set {
-				combo := make([]int, len(existing)+1)
-				copy(combo, existing)
-				combo[len(existing)] = id
-				next = append(next, combo)
-			}
-		}
-		result = next
-	}
-	return result
-}
-
-// GetByMultiTagContains is the public entry point for
-// GET /galgame-tag/multi-contains. It accepts comma-separated human-readable
-// tag names (not numeric IDs), splits each into CJK characters, expands every
-// character to matching tag IDs via substring matching, computes the Cartesian
-// product, queries each combination, and returns the deduplicated + paginated
-// union.
-func (s *TagService) GetByMultiTagContains(
-	ctx context.Context,
-	tagNamesStr string,
-	isSFW bool,
-	page, limit int,
-) (*TagMultiPage, *errors.AppError) {
-	if tagNamesStr == "" {
-		return &TagMultiPage{Galgames: nil, Total: 0}, nil
-	}
-	tagNames := make([]string, 0)
-	for _, part := range strings.Split(tagNamesStr, ",") {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			tagNames = append(tagNames, part)
-		}
-	}
-	if len(tagNames) == 0 {
-		return &TagMultiPage{Galgames: nil, Total: 0}, nil
-	}
-	// 1. Expand each tag name to matching tag IDs via Meilisearch.
-	//    Meilisearch natively tokenises CJK text, so a single call per
-	//    name (e.g. "硬科幻") matches tags containing any of its characters
-	//    without a separate client-side split step.
-	expansion := make([][]int, len(tagNames))
-	for i, name := range tagNames {
-		items, appErr := s.Search(ctx, url.Values{"q": {name}}, isSFW)
-		if appErr != nil {
-			return nil, appErr
-		}
-		if len(items) == 0 {
-			return &TagMultiPage{Galgames: nil, Total: 0}, nil
-		}
-		ids := make([]int, len(items))
-		for j, item := range items {
-			ids[j] = item.ID
-		}
-		expansion[i] = ids
-	}
-
-	// 2. Cartesian product → query each combo via /galgame/tags/multi →
-	//    deduplicate → paginate.
-	return s.executeCartesianUnion(ctx, expansion, isSFW, page, limit)
-}
-
-// executeCartesianUnion caps each expansion group, computes the Cartesian
-// product, queries each combination via /galgame/tags/multi (AND within each
-// combo), and returns the deduplicated + paginated union over all combos.
-func (s *TagService) executeCartesianUnion(
-	ctx context.Context,
-	expansion [][]int,
-	isSFW bool,
-	page, limit int,
-) (*TagMultiPage, *errors.AppError) {
-	//暂时不限流
-	// const maxExpansion = 50
-	// for i := range expansion {
-	// 	if len(expansion[i]) > maxExpansion {
-	// 		expansion[i] = expansion[i][:maxExpansion]
-	// 	}
-	// }
-	combos := cartesianProduct(expansion)
-	type indexedCard struct {
-		card  dto.GalgameCard
-		order int
-	}
-	seen := make(map[int]indexedCard)
-	comboOrder := 0
-	for _, combo := range combos {
-		idsStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(combo)), ","), "[]")
-		q := url.Values{
-			"ids":     {idsStr},
-			"include": {"meta"},
-		}
-		if isSFW {
-			q.Set("content_limit", "sfw")
-		}
-		data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/multi", q)
-		if appErr != nil {
-			comboOrder++
-			continue
-		}
-		var parsed struct {
-			Items []client.V1Item `json:"items"`
-			Total int64           `json:"total"`
-		}
-		if err := json.Unmarshal(data, &parsed); err != nil {
-			comboOrder++
-			continue
-		}
-		items := make([]dto.NextMoeGalgameItem, 0, len(parsed.Items))
-		for j := range parsed.Items {
-			items = append(items, client.V1ItemToNextMoeItem(&parsed.Items[j]))
-		}
-		filtered := s.enricher.FilterSFW(items, isSFW)
-		cards := s.enricher.ToCards(ctx, filtered)
-		for _, card := range cards {
-			if _, exists := seen[card.ID]; !exists {
-				seen[card.ID] = indexedCard{card: card, order: comboOrder}
-			}
-		}
-		comboOrder++
-	}
-	type entry struct {
-		card  dto.GalgameCard
-		order int
-	}
-	entries := make([]entry, 0, len(seen))
-	for _, v := range seen {
-		entries = append(entries, entry{card: v.card, order: v.order})
-	}
-	sort.SliceStable(entries, func(i, j int) bool {
-		return entries[i].order < entries[j].order
-	})
-	allCards := make([]dto.GalgameCard, 0, len(entries))
-	for _, e := range entries {
-		allCards = append(allCards, e.card)
-	}
-	total := int64(len(allCards))
-	start := (page - 1) * limit
-	if start >= int(len(allCards)) {
-		return &TagMultiPage{Galgames: nil, Total: total}, nil
-	}
-	end := start + limit
-	if end > len(allCards) {
-		end = len(allCards)
-	}
-	return &TagMultiPage{
-		Galgames: allCards[start:end],
-		Total:    total,
 	}, nil
 }
 
