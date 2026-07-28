@@ -31,22 +31,36 @@ const handleSubmit = async () => {
   }
 
   isSubmitting.value = true
-  await kunFetch(`/toolset/${toolsetUpdateForm.toolset_id}`, {
-    method: 'PUT',
-    body: toolsetUpdateForm
-  })
+  const res = await kunFetch<string>(
+    `/toolset/${toolsetUpdateForm.toolset_id}`,
+    {
+      method: 'PUT',
+      body: toolsetUpdateForm
+    }
+  )
   isSubmitting.value = false
+
+  // kunFetch resolves to null on failure, having already shown the backend's
+  // error toast. Reporting success and navigating away on top of that made a
+  // rejected update look like it had gone through — mirror the create form and
+  // stay on the page so the edits aren't lost.
+  if (!res) {
+    return
+  }
 
   useMessage('更新工具信息成功', 'success')
   navigateTo(`/toolset/${toolsetUpdateForm.toolset_id}`)
 }
 
+// Blank entries are dropped: ''.split(',') yields [''], and an empty string
+// fails the schema's z.url() check, so clearing the link field used to block
+// the whole save with a confusing "无效的 URL".
 const handleUpdatePageLink = (value: string | number) => {
-  const linkArray = value
+  toolsetUpdateForm.homepage = value
     .toString()
     .split(',')
     .map((l) => l.trim())
-  toolsetUpdateForm.homepage = linkArray
+    .filter(Boolean)
 }
 </script>
 
