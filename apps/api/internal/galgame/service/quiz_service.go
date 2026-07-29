@@ -805,17 +805,6 @@ func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int
 	return m
 }
 
-func (s *QuizService) fetchBriefsPublic(ctx context.Context, galgameIDs []int, isSFW bool) map[int]client.GalgameBrief {
-	if len(galgameIDs) == 0 {
-		return map[int]client.GalgameBrief{}
-	}
-	m, _ := s.galgameClient.GetBatchPublic(ctx, galgameIDs, isSFW)
-	if m == nil {
-		return map[int]client.GalgameBrief{}
-	}
-	return m
-}
-
 // ──────────────────────────────────────────
 // SearchGalgameOptions — GET /galgame/search/picker
 // Powers the 出题 modal's galgame picker: a name search enriched with each
