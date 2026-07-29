@@ -488,7 +488,6 @@ func New(cfg *config.Config) *App {
 	// owner-name lookup to galgameCoreSvc so nothing is duplicated.
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
-	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
@@ -661,7 +660,7 @@ func New(cfg *config.Config) *App {
 		GalgameQuizHandler:             galgameHandler.NewQuizHandler(galgameQuizSvc),
 		CreatorHandler:                 galgameHandler.NewCreatorHandler(creatorSvc),
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
-			galgameSeriesSvc, galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
+			galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
 		),
 		GalgameCalendarHandler:     galgameHandler.NewCalendarHandler(galgameCalendarSvc),
 		GalgameDraftsHandler:       galgameHandler.NewDraftsHandler(galgameDraftsSvc),

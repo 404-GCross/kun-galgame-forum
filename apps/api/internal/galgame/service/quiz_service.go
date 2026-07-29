@@ -815,44 +815,37 @@ func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int
 // keeping the picker snappy.
 const quizGalgameSearchLimit = 12
 
-type nextMoeGalgameSearchRow struct {
-	ID int `json:"id"`
-}
-
 func (s *QuizService) SearchGalgameOptions(
 	ctx context.Context, keywords string, isSFW bool,
 ) []dto.QuizGalgameOption {
 	empty := []dto.QuizGalgameOption{}
-	// Use the galgame Meilisearch galgame index (`/galgame/search`) — the SAME
-	// accurate, ranked, typo-tolerant search the /search page uses. The old
-	// /series/search is a plain name match (borrowed from the series picker) and
-	// ranked poorly here, so the picker "couldn't find" obvious titles. We only
-	// need ids + the SFW gate; fields=id keeps the response tiny.
-	q := url.Values{}
-	q.Set("q", keywords)
-	q.Set("limit", strconv.Itoa(quizGalgameSearchLimit))
-	// Only the hit ids are read here (the picker hydrates them via a batch-detail
-	// call below); the /v1 thin item always carries id. content_limit must be
-	// explicit on both branches — /v1 search defaults to sfw.
-	if isSFW {
-		q.Set("content_limit", "sfw")
-	} else {
-		q.Set("content_limit", "all")
+	// The catalog product search is the SAME ranked, typo-tolerant search the
+	// /search page uses. Only the hit ids are read here — the picker hydrates
+	// them through the batch-detail call below, which is where the banner and
+	// maker names come from.
+	q := url.Values{
+		"q":     {keywords},
+		"limit": {strconv.Itoa(quizGalgameSearchLimit)},
+		"sort":  {"relevance"},
+		// Only works kungal can actually address are pickable: an unclaimed
+		// catalog work has no gid, and a quiz option must point at a galgame the
+		// forum can render.
+		"claimed": {"true"},
 	}
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/search", q)
+	if !isSFW {
+		q.Set("nsfw", "1")
+	}
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		return empty
 	}
-	var resp struct {
-		Items []nextMoeGalgameSearchRow `json:"items"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return empty
-	}
 	ids := make([]int, 0, quizGalgameSearchLimit)
-	for _, r := range resp.Items {
-		if r.ID > 0 {
-			ids = append(ids, r.ID)
+	for i := range res.Items {
+		if !client.CatalogItemRenderable(&res.Items[i]) {
+			continue
+		}
+		if gid := client.CatalogItemGID(&res.Items[i]); gid > 0 {
+			ids = append(ids, gid)
 		}
 		if len(ids) >= quizGalgameSearchLimit {
 			break

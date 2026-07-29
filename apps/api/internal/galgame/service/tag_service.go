@@ -2,17 +2,32 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
+// TagService serves the canonical-tag browse / detail / multi-select lanes off
+// the catalog taxonomy face.
+//
+// The tag vocabulary changed owner in this wave, and two product facts follow
+// from that (both ruled in refs/proj/126 P2):
+//
+//   - The wiki's content/sexual/technical CATEGORY axis and its 8,700 tag
+//     ALIASES did not migrate — the canonical vocabulary has a content|meta
+//     `kind` and a tier instead. Category is therefore reconstructed only where
+//     it still drives behaviour (the SFW view drops sexual tags); aliases are
+//     gone.
+//   - The tag DAG did not migrate either, so "contains" mode can no longer
+//     expand a tag into its descendants. It degrades to a flat multi-tag AND,
+//     which the catalog now expresses natively (tag_id accepts up to ten ids).
 type TagService struct {
 	galgameClient *client.GalgameClient
-	// enricher hydrates the /tag list + /tag/multi results (galgame catalogue).
+	// enricher hydrates the multi-tag results with kungal-local data.
 	enricher *GalgameEnricher
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
 	// over a tag's member ids for the detail page. See GetDetail.
@@ -23,199 +38,166 @@ func NewTagService(galgameClient *client.GalgameClient, enricher *GalgameEnriche
 	return &TagService{galgameClient: galgameClient, enricher: enricher, galgameSvc: galgameSvc}
 }
 
-type nextMoeTagListItem struct {
-	ID           int    `json:"id"`
-	Name         string `json:"name"`
-	Category     string `json:"category"`
-	GalgameCount int    `json:"galgame_count"`
-}
-
-type nextMoeTagListResp struct {
-	Items []nextMoeTagListItem `json:"items"`
-	Total int64                `json:"total"`
-}
-
 // TagMultiPage is the enriched response for GET /galgame-tag/multi.
 type TagMultiPage struct {
 	Galgames []dto.GalgameCard `json:"galgames"`
 	Total    int64             `json:"total"`
 }
 
+// taxonomyMemberPageCap bounds the member-id walk behind an entity detail page.
+// At 100 ids per upstream page this admits 20,000 members, more than the
+// largest real term carries; a hypothetical bigger one truncates rather than
+// fanning out without limit on a request path.
+const taxonomyMemberPageCap = 200
+
+// CatalogCardInclude is the include= vocabulary a kungal CARD renders: the four
+// localized names and the two cover slots. Cards show no intro and no maker
+// chips, so asking for those blocks would be paid-for-and-discarded work.
+// Exported because the search package renders the same card.
+const CatalogCardInclude = "names,covers"
+
+// tagCategory renders a canonical tag's category chip. The wiki's three-value
+// axis is gone (P2), so the only distinction reconstructed here is the one the
+// SFW view acts on; everything else shows the catalog's own kind.
+func tagCategory(kind, tier string) string {
+	if tier == "hidden" {
+		// `hidden` is the canonical vocabulary's marker for tags that are not
+		// browse-worthy — the closest successor to the wiki's sexual bucket,
+		// and the SFW view treats it the same way.
+		return "sexual"
+	}
+	return kind
+}
+
 // Search — GET /galgame-tag/search
 //
-// Galgame search is Meilisearch-backed; response shape is
-// `{items, total, processing_time_ms}`. The frontend
-// (galgame/tag/Container.vue) does `searchResult.value = res` expecting a
-// bare TagListItem[]. We unwrap `items` here so the gateway response stays
-// compatible without touching the frontend.
-//
-// SFW filter: drop tags with category="sexual" (matches the convention in
-// GetList line 155). Forwarding content_limit=sfw to galgame additionally
-// hides tags whose galgame attachments are NSFW-only.
+// Backed by the catalog entity search's tags index. The hit shape is
+// identity-only, so the cards render name + link and nothing else; the counts
+// the old Meilisearch hit carried are one click away on the detail page.
 func (s *TagService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
 	isSFW bool,
 ) ([]dto.TagListItem, *errors.AppError) {
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/search", withSFWFilter(rawQuery, isSFW))
+	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags",
+		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20), isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var resp struct {
-		Items []nextMoeTagListItem `json:"items"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-	items := make([]dto.TagListItem, 0, len(resp.Items))
-	for _, t := range resp.Items {
-		if isSFW && t.Category == "sexual" {
-			continue
-		}
-		items = append(items, dto.TagListItem{
-			ID: t.ID, Name: t.Name, Category: t.Category,
-			GalgameCount: t.GalgameCount,
-		})
+	items := make([]dto.TagListItem, 0, len(hits))
+	for _, h := range hits {
+		items = append(items, dto.TagListItem{ID: int(h.ID), Name: h.Name})
 	}
 	return items, nil
 }
 
 // GetByMultiTag — GET /galgame-tag/multi
 //
-// Proxies to the galgame /tag/multi endpoint with param renamed to the
-// snake_case the galgame expects and content_limit forwarded in SFW mode,
-// then enriches the resulting galgames with local like counts etc.
+// A galgame must carry EVERY selected tag (flat AND), which the catalog works
+// lane expresses with a repeated tag_id filter.
 //
-// Two match modes, and the difference is one upstream parameter:
+// `mode=contains` used to additionally match each tag's DESCENDANTS, so 科幻
+// also admitted 硬科幻. The canonical vocabulary has no DAG, so that expansion
+// has no successor and the mode now behaves exactly like exact. It is still
+// accepted rather than 400'd: the FE persists it in saved filters, and quietly
+// behaving like exact beats breaking a bookmarked query.
 //
-//   - exact (default) — flat AND: a galgame must carry every selected tag.
-//   - contains (mode=contains) — each selected tag additionally matches its
-//     descendants, so 科幻 also admits 硬科幻 / 科幻奇幻. AND across the selected
-//     tags, OR within each tag's descendant set.
-//
-// The expansion is the galgame's job, not ours (galgame_tag_edge, backfilled
-// from the VNDB tag DAG). It resolves in one query, so total and pagination stay
-// exact. Do NOT reintroduce a forum-side approximation: matching tag names by
-// substring looks equivalent and is not — it expands 恋爱 into 无恋爱剧情, the
-// literal opposite, because name similarity is not a semantic relation.
-//
-// Old galgame builds ignore an unrecognised `expand`, degrading to flat AND
-// rather than erroring, so this is safe to ship before the galgame side is
-// deployed and backfilled.
+// Do NOT reintroduce a forum-side approximation of the expansion: matching tag
+// names by substring looks equivalent and is not — it expands 恋爱 into
+// 无恋爱剧情, the literal opposite, because name similarity is not a semantic
+// relation.
 func (s *TagService) GetByMultiTag(
 	ctx context.Context,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*TagMultiPage, *errors.AppError) {
-	src := withSFWFilter(rawQuery, isSFW)
-	// FE sends tagIds (camelCase); /v1 tags/multi takes `ids`. include=meta (W1d)
-	// so the embedded thin items carry content_limit for FilterSFW + user_id for
-	// the enricher.
-	ids := src.Get("tagIds")
+	ids := rawQuery.Get("tagIds")
 	if ids == "" {
-		ids = src.Get("tag_ids")
-	}
-	q := url.Values{"content_limit": {src.Get("content_limit")}, "include": {"meta"}}
-	if ids != "" {
-		q.Set("ids", ids)
-	}
-	// Pagination belongs upstream — it owns the tag index, so it alone knows the
-	// real total. These were never forwarded, which pinned every result set to the
-	// galgame's default first page: `page=2` silently returned page 1 again.
-	if page := src.Get("page"); page != "" {
-		q.Set("page", page)
-	}
-	if limit := src.Get("limit"); limit != "" {
-		q.Set("limit", limit)
-	}
-	if src.Get("mode") == "contains" {
-		q.Set("expand", "descendants")
+		ids = rawQuery.Get("tag_ids")
 	}
 
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/multi", q)
+	// The catalog SEARCH lane carries page/limit pagination and the total this
+	// view needs; the browse lane is keyset-only. An empty q makes it a
+	// filter-only query, which the search face serves.
+	q := url.Values{
+		"page":    {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},
+		"limit":   {strconv.Itoa(atoiOr(rawQuery.Get("limit"), 24))},
+		"include": {CatalogCardInclude},
+		"sort":    {"released_desc"},
+	}
+	for _, id := range splitCSV(ids) {
+		q.Add("tag_id", id)
+	}
+	if !isSFW {
+		q.Set("nsfw", "1")
+	}
+
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed struct {
-		Items []client.V1Item `json:"items"`
-		Total int64           `json:"total"`
-	}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-	items := make([]dto.NextMoeGalgameItem, 0, len(parsed.Items))
-	for i := range parsed.Items {
-		items = append(items, client.V1ItemToNextMoeItem(&parsed.Items[i]))
-	}
-
-	filtered := s.enricher.FilterSFW(items, isSFW)
 	return &TagMultiPage{
-		Galgames: s.enricher.ToCards(ctx, filtered),
-		Total:    parsed.Total,
+		Galgames: s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items)),
+		Total:    res.Total,
 	}, nil
 }
 
 // GetList — GET /galgame-tag
 //
-// The galgame gates NSFW + paginates server-side: GET /tag accepts content_limit
-// (sfw hides the sexual/NSFW tag category, all returns everything; safe default
-// sfw — docs 04-taxonomy). We forward page + limit + content_limit and proxy
-// the galgame's total for a true server-side paged list.
-//
-// (Was: limit=5000 fetch-all + client-side sexual filter — silently truncated
-// by the galgame's 100/page cap, so most tags were unlisted and the pager never
-// showed; client-side gating is also forbidden by handbook §16.)
+// Server-side paged over the catalog tag browse lane. `total` is the whole
+// filtered vocabulary (an identity count, so it does not move with the NSFW
+// cookie); each row's work_count IS nsfw-aware, so a count never disagrees with
+// the member list the same caller can page.
 func (s *TagService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagListPage, *errors.AppError) {
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags", withSFWFilter(rawQuery, isSFW))
+	base := url.Values{}
+	if !isSFW {
+		base.Set("nsfw", "1")
+	}
+	rows, total, appErr := s.galgameClient.CatalogTaxonomyPageAt(ctx, "tags", base,
+		atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 100))
 	if appErr != nil {
 		return nil, appErr
 	}
-	var parsed nextMoeTagListResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-
-	tags := make([]dto.TagListItem, 0, len(parsed.Items))
-	for _, t := range parsed.Items {
+	tags := make([]dto.TagListItem, 0, len(rows))
+	for _, t := range rows {
+		category := tagCategory(t.Kind, t.Tier)
+		if isSFW && category == "sexual" {
+			continue
+		}
 		tags = append(tags, dto.TagListItem{
-			ID: t.ID, Name: t.Name, Category: t.Category,
-			GalgameCount: t.GalgameCount,
+			ID: int(t.ID), Name: t.Label(), Category: category,
+			GalgameCount: t.WorkCount,
 		})
 	}
-	return &dto.TagListPage{Tags: tags, Total: parsed.Total}, nil
+	return &dto.TagListPage{Tags: tags, Total: total}, nil
 }
 
-// GetDetail — GET /galgame-tag/:name
+// GetDetail — GET /galgame-tag/:id (id = a CANONICAL catalog tag id)
 //
 // Entity detail lists the forum-LOCAL subset of the tag's catalogue, so the
 // kungal filters (类型/语言/平台/作品类型) + every sort work. Only the tag's
-// metadata is used from the galgame here (cheapest page); the galgame list is
-// recomputed locally from the member ids below.
+// metadata comes from upstream; the galgame list is recomputed locally from the
+// member ids below.
 func (s *TagService) GetDetail(
 	ctx context.Context,
-	name string,
+	id string,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagDetail, *errors.AppError) {
-	// /v1 tag entity is by-id (the :name segment carries the numeric id) and needs
-	// no query params — the curated record has the full metadata + aliases (as a
-	// plain []string). The kungal member list is recomputed locally below.
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/tags/"+name, nil)
+	t, found, appErr := s.galgameClient.CatalogTag(ctx, id, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var t v1TagEntity
-	if err := json.Unmarshal(data, &t); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
+	if !found {
+		return nil, errors.ErrNotFound("未找到该标签")
 	}
 
-	// Member ids from the galgame, then the SAME local filter/sort/paginate as
-	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
-	memberIDs, appErr := s.galgameClient.EntityGalgameIDs(ctx, "tag", t.ID)
+	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
+		url.Values{"tag_id": {id}}, isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -225,24 +207,46 @@ func (s *TagService) GetDetail(
 	}
 
 	return &dto.TagDetail{
-		ID:           t.ID,
-		Name:         t.Name,
-		Category:     t.Category,
-		Description:  t.Description,
-		Alias:        emptyStrSliceIfNil(t.Aliases),
+		ID:   int(t.ID),
+		Name: t.Name,
+		// The canonical vocabulary's own axis; the wiki's category axis did not
+		// migrate (P2).
+		Category:    tagCategory(t.Kind, t.Tier),
+		Description: preferredIntro(t.Intros),
+		// Tag aliases did not migrate (P2) — the canonical vocabulary has no
+		// alias table. Always empty rather than absent so the FE contract holds.
+		Alias:        []string{},
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
 }
 
-// v1TagEntity is the /v1 curated tag record (GET /v1/galgame/tags/{id}); only the
-// metadata the entity page renders is typed (the member list is recomputed
-// locally). Aliases is a plain name slice ([]string), unlike the bridge's
-// alias-row objects.
-type v1TagEntity struct {
-	ID          int      `json:"id"`
-	Name        string   `json:"name"`
-	Category    string   `json:"category"`
-	Description string   `json:"description"`
-	Aliases     []string `json:"aliases"`
+// preferredIntro picks the description a Chinese-first UI should show:
+// zh → ja → en → whatever exists. The catalog merges each language to its
+// winning source upstream, so any row for a language is authoritative.
+func preferredIntro(intros []client.CatalogIntro) string {
+	for _, want := range []string{"zh", "ja", "en"} {
+		for _, in := range intros {
+			if strings.HasPrefix(strings.ToLower(in.Lang), want) {
+				return in.Intro
+			}
+		}
+	}
+	if len(intros) > 0 {
+		return intros[0].Intro
+	}
+	return ""
+}
+
+// catalogItemsToNextMoe projects a page of catalog rows onto the enricher's
+// item shape, dropping rows the owning product withdrew.
+func catalogItemsToNextMoe(items []client.CatalogWorkListItem) []dto.NextMoeGalgameItem {
+	out := make([]dto.NextMoeGalgameItem, 0, len(items))
+	for i := range items {
+		if !client.CatalogItemRenderable(&items[i]) {
+			continue
+		}
+		out = append(out, client.CatalogItemToNextMoeItem(&items[i]))
+	}
+	return out
 }

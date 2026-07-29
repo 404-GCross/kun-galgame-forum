@@ -163,7 +163,7 @@ func (s *RatingService) GetRatingDetail(
 	userMap := s.userClient.Hydrate(ctx, uids)
 
 	// Galgame detail from galgame + (when present) its parent series.
-	galgame, seriesBrief := s.buildRatingGalgame(ctx, row.GalgameID)
+	galgame := s.buildRatingGalgame(ctx, row.GalgameID)
 
 	// Author projection of liked users (preserve liker order).
 	authorBriefs := make([]dto.UserBrief, 0, len(likerIDs))
@@ -176,23 +176,22 @@ func (s *RatingService) GetRatingDetail(
 	}
 
 	detail := &dto.RatingDetail{
-		ID:            row.ID,
-		User:          userBriefToDTO(userMap[row.UserID]),
-		Recommend:     row.Recommend,
-		Overall:       row.Overall,
-		View:          row.View,
-		GalgameType:   rawJSON(row.GalgameType),
-		PlayStatus:    row.PlayStatus,
-		ShortSummary:  row.ShortSummary,
-		SpoilerLevel:  row.SpoilerLevel,
-		RatingScores:  rowToScores(row),
-		LikeCount:     len(likerIDs),
-		IsLiked:       isLiked,
-		LikedUsers:    authorBriefs,
-		Created:       row.Created,
-		Updated:       row.Updated,
-		Galgame:       galgame,
-		GalgameSeries: seriesBrief,
+		ID:           row.ID,
+		User:         userBriefToDTO(userMap[row.UserID]),
+		Recommend:    row.Recommend,
+		Overall:      row.Overall,
+		View:         row.View,
+		GalgameType:  rawJSON(row.GalgameType),
+		PlayStatus:   row.PlayStatus,
+		ShortSummary: row.ShortSummary,
+		SpoilerLevel: row.SpoilerLevel,
+		RatingScores: rowToScores(row),
+		LikeCount:    len(likerIDs),
+		IsLiked:      isLiked,
+		LikedUsers:   authorBriefs,
+		Created:      row.Created,
+		Updated:      row.Updated,
+		Galgame:      galgame,
 	}
 	return detail, nil
 }
@@ -476,28 +475,25 @@ func (s *RatingService) fetchGalgameBriefsPublic(
 	return m
 }
 
-// buildRatingGalgame fetches galgame detail from galgame, computes rating
-// stats, and — when the galgame belongs to a series — returns the full
-// series brief used by the FE GalgameSeriesCard ("所属系列" panel) +
-// the Review JSON-LD `isPartOf` clause.
+// buildRatingGalgame fetches the rated work's catalog aggregate and fuses in
+// the local rating stats.
 //
-// The second return is nil when galgame reports no series_id; the rating
-// detail handler emits a literal `null` in that case so FE conditional
-// (`v-if="data?.galgameSeries"`) shortcircuits cleanly.
+// The "所属系列" panel and the Review JSON-LD `isPartOf` clause are gone with
+// the wiki series vocabulary (P3): 146 wiki series, only 6 with any catalog
+// counterpart, so there was nothing to re-anchor them to.
 func (s *RatingService) buildRatingGalgame(
 	ctx context.Context,
 	galgameID int,
-) (dto.RatingGalgameDetail, *dto.SeriesListItem) {
+) dto.RatingGalgameDetail {
 	summary := dto.RatingGalgameDetail{
 		ID:       galgameID,
 		Official: []dto.RatingOfficial{},
 	}
-	var seriesBrief *dto.SeriesListItem
-
 	// content_limit=all (permissive): the rating page doesn't gate NSFW here (FE
 	// confirm card). Best-effort — an unreachable / not-found galgame leaves the
 	// summary at its zero-ish defaults + local rating stats below.
-	if g, appErr := s.galgameClient.GalgameDetailV1(ctx, galgameID, "", "all"); appErr == nil {
+	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID, "all"); appErr == nil && found {
+		g := client.CatalogDetailToFull(d, galgameID)
 		summary.ID = g.ID
 		summary.Banner = g.Banner
 		summary.EffectiveBannerHash = g.EffectiveBannerHash
@@ -513,72 +509,10 @@ func (s *RatingService) buildRatingGalgame(
 			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
 		}
 		summary.Official = nextMoeOfficialsToDTO(g.Official)
-		if g.SeriesID != nil {
-			seriesBrief = s.fetchSeriesBrief(ctx, *g.SeriesID)
-		}
 	}
 
 	sum, count := s.ratingRepo.GalgameRatingStats(galgameID)
 	summary.Rating = sum
 	summary.RatingCount = count
-	return summary, seriesBrief
-}
-
-// fetchSeriesBrief pulls /series/:id and shapes the response into the
-// same SeriesListItem used by the /galgame-series list endpoint — so
-// the FE renders both through GalgameSeriesCard without per-call type
-// shenanigans.
-//
-// Returns nil on any galgame / parse failure or when galgame reports the
-// series no longer exists; the rating page is fine without the
-// "所属系列" panel and the JSON-LD isPartOf clause is conditional.
-//
-// Note: the rating detail page itself doesn't gate NSFW (mirrors
-// galgame/topic detail policy; FE shows a confirm card based on
-// cookie+login state), so the series brief should reflect the truth and
-// not over-filter. That requires content_limit=all: /series/:id defaults
-// to sfw when omitted, which would drop NSFW members (an all-NSFW series
-// would report 0 / look SFW) — the opposite of the intent.
-func (s *RatingService) fetchSeriesBrief(ctx context.Context, seriesID int) *dto.SeriesListItem {
-	entry, found, appErr := s.galgameClient.SeriesEntryV1(ctx, strconv.Itoa(seriesID), "all")
-	if appErr != nil || !found || entry.ID == 0 {
-		return nil
-	}
-	// The /v1 series entity's member previews are full NextMoeGalgameItem (with
-	// meta.content_limit under include=meta), so isNSFW derives from the flag each
-	// preview carries — same shape the detail-page series brief uses.
-	isNSFW := false
-	samples := make([]dto.GalgameSample, 0, len(entry.Galgame))
-	for _, g := range entry.Galgame {
-		samples = append(samples, dto.GalgameSample{
-			Name: dto.KunLanguage{
-				EnUs: g.NameEnUs,
-				JaJp: g.NameJaJp,
-				ZhCn: g.NameZhCn,
-				ZhTw: g.NameZhTw,
-			},
-			Banner:                   g.Banner,
-			EffectiveBannerHash:      g.EffectiveBannerHash,
-			EffectiveBannerURL:       g.EffectiveBannerURL,
-			EffectiveBannerWidth:     g.EffectiveBannerWidth,
-			EffectiveBannerHeight:    g.EffectiveBannerHeight,
-			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
-		})
-		if g.ContentLimit == "nsfw" {
-			isNSFW = true
-		}
-	}
-	if len(samples) > 5 {
-		samples = samples[:5]
-	}
-	return &dto.SeriesListItem{
-		ID:            entry.ID,
-		Name:          entry.Name,
-		Description:   entry.Description,
-		IsNSFW:        isNSFW,
-		SampleGalgame: samples,
-		GalgameCount:  len(entry.Galgame),
-		Created:       entry.Created,
-		Updated:       entry.Updated,
-	}
+	return summary
 }

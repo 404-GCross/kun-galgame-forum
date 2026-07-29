@@ -165,37 +165,42 @@ func isPlainActor(actor catalogclient.EditActor) bool {
 	return !role.CanModerate(actor.Roles) && !actor.IsEntityOwner
 }
 
-// gameBrief reads one galgame brief (best-effort; nil = unknown). The S2S
-// batch read is short-TTL cached in the client, so per-request lookups for
-// owner assertion / notification naming stay cheap.
-func (h *EditHandler) gameBrief(ctx context.Context, gid int64) *client.GalgameBrief {
+// gameMeta reads one galgame's ownership meta (best-effort; nil = unknown).
+//
+// This is a PERMISSION + NOTIFICATION lane, so it reads the surviving
+// /internal ownership op rather than any public read: the catalog carries no
+// submitter by design (doc 106 R2 ①), and — decisively — that op is
+// STATUS-BLIND. The published-only read this used to call returned nothing for
+// an entry in review, so the owner assertion silently degraded to "not the
+// owner" and locked the true owner out of editing their own draft.
+func (h *EditHandler) gameMeta(ctx context.Context, gid int64) *client.GalgameMetaRow {
 	if h.galgameClient == nil || gid <= 0 {
 		return nil
 	}
-	briefs, appErr := h.galgameClient.GetBatch(ctx, []int{int(gid)})
+	rows, appErr := h.galgameClient.GalgameMeta(ctx, []int{int(gid)})
 	if appErr != nil {
-		slog.Warn("galgame edit: brief lookup failed", "gid", gid, "error", appErr)
+		slog.Warn("galgame edit: ownership meta lookup failed", "gid", gid, "error", appErr)
 		return nil
 	}
-	if b, ok := briefs[int(gid)]; ok {
-		return &b
+	if m, ok := rows[int(gid)]; ok {
+		return &m
 	}
 	return nil
 }
 
 // isGameOwner reports whether uid created the galgame row. Fail-closed: an
-// unreachable galgame degrades the owner assertion to false (moderators are
+// unreachable upstream degrades the owner assertion to false (moderators are
 // unaffected; the owner retries).
 func (h *EditHandler) isGameOwner(ctx context.Context, gid, uid int64) bool {
-	b := h.gameBrief(ctx, gid)
-	return b != nil && b.UserID > 0 && int64(b.UserID) == uid
+	m := h.gameMeta(ctx, gid)
+	return m != nil && m.UserID > 0 && int64(m.UserID) == uid
 }
 
-func briefName(b *client.GalgameBrief) string {
-	if b == nil {
+func briefName(m *client.GalgameMetaRow) string {
+	if m == nil {
 		return ""
 	}
-	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
+	for _, n := range []string{m.NameZhCN, m.NameZhTW, m.NameJaJP, m.NameEnUS} {
 		if n != "" {
 			return n
 		}
@@ -411,11 +416,11 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 // the old galgame PR id space (the E2 transform bumped the sequence past it), so
 // wiki_pr_id stays the idempotency key.
 func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient.EditProposal) {
-	brief := h.gameBrief(ctx, prop.EntityID)
-	if h.notifier != nil && brief != nil && brief.UserID > 0 {
+	meta := h.gameMeta(ctx, prop.EntityID)
+	if h.notifier != nil && meta != nil && meta.UserID > 0 {
 		if err := h.notifier.Emit(nil, msgService.Spec{
-			SenderID: int(prop.ProposerUID), ReceiverID: brief.UserID,
-			Kind: msgService.NotifyRequested, Content: briefName(brief),
+			SenderID: int(prop.ProposerUID), ReceiverID: meta.UserID,
+			Kind: msgService.NotifyRequested, Content: briefName(meta),
 			GalgameID: int(prop.EntityID),
 		}); err != nil {
 			slog.Warn("galgame edit: requested notification failed", "proposal", prop.ID, "error", err)
@@ -539,7 +544,7 @@ func (h *EditHandler) Diff(c fiber.Ctx) error {
 // the bare gid link).
 type proposalItem struct {
 	catalogclient.EditProposal
-	Galgame *client.GalgameBrief `json:"galgame,omitempty"`
+	Galgame *client.GalgameMetaRow `json:"galgame,omitempty"`
 }
 
 func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProposal) []proposalItem {
@@ -552,19 +557,22 @@ func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProp
 			ids = append(ids, gid)
 		}
 	}
-	var briefs map[int]client.GalgameBrief
+	// The proposal cards show the entry's title and owner — the same two facts
+	// the owner assertion needs, from the same status-blind op, so a proposal
+	// against an unpublished entry is not a blank card.
+	var metas map[int]client.GalgameMetaRow
 	if len(ids) > 0 && h.galgameClient != nil {
 		var appErr *errors.AppError
-		if briefs, appErr = h.galgameClient.GetBatch(ctx, ids); appErr != nil {
-			slog.Warn("galgame edit: brief enrichment failed", "error", appErr)
+		if metas, appErr = h.galgameClient.GalgameMeta(ctx, ids); appErr != nil {
+			slog.Warn("galgame edit: ownership meta enrichment failed", "error", appErr)
 		}
 	}
 	out := make([]proposalItem, 0, len(items))
 	for i := range items {
 		item := proposalItem{EditProposal: items[i]}
-		if b, ok := briefs[int(items[i].EntityID)]; ok {
-			brief := b
-			item.Galgame = &brief
+		if m, ok := metas[int(items[i].EntityID)]; ok {
+			meta := m
+			item.Galgame = &meta
 		}
 		out = append(out, item)
 	}
@@ -855,7 +863,7 @@ func (h *EditHandler) mergeSideEffects(ctx context.Context, prop *catalogclient.
 			slog.Warn("galgame edit: resource_update_time bump failed", "gid", prop.EntityID, "error", err)
 		}
 	}
-	content := briefName(h.gameBrief(ctx, prop.EntityID))
+	content := briefName(h.gameMeta(ctx, prop.EntityID))
 	if rev != nil && rev.AmenderUID != nil {
 		content = strings.TrimSpace(content + "（审核时有修正）")
 	}
@@ -895,7 +903,7 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 		return editError(c, err)
 	}
 	content := req.Note
-	if name := briefName(h.gameBrief(ctx, target.EntityID)); name != "" {
+	if name := briefName(h.gameMeta(ctx, target.EntityID)); name != "" {
 		content = name + "：" + req.Note
 	}
 	h.notifyDecision(target, actor.UserID, msgService.NotifyDeclined, content)

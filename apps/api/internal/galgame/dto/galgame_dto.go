@@ -162,18 +162,6 @@ type GalgameDetailTag struct {
 	SpoilerLevel int    `json:"spoiler_level"`
 }
 
-// GalgameDetailSeries is the series info shown on the detail page.
-type GalgameDetailSeries struct {
-	ID            int             `json:"id"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"is_nsfw"`
-	SampleGalgame []GalgameSample `json:"sample_galgame"`
-	GalgameCount  int             `json:"galgame_count"`
-	Created       string          `json:"created"`
-	Updated       string          `json:"updated"`
-}
-
 // GalgameDetailRatingGalgame is the tiny galgame embed inside each rating card.
 type GalgameDetailRatingGalgame struct {
 	ID           int         `json:"id"`
@@ -260,7 +248,6 @@ type GalgameDetail struct {
 	// notice and hides the publish entry.
 	ResourcePublishBanned bool                    `json:"resource_publish_banned"`
 	Alias                 []string                `json:"alias"`
-	Series                *GalgameDetailSeries    `json:"series"`
 	Engine                []GalgameDetailEngine   `json:"engine"`
 	Official              []GalgameDetailOfficial `json:"official"`
 	Tag                   []GalgameDetailTag      `json:"tag"`

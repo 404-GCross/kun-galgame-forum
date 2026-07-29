@@ -218,35 +218,28 @@ type nextMoeLinkRow struct {
 	UserID    int    `json:"user_id"`
 }
 
-// GetGalgameLinks fetches the links for a galgame from galgame and resolves the
-// author user in the local DB.
+// GetGalgameLinks fetches a galgame's curated external links.
+//
+// These are platform-curated rows now: the retirement wave absorbed the wiki's
+// user-submitted links WITHOUT their submitter, so there is no author to
+// resolve and the banned-author filter has no subject any more (doc 126 D6 —
+// the user_id field sunsets with the wiki). Link moderation for new rows runs
+// through the editing engine's own review chain instead.
 func (s *GalgameProxyService) GetGalgameLinks(
 	ctx context.Context,
 	gid string,
 ) ([]dto.GalgameLink, *errors.AppError) {
-	// /v1 detail include=links carries user_id (W1d) for the banned-author filter;
-	// galgame_id is not on the curated row (the id is the path param).
-	rows, appErr := s.galgameClient.GalgameLinksV1(ctx, gid)
+	gidInt, err := strconv.Atoi(gid)
+	if err != nil || gidInt <= 0 {
+		return nil, errors.ErrBadRequest("无效的 Galgame ID")
+	}
+	rows, appErr := s.galgameClient.CatalogWorkLinks(ctx, gidInt)
 	if appErr != nil {
 		return nil, appErr
 	}
-
-	ids := make([]int, len(rows))
-	for i, r := range rows {
-		ids[i] = r.UserID
-	}
-	userMap := s.userClient.Hydrate(ctx, ids)
-	gidInt, _ := strconv.Atoi(gid)
-
-	// Drop links added by a banned user.
 	out := make([]dto.GalgameLink, 0, len(rows))
 	for _, r := range rows {
-		if !userclient.IsRenderable(userMap[r.UserID]) {
-			continue
-		}
 		out = append(out, dto.GalgameLink{
-			ID:        r.ID,
-			User:      userBriefToDTO(userMap[r.UserID]),
 			GalgameID: gidInt,
 			Name:      r.Name,
 			Link:      r.Link,

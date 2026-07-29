@@ -202,14 +202,17 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-tag", a.GalgameEntityHandler.GetTagList)
 	api.Get("/galgame-tag/search", a.GalgameEntityHandler.SearchTags)
 	api.Get("/galgame-tag/multi", a.GalgameEntityHandler.GetMultiTagGalgames)
-	api.Get("/galgame-tag/:name", a.GalgameEntityHandler.GetTagDetail)
+	// Taxonomy detail :id is a CATALOG id (doc 106 R1) — the browse pages link
+	// into the new /galgame-{tag,official,engine}/c/ URL space and the legacy
+	// wiki-id URLs are FE-side redirect shells that never reach this API.
+	api.Get("/galgame-tag/:id", a.GalgameEntityHandler.GetTagDetail)
 	api.Get("/galgame-official", a.GalgameEntityHandler.GetOfficialList)
 	api.Get("/galgame-official/search", a.GalgameEntityHandler.SearchOfficials)
-	api.Get("/galgame-official/:name", a.GalgameEntityHandler.GetOfficialDetail)
+	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
-	api.Get("/galgame-engine/:name", a.GalgameEntityHandler.GetEngineDetail)
-	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
-	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
+	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
+	// The /galgame-series family retired with the wiki series vocabulary (P3):
+	// 146 wiki series, only 6 of which correspond to anything in the catalog.
 	// `/galgame-resource` list — moved to optAuth below (FE list cards
 	// show the heart icon and need the viewer's per-row like state).
 	// `/galgame-rating/all` stays here in the public group: the rating

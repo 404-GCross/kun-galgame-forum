@@ -51,15 +51,16 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 	return nil
 }
 
-// fakeGalgame serves the galgame batch read (owner lookup + naming): one game,
-// id 1, created by uid 7.
+// fakeGalgame serves the ownership meta read (owner lookup + notification
+// naming): one game, id 1, created by uid 7.
 func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The batch brief read migrated to the /v1 public face (Phase-2 07 W4):
-		// thin item + include=meta, {items:[...]} envelope. user_id lives in meta.
-		if r.URL.Path == "/v1/galgame/batch" {
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":1,"names":{"zh-cn":"测试游戏"},"meta":{"user_id":7}}]}}`))
+		// The edit lane reads ownership off the SURVIVING /internal face, not
+		// the catalog: the catalog carries no submitter (doc 106 R2 ①) and this
+		// op is status-blind, so the owner of an unpublished entry resolves too.
+		if r.URL.Path == "/internal/galgame/meta" {
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"gid":1,"user_id":7,"status":0,"name_zh_cn":"测试游戏","name_zh_tw":"","name_ja_jp":"","name_en_us":""}]}}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

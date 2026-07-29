@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -177,47 +175,41 @@ func (s *GalgameService) GetMyInteractions(userID int) dto.MyGalgameInteractions
 	return dto.MyGalgameInteractions{Liked: liked, Favorited: favorited}
 }
 
-// fetchOwnerAndName reads the galgame's owner user_id AND a display name from
-// galgame in ONE request (0 / "" on any failure). The name becomes the notification
-// content preview so a favorite/like notice shows WHICH galgame instead of a
-// blank line — see the CreateGalgameMessageWithContent callers below.
+// fetchOwnerAndName reads the galgame's owner user_id AND a display name in ONE
+// request (0 / "" on any failure). The name becomes the notification content
+// preview so a favorite/like notice shows WHICH galgame instead of a blank line
+// — see the CreateGalgameMessageWithContent callers below.
 //
-// Fallback order zh-CN → zh-TW → ja-JP → en-US mirrors the FE's
+// This is a PERMISSION + NOTIFICATION lane, so it reads the surviving
+// /internal ownership meta op rather than the catalog: ownership is a wiki
+// lifecycle fact and the catalog public face carries none by design (doc 106
+// R2 ①). The op is status-blind, so the owner of an unpublished entry resolves
+// too — reading it off a published-only endpoint used to return nothing and
+// silently degrade to "not the owner".
+//
+// The fallback order zh-CN → zh-TW → ja-JP → en-US mirrors the FE's
 // getPreferredLanguageText zh-cn default. en-US (usually the VNDB romaji title)
 // is LAST on purpose: a JP/CN-titled game must never surface its VNDB English
 // name when a Chinese or Japanese name exists.
 func (s *GalgameService) fetchOwnerAndName(ctx context.Context, galgameID int) (int, string) {
-	// /v1 aggregate detail: names are always present; user_id lives in the meta
-	// block (include=meta). content_limit=all keeps an NSFW title resolvable (the
-	// default sfw would 404 it, and a like/favorite notification can target any
-	// game); the key's galgame:nsfw scope makes `all` effective.
-	data, err := s.galgameClient.GetV1(
-		ctx, fmt.Sprintf("/galgame/%d", galgameID),
-		url.Values{"include": {"meta"}, "content_limit": {"all"}},
-	)
-	if err != nil {
+	rows, appErr := s.galgameClient.GalgameMeta(ctx, []int{galgameID})
+	if appErr != nil {
 		return 0, ""
 	}
-	var g struct {
-		Names struct {
-			EnUS *string `json:"en-us"`
-			JaJP *string `json:"ja-jp"`
-			ZhCN *string `json:"zh-cn"`
-			ZhTW *string `json:"zh-tw"`
-		} `json:"names"`
-		Meta struct {
-			UserID int `json:"user_id"`
-		} `json:"meta"`
+	row, ok := rows[galgameID]
+	if !ok {
+		return 0, ""
 	}
-	_ = json.Unmarshal(data, &g)
-	deref := func(p *string) string {
-		if p == nil {
-			return ""
-		}
-		return *p
+	return row.UserID, truncate(row.Name(), constants.TextPreviewLength)
+}
+
+// derefIntOr returns *p, or def when p is nil — the frozen creator id is
+// nullable (unknown), and a nil must not silently become user 0.
+func derefIntOr(p *int, def int) int {
+	if p == nil {
+		return def
 	}
-	name := firstNonEmpty(deref(g.Names.ZhCN), deref(g.Names.ZhTW), deref(g.Names.JaJP), deref(g.Names.EnUS))
-	return g.Meta.UserID, truncate(name, constants.TextPreviewLength)
+	return *p
 }
 
 // firstNonEmpty returns the first non-blank argument, or "".
@@ -261,10 +253,14 @@ func (s *GalgameService) GetDetail(
 	// published rows, so a banned (status=1) or unknown id comes back as a
 	// not-found AppError (the bridge's "该 Galgame 已被封禁" message is subsumed by
 	// the standard not-found — /v1 never returns a banned row).
-	g, appErr := s.galgameClient.GalgameDetailV1(ctx, galgameID, token, "all")
+	d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID, "all")
 	if appErr != nil {
 		return nil, appErr
 	}
+	if !found {
+		return nil, errors.ErrNotFound("未找到该 Galgame")
+	}
+	g := client.CatalogDetailToFull(d, galgameID)
 
 	// Async view bump (don't block the response).
 	go s.galgameRepo.IncrementView(galgameID)
@@ -274,16 +270,16 @@ func (s *GalgameService) GetDetail(
 
 	platforms, languages, types := s.resourceMetaRepo.FindResourceMetaByGalgame(galgameID)
 
-	var series *dto.GalgameDetailSeries
-	if g.SeriesID != nil {
-		series = s.fetchSeriesBrief(ctx, *g.SeriesID, isSFW)
-	}
-
 	ratings := s.buildDetailRatings(ctx, galgameID, currentUserID, g)
 
-	// /v1 carries no users map — resolve the author + contributors from OAuth so
-	// galgameDetailFromNextMoe can attach their briefs (same source the bridge's
-	// users map came from).
+	// The catalog carries no submitter (doc 106 R2), so the author comes from
+	// the surviving /internal ownership meta op — the same lane the edit
+	// permission check uses, and status-blind like it.
+	if meta, mErr := s.galgameClient.GalgameMeta(ctx, []int{galgameID}); mErr == nil {
+		if row, ok := meta[galgameID]; ok {
+			g.UserID = row.UserID
+		}
+	}
 	users := s.hydrateDetailUsers(ctx, g)
 	detail := galgameDetailFromNextMoe(g, users)
 	// 正版购买 (DLsite affiliate) — empty unless this galgame carries a DLsite work
@@ -305,7 +301,6 @@ func (s *GalgameService) GetDetail(
 	detail.Platform = platforms
 	detail.Language = languages
 	detail.Type = types
-	detail.Series = series
 	detail.Ratings = ratings
 	return &detail, nil
 }
@@ -326,56 +321,6 @@ func (s *GalgameService) hydrateDetailUsers(ctx context.Context, g dto.NextMoeGa
 		users[strconv.Itoa(id)] = dto.NextMoeUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
 	}
 	return users
-}
-
-// fetchSeriesBrief loads a minimal series summary (used on galgame detail page).
-//
-// content_limit MUST be sent: /series/:id defaults to sfw when omitted, so an
-// all-NSFW series reports 0 members + isNSFW=false on the detail page (the
-// series block looks empty / mislabeled SFW even while viewing an NSFW title).
-// Mirror series_service: SFW → sfw; NSFW → all. The /v1 series entity carries
-// created/updated (W1d) + the gated member previews (with meta) the samples need.
-func (s *GalgameService) fetchSeriesBrief(ctx context.Context, seriesID int, isSFW bool) *dto.GalgameDetailSeries {
-	contentLimit := "all"
-	if isSFW {
-		contentLimit = "sfw"
-	}
-	entry, found, appErr := s.galgameClient.SeriesEntryV1(ctx, strconv.Itoa(seriesID), contentLimit)
-	if appErr != nil || !found {
-		return nil
-	}
-
-	isNSFW := false
-	samples := make([]dto.GalgameSample, 0, min(len(entry.Galgame), 5))
-	for i, sg := range entry.Galgame {
-		if sg.ContentLimit == "nsfw" {
-			isNSFW = true
-		}
-		if i < 5 {
-			samples = append(samples, dto.GalgameSample{
-				Name: dto.KunLanguage{
-					EnUs: sg.NameEnUs, JaJp: sg.NameJaJp,
-					ZhCn: sg.NameZhCn, ZhTw: sg.NameZhTw,
-				},
-				Banner:                   sg.Banner,
-				EffectiveBannerHash:      sg.EffectiveBannerHash,
-				EffectiveBannerURL:       sg.EffectiveBannerURL,
-				EffectiveBannerWidth:     sg.EffectiveBannerWidth,
-				EffectiveBannerHeight:    sg.EffectiveBannerHeight,
-				EffectiveBannerThumbhash: sg.EffectiveBannerThumbhash,
-			})
-		}
-	}
-	return &dto.GalgameDetailSeries{
-		ID:            entry.ID,
-		Name:          entry.Name,
-		Description:   entry.Description,
-		IsNSFW:        isNSFW,
-		SampleGalgame: samples,
-		GalgameCount:  len(entry.Galgame),
-		Created:       entry.Created,
-		Updated:       entry.Updated,
-	}
 }
 
 // buildDetailRatings assembles the ratings list with user resolution and liked flag.
@@ -511,15 +456,18 @@ func (s *GalgameService) HydrateCardsByIDs(
 		return nil, appErr
 	}
 
-	// Users (from galgame briefs) — hydrated from OAuth.
-	userIDs := make([]int, 0, len(briefMap))
-	for _, b := range briefMap {
-		userIDs = append(userIDs, b.UserID)
+	// Local stats batch — also the source of the author chip: the wiki-era
+	// creator is frozen on the local row (migration 066) because the catalog
+	// face carries no submitter (doc 106 R2 ②).
+	localMap := s.galgameRepo.FindLocalBatch(ids)
+
+	userIDs := make([]int, 0, len(localMap))
+	for _, row := range localMap {
+		if row.CreatorUserID != nil {
+			userIDs = append(userIDs, *row.CreatorUserID)
+		}
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
-
-	// Local stats batch
-	localMap := s.galgameRepo.FindLocalBatch(ids)
 
 	// Bayesian display rating per card (same formula as the rating sort).
 	ratingMap := s.listRepo.BayesianRatings(ids)

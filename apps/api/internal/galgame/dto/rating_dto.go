@@ -195,10 +195,4 @@ type RatingDetail struct {
 	Created      string              `json:"created"`
 	Updated      string              `json:"updated"`
 	Galgame      RatingGalgameDetail `json:"galgame"`
-	// Full series brief (matches the FE GalgameSeries shape used by
-	// GalgameSeriesCard on the rating detail page). Nil when the rated
-	// galgame isn't part of any series. SeriesListItem is reused
-	// verbatim here so a single FE component renders both /galgame-
-	// series list entries and this in-rating "所属系列" card.
-	GalgameSeries *SeriesListItem `json:"galgame_series"`
 }

@@ -63,39 +63,6 @@ type GalgameSample struct {
 // Series
 // ──────────────────────────────────────────
 
-type SeriesListRequest struct {
-	Page  int `query:"page" validate:"min=1"`
-	Limit int `query:"limit" validate:"min=1,max=50"`
-}
-
-type SeriesListItem struct {
-	ID            int             `json:"id"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"is_nsfw"`
-	SampleGalgame []GalgameSample `json:"sample_galgame"`
-	GalgameCount  int             `json:"galgame_count"`
-	Created       string          `json:"created"`
-	Updated       string          `json:"updated"`
-}
-
-type SeriesListPage struct {
-	Series []SeriesListItem `json:"series"`
-	Total  int64            `json:"total"`
-}
-
-type SeriesDetail struct {
-	ID            int             `json:"id"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	IsNSFW        bool            `json:"is_nsfw"`
-	SampleGalgame []GalgameSample `json:"sample_galgame"`
-	GalgameCount  int             `json:"galgame_count"`
-	Galgame       []GalgameCard   `json:"galgame"`
-	Created       string          `json:"created"`
-	Updated       string          `json:"updated"`
-}
-
 // ──────────────────────────────────────────
 // Official
 // ──────────────────────────────────────────

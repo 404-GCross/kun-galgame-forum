@@ -39,6 +39,9 @@ type GalgameLocalRow struct {
 	FavoriteCount      int       `gorm:"column:favorite_count"`
 	View               int       `gorm:"column:view"`
 	ResourceUpdateTime time.Time `gorm:"column:resource_update_time"`
+	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
+	// author chip's only source now that the catalog face carries none.
+	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
 // ──────────────────────────────────────────
@@ -58,7 +61,7 @@ func (r *GalgameRepository) FindLocalBatch(ids []int) map[int]GalgameLocalRow {
 		return map[int]GalgameLocalRow{}
 	}
 	var rows []GalgameLocalRow
-	r.db.Table("galgame").Select("id, like_count, favorite_count, view, resource_update_time").
+	r.db.Table("galgame").Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id").
 		Where("id IN ?", ids).Scan(&rows)
 	out := make(map[int]GalgameLocalRow, len(rows))
 	for _, row := range rows {

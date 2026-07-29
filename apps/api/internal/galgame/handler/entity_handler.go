@@ -3,7 +3,6 @@ package handler
 import (
 	"net/url"
 
-	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
@@ -11,53 +10,34 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// EntityHandler groups the galgame-entity endpoints (series/official/engine/tag).
-// All of these proxy to galgame, enrich with local data, and apply NSFW filtering.
+// EntityHandler groups the galgame-entity endpoints (official/engine/tag).
+// All of these read the catalog taxonomy face, enrich with local data, and
+// apply NSFW filtering.
+//
+// The `:id` path parameter is a CATALOG id on every one of these routes (doc
+// 106 R1): the browse pages link into the new /galgame-{tag,official,engine}/c/
+// URL space, and the legacy wiki-id URLs are redirect shells that never reach
+// this handler.
+//
+// The SERIES family is gone — the wiki's 146-entry series vocabulary had no
+// migration path (only 6 of them correspond to a catalog series), so P3 retired
+// the public series pages rather than half-migrating them.
 type EntityHandler struct {
-	seriesService   *service.SeriesService
 	officialService *service.OfficialService
 	engineService   *service.EngineService
 	tagService      *service.TagService
 }
 
 func NewEntityHandler(
-	series *service.SeriesService,
 	official *service.OfficialService,
 	engine *service.EngineService,
 	tag *service.TagService,
 ) *EntityHandler {
 	return &EntityHandler{
-		seriesService:   series,
 		officialService: official,
 		engineService:   engine,
 		tagService:      tag,
 	}
-}
-
-// ──────────────────────────────────────────
-// Series
-// ──────────────────────────────────────────
-
-// GetSeriesList — GET /galgame-series
-func (h *EntityHandler) GetSeriesList(c fiber.Ctx) error {
-	var req dto.SeriesListRequest
-	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
-		return response.Error(c, appErr)
-	}
-	page, appErr := h.seriesService.GetList(c.Context(), &req, utils.IsSFW(c))
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, page)
-}
-
-// GetSeriesDetail — GET /galgame-series/:id
-func (h *EntityHandler) GetSeriesDetail(c fiber.Ctx) error {
-	detail, appErr := h.seriesService.GetDetail(c.Context(), c.Params("id"), utils.IsSFW(c))
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, detail)
 }
 
 // ──────────────────────────────────────────
@@ -66,7 +46,7 @@ func (h *EntityHandler) GetSeriesDetail(c fiber.Ctx) error {
 
 // GetOfficialList — GET /galgame-official
 func (h *EntityHandler) GetOfficialList(c fiber.Ctx) error {
-	page, appErr := h.officialService.GetList(c.Context(), collectQuery(c))
+	page, appErr := h.officialService.GetList(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -75,18 +55,18 @@ func (h *EntityHandler) GetOfficialList(c fiber.Ctx) error {
 
 // SearchOfficials — GET /galgame-official/search
 func (h *EntityHandler) SearchOfficials(c fiber.Ctx) error {
-	items, appErr := h.officialService.Search(c.Context(), collectQuery(c))
+	items, appErr := h.officialService.Search(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OK(c, items)
 }
 
-// GetOfficialDetail — GET /galgame-official/:name
+// GetOfficialDetail — GET /galgame-official/:id (catalog label id)
 func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 	detail, appErr := h.officialService.GetDetail(
 		c.Context(),
-		c.Params("name"),
+		c.Params("id"),
 		collectQuery(c),
 		utils.IsSFW(c),
 	)
@@ -102,18 +82,18 @@ func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 
 // GetEngineList — GET /galgame-engine
 func (h *EntityHandler) GetEngineList(c fiber.Ctx) error {
-	items, appErr := h.engineService.GetList(c.Context())
+	items, appErr := h.engineService.GetList(c.Context(), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OK(c, items)
 }
 
-// GetEngineDetail — GET /galgame-engine/:name
+// GetEngineDetail — GET /galgame-engine/:id (catalog engine id)
 func (h *EntityHandler) GetEngineDetail(c fiber.Ctx) error {
 	detail, appErr := h.engineService.GetDetail(
 		c.Context(),
-		c.Params("name"),
+		c.Params("id"),
 		collectQuery(c),
 		utils.IsSFW(c),
 	)
@@ -154,11 +134,11 @@ func (h *EntityHandler) GetMultiTagGalgames(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// GetTagDetail — GET /galgame-tag/:name
+// GetTagDetail — GET /galgame-tag/:id (canonical catalog tag id)
 func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 	detail, appErr := h.tagService.GetDetail(
 		c.Context(),
-		c.Params("name"),
+		c.Params("id"),
 		collectQuery(c),
 		utils.IsSFW(c),
 	)

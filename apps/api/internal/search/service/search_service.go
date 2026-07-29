@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -178,10 +177,23 @@ func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, lim
 	return &dto.PaginatedResult[dto.ReplyItem]{Items: items, Total: total}, nil
 }
 
-// SearchGalgames returns galgame search results from the galgame Meilisearch
-// index, enriched with local interaction counts. Uses the galgame `fields`
-// parameter so the heavy `intro_*` markdown isn't sent over the wire on
-// list pages — saves hundreds of KB per request.
+// SearchGalgames returns galgame search results from the catalog product
+// search face, enriched with local interaction counts.
+//
+// Two properties of the new face are worth naming, because the old one had the
+// opposite of each:
+//
+//   - total and items are gated by the SAME compiled filter expression, so an
+//     SFW caller's page count matches its result count. The deprecated face
+//     filtered items in a re-hydration pass the total never saw, which made SFW
+//     pagination lossy.
+//   - the population is the whole catalog registry, not just the works kungal
+//     ingested (refs/proj/126 P1). Hits kungal has never seen render as
+//     未收录 cards through the enricher's IsOnForum=false branch.
+//
+// NSFW gating is upstream-only: passing nsfw=1 is what includes r18 hits, and
+// there is deliberately no post-filter here (the handbook forbids it — the data
+// has already left the boundary by then).
 func (s *SearchService) SearchGalgames(
 	ctx context.Context,
 	raw string,
@@ -195,47 +207,32 @@ func (s *SearchService) SearchGalgames(
 		return nil, errors.ErrInternal("Galgame 搜索未启用")
 	}
 
-	q := url.Values{}
-	q.Set("q", raw)
-	q.Set("page", strconv.Itoa(page))
-	q.Set("limit", strconv.Itoa(limit))
-	// /v1 thin item + include=meta carries every scalar the enricher reads (the
-	// heavy intro_* / taxonomy name arrays are never on the thin item, so the old
-	// `fields=` bandwidth trim is now inherent to the curated shape). Content
-	// limit MUST be explicit on BOTH branches: /v1 search defaults to sfw when
-	// omitted, so NSFW mode has to say `all` aloud (needs the key's galgame:nsfw
-	// scope) or NSFW hits silently disappear.
-	q.Set("include", "meta")
-	if isSFW {
-		q.Set("content_limit", "sfw")
-	} else {
-		q.Set("content_limit", "all")
+	q := url.Values{
+		"q":       {raw},
+		"page":    {strconv.Itoa(page)},
+		"limit":   {strconv.Itoa(limit)},
+		"include": {galgameService.CatalogCardInclude},
+		"sort":    {"relevance"},
+	}
+	if !isSFW {
+		q.Set("nsfw", "1")
 	}
 
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/search", q)
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		return nil, appErr
 	}
-
-	var resp struct {
-		Items []client.V1Item `json:"items"`
-		Total int64           `json:"total"`
+	items := make([]galgameDto.NextMoeGalgameItem, 0, len(res.Items))
+	for i := range res.Items {
+		if !client.CatalogItemRenderable(&res.Items[i]) {
+			continue
+		}
+		items = append(items, client.CatalogItemToNextMoeItem(&res.Items[i]))
 	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, errors.ErrInternal(fmt.Sprintf("解析 Galgame 搜索响应失败: %v", err))
-	}
-	items := make([]galgameDto.NextMoeGalgameItem, len(resp.Items))
-	for i := range resp.Items {
-		items[i] = client.V1ItemToNextMoeItem(&resp.Items[i])
-	}
-
-	// Defensive: if galgame ignores the SFW filter we still strip NSFW here.
-	filtered := s.enricher.FilterSFW(items, isSFW)
-	cards := s.enricher.ToCards(ctx, filtered)
 
 	return &dto.PaginatedResult[galgameDto.GalgameCard]{
-		Items: cards,
-		Total: resp.Total,
+		Items: s.enricher.ToCards(ctx, items),
+		Total: res.Total,
 	}, nil
 }
 

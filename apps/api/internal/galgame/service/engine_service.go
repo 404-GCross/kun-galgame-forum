@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"net/url"
 	"strconv"
 
@@ -11,16 +10,17 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// enginePageLimit is the /v1 engines list page size (the curated engine list is
-// page/limit paginated, capped at 100 — the bridge's unpaginated bare array does
-// not carry over). GetList walks every page to reproduce the full list the FE
-// engine index expects.
-const enginePageLimit = 100
-
+// EngineService serves the engine index + detail lanes off the catalog engine
+// facet.
+//
+// VNDB publishes no engine data, so this facet's only copy anywhere is the
+// hand-curated wiki one the retirement wave migrated — a few hundred rows,
+// which is why the catalog ships description + aliases inline on the LIST row
+// and this service can render the whole index without a per-row round-trip.
 type EngineService struct {
 	galgameClient *client.GalgameClient
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
-	// over the engine's member ids (the galgame can't filter by kungal-local
+	// over the engine's member ids (the catalog can't filter by kungal-local
 	// resource data). See GetDetail.
 	galgameSvc *GalgameService
 }
@@ -29,89 +29,65 @@ func NewEngineService(galgameClient *client.GalgameClient, galgameSvc *GalgameSe
 	return &EngineService{galgameClient: galgameClient, galgameSvc: galgameSvc}
 }
 
-type nextMoeEngineListItem struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Description  string   `json:"description"`
-	Alias        []string `json:"alias"`
-	GalgameCount int      `json:"galgame_count"`
-	Created      string   `json:"created"`
-	Updated      string   `json:"updated"`
-}
-
-type nextMoeEngineDetail struct {
-	ID          int      `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Alias       []string `json:"alias"`
-}
+// engineIndexPageCap bounds the index walk. The facet is ~200 rows, so two
+// upstream pages cover it; the cap is a backstop, not a working limit.
+const engineIndexPageCap = 20
 
 // GetList — GET /galgame-engine
-func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *errors.AppError) {
-	// /v1 engines is page/limit paginated ({items,total}); walk every page and
-	// concatenate to reproduce the full bare list the FE engine index consumes.
-	var engines []nextMoeEngineListItem
-	for page := 1; ; page++ {
-		q := url.Values{
-			"page":  {strconv.Itoa(page)},
-			"limit": {strconv.Itoa(enginePageLimit)},
+//
+// The FE engine index renders every engine at once (no pager), so the keyset
+// lane is walked to exhaustion here.
+func (s *EngineService) GetList(ctx context.Context, isSFW bool) ([]dto.EngineListItem, *errors.AppError) {
+	items := []dto.EngineListItem{}
+	cursor := ""
+	for page := 0; page < engineIndexPageCap; page++ {
+		q := url.Values{"limit": {"100"}}
+		if !isSFW {
+			q.Set("nsfw", "1")
 		}
-		data, appErr := s.galgameClient.GetV1(ctx, "/galgame/engines", q)
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		res, appErr := s.galgameClient.CatalogTaxonomyList(ctx, "engines", q)
 		if appErr != nil {
 			return nil, appErr
 		}
-		var resp struct {
-			Items []nextMoeEngineListItem `json:"items"`
-			Total int64                   `json:"total"`
+		for _, e := range res.Items {
+			items = append(items, dto.EngineListItem{
+				ID:           int(e.ID),
+				Name:         e.Label(),
+				Description:  e.Description,
+				Alias:        emptyStrSliceIfNil(e.Aliases),
+				GalgameCount: e.WorkCount,
+			})
 		}
-		if err := json.Unmarshal(data, &resp); err != nil {
-			return nil, errors.ErrInternal("解析 Galgame 响应失败")
-		}
-		engines = append(engines, resp.Items...)
-		if len(resp.Items) == 0 || int64(len(engines)) >= resp.Total {
+		if res.NextCursor == nil || *res.NextCursor == "" {
 			break
 		}
-	}
-
-	items := make([]dto.EngineListItem, len(engines))
-	for i, e := range engines {
-		items[i] = dto.EngineListItem{
-			ID:           e.ID,
-			Name:         e.Name,
-			Description:  e.Description,
-			Alias:        emptyStrSliceIfNil(e.Alias),
-			GalgameCount: e.GalgameCount,
-		}
+		cursor = *res.NextCursor
 	}
 	return items, nil
 }
 
-// GetDetail — GET /galgame-engine/:name
+// GetDetail — GET /galgame-engine/:id (id = a catalog ENGINE id)
 func (s *EngineService) GetDetail(
 	ctx context.Context,
-	name string,
+	id string,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.EngineDetail, *errors.AppError) {
-	// Entity detail lists the forum-LOCAL subset of the engine's catalogue, so
-	// the kungal filters (类型/语言/平台/作品类型) + every sort work. Only the
-	// engine's metadata is used from the galgame here (cheapest page); the galgame
-	// list is recomputed locally from the member ids below.
-	// /v1 engine entity is by-id (the :name segment carries the numeric id) and
-	// needs no query params — the curated record has name/description/alias/
-	// galgame_count. The kungal member list is recomputed locally below.
-	data, appErr := s.galgameClient.GetV1(ctx, "/galgame/engines/"+name, nil)
+	e, found, appErr := s.galgameClient.CatalogEngine(ctx, id, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
-	var e nextMoeEngineDetail
-	if err := json.Unmarshal(data, &e); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
+	if !found {
+		return nil, errors.ErrNotFound("未找到该引擎")
 	}
 
-	// Member ids from the galgame, then the SAME local filter/sort/paginate as
-	// /galgame over them (RestrictIDs). Un-ingested members drop out naturally.
-	memberIDs, appErr := s.galgameClient.EntityGalgameIDs(ctx, "engine", e.ID)
+	// Entity detail lists the forum-LOCAL subset of the engine's catalogue, so
+	// the kungal filters (类型/语言/平台/作品类型) + every sort work.
+	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
+		url.Values{"engine_id": {id}}, isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -121,10 +97,10 @@ func (s *EngineService) GetDetail(
 	}
 
 	return &dto.EngineDetail{
-		ID:           e.ID,
+		ID:           int(e.ID),
 		Name:         e.Name,
 		Description:  e.Description,
-		Alias:        emptyStrSliceIfNil(e.Alias),
+		Alias:        emptyStrSliceIfNil(e.Aliases),
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
@@ -135,4 +111,14 @@ func emptyStrSliceIfNil(s []string) []string {
 		return []string{}
 	}
 	return s
+}
+
+// atoiOrZero parses an id path segment, returning 0 when it is not a positive
+// integer — the caller then 404s rather than forwarding garbage upstream.
+func atoiOrZero(raw string) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 0
+	}
+	return n
 }

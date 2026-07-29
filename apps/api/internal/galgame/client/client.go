@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
@@ -132,6 +131,12 @@ type GalgameClient struct {
 	briefCache  map[batchCacheKey]batchCacheEntry[GalgameBrief]
 	detailMu    sync.RWMutex
 	detailCache map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]
+
+	// gid → catalog work id memo (see catalogIDsForGIDs). Separate from the
+	// brief caches because it has a different lifetime: a brief goes stale in
+	// minutes, an identity mapping essentially never does.
+	gidMu    sync.RWMutex
+	gidCache map[int]gidLookupEntry
 }
 
 // New builds a galgame client for the NextMoe catalog service.
@@ -178,6 +183,7 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 		imageCDNBase: imageCDNBase,
 		briefCache:   map[batchCacheKey]batchCacheEntry[GalgameBrief]{},
 		detailCache:  map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]{},
+		gidCache:     map[int]gidLookupEntry{},
 	}
 }
 
@@ -246,6 +252,30 @@ func (c *GalgameClient) getFace(ctx context.Context, base, path, token string, q
 	return c.doRequest(req)
 }
 
+// postFace performs a JSON POST against the given base, attaching an
+// X-API-Key when non-empty. The catalog public face needs it for exactly one
+// op — the batch external-id lookup, which is a POST because its request is a
+// list of (source, external_id) pairs (doc 106 Q1).
+func (c *GalgameClient) postFace(ctx context.Context, base, path string, query url.Values, body any, apiKey string) (json.RawMessage, *errors.AppError) {
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return nil, errors.ErrInternal("序列化请求失败")
+	}
+	reqURL := base + path
+	if len(query) > 0 {
+		reqURL += "?" + query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(payload))
+	if err != nil {
+		return nil, errors.ErrInternal("创建请求失败")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
+	}
+	return c.doRequest(req)
+}
+
 // apiResponse is the standard {code, message, data} wrapper.
 type apiResponse struct {
 	Code    int             `json:"code"`
@@ -287,139 +317,6 @@ func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values
 // depends on the caller's identity (search?include_pending).
 func (c *GalgameClient) GetV1WithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
 	return c.getFace(ctx, c.v1Base, path, token, query, c.apiKey)
-}
-
-// GalgameDetailV1 fetches one galgame's full aggregate from /v1 (all the include
-// blocks the detail page needs, incl. the W1d refs galgame_count / official
-// link+aliases + contributors) and projects it onto NextMoeGalgameDetailFull. The
-// token is forwarded so a submitter can view their own pending row. content_limit
-// "" maps to "all" (permissive), so an nsfw title is not gate-dropped — the
-// service decides the FE interstitial. The users map is NOT carried by /v1; the
-// caller hydrates author + contributors from OAuth.
-func (c *GalgameClient) GalgameDetailV1(ctx context.Context, gid int, token, contentLimit string) (dto.NextMoeGalgameDetailFull, *errors.AppError) {
-	query := url.Values{
-		"include":       {"intro,taxonomy,tag_refs,official_refs,engine_refs,meta,covers,screenshots,links,series,contributors"},
-		"content_limit": {v1ContentLimit(contentLimit)},
-	}
-	data, appErr := c.GetV1WithToken(ctx, "/galgame/"+strconv.Itoa(gid), token, query)
-	if appErr != nil {
-		return dto.NextMoeGalgameDetailFull{}, appErr
-	}
-	var d v1Detail
-	if err := json.Unmarshal(data, &d); err != nil {
-		return dto.NextMoeGalgameDetailFull{}, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-	return v1DetailToFull(&d), nil
-}
-
-// GalgameLinksV1 fetches a galgame's curated external links from the /v1 detail
-// include=links block (W1d carries user_id for the banned-author filter). Returns
-// the raw curated rows; the caller resolves the user + drops banned authors.
-func (c *GalgameClient) GalgameLinksV1(ctx context.Context, gid string) ([]v1Link, *errors.AppError) {
-	query := url.Values{"include": {"links"}, "content_limit": {"all"}}
-	data, appErr := c.GetV1(ctx, "/galgame/"+gid, query)
-	if appErr != nil {
-		return nil, appErr
-	}
-	var d struct {
-		Links *[]v1Link `json:"links"`
-	}
-	if err := json.Unmarshal(data, &d); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 链接响应失败")
-	}
-	if d.Links == nil {
-		return []v1Link{}, nil
-	}
-	return *d.Links, nil
-}
-
-// seriesListPageV1 is one page of the /v1 series list (internal paging helper).
-func (c *GalgameClient) seriesListPageV1(ctx context.Context, page, limit int, contentLimit string) (v1SeriesListData, *errors.AppError) {
-	query := url.Values{
-		"page":          {strconv.Itoa(page)},
-		"limit":         {strconv.Itoa(limit)},
-		"content_limit": {contentLimit},
-		"include":       {"meta"},
-	}
-	data, appErr := c.GetV1(ctx, "/galgame/series", query)
-	if appErr != nil {
-		return v1SeriesListData{}, appErr
-	}
-	var d v1SeriesListData
-	if err := json.Unmarshal(data, &d); err != nil {
-		return v1SeriesListData{}, errors.ErrInternal("解析 Galgame 系列响应失败")
-	}
-	return d, nil
-}
-
-// SeriesListV1 pages the /v1 series list (which caps page size, unlike the
-// bridge's limit=500) into the full set of series entries, each carrying its
-// gated galgame_count + created/updated + thin member previews (with meta). The
-// SeriesService maps these to its cards + backfills full members where the capped
-// preview is short.
-func (c *GalgameClient) SeriesListV1(ctx context.Context, contentLimit string) ([]NextMoeSeriesEntry, *errors.AppError) {
-	const pageSize = 50
-	var out []NextMoeSeriesEntry
-	for page := 1; page <= 200; page++ { // 200*50 = 10k series ceiling (well above the catalogue)
-		d, appErr := c.seriesListPageV1(ctx, page, pageSize, contentLimit)
-		if appErr != nil {
-			return nil, appErr
-		}
-		for i := range d.Items {
-			out = append(out, v1SeriesEntityToEntry(&d.Items[i]))
-		}
-		if len(d.Items) < pageSize || int64(len(out)) >= d.Total {
-			break
-		}
-	}
-	return out, nil
-}
-
-// SeriesEntryV1 fetches one series' full gated member set from /v1 (the member
-// previews carry meta) — the backfill source for SeriesList and the SeriesService
-// detail page. found=false on an unknown id.
-func (c *GalgameClient) SeriesEntryV1(ctx context.Context, seriesID string, contentLimit string) (*NextMoeSeriesEntry, bool, *errors.AppError) {
-	query := url.Values{"content_limit": {contentLimit}, "include": {"meta"}}
-	data, appErr := c.GetV1(ctx, "/galgame/series/"+seriesID, query)
-	if appErr != nil {
-		// A missing series comes back as a not-found AppError; surface it as
-		// found=false so the caller can null the panel rather than 500.
-		if appErr.StatusCode == 404 {
-			return nil, false, nil
-		}
-		return nil, false, appErr
-	}
-	var e v1SeriesEntity
-	if err := json.Unmarshal(data, &e); err != nil {
-		return nil, false, errors.ErrInternal("解析 Galgame 系列响应失败")
-	}
-	entry := v1SeriesEntityToEntry(&e)
-	return &entry, true, nil
-}
-
-// EntityGalgameIDs fetches the member galgame ids of a galgame entity
-// (kind = "tag" | "official" | "engine") so the forum can run its OWN local
-// resource-based filtering over them — the galgame has no resource concept. The
-// result is always non-nil so the caller's RestrictIDs guard distinguishes
-// "restrict to this (possibly empty) set" from "no restriction".
-func (c *GalgameClient) EntityGalgameIDs(ctx context.Context, kind string, id int) ([]int, *errors.AppError) {
-	// /v1 exposes the reverse-lookup under the plural entity segment
-	// (/v1/galgame/{tags,officials,engines}/{id}/galgame-ids); the {ids} envelope
-	// is byte-identical to the bridge's /{tag,official,engine}/{id}/galgame-ids.
-	data, appErr := c.GetV1(ctx, fmt.Sprintf("/galgame/%ss/%d/galgame-ids", kind, id), nil)
-	if appErr != nil {
-		return nil, appErr
-	}
-	var parsed struct {
-		IDs []int `json:"ids"`
-	}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-	if parsed.IDs == nil {
-		parsed.IDs = []int{}
-	}
-	return parsed.IDs, nil
 }
 
 // PostWithToken performs a POST with Bearer token.
@@ -734,52 +631,31 @@ type GalgameDetailBrief struct {
 	Officials []string `json:"officials"`
 }
 
-// GetBatchDetailPublic is GetBatchPublic's richer sibling: GET
-// /galgame/batch?view=detail returns GalgameDetailBrief (intro + officials +
-// release_date) for list cards that need it. Same NSFW contract as
-// GetBatchPublic (isSFW → content_limit=sfw). Anonymous (status=0 only).
+// GetBatchDetailPublic is GetBatchPublic's richer sibling: it adds the intro +
+// maker names a feed card renders (catalog include=intros,labels). Same NSFW
+// contract as GetBatchPublic (isSFW → the catalog nsfw gate stays closed).
 func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameDetailBrief, *errors.AppError) {
 	return cachedBatch(&c.detailMu, c.detailCache, ids, isSFW, func(miss []int) (map[int]GalgameDetailBrief, *errors.AppError) {
-		limit := "all"
-		if isSFW {
-			limit = "sfw"
-		}
-		idStrs := make([]string, len(miss))
-		for i, id := range miss {
-			idStrs[i] = strconv.Itoa(id)
-		}
-		// /v1 batch with the intro (W1d) + officials + meta item-includes rebuilds
-		// GalgameDetailBrief (intro_* + maker names + brief fields). The embedded
-		// brief's release_date is null on the batch face (a pre-existing /v1 thin
-		// limitation the list face does not share).
-		query := url.Values{
-			"ids":           {joinStrings(idStrs, ",")},
-			"content_limit": {v1ContentLimit(limit)},
-			"include":       {"intro,officials,meta"},
-		}
-		data, appErr := c.GetV1(ctx, "/galgame/batch", query)
+		rows, appErr := c.CatalogRowsByGIDs(ctx, miss, catalogDetailBriefInclude, contentLimitFor(isSFW))
 		if appErr != nil {
 			return nil, appErr
 		}
-		var parsed v1BatchData
-		if err := json.Unmarshal(data, &parsed); err != nil {
-			return nil, errors.ErrInternal("解析 Galgame 批量详情响应失败")
-		}
-		result := make(map[int]GalgameDetailBrief, len(parsed.Items))
-		for i := range parsed.Items {
-			b := V1ItemToDetailBrief(&parsed.Items[i])
-			result[b.ID] = b
+		result := make(map[int]GalgameDetailBrief, len(rows))
+		for gid := range rows {
+			row := rows[gid]
+			result[gid] = CatalogItemToDetailBrief(&row)
 		}
 		return result, nil
 	})
 }
 
-// GetBatch fetches lightweight galgame info for multiple IDs anonymously
-// (status=0 only). Returns a map[galgameID] -> GalgameBrief for easy lookup.
+// GetBatch fetches lightweight galgame info for multiple IDs with NO content
+// gate (the permissive default: the caller already knows which ids it wants).
+// Returns a map[galgameID] -> GalgameBrief for easy lookup.
 //
-// For "show me my own pending drafts too" use GetBatchWithViewer.
+// Any path reachable by anonymous traffic MUST use GetBatchPublic instead.
 func (c *GalgameClient) GetBatch(ctx context.Context, ids []int) (map[int]GalgameBrief, *errors.AppError) {
-	return c.GetBatchWithOptions(ctx, ids, "", "")
+	return c.batchByGIDs(ctx, ids, "all")
 }
 
 // GetBatchPublic is the cookie-aware batch fetch for any public list /
@@ -789,88 +665,36 @@ func (c *GalgameClient) GetBatch(ctx context.Context, ids []int) (map[int]Galgam
 //	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
 //	isSFW=false → content_limit=all  (caller opted in to NSFW)
 //
-// Per docs/galgame_wiki/00-handbook §16, /galgame/batch defaults to
-// NO filter (callers presumed to know the IDs they want). Any path
-// reachable by anonymous traffic / search crawlers MUST go through
-// this helper rather than the bare GetBatch — see §16 "不要在下游做
-// 客户端 filtering" for why service-layer post-filtering isn't
-// equivalent (data has already left the galgame boundary).
+// Per docs/galgame_wiki/00-handbook §16 the batch lane defaults to NO filter
+// (callers presumed to know the IDs they want). Any path reachable by anonymous
+// traffic / search crawlers MUST go through this helper rather than the bare
+// GetBatch — see §16 "不要在下游做客户端 filtering" for why service-layer
+// post-filtering isn't equivalent (the data has already left the boundary).
 func (c *GalgameClient) GetBatchPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameBrief, *errors.AppError) {
 	return cachedBatch(&c.briefMu, c.briefCache, ids, isSFW, func(miss []int) (map[int]GalgameBrief, *errors.AppError) {
-		limit := "all"
-		if isSFW {
-			limit = "sfw"
-		}
-		return c.GetBatchWithOptions(ctx, miss, "", limit)
+		return c.batchByGIDs(ctx, miss, contentLimitFor(isSFW))
 	})
 }
 
-// GetBatchWithViewer is the Bearer-aware batch fetch. With a non-empty token
-// the galgame additionally returns any status=3/4 row whose user_id matches
-// the JWT's userID claim — used by the "我的提交"/"发布向导" UX.
-//
-// token="" reduces to the anonymous form.
-func (c *GalgameClient) GetBatchWithViewer(ctx context.Context, ids []int, token string) (map[int]GalgameBrief, *errors.AppError) {
-	return c.GetBatchWithOptions(ctx, ids, token, "")
-}
-
-// GetBatchWithOptions is the fully-parameterized batch fetch:
-//
-//   - token: caller's Bearer access_token; "" = anonymous
-//   - contentLimit: "sfw" / "nsfw" / "all" / "" (omit, galgame default = no filter)
-//
-// Per docs/galgame_wiki/00-handbook §16, /galgame/batch's default is
-// **no filter** (the caller already knows the IDs they want). Public
-// list/feed paths that re-use the batch endpoint to enrich kungal-local
-// IDs MUST pass "sfw" to keep NSFW out — there is no implicit safety
-// net at this layer.
-func (c *GalgameClient) GetBatchWithOptions(ctx context.Context, ids []int, token, contentLimit string) (map[int]GalgameBrief, *errors.AppError) {
+// batchByGIDs is the shared body of the batch lane: kungal gids in, kungal
+// briefs out, over the catalog works face (see catalog_face.go for the two-hop
+// id bridge). Ids the registry cannot resolve, rows the content gate drops and
+// rows the wiki has withdrawn are simply absent from the result — the caller's
+// "not found ⇒ skip this card" branch already handles all three.
+func (c *GalgameClient) batchByGIDs(ctx context.Context, ids []int, contentLimit string) (map[int]GalgameBrief, *errors.AppError) {
 	if len(ids) == 0 {
 		return map[int]GalgameBrief{}, nil
 	}
-
-	idStrs := make([]string, len(ids))
-	for i, id := range ids {
-		idStrs[i] = strconv.Itoa(id)
-	}
-	// /v1 batch: thin items + include=meta carry every scalar the bridge brief
-	// exposed (names/vndb_id/status/content_limit/user_id/resource_update_time/
-	// original_language/age_limit/release_date + banner pin). The kungal "" =
-	// permissive convention maps to /v1 `all` (needs the key's galgame:nsfw
-	// scope; kungal's internal key carries it since W1a P5).
-	query := url.Values{
-		"ids":           {joinStrings(idStrs, ",")},
-		"include":       {"meta"},
-		"content_limit": {v1ContentLimit(contentLimit)},
-	}
-
-	data, appErr := c.GetV1WithToken(ctx, "/galgame/batch", token, query)
+	rows, appErr := c.CatalogRowsByGIDs(ctx, ids, catalogBriefInclude, contentLimit)
 	if appErr != nil {
 		return nil, appErr
 	}
-
-	var batch v1BatchData
-	if err := json.Unmarshal(data, &batch); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 批量响应失败")
-	}
-
-	result := make(map[int]GalgameBrief, len(batch.Items))
-	for i := range batch.Items {
-		b := V1ItemToBrief(&batch.Items[i])
-		result[b.ID] = b
+	result := make(map[int]GalgameBrief, len(rows))
+	for gid := range rows {
+		row := rows[gid]
+		result[gid] = CatalogItemToBrief(&row)
 	}
 	return result, nil
-}
-
-func joinStrings(s []string, sep string) string {
-	if len(s) == 0 {
-		return ""
-	}
-	result := s[0]
-	for _, v := range s[1:] {
-		result += sep + v
-	}
-	return result
 }
 
 // ──────────────────────────────────────────
