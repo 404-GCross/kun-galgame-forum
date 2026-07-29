@@ -2,8 +2,10 @@ package handler
 
 import (
 	"net/url"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/service"
+	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -146,6 +148,27 @@ func (h *EntityHandler) GetTagDetail(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	return response.OK(c, detail)
+}
+
+// ResolveLegacyOfficial — GET /galgame-official/legacy/:id
+//
+// Resolves a legacy wiki 会社 id to its catalog label id so the old URL can
+// 301. Makers resolve at runtime through the registry (A2-0 covered 100% of
+// them) rather than from a frozen map, so future merges keep redirecting
+// correctly. 404 when the id was never registered.
+func (h *EntityHandler) ResolveLegacyOfficial(c fiber.Ctx) error {
+	wikiID, err := strconv.Atoi(c.Params("id"))
+	if err != nil || wikiID <= 0 {
+		return response.Error(c, errors.ErrBadRequest("无效的会社 ID"))
+	}
+	id, found, appErr := h.officialService.ResolveLegacyID(c.Context(), wikiID)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	if !found {
+		return response.Error(c, errors.ErrNotFound("未找到该会社"))
+	}
+	return response.OK(c, fiber.Map{"id": id})
 }
 
 // ──────────────────────────────────────────

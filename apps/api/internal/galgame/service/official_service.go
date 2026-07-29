@@ -139,6 +139,11 @@ func (s *OfficialService) GetDetail(
 	}, nil
 }
 
+// ResolveLegacyID maps a legacy wiki 会社 id onto its catalog label id.
+func (s *OfficialService) ResolveLegacyID(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
+	return s.galgameClient.LookupWikiLabel(ctx, wikiID)
+}
+
 // firstLabelLink picks the maker's primary web presence for the header button.
 // The official site is preferred; otherwise the first link the catalog carries
 // (identity anchors never appear in links[], so anything here is a real page).

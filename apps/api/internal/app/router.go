@@ -208,6 +208,9 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-tag/:id", a.GalgameEntityHandler.GetTagDetail)
 	api.Get("/galgame-official", a.GalgameEntityHandler.GetOfficialList)
 	api.Get("/galgame-official/search", a.GalgameEntityHandler.SearchOfficials)
+	// Legacy wiki-id → catalog-id resolver behind the /galgame-official/{wikiId}
+	// redirect shell. Must precede the :id catch-all.
+	api.Get("/galgame-official/legacy/:id", a.GalgameEntityHandler.ResolveLegacyOfficial)
 	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
@@ -538,7 +541,13 @@ func (a *App) setupRoutes() {
 	// (admin ⊂ ren, STRICTER than infra) per the user's ruling (commit
 	// f819503c: public create, admin-only edit/delete/revert). Not a pkg/perm
 	// key — the galgame re-checks every write; this gate is the local mirror.
+	// Staff read-back for the admin console's edit forms. Same gate as the
+	// edits themselves, and the SAME (wiki) id space as them — the public
+	// browse lanes moved to catalog ids, so prefilling from those would send a
+	// catalog id to a wiki-id write op (doc 106 R11).
 	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
+	taxonomyWrite.Get("/galgame-taxonomy/:family/search", a.GalgameStaffTaxonomyHandler.Search)
+	taxonomyWrite.Get("/galgame-taxonomy/:family/:id", a.GalgameStaffTaxonomyHandler.Detail)
 	taxonomyWrite.Put("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
 	taxonomyWrite.Put("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
 	taxonomyWrite.Put("/galgame-engine", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))

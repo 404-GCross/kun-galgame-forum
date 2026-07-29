@@ -364,3 +364,43 @@ func joinCSV(s []string) string {
 	}
 	return out
 }
+
+// LookupWikiLabel resolves a legacy wiki 会社 id (galgame_official PK) to its
+// catalog label id, so the old /galgame-official/{wikiId} URLs can 301 onto the
+// new catalog-id space.
+//
+// Unlike tags and engines — whose migrations were frozen into a static map —
+// makers resolve at RUNTIME through the registry's own external-ref index. The
+// A2-0 registrar covered 100% of them, and the registry keeps that mapping
+// correct across future merges, which a vendored file could not.
+//
+// found=false on an unregistered id (the caller 404s).
+func (c *GalgameClient) LookupWikiLabel(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
+	q := url.Values{
+		"source":      {siteGalgameWiki},
+		"external_id": {strconv.Itoa(wikiID)},
+		"type":        {"label"},
+		// Identity resolution is not content: gating it would make an r18
+		// maker's old URL 404 rather than redirect.
+		"nsfw": {"1"},
+	}
+	data, appErr := c.GetV1(ctx, "/catalog/lookup", q)
+	if appErr != nil {
+		if appErr.StatusCode == 404 {
+			return 0, false, nil
+		}
+		return 0, false, appErr
+	}
+	var parsed struct {
+		Label *struct {
+			ID int64 `json:"id"`
+		} `json:"label"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return 0, false, errors.ErrInternal("解析 Catalog 反查响应失败")
+	}
+	if parsed.Label == nil {
+		return 0, false, nil
+	}
+	return parsed.Label.ID, true, nil
+}

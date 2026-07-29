@@ -2,20 +2,25 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	"net/url"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
-// DraftsService proxies the galgame's unclaimed-VNDB-draft list
-// (GET /galgame/drafts, status=2) and enriches each entry into the shared
-// GalgameCard shape via GalgameEnricher — the same overlay the calendar /
-// entity detail pages use. Drafts are never on the forum, so every card comes
-// back IsOnForum=false + Status=2, which the frontend renders as a "未在论坛发布"
-// claim card linking to the publish wizard (identical to the calendar's
-// status=2 cards). See docs/galgame_wiki §drafts.
+// DraftsService serves the "未发布的游戏" claim funnel: works the catalog knows
+// about that kungal has never ingested, optionally scoped to one taxonomy
+// entity (the modal lives on the entity detail pages).
+//
+// The wiki used to answer this with its own unclaimed VNDB drafts (status=2).
+// The catalog answers it better and in the CATALOG id space: `claimed=false` is
+// literally "no product has an entry for this work", which is exactly what the
+// funnel is offering the user the chance to change. Every card therefore comes
+// back IsOnForum=false with the claim-card status, and the card's link is
+// name-based (the publish wizard pre-searched by title) — no kungal id needed,
+// which is what makes an unclaimed work renderable at all.
 type DraftsService struct {
 	galgameClient *client.GalgameClient
 	enricher      *GalgameEnricher
@@ -25,36 +30,57 @@ func NewDraftsService(galgameClient *client.GalgameClient, enricher *GalgameEnri
 	return &DraftsService{galgameClient: galgameClient, enricher: enricher}
 }
 
-// nextMoeDraftsResp mirrors the galgame {items, total} draft envelope. Items parse
-// into NextMoeGalgameItem; the enricher reads the scalar card fields (name /
-// banner / status / content_limit) and fuses in local stats.
-type nextMoeDraftsResp struct {
-	Items []dto.NextMoeGalgameItem `json:"items"`
-	Total int64                    `json:"total"`
+// DraftFilters optionally scopes the list to one taxonomy entity. Ids are
+// CATALOG ids (the entity pages carry those now); a zero id means "no filter on
+// that dimension", so an all-zero value reproduces the global list.
+type DraftFilters struct {
+	LabelID  int
+	TagID    int
+	EngineID int
+	// OriginalLanguages is a CSV of catalog original-language tags; empty =
+	// the face's own default (ja + the zh family).
+	OriginalLanguages string
 }
 
-// GetDrafts returns one page of unclaimed VNDB drafts as enriched cards,
-// optionally scoped to one taxonomy entity via f (the modal lives on the
-// official / tag / engine detail pages). page/limit are pre-clamped by the
-// handler (parseCollectionPage).
+// GetDrafts returns one page of unclaimed works as enriched claim cards.
+// page/limit are pre-clamped by the handler.
 func (s *DraftsService) GetDrafts(
 	ctx context.Context,
 	page, limit int,
 	isSFW bool,
-	f client.DraftFilters,
+	f DraftFilters,
 ) (*dto.DraftsPage, *errors.AppError) {
-	data, appErr := s.galgameClient.Drafts(ctx, page, limit, isSFW, f)
+	q := url.Values{
+		"claimed": {"false"},
+		"page":    {strconv.Itoa(page)},
+		"limit":   {strconv.Itoa(limit)},
+		"include": {CatalogCardInclude},
+		// Newest announcements first: the funnel is about what is missing NOW,
+		// not about the back catalogue.
+		"sort": {"released_desc"},
+	}
+	if f.LabelID > 0 {
+		q.Set("label_id", strconv.Itoa(f.LabelID))
+	}
+	if f.TagID > 0 {
+		q.Set("tag_id", strconv.Itoa(f.TagID))
+	}
+	if f.EngineID > 0 {
+		q.Set("engine_id", strconv.Itoa(f.EngineID))
+	}
+	if f.OriginalLanguages != "" {
+		q.Set("olang", f.OriginalLanguages)
+	}
+	if !isSFW {
+		q.Set("nsfw", "1")
+	}
+
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		return nil, appErr
 	}
-
-	var parsed nextMoeDraftsResp
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 响应失败")
-	}
-
 	return &dto.DraftsPage{
-		Items: s.enricher.ToCards(ctx, parsed.Items),
-		Total: parsed.Total,
+		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items)),
+		Total: res.Total,
 	}, nil
 }
