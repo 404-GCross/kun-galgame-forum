@@ -304,19 +304,12 @@ func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, qu
 }
 
 // GetV1 performs an anonymous GET against the /v1 public data face with the
-// service X-API-Key. `path` is the /v1-relative path (e.g. "/galgame/tags") —
-// the caller passes the curated /v1 endpoint, not the legacy bridge path. Used
-// by the A-bucket read migration (Phase-2 07 W4): the service layer re-shapes
-// the curated /v1 response back into kungal's own DTOs.
+// service X-API-Key. `path` is the /v1-relative path — since the A2-3
+// re-anchoring that is always a `/catalog/...` path: kungal reads the canonical
+// registry face and nothing else on /v1. The deprecated `/v1/galgame` product
+// face has no callers left anywhere in this repo (see catalog_face.go).
 func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
 	return c.getFace(ctx, c.v1Base, path, "", query, c.apiKey)
-}
-
-// GetV1WithToken is GetV1 with the caller's Bearer forwarded alongside the
-// X-API-Key (dual-credential transport) — for the /v1 reads whose response
-// depends on the caller's identity (search?include_pending).
-func (c *GalgameClient) GetV1WithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
-	return c.getFace(ctx, c.v1Base, path, token, query, c.apiKey)
 }
 
 // PostWithToken performs a POST with Bearer token.
