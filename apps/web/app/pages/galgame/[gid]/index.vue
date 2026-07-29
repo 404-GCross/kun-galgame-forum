@@ -3,7 +3,6 @@ import type {
   VideoGame,
   WithContext,
   Person,
-  CreativeWorkSeries,
   BreadcrumbList
 } from 'schema-dts'
 
@@ -121,14 +120,6 @@ if (galgame) {
           bestRating: 10,
           worstRating: 1
         }
-      }),
-
-      ...(galgame.series && {
-        isPartOf: {
-          '@type': 'CreativeWorkSeries',
-          name: galgame.series.name,
-          url: `${kungal.domain.main}/series/${galgame.series.id}`
-        } satisfies CreativeWorkSeries
       }),
 
       interactionStatistic: [

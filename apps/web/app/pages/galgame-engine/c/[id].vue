@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
-
-// Proxy-face: taxonomy (tag/official/engine/series) edit + revert mirrors infra
-// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
-// useRole/canAdminister, not useCan.
-const { canAdminister } = useRole()
+// `id` is a CATALOG ENGINE id (A2-3 / doc 106 R1). The legacy wiki-id URLs live
+// one level up as pure 301 shells — and note that mapping is NOT the identity:
+// 52 of the 189 engines landed on a different catalog id
+// (server/middleware/legacy-taxonomy.ts).
+//
+// Staff affordances (edit / delete / revision history) are deliberately NOT
+// here any more: those write ops address WIKI rows and this page no longer
+// knows a wiki id. They live in the admin taxonomy console, which stays
+// wiki-ids end to end (doc 106 R11).
 const route = useRoute()
 const engine_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
-// Shared browse filter Nav with /galgame-tag/[id].vue + /galgame-official/[id].vue:
+// Shared browse filter Nav with the tag + official detail pages:
 // the entity detail lists the forum-LOCAL subset of the engine's catalogue, so
 // the same 类型/语言/平台/作品类型 filters + sorts as /galgame apply (backend runs
 // them locally over the engine's member ids — see entity_filter.buildEntityFilter).
@@ -27,20 +30,12 @@ const {
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): the wiki then hides NSFW games from BOTH the list and the
+// 'nsfw'): the catalog then hides r18 works from BOTH the list and the
 // (content-aware) count, so an NSFW-heavy entity can look emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-const showEngineModal = ref(false)
-const editingEngine = ref<UpdateGalgameEnginePayload>(
-  {} as UpdateGalgameEnginePayload
-)
-
-// "未发布的游戏": this engine's unclaimed VNDB drafts (status=2), scoped by
-// engine_id. Public claim funnel — open to everyone, not just moderators.
-// Engine edges are human-curated so drafts carry none today; the modal shows an
-// honest empty state, but the button stays for parity with the tag / official
-// detail pages.
+// "未发布的游戏": catalog works built with this engine that no product has an
+// entry for yet. Public claim funnel — open to everyone, not just moderators.
 const showDraftsModal = ref(false)
 
 const { data, status } = await useKunFetch<GalgameEngineDetail>(
@@ -60,70 +55,6 @@ const { data, status } = await useKunFetch<GalgameEngineDetail>(
     }
   }
 )
-
-const openEditEngineModal = () => {
-  if (!data.value) {
-    return
-  }
-  const res = data.value
-  editingEngine.value = {
-    engine_id: res.id,
-    name: res.name,
-    description: res.description,
-    alias: res.alias
-  } satisfies UpdateGalgameEnginePayload
-  showEngineModal.value = true
-}
-
-const handleUpdateEngine = async (data: UpdateGalgameEnginePayload) => {
-  const result = await kunFetch(`/galgame-engine`, {
-    method: 'PUT',
-    body: data
-  })
-
-  if (result) {
-    useMessage('重新编辑成功', 'success')
-  }
-}
-
-// Two-stage safe delete (docs 04-taxonomy / 00-handbook): plain DELETE
-// is rejected while still referenced (wiki toasts the count); only after
-// an explicit second confirm do we retry ?force=true to purge relations
-// + hard delete. admin/moderator only — wiki gates; UI canAdminister (§15.2).
-const isDeleting = ref(false)
-const handleDeleteEngine = async () => {
-  const ok = await useComponentMessageStore().alert(
-    `确定删除引擎「${data.value?.name}」吗?`,
-    '若该引擎未被任何 Galgame 引用将直接删除; 仍被引用时会先提示。'
-  )
-  if (!ok) return
-  isDeleting.value = true
-  const res = await kunFetch(`/galgame-engine/${engine_id.value}`, {
-    method: 'DELETE'
-  })
-  if (res !== null) {
-    isDeleting.value = false
-    useMessage('引擎已删除', 'success')
-    await navigateTo('/galgame-engine')
-    return
-  }
-  isDeleting.value = false
-  const force = await useComponentMessageStore().alert(
-    '该引擎仍被 Galgame 引用, 删除已被拒绝',
-    '强制删除会先清除该引擎在所有 Galgame 上的关联, 再硬删除该引擎, 不可撤销。确定强制删除吗?'
-  )
-  if (!force) return
-  isDeleting.value = true
-  const forced = await kunFetch(`/galgame-engine/${engine_id.value}`, {
-    method: 'DELETE',
-    query: { force: true }
-  })
-  isDeleting.value = false
-  if (forced !== null) {
-    useMessage('引擎已强制删除', 'success')
-    await navigateTo('/galgame-engine')
-  }
-}
 
 if (data.value) {
   useKunSeoMeta({
@@ -173,23 +104,6 @@ if (data.value) {
               <KunIcon name="lucide:library-big" />
               未发布的游戏
             </KunButton>
-            <GalgameRevisionModal
-              entity="engine"
-              :id="engine_id"
-              :entity-label="`引擎「${data.name}」`"
-              :can-revert="canAdminister"
-            />
-            <template v-if="canAdminister">
-              <KunButton @click="openEditEngineModal">编辑引擎</KunButton>
-              <KunButton
-                variant="flat"
-                color="danger"
-                :loading="isDeleting"
-                @click="handleDeleteEngine"
-              >
-                删除引擎
-              </KunButton>
-            </template>
           </div>
         </div>
       </template>
@@ -202,12 +116,6 @@ if (data.value) {
       color="warning"
       title="部分 Galgame 已隐藏"
       description="当前为 SFW 模式，该引擎含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
-    />
-
-    <GalgameEngineModal
-      v-model="showEngineModal"
-      :initial-data="editingEngine"
-      @submit="handleUpdateEngine"
     />
 
     <GalgameDraftsModal

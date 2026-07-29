@@ -2,7 +2,6 @@
 import {
   KUN_GALGAME_TAG_CATEGORY_MAP,
   KUN_GALGAME_TAG_SPOILER_MAP,
-  type KunGalgameTagCategory,
   type KunGalgameTagSpoiler
 } from '~/constants/galgameTag'
 
@@ -32,11 +31,17 @@ const isNsfwEnabled = computed(
     showKUNGalgameContentLimit.value === 'all'
 )
 
-// Default filter: 游戏内容 + 技术细节 (+ 成人内容 when NSFW is on), 无剧透 only.
-const selectedCategories = ref<KunGalgameTagCategory[]>(
+// Default filter: everything non-adult (+ 成人内容 when NSFW is on), 无剧透 only.
+//
+// The category axis is now the CATALOG vocabulary (content / meta, plus the
+// reconstructed sexual bucket) rather than the wiki's closed three-value one —
+// so this is typed as a plain string set: an upstream vocabulary can grow, and
+// a chip whose category we do not recognise must still be filterable rather
+// than silently dropped.
+const selectedCategories = ref<string[]>(
   isNsfwEnabled.value
-    ? ['content', 'technical', 'sexual']
-    : ['content', 'technical']
+    ? ['content', 'meta', 'technical', 'sexual']
+    : ['content', 'meta', 'technical']
 )
 const selectedSpoilerLevels = ref<KunGalgameTagSpoiler[]>([0])
 
@@ -49,7 +54,7 @@ const toggleItemInArray = <T,>(arrayRef: Ref<T[]>, item: T) => {
   }
 }
 
-const toggleCategory = (category: KunGalgameTagCategory) => {
+const toggleCategory = (category: string) => {
   toggleItemInArray(selectedCategories, category)
 }
 
@@ -131,7 +136,7 @@ const countColorByCategory = (category: string): string => {
           v-for="tag in filteredTags"
           :key="tag.id"
           underline="none"
-          :to="`/galgame-tag/${tag.id}`"
+          :to="`/galgame-tag/c/${tag.id}`"
         >
           <KunChip
             class-name="bg-default-500/10 cursor-pointer"

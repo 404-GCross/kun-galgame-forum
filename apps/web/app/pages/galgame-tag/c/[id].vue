@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { UpdateGalgameTagPayload } from '~/components/galgame/types'
-import {
-  KUN_GALGAME_TAG_CATEGORY_MAP,
-  type KUN_GALGAME_TAG_TYPE
-} from '~/constants/galgameTag'
+import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 
-// Proxy-face: taxonomy (tag/official/engine/series) edit + revert mirrors infra
-// galgame.taxonomy.* (owned by the galgame wiki, not pkg/perm) — stays on
-// useRole/canAdminister, not useCan.
-const { canAdminister } = useRole()
+// `id` is a CANONICAL CATALOG tag id (A2-3 / doc 106 R1). The legacy wiki-id
+// URLs live one level up and are pure 301/410 shells — see
+// server/middleware/legacy-taxonomy.ts for why the two id spaces need separate
+// paths rather than one clever resolver.
+//
+// Staff affordances (edit / revision history) are deliberately NOT here any
+// more: those write ops address WIKI rows and this page no longer knows a wiki
+// id. They live in the admin taxonomy console, which stays wiki-ids end to end
+// (doc 106 R11).
 const route = useRoute()
 const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
@@ -27,15 +28,12 @@ const {
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 // SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): the wiki then hides NSFW games from BOTH the list and the
+// 'nsfw'): the catalog then hides r18 works from BOTH the list and the
 // (content-aware) count, so an NSFW-heavy entity can look emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-const showTagModal = ref(false)
-const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
-
-// "未发布的游戏": this tag's unclaimed VNDB drafts (status=2), scoped by tag_id.
-// Public claim funnel — open to everyone, not just moderators.
+// "未发布的游戏": catalog works carrying this tag that no product has an entry
+// for yet. Public claim funnel — open to everyone, not just moderators.
 const showDraftsModal = ref(false)
 
 const { data, status } = await useKunFetch<GalgameTagDetail>(
@@ -55,32 +53,6 @@ const { data, status } = await useKunFetch<GalgameTagDetail>(
     }
   }
 )
-
-const openEditTagModal = () => {
-  if (!data.value) {
-    return
-  }
-  const res = data.value
-  editingTag.value = {
-    name: res.name,
-    tag_id: res.id,
-    description: res.description,
-    category: res.category as (typeof KUN_GALGAME_TAG_TYPE)[number],
-    alias: res.alias
-  } satisfies UpdateGalgameTagPayload
-  showTagModal.value = true
-}
-
-const handleUpdateTag = async (data: UpdateGalgameTagPayload) => {
-  const result = await kunFetch(`/galgame-tag`, {
-    method: 'PUT',
-    body: data
-  })
-
-  if (result) {
-    useMessage('重新编辑成功', 'success')
-  }
-}
 
 if (data.value) {
   if (data.value.category !== 'sexual') {
@@ -133,19 +105,6 @@ if (data.value) {
               {{ KUN_GALGAME_TAG_CATEGORY_MAP[data.category] }}
             </KunChip>
           </div>
-          <div
-            v-if="data.alias.length"
-            class="text-default-500 flex flex-wrap gap-2"
-          >
-            别名
-            <KunChip
-              color="primary"
-              v-for="(a, index) in data.alias"
-              :key="index"
-            >
-              {{ a }}
-            </KunChip>
-          </div>
           <div class="flex flex-wrap justify-end gap-2">
             <KunButton
               variant="flat"
@@ -154,15 +113,6 @@ if (data.value) {
             >
               <KunIcon name="lucide:library-big" />
               未发布的游戏
-            </KunButton>
-            <GalgameRevisionModal
-              entity="tag"
-              :id="tag_id"
-              :entity-label="`标签「${data.name}」`"
-              :can-revert="canAdminister"
-            />
-            <KunButton v-if="canAdminister" @click="openEditTagModal">
-              编辑标签
             </KunButton>
           </div>
         </div>
@@ -176,12 +126,6 @@ if (data.value) {
       color="warning"
       title="部分 Galgame 已隐藏"
       description="当前为 SFW 模式，该标签含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
-    />
-
-    <GalgameTagModal
-      v-model="showTagModal"
-      :initial-data="editingTag"
-      @submit="handleUpdateTag"
     />
 
     <GalgameDraftsModal

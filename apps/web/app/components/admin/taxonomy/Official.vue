@@ -1,11 +1,9 @@
 <script setup lang="ts">
-// Official (会社) management tab: paginated list + debounced search + create /
-// edit / two-stage safe delete — same flows as the tag tab.
+// Official (会社) management tab: search → edit / two-stage safe delete.
+//
+// SEARCH-DRIVEN since the A2-3 re-anchoring — see the tag tab for why the
+// public browse lanes can no longer feed a wiki-id edit form (doc 106 R11).
 import { watchDebounced } from '@vueuse/core'
-import {
-  KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
-  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
-} from '~/constants/galgameOfficial'
 import type { UpdateGalgameOfficialPayload } from '~/components/galgame/types'
 
 // Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
@@ -13,15 +11,13 @@ import type { UpdateGalgameOfficialPayload } from '~/components/galgame/types'
 // useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
-const pageData = reactive({ page: 1, limit: 50 })
-
-const { data, status, refresh } = await useKunFetch<{
-  officials: GalgameOfficialItem[]
-  total: number
-}>(`/galgame-official`, { method: 'GET', query: pageData })
+interface StaffTaxonomyRow {
+  id: number
+  name: string
+}
 
 const searchQuery = ref('')
-const searchResult = ref<GalgameOfficialItem[]>([])
+const searchResult = ref<StaffTaxonomyRow[]>([])
 const isSearching = ref(false)
 
 const handleSearch = async () => {
@@ -30,8 +26,8 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  const res = await kunFetch<GalgameOfficialItem[]>(
-    `/galgame-official/search`,
+  const res = await kunFetch<StaffTaxonomyRow[]>(
+    `/galgame-taxonomy/official/search`,
     { method: 'GET', query: { q: searchQuery.value } }
   )
   isSearching.value = false
@@ -43,22 +39,19 @@ watchDebounced(() => searchQuery.value, handleSearch, {
   maxWait: 1000
 })
 
-const displayOfficials = computed(() =>
-  searchQuery.value.trim() ? searchResult.value : (data.value?.officials ?? [])
-)
-
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingOfficial = ref<UpdateGalgameOfficialPayload>(
   {} as UpdateGalgameOfficialPayload
 )
 
-// Hydrate the edit modal from the detail read — the list rows carry no
-// description / original.
-const openEdit = async (official: GalgameOfficialItem) => {
-  const res = await kunFetch<GalgameOfficialDetail>(
-    `/galgame-official/${official.id}`,
-    { method: 'GET', query: { page: 1, limit: 1, official_id: official.id } }
+// The read-back mirrors the update payload field for field — this form PUTs a
+// wholesale replacement, so any field it cannot read back is a field it wipes
+// on save (`original` and `alias` both used to go that way).
+const openEdit = async (official: StaffTaxonomyRow) => {
+  const res = await kunFetch<UpdateGalgameOfficialPayload & { id: number }>(
+    `/galgame-taxonomy/official/${official.id}`,
+    { method: 'GET' }
   )
   if (!res) return
   editingOfficial.value = {
@@ -81,13 +74,12 @@ const handleUpdate = async (payload: UpdateGalgameOfficialPayload) => {
   })
   if (result) {
     useMessage('会社已更新', 'success')
-    await refresh()
     await handleSearch()
   }
 }
 
 const deletingID = ref(0)
-const handleDelete = async (official: GalgameOfficialItem) => {
+const handleDelete = async (official: StaffTaxonomyRow) => {
   const ok = await useComponentMessageStore().alert(
     `确定删除会社「${official.name}」吗?`,
     '若该会社未被任何 Galgame 引用将直接删除; 仍被引用时会先提示。'
@@ -100,7 +92,6 @@ const handleDelete = async (official: GalgameOfficialItem) => {
   if (res !== null) {
     deletingID.value = 0
     useMessage('会社已删除', 'success')
-    await refresh()
     await handleSearch()
     return
   }
@@ -118,7 +109,6 @@ const handleDelete = async (official: GalgameOfficialItem) => {
   deletingID.value = 0
   if (forced !== null) {
     useMessage('会社已强制删除', 'success')
-    await refresh()
     await handleSearch()
   }
 }
@@ -138,34 +128,21 @@ const handleDelete = async (official: GalgameOfficialItem) => {
       </KunButton>
     </div>
 
-    <p class="text-default-500 text-sm">
-      {{ `共 ${data?.total ?? 0} 个会社` }}
-    </p>
-
     <div class="flex flex-col gap-2">
       <div
-        v-for="official in displayOfficials"
+        v-for="official in searchResult"
         :key="official.id"
         class="border-default-200 flex items-center justify-between gap-3 rounded-lg border p-3"
       >
         <div class="flex min-w-0 items-center gap-2">
+          <!-- A wiki id: the legacy path is a 301 shell onto the canonical
+               catalog-id page. -->
           <KunLink
             :to="`/galgame-official/${official.id}`"
             class-name="truncate font-medium"
           >
             {{ official.name }}
           </KunLink>
-          <KunChip size="sm" color="primary">
-            {{ KUN_GALGAME_OFFICIAL_CATEGORY_MAP[official.category] }}
-          </KunChip>
-          <KunChip v-if="official.lang" size="sm" color="secondary">
-            {{
-              KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[official.lang] ?? official.lang
-            }}
-          </KunChip>
-          <span class="text-default-500 shrink-0 text-sm">
-            {{ official.galgame_count }} 部
-          </span>
         </div>
         <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(official)">
@@ -185,19 +162,17 @@ const handleDelete = async (official: GalgameOfficialItem) => {
     </div>
 
     <KunLoading v-if="isSearching" />
-    <KunNull v-if="!isSearching && !displayOfficials.length" />
-
-    <KunPagination
-      v-if="!searchQuery.trim() && data && data.total > pageData.limit"
-      v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.total / pageData.limit)"
-      :is-loading="status === 'pending'"
+    <KunNull
+      v-if="!isSearching && !searchResult.length"
+      :description="
+        searchQuery.trim() ? '未找到匹配的会社' : '搜索会社名以编辑或删除'
+      "
     />
 
     <AdminTaxonomyCreateModal
       v-model="showCreateModal"
       type="official"
-      @created="refresh"
+      @created="handleSearch"
     />
     <GalgameOfficialModal
       v-model="showEditModal"

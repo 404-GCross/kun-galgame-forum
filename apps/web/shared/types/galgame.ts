@@ -3,7 +3,6 @@ import type {
   KunGalgameResourceLanguageOptions,
   KunGalgameResourcePlatformOptions
 } from '~/constants/galgame'
-import type { GalgameSeries } from './galgame-series'
 import type { GalgameEngineItem } from './galgame-engine'
 import type { GalgameOfficialItem } from './galgame-official'
 import type { GalgameTagItem } from './galgame-tag'
@@ -97,7 +96,6 @@ export interface GalgameDetail {
   dlsite_purchase_url?: string
   dlsite_coupon_url?: string
   alias: string[]
-  series: GalgameSeries | null
   engine: GalgameEngineItem[]
   official: GalgameOfficialItem[]
   tag: GalgameDetailTag[]

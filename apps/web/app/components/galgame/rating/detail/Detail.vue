@@ -261,19 +261,6 @@ const handleDeleteRating = async () => {
       </div>
     </KunCard>
 
-    <KunCard
-      :is-hoverable="false"
-      :is-transparent="false"
-      v-if="data?.galgame_series"
-    >
-      <KunHeader
-        name="所属 Galgame 系列"
-        description="该作品所属的 Galgame 系列"
-        scale="h3"
-      />
-      <GalgameSeriesCard :series="data.galgame_series" />
-    </KunCard>
-
     <GalgameRatingCommentCommunityContainer
       v-if="data"
       :rating-id="data.id"

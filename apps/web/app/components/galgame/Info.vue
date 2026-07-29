@@ -49,7 +49,7 @@ const getLanguageName = getGalgameOriginalLanguageName
             :text="`${item.galgame_count} 个 Galgame 使用此引擎制作`"
           >
             <KunLink
-              :to="`/galgame-engine/${item.id}`"
+              :to="`/galgame-engine/c/${item.id}`"
               underline="none"
               class-name="text-foreground hover:text-primary text-base font-semibold"
             >

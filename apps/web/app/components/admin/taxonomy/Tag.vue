@@ -1,8 +1,14 @@
 <script setup lang="ts">
-// Tag management tab: paginated list + debounced search + create / edit /
-// two-stage safe delete (mirrors galgame/tag/DetailContainer's flows).
+// Tag management tab: search → edit / two-stage safe delete.
+//
+// SEARCH-DRIVEN since the A2-3 re-anchoring (doc 106 R11). The public browse
+// lanes moved to the CATALOG id space while these write ops still address WIKI
+// rows, so a row picked off the public list could not be edited — its id names
+// a different entity. The staff face therefore serves this console its own
+// search + detail pair, wiki ids end to end, and that pair is search-only:
+// pick a row, then read the full record by id. There is no browse list to
+// paginate here any more, which is also why the rows show identity alone.
 import { watchDebounced } from '@vueuse/core'
-import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 import type { UpdateGalgameTagPayload } from '~/components/galgame/types'
 
 // Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
@@ -10,15 +16,13 @@ import type { UpdateGalgameTagPayload } from '~/components/galgame/types'
 // useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
-const pageData = reactive({ page: 1, limit: 50 })
-
-const { data, status, refresh } = await useKunFetch<{
-  tags: GalgameTagItem[]
-  total: number
-}>(`/galgame-tag`, { method: 'GET', query: pageData })
+interface StaffTaxonomyRow {
+  id: number
+  name: string
+}
 
 const searchQuery = ref('')
-const searchResult = ref<GalgameTagItem[]>([])
+const searchResult = ref<StaffTaxonomyRow[]>([])
 const isSearching = ref(false)
 
 const handleSearch = async () => {
@@ -27,10 +31,10 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  const res = await kunFetch<GalgameTagItem[]>(`/galgame-tag/search`, {
-    method: 'GET',
-    query: { q: searchQuery.value }
-  })
+  const res = await kunFetch<StaffTaxonomyRow[]>(
+    `/galgame-taxonomy/tag/search`,
+    { method: 'GET', query: { q: searchQuery.value } }
+  )
   isSearching.value = false
   searchResult.value = res ?? []
 }
@@ -40,22 +44,19 @@ watchDebounced(() => searchQuery.value, handleSearch, {
   maxWait: 1000
 })
 
-const displayTags = computed(() =>
-  searchQuery.value.trim() ? searchResult.value : (data.value?.tags ?? [])
-)
-
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingTag = ref<UpdateGalgameTagPayload>({} as UpdateGalgameTagPayload)
 
-// The list rows have no description/alias — hydrate the edit modal from the
-// detail read (tag_id resolves the entity; page/limit only size the embedded
-// galgame list we ignore).
-const openEdit = async (tag: GalgameTagItem) => {
-  const res = await kunFetch<GalgameTagDetail>(`/galgame-tag/${tag.id}`, {
-    method: 'GET',
-    query: { page: 1, limit: 1, tag_id: tag.id }
-  })
+// The read-back mirrors the update payload field for field. That is the whole
+// point of it: this form PUTs a wholesale replacement, so any field it cannot
+// read back is a field it silently wipes on save (alias used to go that way on
+// every edit).
+const openEdit = async (tag: StaffTaxonomyRow) => {
+  const res = await kunFetch<UpdateGalgameTagPayload & { id: number }>(
+    `/galgame-taxonomy/tag/${tag.id}`,
+    { method: 'GET' }
+  )
   if (!res) return
   editingTag.value = {
     tag_id: res.id,
@@ -74,16 +75,15 @@ const handleUpdate = async (payload: UpdateGalgameTagPayload) => {
   })
   if (result) {
     useMessage('标签已更新', 'success')
-    await refresh()
     await handleSearch()
   }
 }
 
 // Two-stage safe delete (docs 04-taxonomy): a plain DELETE is rejected while
-// the tag is still referenced (wiki toasts the count); only then offer the
+// the tag is still referenced (the wiki toasts the count); only then offer the
 // force path that purges relations + hard deletes.
 const deletingID = ref(0)
-const handleDelete = async (tag: GalgameTagItem) => {
+const handleDelete = async (tag: StaffTaxonomyRow) => {
   const ok = await useComponentMessageStore().alert(
     `确定删除标签「${tag.name}」吗?`,
     '若该标签未被任何 Galgame 引用将直接删除; 仍被引用时会先提示。'
@@ -94,7 +94,6 @@ const handleDelete = async (tag: GalgameTagItem) => {
   if (res !== null) {
     deletingID.value = 0
     useMessage('标签已删除', 'success')
-    await refresh()
     await handleSearch()
     return
   }
@@ -112,7 +111,6 @@ const handleDelete = async (tag: GalgameTagItem) => {
   deletingID.value = 0
   if (forced !== null) {
     useMessage('标签已强制删除', 'success')
-    await refresh()
     await handleSearch()
   }
 }
@@ -132,38 +130,22 @@ const handleDelete = async (tag: GalgameTagItem) => {
       </KunButton>
     </div>
 
-    <p class="text-default-500 text-sm">
-      {{ `共 ${data?.total ?? 0} 个标签` }}
-    </p>
-
     <div class="flex flex-col gap-2">
       <div
-        v-for="tag in displayTags"
+        v-for="tag in searchResult"
         :key="tag.id"
         class="border-default-200 flex items-center justify-between gap-3 rounded-lg border p-3"
       >
         <div class="flex min-w-0 items-center gap-2">
+          <!-- A wiki id: the legacy path is a 301 shell onto the canonical
+               catalog-id page, so this link keeps working without the console
+               having to know the catalog id. -->
           <KunLink
             :to="`/galgame-tag/${tag.id}`"
             class-name="truncate font-medium"
           >
             {{ tag.name }}
           </KunLink>
-          <KunChip
-            size="sm"
-            :color="
-              tag.category === 'content'
-                ? 'primary'
-                : tag.category === 'sexual'
-                  ? 'danger'
-                  : 'success'
-            "
-          >
-            {{ KUN_GALGAME_TAG_CATEGORY_MAP[tag.category] }}
-          </KunChip>
-          <span class="text-default-500 shrink-0 text-sm">
-            {{ tag.galgame_count }} 部
-          </span>
         </div>
         <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(tag)">
@@ -183,19 +165,17 @@ const handleDelete = async (tag: GalgameTagItem) => {
     </div>
 
     <KunLoading v-if="isSearching" />
-    <KunNull v-if="!isSearching && !displayTags.length" />
-
-    <KunPagination
-      v-if="!searchQuery.trim() && data && data.total > pageData.limit"
-      v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.total / pageData.limit)"
-      :is-loading="status === 'pending'"
+    <KunNull
+      v-if="!isSearching && !searchResult.length"
+      :description="
+        searchQuery.trim() ? '未找到匹配的标签' : '搜索标签名以编辑或删除'
+      "
     />
 
     <AdminTaxonomyCreateModal
       v-model="showCreateModal"
       type="tag"
-      @created="refresh"
+      @created="handleSearch"
     />
     <GalgameTagModal
       v-model="showEditModal"

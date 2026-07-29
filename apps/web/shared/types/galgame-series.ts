@@ -1,27 +1,7 @@
-import type { GalgameCard } from './galgame.d.ts'
-
-export interface GalgameSeriesSample {
-  name: KunLanguage
-  banner: string
-  effective_banner_hash?: string
-  effective_banner_url?: string
-}
-
-export interface GalgameSeries {
-  id: number
-  name: string
-  description: string
-  is_nsfw: boolean
-  sample_galgame: GalgameSeriesSample[]
-  galgame_count: number
-  created: Date | string
-  updated: Date | string
-}
-
-export interface GalgameSeriesDetail extends GalgameSeries {
-  description: string
-  galgame: GalgameCard[]
-}
+// The PUBLIC series browse types retired with the wiki series vocabulary (P3):
+// 146 wiki series, only 6 of which correspond to anything in the catalog. What
+// remains here serves the STAFF editor only — the wiki rows live on until the
+// editing engine retires that face, and the admin console still curates them.
 
 // Wiki /series/search and /series/modal return FULL galgame rows
 // (snake_case multi-language `name_<locale>` columns plus a bunch of

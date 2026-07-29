@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// Engine management tab: the wiki engine list is flat (no server pagination
-// or search endpoint), so filtering is client-side by name/alias — the same
-// posture as the public engine list page.
+// Engine management tab: search → edit / two-stage safe delete.
+//
+// SEARCH-DRIVEN since the A2-3 re-anchoring — see the tag tab for why the
+// public browse lanes can no longer feed a wiki-id edit form (doc 106 R11).
+import { watchDebounced } from '@vueuse/core'
 import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 
 // Proxy-face: taxonomy (tag/official/engine/series) CRUD mirrors infra
@@ -9,22 +11,32 @@ import type { UpdateGalgameEnginePayload } from '~/components/galgame/types'
 // useRole/canAdminister, not useCan.
 const { canAdminister } = useRole()
 
-const { data, refresh } = await useKunFetch<GalgameEngineItem[]>(
-  `/galgame-engine`,
-  { method: 'GET' }
-)
+interface StaffTaxonomyRow {
+  id: number
+  name: string
+}
 
 const searchQuery = ref('')
+const searchResult = ref<StaffTaxonomyRow[]>([])
+const isSearching = ref(false)
 
-const displayEngines = computed(() => {
-  const engines = data.value ?? []
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return engines
-  return engines.filter(
-    (e) =>
-      e.name.toLowerCase().includes(q) ||
-      e.alias.some((a) => a.toLowerCase().includes(q))
+const handleSearch = async () => {
+  if (!searchQuery.value.trim()) {
+    searchResult.value = []
+    return
+  }
+  isSearching.value = true
+  const res = await kunFetch<StaffTaxonomyRow[]>(
+    `/galgame-taxonomy/engine/search`,
+    { method: 'GET', query: { q: searchQuery.value } }
   )
+  isSearching.value = false
+  searchResult.value = res ?? []
+}
+
+watchDebounced(() => searchQuery.value, handleSearch, {
+  debounce: 500,
+  maxWait: 1000
 })
 
 const showCreateModal = ref(false)
@@ -33,13 +45,20 @@ const editingEngine = ref<UpdateGalgameEnginePayload>(
   {} as UpdateGalgameEnginePayload
 )
 
-// The flat list already carries description + alias — no detail hydration.
-const openEdit = (engine: GalgameEngineItem) => {
+// The read-back mirrors the update payload field for field — this form PUTs a
+// wholesale replacement, so any field it cannot read back is a field it wipes
+// on save.
+const openEdit = async (engine: StaffTaxonomyRow) => {
+  const res = await kunFetch<UpdateGalgameEnginePayload & { id: number }>(
+    `/galgame-taxonomy/engine/${engine.id}`,
+    { method: 'GET' }
+  )
+  if (!res) return
   editingEngine.value = {
-    engine_id: engine.id,
-    name: engine.name,
-    description: engine.description ?? '',
-    alias: engine.alias
+    engine_id: res.id,
+    name: res.name,
+    description: res.description ?? '',
+    alias: res.alias
   } satisfies UpdateGalgameEnginePayload
   showEditModal.value = true
 }
@@ -51,12 +70,12 @@ const handleUpdate = async (payload: UpdateGalgameEnginePayload) => {
   })
   if (result) {
     useMessage('引擎已更新', 'success')
-    await refresh()
+    await handleSearch()
   }
 }
 
 const deletingID = ref(0)
-const handleDelete = async (engine: GalgameEngineItem) => {
+const handleDelete = async (engine: StaffTaxonomyRow) => {
   const ok = await useComponentMessageStore().alert(
     `确定删除引擎「${engine.name}」吗?`,
     '若该引擎未被任何 Galgame 引用将直接删除; 仍被引用时会先提示。'
@@ -69,7 +88,7 @@ const handleDelete = async (engine: GalgameEngineItem) => {
   if (res !== null) {
     deletingID.value = 0
     useMessage('引擎已删除', 'success')
-    await refresh()
+    await handleSearch()
     return
   }
   deletingID.value = 0
@@ -86,7 +105,7 @@ const handleDelete = async (engine: GalgameEngineItem) => {
   deletingID.value = 0
   if (forced !== null) {
     useMessage('引擎已强制删除', 'success')
-    await refresh()
+    await handleSearch()
   }
 }
 </script>
@@ -97,7 +116,7 @@ const handleDelete = async (engine: GalgameEngineItem) => {
       <KunInput
         v-model="searchQuery"
         type="text"
-        placeholder="输入引擎名或别名以筛选"
+        placeholder="输入将会自动搜索引擎"
         class-name="flex-1"
       />
       <KunButton v-if="canAdminister" @click="showCreateModal = true">
@@ -105,26 +124,21 @@ const handleDelete = async (engine: GalgameEngineItem) => {
       </KunButton>
     </div>
 
-    <p class="text-default-500 text-sm">
-      {{ `共 ${data?.length ?? 0} 个引擎` }}
-    </p>
-
     <div class="flex flex-col gap-2">
       <div
-        v-for="engine in displayEngines"
+        v-for="engine in searchResult"
         :key="engine.id"
         class="border-default-200 flex items-center justify-between gap-3 rounded-lg border p-3"
       >
         <div class="flex min-w-0 items-center gap-2">
+          <!-- A wiki id: the legacy path is a 301 shell onto the canonical
+               catalog-id page. -->
           <KunLink
             :to="`/galgame-engine/${engine.id}`"
             class-name="truncate font-medium"
           >
             {{ engine.name }}
           </KunLink>
-          <span class="text-default-500 shrink-0 text-sm">
-            {{ engine.galgame_count }} 部
-          </span>
         </div>
         <div v-if="canAdminister" class="flex shrink-0 gap-2">
           <KunButton size="sm" variant="flat" @click="openEdit(engine)">
@@ -143,12 +157,18 @@ const handleDelete = async (engine: GalgameEngineItem) => {
       </div>
     </div>
 
-    <KunNull v-if="!displayEngines.length" />
+    <KunLoading v-if="isSearching" />
+    <KunNull
+      v-if="!isSearching && !searchResult.length"
+      :description="
+        searchQuery.trim() ? '未找到匹配的引擎' : '搜索引擎名以编辑或删除'
+      "
+    />
 
     <AdminTaxonomyCreateModal
       v-model="showCreateModal"
       type="engine"
-      @created="refresh"
+      @created="handleSearch"
     />
     <GalgameEngineModal
       v-model="showEditModal"

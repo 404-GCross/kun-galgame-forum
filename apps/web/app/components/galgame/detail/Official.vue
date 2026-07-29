@@ -38,7 +38,7 @@ const getOfficialCategoryInfo = (category: string) => {
       <div class="space-y-2" v-for="item in official" :key="item.id">
         <KunTooltip :text="`该会社制作了 ${item.galgame_count} 个 Galgame`">
           <KunLink
-            :to="`/galgame-official/${item.id}`"
+            :to="`/galgame-official/c/${item.id}`"
             underline="none"
             class-name="text-foreground hover:text-primary text-base font-semibold"
           >

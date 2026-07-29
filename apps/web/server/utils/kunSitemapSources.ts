@@ -10,6 +10,11 @@
 // Scale: the two big lists (resource ~24k, official ~23k) are capped at
 // MAX_PAGES; all page fetches share one global concurrency limiter so a cold
 // render can't flood the Go API. The whole thing is cached one layer up.
+//
+// Taxonomy ids: the list endpoints now return CATALOG ids (A2-3 / doc 106 R1),
+// so the `/c/` locs below follow the new id space automatically — no map, no
+// second source of truth. The legacy wiki-id URLs are never emitted here; they
+// survive only as 301/410 shells for links already out in the world.
 
 interface SitemapUrl {
   loc: string
@@ -199,18 +204,10 @@ export const buildSitemapUrls = async (
       priority: 0.6
     },
     {
-      path: '/galgame-series',
-      pick: (d) => ((d as { series?: [] })?.series ?? []) as Record<string, unknown>[],
-      total: (d) => (d as { total?: number })?.total,
-      loc: (r) => `/galgame-series/${num(r, 'id')}`,
-      lastmod: (r) => toIso(r.updated ?? r.created),
-      priority: 0.6
-    },
-    {
       path: '/galgame-official',
       pick: (d) => ((d as { officials?: [] })?.officials ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
-      loc: (r) => `/galgame-official/${num(r, 'id')}`,
+      loc: (r) => `/galgame-official/c/${num(r, 'id')}`,
       priority: 0.5
     }
   ]
@@ -220,13 +217,13 @@ export const buildSitemapUrls = async (
     collectSingle(
       '/galgame-tag',
       (d) => ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
-      (r) => `/galgame-tag/${num(r, 'id')}`,
+      (r) => `/galgame-tag/c/${num(r, 'id')}`,
       0.5
     ),
     collectSingle(
       '/galgame-engine',
       (d) => (Array.isArray(d) ? (d as Record<string, unknown>[]) : []),
-      (r) => `/galgame-engine/${num(r, 'id')}`,
+      (r) => `/galgame-engine/c/${num(r, 'id')}`,
       0.5
     )
   ])

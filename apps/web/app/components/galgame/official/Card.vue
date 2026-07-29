@@ -35,7 +35,7 @@ const getOfficialCategoryInfo = (category: string) => {
   <KunCard
     :is-transparent="false"
     :is-hoverable="true"
-    :href="`/galgame-official/${official.id}`"
+    :href="`/galgame-official/c/${official.id}`"
   >
     <h3 class="text-default-900 font-semibold">
       {{ official.name }}

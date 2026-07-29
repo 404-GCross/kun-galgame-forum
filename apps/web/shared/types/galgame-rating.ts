@@ -1,5 +1,4 @@
 import type { GalgameOfficialItem } from './galgame-official'
-import type { GalgameSeries } from './galgame-series'
 
 export interface GalgameRatingGalgameInfo {
   id: number
@@ -59,7 +58,6 @@ export interface GalgameRatingDetails extends GalgameRatingCard {
   is_liked: boolean
   liked_users: KunUser[]
   galgame: GalgameRatingGalgameInfo
-  galgame_series: GalgameSeries | null
 }
 
 export interface GalgameRatingCardOnGalgamePage extends GalgameRatingCard {

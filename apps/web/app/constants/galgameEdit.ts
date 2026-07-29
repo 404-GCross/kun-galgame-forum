@@ -45,45 +45,30 @@ const searchTaxonomy =
   async (keyword: string): Promise<EditSelectOption[]> => {
     const data = await kunFetch<TaxonomyHit[]>(path, {
       method: 'GET',
-      query: { keywords: keyword }
+      query: { q: keyword }
     })
     return (data ?? []).map((o) => ({ value: o.id, label: taxName(o.name) }))
   }
 
-const searchTags = searchTaxonomy('/galgame-tag/search')
-const searchOfficials = searchTaxonomy('/galgame-official/search')
+// ⚠ These four pickers feed galgame.game.{tag,official,engine}_ids /
+// series_id, which the editing engine applies to the WIKI galgame row — so
+// they must return WIKI ids. They therefore read the staff taxonomy search,
+// NOT the public browse lanes: those moved to the catalog id space in the A2-3
+// re-anchoring, and feeding a catalog id into a wiki-id edit proposal would
+// silently attach the wrong tags rather than fail.
+//
+// KNOWN GAP (reported to the canonical-api track): the staff search is the
+// only wiki-id taxonomy search that exists, and it is gated on
+// galgame.taxonomy.edit_any upstream — so an ordinary contributor gets a 403
+// here until a contributor-level equivalent lands on a surviving face. Failing
+// loudly is the deliberate choice: the alternative silently corrupts edits.
+const staffTaxonomySearch = (family: string) =>
+  searchTaxonomy(`/galgame-taxonomy/${family}/search`)
 
-// Engine + series have no Meilisearch endpoint (04-taxonomy.md) — load the
-// (small) full list once and filter it client-side. Keeps everything
-// forum-side with no new backend route.
-const listFilterSearch = (
-  fetchAll: () => Promise<TaxonomyHit[]>
-) => {
-  let cache: Promise<TaxonomyHit[]> | null = null
-  return async (keyword: string): Promise<EditSelectOption[]> => {
-    if (!cache) {
-      cache = fetchAll()
-    }
-    const kw = keyword.trim().toLowerCase()
-    return (await cache)
-      .filter((e) => taxName(e.name).toLowerCase().includes(kw))
-      .slice(0, 20)
-      .map((e) => ({ value: e.id, label: taxName(e.name) }))
-  }
-}
-
-const searchEngines = listFilterSearch(() =>
-  kunFetch<TaxonomyHit[]>('/galgame-engine', { method: 'GET' }).then(
-    (d) => d ?? []
-  )
-)
-
-const searchSeries = listFilterSearch(() =>
-  kunFetch<{ series: TaxonomyHit[]; total: number }>('/galgame-series', {
-    method: 'GET',
-    query: { page: 1, limit: 500 }
-  }).then((d) => d?.series ?? [])
-)
+const searchTags = staffTaxonomySearch('tag')
+const searchOfficials = staffTaxonomySearch('official')
+const searchEngines = staffTaxonomySearch('engine')
+const searchSeries = staffTaxonomySearch('series')
 
 /** Resolve current ids to {value,label} from a prebuilt map; ids absent from
  * the map are dropped (the picker then shows them as `#id`). */

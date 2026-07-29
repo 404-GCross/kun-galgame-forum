@@ -1,12 +1,18 @@
+// The wiki's own three-value axis. It is still the vocabulary the STAFF edit
+// form writes (that face keeps its wiki rows until the editing engine retires
+// it), so the type stays — but the public browse pages no longer render it:
+// the canonical vocabulary that replaced the wiki tag table has no such axis
+// (refs/proj/126 P2, the axis did not migrate).
 export const KUN_GALGAME_TAG_TYPE = ['content', 'technical', 'sexual'] as const
 
 export type KunGalgameTagCategory = (typeof KUN_GALGAME_TAG_TYPE)[number]
 
-export const KUN_GALGAME_TAG_CATEGORY_MAP: Record<
-  KunGalgameTagCategory,
-  string
-> = {
+// Public tag categories after the catalog re-anchoring. `content` / `meta` are
+// the canonical vocabulary's own kinds; `sexual` is reconstructed from the
+// hidden tier, because that is the one distinction the SFW view acts on.
+export const KUN_GALGAME_TAG_CATEGORY_MAP: Record<string, string> = {
   content: '游戏内容',
+  meta: '作品属性',
   sexual: '成人内容',
   technical: '技术细节'
 }

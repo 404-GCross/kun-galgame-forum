@@ -106,12 +106,6 @@ export const kunLayoutItem: KunLayoutItem[] = [
         label: 'Gal 资源列表'
       },
       {
-        name: 'galgame-series',
-        icon: 'lucide:boxes',
-        router: '/galgame-series',
-        label: 'Galgame 系列'
-      },
-      {
         name: 'galgame-official',
         icon: 'cuida:building-outline',
         router: '/galgame-official',
@@ -426,11 +420,6 @@ export const kunSidebarRail: KunRailGroup[] = [
             label: 'Gal 资源列表',
             router: '/galgame-resource',
             icon: 'lucide:download'
-          },
-          {
-            label: 'Galgame 系列',
-            router: '/galgame-series',
-            icon: 'lucide:boxes'
           },
           {
             label: 'Galgame 会社',

@@ -8,7 +8,7 @@ defineProps<{
   <KunCard
     :is-transparent="false"
     :is-hoverable="true"
-    :href="`/galgame-engine/${engine.id}`"
+    :href="`/galgame-engine/c/${engine.id}`"
   >
     <h3 class="text-default-900 font-semibold">
       {{ engine.name }}

@@ -5,7 +5,6 @@ import type {
   Person,
   Organization,
   VideoGame,
-  CreativeWorkSeries,
   Rating as SchemaRating,
   PropertyValue
 } from 'schema-dts'
@@ -60,13 +59,6 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
         '@type': 'Organization',
         name: o.name
       }))
-    }),
-    ...(rating.galgame_series && {
-      isPartOf: {
-        '@type': 'CreativeWorkSeries',
-        name: rating.galgame_series.name,
-        url: `${kungal.domain.main}/series/${rating.galgame_series.id}`
-      } satisfies CreativeWorkSeries
     })
   }
 

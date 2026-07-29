@@ -145,15 +145,6 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
               </div>
 
               <GalgameGallery :screenshots="galgame.screenshots" />
-
-              <div v-if="galgame.series" class="space-y-3">
-                <KunHeader
-                  name="Galgame 系列"
-                  description="Galgame 全系列所有 Galgame 作品。例如美少女万华镜 1, 2, 3, 4, 5, 雪女, 外传 就是一个 Galgame 系列"
-                  scale="h3"
-                />
-                <GalgameSeriesCard :series="galgame.series" />
-              </div>
             </KunTabPanel>
 
             <KunTabPanel value="resource" :loading="resourceLoading">
