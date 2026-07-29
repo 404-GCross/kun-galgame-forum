@@ -112,8 +112,8 @@ func (s *OfficialService) GetList(
 //
 // Galgame search is Meilisearch-backed and returns the standard
 // `{items, total, processing_time_ms}` envelope. The alias field on each
-// item may be missing entirely or populated with {id, name, ...} objects;
-// aliasesToNames(nil) → []string{} keeps the frontend contract intact.
+// item may be missing entirely; emptyStrSliceIfNil(nil) → []string{} keeps
+// the frontend contract intact.
 //
 // The frontend (galgame/official/Container.vue) does
 //
@@ -205,15 +205,6 @@ func (s *OfficialService) GetDetail(
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
-}
-
-// aliasesToNames extracts the name field from a slice of NextMoeAlias.
-func aliasesToNames(aliases []dto.NextMoeAlias) []string {
-	out := make([]string, len(aliases))
-	for i, a := range aliases {
-		out[i] = a.Name
-	}
-	return out
 }
 
 // withSFWFilter clones q and pins `content_limit` per the galgame NSFW

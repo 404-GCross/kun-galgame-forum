@@ -62,7 +62,6 @@ type v1Meta struct {
 	ContentLimit       string  `json:"content_limit"`
 	ReleasePrecision   string  `json:"release_precision"`
 	SeriesID           *int    `json:"series_id"`
-	CatalogWorkID      *int64  `json:"catalog_work_id"`
 	UserID             int     `json:"user_id"`
 	ResourceUpdateTime *string `json:"resource_update_time"`
 	View               int     `json:"view"`

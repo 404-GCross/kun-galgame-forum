@@ -41,14 +41,12 @@ type CommunityConfig struct {
 	ClientSecret string // OAuth client secret; defaults to OAuth.ClientSecret
 }
 
-// CatalogClientConfig holds what kungal needs to read the infra Catalog service
-// (kun-galgame-infra cmd/catalog :9281): the base URL for the S2S read face
-// (credits + name/character reverse lookups behind the galgame detail page).
-// Auth is HTTP Basic reusing the OAuth client_id/secret (wired in app.go) — the
-// catalog READ face imposes no site binding, so kungal's OAuth client
-// authenticates as-is. Empty BaseURL (or OAuth creds) = the integration is inert
-// (the catalog proxy endpoints degrade to 503) so a dev box without a catalog
-// service is harmless.
+// CatalogClientConfig holds what kungal needs to reach the infra Catalog service
+// (kun-galgame-infra cmd/catalog :9281): the base URL for the S2S editing-engine
+// face (staff/owner writes + the whole review chain). Auth is HTTP Basic reusing
+// the OAuth client_id/secret (wired in app.go). Empty BaseURL (or OAuth creds) =
+// the integration is inert (those endpoints degrade to 503) so a dev box without
+// a catalog service is harmless.
 type CatalogClientConfig struct {
 	BaseURL string // catalog service base, e.g. http://127.0.0.1:9281
 }

@@ -264,6 +264,16 @@ func parseProposalID(c fiber.Ctx) (int64, *errors.AppError) {
 	return id, nil
 }
 
+// queryInt reads a non-negative int query param, returning 0 when absent /
+// invalid (the catalog then applies its own default page size).
+func queryInt(c fiber.Ctx, key string) int {
+	n, err := strconv.Atoi(c.Query(key))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
 // ──────────────────────────────────────────
 // Editor (game-scoped)
 // ──────────────────────────────────────────

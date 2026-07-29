@@ -182,10 +182,6 @@ func (a *App) setupRoutes() {
 	// modal. Public + SFW-default, paginated. Literal "drafts" segment, so it
 	// must precede the /galgame/:gid catch-all — same rule as /galgame/calendar.
 	api.Get("/galgame/drafts", a.GalgameDraftsHandler.GetDrafts)
-	// Cross-source site statistics (galgame passthrough, ETag/304 preserved). The
-	// literal "stats" segment must precede the /galgame/:gid catch-all (optAuth
-	// below) — same registration-order rule as /galgame/calendar above.
-	api.Get("/galgame/stats", a.GalgameCrossSourceHandler.Stats)
 	// Editing-engine reads (E3a; public like the galgame revision history always
 	// was): the engine-backed history diff + per-game proposal list. The
 	// old-wire read proxies (/revisions*, /prs*, /links, /aliases) retired in
@@ -195,9 +191,6 @@ func (a *App) setupRoutes() {
 	// Per-game proposal list (E3b; public like the old wire's PR list) —
 	// the owner's per-game review surface and everyone's transparency read.
 	api.Get("/galgame/:gid/edit/proposals", a.GalgameEditHandler.GameProposals)
-	// Three-source (VNDB / Bangumi / EG) rating snapshot (galgame passthrough,
-	// public + display-only). 3-segment, so it never collides with /galgame/:gid.
-	api.Get("/galgame/:gid/scores", a.GalgameCrossSourceHandler.Scores)
 	// `/galgame/:gid/contributors` is unused — the FE contributor view
 	// reads from detail's embedded `contributor[]` array now
 	// (apps/web/.../components/galgame/contributor/Container.vue notes
@@ -217,14 +210,6 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-engine/:name", a.GalgameEntityHandler.GetEngineDetail)
 	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
 	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
-	// Catalog read proxy (public, catalog S2S passthrough) — the galgame detail
-	// page's credits block + "open a credited person/character → their other
-	// works" reverse lookups. :wid comes from the detail response's
-	// catalog_work_id (frontend passes it back); the backend never resolves
-	// gid→wid. Response shape is the catalog contract verbatim.
-	api.Get("/catalog/works/:wid/credits", a.GalgameCrossSourceHandler.WorkCredits)
-	api.Get("/catalog/names/:nid/works", a.GalgameCrossSourceHandler.NameWorks)
-	api.Get("/catalog/characters/:cid/works", a.GalgameCrossSourceHandler.CharacterWorks)
 	// `/galgame-resource` list — moved to optAuth below (FE list cards
 	// show the heart icon and need the viewer's per-row like state).
 	// `/galgame-rating/all` stays here in the public group: the rating

@@ -1,18 +1,16 @@
-// Package catalogclient is a thin, GET-only S2S SDK for the infra Catalog
-// service (kun-galgame-infra cmd/catalog): the read face kungal proxies for the
-// galgame detail page — a work's credits and the name/character reverse
-// lookups ("open a credited person and see their other works"). Auth is HTTP
-// Basic with an OAuth client_id/secret — the same first-party credential pair
-// kungal already uses for the other infra S2S faces (image / artifact / trust).
-// The catalog READ face imposes no site binding, so any valid first-party
-// client authenticates as-is (only the write/claim path needs oauth_clients.
-// catalog_site). There is no generated client, so the calls are hand-written
-// against the committed contract (kun-galgame-infra/docs/catalog + the catalog
-// handler code), reusing the shared {code,message,data} house envelope.
+// Package catalogclient is a thin S2S SDK for the infra Catalog service
+// (kun-galgame-infra cmd/catalog). Its live surface is the editing engine: the
+// actor-assertion edit face (edit.go) and the platform propose face
+// (edit_platform.go). Auth is HTTP Basic with an OAuth client_id/secret — the
+// same first-party credential pair kungal already uses for the other infra S2S
+// faces (image / artifact / trust). There is no generated client, so the calls
+// are hand-written against the committed contract
+// (kun-galgame-infra/docs/catalog + the catalog handler code), reusing the
+// shared {code,message,data} house envelope.
 //
-// Responses are forwarded VERBATIM as json.RawMessage: the catalog contract is
-// the forum's exit contract (37 frontend reads the infra shape directly), so no
-// DTO is re-declared here — nothing to rename, nothing to drift.
+// Payloads that need no reshape are forwarded VERBATIM as json.RawMessage: the
+// catalog contract is the forum's exit contract, so no DTO is re-declared for
+// them — nothing to rename, nothing to drift.
 package catalogclient
 
 import (
@@ -24,7 +22,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -75,37 +72,6 @@ var (
 	ErrNotFound      = errors.New("catalogclient: entity not found")
 	ErrUpstream      = errors.New("catalogclient: catalog service error")
 )
-
-// WorkCredits returns a work's credits grouped by role (catalog data verbatim).
-// GET /api/v1/catalog/works/{id}/credits.
-func (c *Client) WorkCredits(ctx context.Context, workID int64) (json.RawMessage, error) {
-	return c.getData(ctx, "/api/v1/catalog/works/"+strconv.FormatInt(workID, 10)+"/credits", nil)
-}
-
-// NameWorks returns the works a credited name worked on, with sibling names and
-// per-work roles (reverse lookup, paginated). GET /api/v1/catalog/names/{id}/works.
-func (c *Client) NameWorks(ctx context.Context, nameID int64, limit, offset int) (json.RawMessage, error) {
-	return c.getData(ctx, "/api/v1/catalog/names/"+strconv.FormatInt(nameID, 10)+"/works", pageQuery(limit, offset))
-}
-
-// CharacterWorks returns the works a character appears in with its voice names
-// (reverse lookup, paginated). GET /api/v1/catalog/characters/{id}/works.
-func (c *Client) CharacterWorks(ctx context.Context, charID int64, limit, offset int) (json.RawMessage, error) {
-	return c.getData(ctx, "/api/v1/catalog/characters/"+strconv.FormatInt(charID, 10)+"/works", pageQuery(limit, offset))
-}
-
-// pageQuery builds the offset-pagination query, omitting the zero (absent) case
-// so the catalog applies its own default page size.
-func pageQuery(limit, offset int) url.Values {
-	q := url.Values{}
-	if limit > 0 {
-		q.Set("limit", strconv.Itoa(limit))
-	}
-	if offset > 0 {
-		q.Set("offset", strconv.Itoa(offset))
-	}
-	return q
-}
 
 // getData performs a Basic-authed GET and returns the envelope's `data` field
 // verbatim so the shape stays byte-for-byte the catalog contract. It never
