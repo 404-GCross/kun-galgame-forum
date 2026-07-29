@@ -333,10 +333,25 @@ func (c *GalgameClient) StaffTaxonomyDetail(ctx context.Context, family, id, tok
 	return &rec, nil
 }
 
-// StaffTaxonomySearch runs the staff picker search on the /api face.
-func (c *GalgameClient) StaffTaxonomySearch(ctx context.Context, family, keywords, token string) ([]StaffTaxonomyRecord, *errors.AppError) {
-	data, appErr := c.getFace(ctx, c.legacyBase, "/"+family+"/search", token,
-		url.Values{"q": {keywords}}, "")
+// TaxonomyPickerSearch runs the taxonomy picker on the surviving /internal
+// face. family is "tag" | "official" | "engine" | "series".
+//
+// The /internal door rather than the /api one is the whole point (A2-1g): both
+// answer the same query with the same {id, name} rows, but this one is gated on
+// being SIGNED IN rather than on taxonomy.edit_any — so an ordinary contributor
+// filling in the submission form can resolve a tag to the wiki id their write
+// payload has to carry. Nothing here is more sensitive than what the same user
+// is about to write: these are the names of public taxonomy rows.
+//
+// Dual-credential transport: the service X-API-Key plus the caller's Bearer,
+// which is what the face reads the signed-in identity from.
+//
+// Blank-query behaviour is a property of the FAMILY, not of this call: tag and
+// official return an empty list (open-ended vocabularies — type something),
+// engine and series return their whole small curated set.
+func (c *GalgameClient) TaxonomyPickerSearch(ctx context.Context, family, keywords, token string) ([]StaffTaxonomyRecord, *errors.AppError) {
+	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/taxonomy/"+family+"/search", token,
+		url.Values{"q": {keywords}}, c.apiKey)
 	if appErr != nil {
 		return nil, appErr
 	}

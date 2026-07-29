@@ -541,12 +541,17 @@ func (a *App) setupRoutes() {
 	// (admin ⊂ ren, STRICTER than infra) per the user's ruling (commit
 	// f819503c: public create, admin-only edit/delete/revert). Not a pkg/perm
 	// key — the galgame re-checks every write; this gate is the local mirror.
-	// Staff read-back for the admin console's edit forms. Same gate as the
-	// edits themselves, and the SAME (wiki) id space as them — the public
-	// browse lanes moved to catalog ids, so prefilling from those would send a
-	// catalog id to a wiki-id write op (doc 106 R11).
+	// Taxonomy picker: name → WIKI id, for any signed-in user. Both the admin
+	// console's edit tabs and the galgame submission form need it, and both
+	// need the wiki id space — the public browse lanes moved to catalog ids, so
+	// a picker fed from those would put a catalog id into a wiki-id write
+	// payload (doc 106 R11). Editing authority is enforced on the write ops,
+	// not on being able to look a name up.
+	authed.Get("/galgame-taxonomy/:family/search", a.GalgameStaffTaxonomyHandler.Search)
+
 	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
-	taxonomyWrite.Get("/galgame-taxonomy/:family/search", a.GalgameStaffTaxonomyHandler.Search)
+	// The full editable record stays admin-only: unlike the picker row, it is
+	// the thing the edit form replaces wholesale.
 	taxonomyWrite.Get("/galgame-taxonomy/:family/:id", a.GalgameStaffTaxonomyHandler.Detail)
 	taxonomyWrite.Put("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
 	taxonomyWrite.Put("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))

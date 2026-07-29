@@ -33,7 +33,9 @@ export interface GalgameEditNames {
 }
 
 const taxName = (name: unknown): string =>
-  typeof name === 'string' ? name : getPreferredLanguageText(name as never) || ''
+  typeof name === 'string'
+    ? name
+    : getPreferredLanguageText(name as never) || ''
 
 interface TaxonomyHit {
   id: number
@@ -50,25 +52,26 @@ const searchTaxonomy =
     return (data ?? []).map((o) => ({ value: o.id, label: taxName(o.name) }))
   }
 
-// ⚠ These four pickers feed galgame.game.{tag,official,engine}_ids /
-// series_id, which the editing engine applies to the WIKI galgame row — so
-// they must return WIKI ids. They therefore read the staff taxonomy search,
-// NOT the public browse lanes: those moved to the catalog id space in the A2-3
-// re-anchoring, and feeding a catalog id into a wiki-id edit proposal would
-// silently attach the wrong tags rather than fail.
+// These four pickers feed galgame.game.{tag,official,engine}_ids / series_id,
+// which the editing engine applies to the WIKI galgame row — so they must
+// return WIKI ids, and they read the taxonomy picker rather than the public
+// browse lanes: those moved to the catalog id space in the A2-3 re-anchoring,
+// and feeding a catalog id into a wiki-id edit proposal would silently attach
+// the wrong tags rather than fail.
 //
-// KNOWN GAP (reported to the canonical-api track): the staff search is the
-// only wiki-id taxonomy search that exists, and it is gated on
-// galgame.taxonomy.edit_any upstream — so an ordinary contributor gets a 403
-// here until a contributor-level equivalent lands on a surviving face. Failing
-// loudly is the deliberate choice: the alternative silently corrupts edits.
-const staffTaxonomySearch = (family: string) =>
+// The picker is gated on being signed in, which is the same bar the submission
+// form itself sets — so a contributor who can write the field can also fill it.
+//
+// Blank-query behaviour is the family's, not ours: tag / official return
+// nothing until you type (3,037 and 24,334 rows), engine / series return their
+// whole curated set (189 and 146).
+const taxonomyPicker = (family: string) =>
   searchTaxonomy(`/galgame-taxonomy/${family}/search`)
 
-const searchTags = staffTaxonomySearch('tag')
-const searchOfficials = staffTaxonomySearch('official')
-const searchEngines = staffTaxonomySearch('engine')
-const searchSeries = staffTaxonomySearch('series')
+const searchTags = taxonomyPicker('tag')
+const searchOfficials = taxonomyPicker('official')
+const searchEngines = taxonomyPicker('engine')
+const searchSeries = taxonomyPicker('series')
 
 /** Resolve current ids to {value,label} from a prebuilt map; ids absent from
  * the map are dropped (the picker then shows them as `#id`). */
@@ -115,7 +118,10 @@ const imageRow = (value: unknown): string => {
   if (value && typeof value === 'object') {
     const row = value as { cdn_url?: string; image_hash?: string }
     if (row.image_hash) {
-      return galgameImageSrc({ cdn_url: row.cdn_url, image_hash: row.image_hash })
+      return galgameImageSrc({
+        cdn_url: row.cdn_url,
+        image_hash: row.image_hash
+      })
     }
   }
   return ''
@@ -155,9 +161,7 @@ const uploadCoverItem = async (
   if (!res) {
     return null
   }
-  if (
-    current.some((item) => (item as EditImageItem).image_hash === res.hash)
-  ) {
+  if (current.some((item) => (item as EditImageItem).image_hash === res.hash)) {
     useMessage('已跳过重复图片', 'warn')
     return null
   }
@@ -180,9 +184,7 @@ const uploadScreenshotItem = async (
   if (!res) {
     return null
   }
-  if (
-    current.some((item) => (item as EditImageItem).image_hash === res.hash)
-  ) {
+  if (current.some((item) => (item as EditImageItem).image_hash === res.hash)) {
     useMessage('已跳过重复图片', 'warn')
     return null
   }
@@ -327,7 +329,11 @@ export const createGalgameEditConfig = (
   },
   // control pinned explicitly: the generic list derivation would render a
   // tag input and stringify the {name, link} rows to "[object Object]".
-  [K('links')]: { label: '相关链接', group: GROUP_EXTRAS, control: 'link-list' },
+  [K('links')]: {
+    label: '相关链接',
+    group: GROUP_EXTRAS,
+    control: 'link-list'
+  },
 
   [K('banner')]: {
     label: '横幅图',
@@ -383,8 +389,7 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap =
 
 /** Field key → Chinese label (falls back to the bare key tail). */
 export const galgameEditLabel = (key: string): string =>
-  GALGAME_EDIT_FIELD_CONFIG[key]?.label ??
-  key.replace('galgame.game.', '')
+  GALGAME_EDIT_FIELD_CONFIG[key]?.label ?? key.replace('galgame.game.', '')
 
 export const galgameEditFieldConfig = (
   key: string

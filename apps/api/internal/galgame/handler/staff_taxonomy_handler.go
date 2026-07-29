@@ -1,6 +1,6 @@
 package handler
 
-// Staff taxonomy READ-BACK proxy (A2-3 / doc 106 R11).
+// Taxonomy picker + staff READ-BACK proxy (A2-3 / doc 106 R11, A2-1g).
 //
 // The admin taxonomy console edits the WIKI's taxonomy rows, and its update
 // payload is a wholesale replacement — so every field it cannot read back is a
@@ -51,12 +51,19 @@ func (h *StaffTaxonomyHandler) family(c fiber.Ctx) (string, bool) {
 }
 
 // Search — GET /galgame-taxonomy/:family/search?q=
+//
+// Serves BOTH consumers of a taxonomy picker: the admin console's edit tabs and
+// the galgame submission form. They want the same thing — a wiki id for a name
+// — so they share one route, gated on being signed in (A2-1g). Editing
+// authority is enforced where editing happens: on the write ops, and again
+// upstream. The full-record read-back below stays admin-only because it returns
+// an editable record, not an identity.
 func (h *StaffTaxonomyHandler) Search(c fiber.Ctx) error {
 	family, ok := h.family(c)
 	if !ok {
 		return response.Error(c, errors.ErrBadRequest("不支持的词表类型"))
 	}
-	items, appErr := h.galgameClient.StaffTaxonomySearch(
+	items, appErr := h.galgameClient.TaxonomyPickerSearch(
 		c.Context(), family, c.Query("q"), middleware.GetAccessToken(c))
 	if appErr != nil {
 		return response.Error(c, appErr)

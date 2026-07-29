@@ -380,6 +380,28 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 		}
 	})
 
+	t.Run("taxonomy picker → surviving /internal face, dual credential", func(t *testing.T) {
+		// A2-1g: the picker's door is the CONTRIBUTOR one. Pointing it at the
+		// staff /api door instead is not a cosmetic difference — that door is
+		// gated on taxonomy.edit_any, so an ordinary contributor filling in the
+		// submission form would get a 403 from the only lane that can turn a
+		// tag name into the wiki id their write payload must carry.
+		if _, err := c.TaxonomyPickerSearch(ctx, "tag", "恋爱", "user-jwt"); err != nil {
+			t.Fatalf("TaxonomyPickerSearch: %v", err)
+		}
+		if rec.path != "/internal/galgame/taxonomy/tag/search" {
+			t.Errorf("path = %q, want /internal/galgame/taxonomy/tag/search", rec.path)
+		}
+		// Both credentials: the service key admits the call to the internal
+		// face, the Bearer is what the signed-in gate reads.
+		if rec.apiKey != "nm_test_key" {
+			t.Errorf("X-API-Key = %q, want nm_test_key", rec.apiKey)
+		}
+		if rec.auth != "Bearer user-jwt" {
+			t.Errorf("Authorization = %q, want the caller's Bearer", rec.auth)
+		}
+	})
+
 	t.Run("staff read-back stays on the surviving /api face, no key", func(t *testing.T) {
 		if _, err := c.StaffTaxonomyDetail(ctx, "official", "12", "staff-jwt"); err != nil {
 			t.Fatalf("StaffTaxonomyDetail: %v", err)
