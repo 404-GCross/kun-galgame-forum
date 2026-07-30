@@ -441,28 +441,35 @@ func (r *ActivityRepository) FetchReplyContents(replyIDs []int) (map[int]ReplyCo
 	return out, nil
 }
 
-// GalgameCounts holds a galgame's local rollups for the new-galgame feed card.
+// GalgameCounts holds a galgame's local rollups for the new-galgame feed card,
+// plus the frozen creator that card's ACTOR is resolved from.
 type GalgameCounts struct {
 	ResourceCount int
 	LikeCount     int
 	FavoriteCount int
+	// CreatorUserID is the frozen wiki-era submitter (migration 066). The
+	// catalog face carries no submitter, so this is the only thing that can
+	// tell a GALGAME_CREATION feed row who created the galgame. NULL =
+	// unknown, which leaves the row actor-less (rendered as a system event).
+	CreatorUserID *int
 }
 
-// FetchGalgameCounts batch-loads resource/like/favorite counts for galgame ids
-// from the local galgame table (global counts — cache-safe).
+// FetchGalgameCounts batch-loads resource/like/favorite counts + the frozen
+// creator for galgame ids from the local galgame table (global — cache-safe).
 func (r *ActivityRepository) FetchGalgameCounts(galgameIDs []int) (map[int]GalgameCounts, error) {
 	out := map[int]GalgameCounts{}
 	if len(galgameIDs) == 0 {
 		return out, nil
 	}
 	var rows []struct {
-		ID            int `gorm:"column:id"`
-		ResourceCount int `gorm:"column:resource_count"`
-		LikeCount     int `gorm:"column:like_count"`
-		FavoriteCount int `gorm:"column:favorite_count"`
+		ID            int  `gorm:"column:id"`
+		ResourceCount int  `gorm:"column:resource_count"`
+		LikeCount     int  `gorm:"column:like_count"`
+		FavoriteCount int  `gorm:"column:favorite_count"`
+		CreatorUserID *int `gorm:"column:creator_user_id"`
 	}
 	if err := r.db.Raw(`
-		SELECT id, resource_count, like_count, favorite_count
+		SELECT id, resource_count, like_count, favorite_count, creator_user_id
 		FROM galgame
 		WHERE id IN ?`, galgameIDs).Scan(&rows).Error; err != nil {
 		return out, err
@@ -472,6 +479,7 @@ func (r *ActivityRepository) FetchGalgameCounts(galgameIDs []int) (map[int]Galga
 			ResourceCount: row.ResourceCount,
 			LikeCount:     row.LikeCount,
 			FavoriteCount: row.FavoriteCount,
+			CreatorUserID: row.CreatorUserID,
 		}
 	}
 	return out, nil

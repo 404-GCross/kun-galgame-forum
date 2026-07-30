@@ -33,14 +33,19 @@ func (r *RSSRepository) FindRecentSFWTopics() []dto.TopicRSSItem {
 type RecentGalgameRow struct {
 	ID      int    `gorm:"column:id"`
 	Created string `gorm:"column:created"`
+	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
+	// feed author's only source, since the catalog face carries no submitter.
+	// NULL = unknown, which the item renders with an empty author.
+	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
-// FindRecentGalgameIDs returns the most recent local galgame stub IDs.
-// Metadata (name, banner, user info) is resolved via the galgame client.
+// FindRecentGalgameIDs returns the most recent local galgame stub IDs, plus the
+// frozen creator the feed's author field needs. Name and banner are resolved via
+// the galgame client; the author is NOT — the catalog face carries none.
 func (r *RSSRepository) FindRecentGalgameIDs(limit int) []RecentGalgameRow {
 	var rows []RecentGalgameRow
 	r.db.Table("galgame").
-		Select("id, created").
+		Select("id, created, creator_user_id").
 		Order("created DESC").
 		Limit(limit).
 		Scan(&rows)

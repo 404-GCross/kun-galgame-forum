@@ -131,12 +131,12 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 		return nil, appErr
 	}
 
-	// Step 3: Batch fetch users from OAuth
-	userIDs := make([]int, 0, len(briefMap))
-	for _, b := range briefMap {
-		userIDs = append(userIDs, b.UserID)
-	}
-	userMap := s.userClient.Hydrate(ctx, userIDs)
+	// Step 3: Batch fetch users from OAuth. The author chip is keyed by the
+	// FROZEN wiki-era creator on the LOCAL row (migration 066): the catalog face
+	// carries no submitter, so a brief's own user_id is always 0 — hydrating off
+	// it asked OAuth about user 0 and rendered every home card as 已注销用户.
+	userMap := s.userClient.Hydrate(ctx, userclient.CollectIDs(localRows,
+		func(lr repository.GalgameLocalRow) int { return userclient.DerefID(lr.CreatorUserID) }))
 
 	// Step 4: Batch fetch platforms/languages from local galgame_resource
 	resources := s.repo.FindResourcePlatformLanguage(galgameIDs)
@@ -163,7 +163,7 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 		if !ok {
 			continue // galgame doesn't have this galgame
 		}
-		u := userMap[b.UserID]
+		u := userMap[userclient.DerefID(lr.CreatorUserID)]
 		result = append(result, dto.HomeGalgame{
 			ID: lr.ID,
 			Name: dto.LocaleName{

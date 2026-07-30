@@ -67,6 +67,10 @@ func NewRankingRepository(db *gorm.DB) *RankingRepository {
 type GalgameLocalRow struct {
 	ID    int     `gorm:"column:id"`
 	Value float64 `gorm:"column:value"`
+	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
+	// author chip's only source, since the catalog face carries no submitter.
+	// NULL = unknown, which the ranking row renders as no chip.
+	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
 // TopicRankingRow returns a topic ranking row. Identity is hydrated by the
@@ -109,7 +113,7 @@ func (r *RankingRepository) FindGalgameLocal(sortField, sortOrder string, page, 
 		q := r.db.Table("galgame g").
 			Joins("JOIN (SELECT galgame_id, SUM(overall) AS rsum, COUNT(*) AS rcnt " +
 				"FROM galgame_rating GROUP BY galgame_id) rt ON rt.galgame_id = g.id").
-			Select("g.id, ROUND((" + bayes + ")::numeric, 2) AS value")
+			Select("g.id, g.creator_user_id, ROUND((" + bayes + ")::numeric, 2) AS value")
 		if !showNoResource {
 			q = q.Where("EXISTS (SELECT 1 FROM galgame_resource gr WHERE gr.galgame_id = g.id)")
 		}
@@ -125,7 +129,7 @@ func (r *RankingRepository) FindGalgameLocal(sortField, sortOrder string, page, 
 		col = "view"
 	}
 	q := r.db.Table("galgame").
-		Select("id, " + col + " AS value")
+		Select("id, creator_user_id, " + col + " AS value")
 	if !showNoResource {
 		q = q.Where("EXISTS (SELECT 1 FROM galgame_resource gr WHERE gr.galgame_id = galgame.id)")
 	}

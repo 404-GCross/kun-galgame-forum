@@ -47,11 +47,12 @@ func (s *RankingService) GetGalgameRanking(
 		return []dto.GalgameRankingItem{}
 	}
 
-	userIDs := make([]int, 0, len(briefMap))
-	for _, b := range briefMap {
-		userIDs = append(userIDs, b.UserID)
-	}
-	userMap := s.userClient.Hydrate(ctx, userIDs)
+	// The author chip is keyed by the FROZEN wiki-era creator on the LOCAL row
+	// (migration 066): the catalog face carries no submitter, so a brief's own
+	// user_id is always 0 — hydrating off it asked OAuth about user 0 and
+	// rendered every ranking row as 已注销用户.
+	userMap := s.userClient.Hydrate(ctx, userclient.CollectIDs(rows,
+		func(r repository.GalgameLocalRow) int { return userclient.DerefID(r.CreatorUserID) }))
 
 	items := make([]dto.GalgameRankingItem, 0, len(rows))
 	for _, r := range rows {
@@ -59,7 +60,7 @@ func (s *RankingService) GetGalgameRanking(
 		if !ok {
 			continue
 		}
-		u := userMap[b.UserID]
+		u := userMap[userclient.DerefID(r.CreatorUserID)]
 		items = append(items, dto.GalgameRankingItem{
 			ID: r.ID,
 			Name: dto.LocaleName{

@@ -23,6 +23,10 @@ type GalgameLocalRow struct {
 	View               int       `gorm:"column:view"`
 	LikeCount          int       `gorm:"column:like_count"`
 	ResourceUpdateTime time.Time `gorm:"column:resource_update_time"`
+	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
+	// author chip's only source, since the catalog face carries no submitter.
+	// NULL = unknown, which the card renders as no chip.
+	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
 type ResourcePLRow struct {
@@ -61,7 +65,7 @@ type SectionRelationRow struct {
 func (r *HomeRepository) FindRecentGalgames(limit int) ([]GalgameLocalRow, error) {
 	var rows []GalgameLocalRow
 	err := r.db.Table("galgame").
-		Select("id, view, like_count, resource_update_time").
+		Select("id, view, like_count, resource_update_time, creator_user_id").
 		Order("resource_update_time DESC").
 		Limit(limit).
 		Find(&rows).Error

@@ -49,9 +49,9 @@ func (h *RSSHandler) GetTopicRSS(c fiber.Ctx) error {
 // GetGalgameRSS returns the 10 most recent galgames as RSS items.
 // GET /api/rss/galgame
 //
-// Local DB only stores stub IDs + created timestamps — name/banner/user come
-// from the galgame batch endpoint. Description is left empty since galgame batch
-// doesn't include intros.
+// Local DB stores the stub ID, the created timestamp and the frozen creator —
+// name/banner come from the galgame batch endpoint. Description is left empty
+// since galgame batch doesn't include intros.
 func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 	rows := h.repo.FindRecentGalgameIDs(10)
 	if len(rows) == 0 {
@@ -59,10 +59,8 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 	}
 
 	ids := make([]int, len(rows))
-	createdByID := make(map[int]string, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
-		createdByID[r.ID] = r.Created
 	}
 
 	// RSS is consumed by feed readers and search engines — pin SFW
@@ -73,28 +71,29 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 		briefMap = map[int]client.GalgameBrief{}
 	}
 
-	userIDs := make([]int, 0, len(briefMap))
-	for _, b := range briefMap {
-		userIDs = append(userIDs, b.UserID)
-	}
-	userMap := h.userClient.Hydrate(c.Context(), userIDs)
+	// The feed's author is the FROZEN wiki-era creator on the LOCAL row
+	// (migration 066): the catalog face carries no submitter, so a brief's own
+	// user_id is always 0 — hydrating off it asked OAuth about user 0 and
+	// syndicated every galgame as authored by 已注销用户.
+	userMap := h.userClient.Hydrate(c.Context(), userclient.CollectIDs(rows,
+		func(r repository.RecentGalgameRow) int { return userclient.DerefID(r.CreatorUserID) }))
 
-	items := make([]dto.GalgameRSSItem, 0, len(ids))
-	for _, id := range ids {
-		b, ok := briefMap[id]
+	items := make([]dto.GalgameRSSItem, 0, len(rows))
+	for _, row := range rows {
+		b, ok := briefMap[row.ID]
 		if !ok {
 			continue
 		}
-		u := userMap[b.UserID]
+		u := userMap[userclient.DerefID(row.CreatorUserID)]
 		items = append(items, dto.GalgameRSSItem{
-			ID:     id,
+			ID:     row.ID,
 			Name:   pickPreferredName(b),
 			Banner: b.Banner,
 			User: dto.GalgameRSSUser{
 				ID: u.ID, Name: u.Name, Avatar: u.Avatar,
 			},
 			Description: "",
-			Created:     createdByID[id],
+			Created:     row.Created,
 		})
 	}
 	return response.OK(c, items)

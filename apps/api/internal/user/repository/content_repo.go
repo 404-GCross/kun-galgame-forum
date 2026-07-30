@@ -386,15 +386,20 @@ type GalgameLocalStats struct {
 	ID        int `gorm:"column:id"`
 	View      int `gorm:"column:view"`
 	LikeCount int `gorm:"column:like_count"`
+	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
+	// card's author chip has no other source, since the catalog face carries
+	// no submitter. NULL = unknown, rendered as no chip.
+	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
-// FindGalgameLocalStats batch-loads local (view, like_count) for galgame IDs.
+// FindGalgameLocalStats batch-loads local (view, like_count, creator) for
+// galgame IDs.
 func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]GalgameLocalStats {
 	if len(ids) == 0 {
 		return map[int]GalgameLocalStats{}
 	}
 	var rows []GalgameLocalStats
-	r.db.Table("galgame").Select("id, view, like_count").
+	r.db.Table("galgame").Select("id, view, like_count, creator_user_id").
 		Where("id IN ?", ids).Scan(&rows)
 	out := make(map[int]GalgameLocalStats, len(rows))
 	for _, row := range rows {

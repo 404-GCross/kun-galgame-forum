@@ -1204,9 +1204,14 @@ func (s *ActivityService) enrichGalgameItems(
 		switch r.TypeStr {
 		case "GALGAME_CREATION":
 			items[i].Content = name
-			// galgame table has no local user_id; pull the creator from the brief.
+			// The creator is the FROZEN wiki-era submitter on the LOCAL row
+			// (migration 066), not the brief's user_id: the catalog face carries
+			// no submitter, so that field is always 0 and this card silently lost
+			// its actor (hydrateActors skips id 0, and the row then renders as an
+			// actor-less system event). 0 here still means "unknown", which is the
+			// pre-existing actor-less behaviour.
 			if items[i].Actor.ID == 0 {
-				items[i].Actor.ID = b.UserID
+				items[i].Actor.ID = userclient.DerefID(countsMap[r.GalgameID].CreatorUserID)
 			}
 		case "GALGAME_RESOURCE_CREATION":
 			items[i].Content = fmt.Sprintf("在《%s》发布了下载资源", name)

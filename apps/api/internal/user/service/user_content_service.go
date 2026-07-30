@@ -137,13 +137,16 @@ func (s *UserContentService) buildGalgameCards(
 	metaRows := s.userContentRepo.FindResourceMetaByGalgameIDs(ids)
 	platformMap, languageMap := groupResourceMeta(metaRows)
 
-	userIDs := collectUniqueIDs(briefs, func(b client.GalgameBrief) int { return b.UserID })
+	// The author chip is keyed by the FROZEN wiki-era creator on the LOCAL row
+	// (migration 066): the catalog face carries no submitter, so a brief's own
+	// user_id is always 0 and keying off it blanked the chip on every profile card.
+	userIDs := collectUniqueIDs(ids, func(id int) int { return userclient.DerefID(localMap[id].CreatorUserID) })
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 
 	cards := make([]dto.UserGalgameCard, 0, len(briefs))
 	for _, b := range briefs {
 		l := localMap[b.ID]
-		u := userMap[b.UserID]
+		u := userMap[userclient.DerefID(l.CreatorUserID)]
 		cards = append(cards, dto.UserGalgameCard{
 			ID:                 b.ID,
 			Name:               briefToLocale(b),
