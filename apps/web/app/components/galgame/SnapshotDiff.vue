@@ -1,25 +1,20 @@
 <script setup lang="ts">
-// Side-by-side field diff renderer for wiki galgame snapshots.
-//
-// Each changed field renders as a 2-column row:
-//   ┌─ 字段名 ─────────────────────────────────┐
-//   │  原版 (左)              │  新版 (右)     │
-//   │  full OLD content       │  full NEW      │
-//   │  with <strong> on       │  with <b> on   │
-//   │  removed chars/items    │  added chars   │
-//   └────────────────────────────────────────┘
+// Field diff renderer for wiki galgame snapshots.
 //
 // Three regimes, picked by value shape:
 //
 //   1. SCALAR             — string / number / boolean.
-//      LEFT  = old text with REMOVED chars highlighted in red+strike.
-//      RIGHT = new text with ADDED chars highlighted in green.
-//      Implemented by useSideBySideDiff (char-level LCS, same algo as
-//      the legacy interleaved useDiff but split into two parallel
-//      strings). LARGE_TEXT_FIELDS render in pre-wrap so multi-line
-//      intros keep their shape.
+//      One UNIFIED block: the text once, with only the changed runs
+//      tinted (EditkitTextDiff, word-level via jsdiff). This replaced a
+//      2-column 原版/新版 layout that printed the whole field twice and
+//      tinted one side red, the other green — which cannot answer "what
+//      changed": a one-word edit inside a 400-character intro was
+//      invisible between two walls of coloured text. LARGE_TEXT_FIELDS
+//      render pre-wrap so multi-line intros keep their line structure.
 //
 //   2. ARRAY OF OBJECTS   — covers / screenshots / links.
+//      Still 2-column, and rightly so: these are images and JSON rows,
+//      not prose, and comparing a changed cover means seeing both.
 //      LEFT  = removed items + OLD version of changed items.
 //      RIGHT = added items + NEW version of changed items.
 //      Changed items appear in the same logical row on both sides so
@@ -127,8 +122,8 @@ interface Row {
   key: string
   label: string
   kind: RowKind
-  // SCALAR: both sides rendered as sanitised HTML.
-  scalar?: { oldHtml: string; newHtml: string; preWrap: boolean }
+  // SCALAR: the raw display text of each side; TextDiff does the rest.
+  scalar?: { old: string; new: string; preWrap: boolean }
   // ARRAY OF OBJECTS — pre-built side breakdown.
   arrayObj?: {
     added: Record<string, unknown>[]
@@ -161,15 +156,9 @@ const renderScalar = (
     : newVal === undefined || newVal === null
       ? ''
       : String(newVal)
-  // oldHtml/newHtml are already HTML-escaped char-by-char by useSideBySideDiff
-  // (only our own <b>/<strong> wrappers are added), so they are safe to bind
-  // directly — no DOM sanitizer (which pulled in the jsdom SSR leak).
-  const { oldHtml, newHtml } = useSideBySideDiff(o, n)
-  return {
-    oldHtml,
-    newHtml,
-    preWrap: LARGE_TEXT_FIELDS.has(key)
-  }
+  // Plain strings out — TextDiff renders text nodes, so nothing here has to be
+  // HTML-escaped the way the old string-building renderer did.
+  return { old: o, new: n, preWrap: LARGE_TEXT_FIELDS.has(key) }
 }
 
 const rows = computed<Row[]>(() => {
@@ -242,7 +231,7 @@ const rows = computed<Row[]>(() => {
     }
 
     const scalar = renderScalar(key, o, n)
-    if (scalar && (scalar.oldHtml.length > 0 || scalar.newHtml.length > 0)) {
+    if (scalar && (scalar.old.length > 0 || scalar.new.length > 0)) {
       out.push({ key, label: label(key), kind: 'scalar', scalar })
     }
   }
@@ -263,15 +252,34 @@ const imageOf = (item: Record<string, unknown>): string => {
 </script>
 
 <template>
-  <div class="kun-diff space-y-5">
+  <div class="space-y-5">
     <KunNull v-if="!rows.length" description="无字段变化" />
+
+    <p v-else class="text-default-500 text-xs">
+      只标出改动的部分：
+      <del
+        class="bg-danger/15 text-danger-600 decoration-danger-600/50 rounded px-1"
+        >删除</del
+      >
+      <ins class="bg-success/15 text-success-600 ml-1 rounded px-1 no-underline"
+        >新增</ins
+      >
+    </p>
 
     <div v-for="row in rows" :key="row.key" class="space-y-2">
       <!-- Field label -->
       <p class="text-default-700 text-sm font-semibold">{{ row.label }}</p>
 
-      <!-- 2-col side-by-side -->
-      <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+      <!-- SCALAR — one unified block, only the changed runs tinted -->
+      <EditkitTextDiff
+        v-if="row.kind === 'scalar' && row.scalar"
+        :from="row.scalar.old"
+        :to="row.scalar.new"
+        :pre-wrap="row.scalar.preWrap"
+      />
+
+      <!-- ARRAYS — 2-col side-by-side (images / JSON rows, not prose) -->
+      <div v-else class="grid grid-cols-1 gap-2 md:grid-cols-2">
         <!-- ─────── LEFT: 原版 ─────── -->
         <div
           class="bg-danger-50/40 border-danger-200/60 dark:bg-danger-500/5 dark:border-danger-500/20 rounded-lg border"
@@ -286,23 +294,12 @@ const imageOf = (item: Record<string, unknown>): string => {
             原版
           </div>
           <div class="px-3 py-2 text-sm">
-            <!-- SCALAR -->
-            <div
-              v-if="row.kind === 'scalar' && row.scalar"
-              class="text-default-700 break-words"
-              :class="{ 'whitespace-pre-wrap': row.scalar.preWrap }"
-              v-html="
-                row.scalar.oldHtml ||
-                '<span class=\'text-default-400 italic\'>(空)</span>'
-              "
-            />
-
             <!-- ARRAY OF SCALARS — removed items.
                  lookupName() swaps raw ids for display names when
                  row.key is an id-bearing field (tag_ids etc.);
                  returns raw value otherwise (aliases). -->
             <div
-              v-else-if="row.kind === 'array_scalar' && row.arrayScalar"
+              v-if="row.kind === 'array_scalar' && row.arrayScalar"
               class="flex flex-wrap gap-1.5"
             >
               <KunChip
@@ -394,21 +391,10 @@ const imageOf = (item: Record<string, unknown>): string => {
             新版
           </div>
           <div class="px-3 py-2 text-sm">
-            <!-- SCALAR -->
-            <div
-              v-if="row.kind === 'scalar' && row.scalar"
-              class="text-default-700 break-words"
-              :class="{ 'whitespace-pre-wrap': row.scalar.preWrap }"
-              v-html="
-                row.scalar.newHtml ||
-                '<span class=\'text-default-400 italic\'>(空)</span>'
-              "
-            />
-
             <!-- ARRAY OF SCALARS — added items.
                  Same lookupName treatment as the LEFT column. -->
             <div
-              v-else-if="row.kind === 'array_scalar' && row.arrayScalar"
+              v-if="row.kind === 'array_scalar' && row.arrayScalar"
               class="flex flex-wrap gap-1.5"
             >
               <KunChip
@@ -489,27 +475,3 @@ const imageOf = (item: Record<string, unknown>): string => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.kun-diff {
-  /* <strong> = removed (lives on the LEFT/old column) */
-  :deep(strong) {
-    color: var(--color-danger);
-    background-color: color-mix(in oklab, var(--color-danger) 22%, transparent);
-    text-decoration: line-through;
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-  /* <b> = added (lives on the RIGHT/new column) */
-  :deep(b) {
-    color: var(--color-success);
-    background-color: color-mix(
-      in oklab,
-      var(--color-success) 22%,
-      transparent
-    );
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-}
-</style>

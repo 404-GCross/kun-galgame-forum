@@ -1,5 +1,8 @@
 // Pure helpers for the editkit family. No forum imports (extraction-ready
-// boundary — see types.ts).
+// boundary — see types.ts). `diff` is an npm dependency, not forum code, so it
+// travels with the extraction.
+
+import { diffWords } from 'diff'
 
 import type { EditControl, EditFieldConfig, EditSchemaField } from './types'
 
@@ -103,51 +106,146 @@ export const formatEditItem = (
   return String(item)
 }
 
-export interface DiffLine {
-  type: 'same' | 'add' | 'del'
+// ─── Word-level text diff ─────────────────────────────
+//
+// Backed by jsdiff (npm `diff`, BSD-3) rather than a hand-rolled LCS: it is the
+// de-facto standard, already coalesces runs, and is the engine the GitHub-style
+// viewers build on. It replaced two separate in-house implementations here — a
+// line-level LCS for text fields and a char-level one for the taxonomy snapshot
+// columns — neither of which could answer "what changed" for prose.
+//
+// The presentation this feeds is a UNIFIED inline diff: one block per field
+// with only the changed runs tinted. Two columns printing the whole field twice
+// hide a one-character edit inside a 400-character intro. Word-level
+// highlighting is the industry norm for exactly this (line-level for code,
+// intra-line word highlighting for text).
+
+export type TextDiffOp = 'equal' | 'insert' | 'delete'
+
+export interface TextDiffSegment {
+  op: TextDiffOp
   text: string
 }
 
-/** Line-level LCS diff for text fields (diff_hint=lines). Both sides are
- * small wiki intros — the O(n·m) table is fine. */
-export const diffLines = (from: string, to: string): DiffLine[] => {
-  const a = from.length ? from.split('\n') : []
-  const b = to.length ? to.split('\n') : []
-  const n = a.length
-  const m = b.length
-  const lcs: number[][] = Array.from({ length: n + 1 }, () =>
-    new Array<number>(m + 1).fill(0)
-  )
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      lcs[i]![j] =
-        a[i] === b[j]
-          ? lcs[i + 1]![j + 1]! + 1
-          : Math.max(lcs[i + 1]![j]!, lcs[i]![j + 1]!)
+// CJK word segmentation.
+//
+// jsdiff's default tokenizer is regex-based and splits on whitespace, so for
+// Chinese / Japanese — which have none — it falls back to per-character
+// boundaries. That still finds the change, but it cuts words in half:
+//   我喜[-欢][+爱]这个游戏      (no segmenter)
+//   我[-喜欢][+喜爱]这个游戏    (zh segmenter)
+// The second is what a reader actually parses, so pass a segmenter. Upstream
+// recommends this for languages without spaces.
+//
+// Built once and reused — constructing an Intl.Segmenter is not free, and this
+// runs per field per revision. `zh` also segments Japanese kana runs sensibly,
+// and this forum's content is overwhelmingly Chinese.
+//
+// The capability check is not defensiveness for its own sake: an absent
+// Intl.Segmenter would throw inside a render function and blank the whole diff,
+// and losing word alignment is a far better outcome than that.
+let segmenter: Intl.Segmenter | null | undefined
+
+const wordSegmenter = (): Intl.Segmenter | null => {
+  if (segmenter !== undefined) {
+    return segmenter
+  }
+  segmenter =
+    typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+      ? new Intl.Segmenter('zh', { granularity: 'word' })
+      : null
+  return segmenter
+}
+
+/** Turn a before/after pair into the runs to render. Identical inputs collapse
+ * to a single `equal` run (or nothing when both are empty), so callers can
+ * treat "no visible change" uniformly. */
+export const diffTextSegments = (
+  before: string,
+  after: string
+): TextDiffSegment[] => {
+  const a = before ?? ''
+  const b = after ?? ''
+  if (!a && !b) {
+    return []
+  }
+  if (a === b) {
+    return [{ op: 'equal', text: a }]
+  }
+
+  const seg = wordSegmenter()
+  const parts = diffWords(a, b, seg ? { intlSegmenter: seg } : undefined)
+
+  return parts.map((p) => ({
+    op: p.added ? 'insert' : p.removed ? 'delete' : 'equal',
+    text: p.value
+  }))
+}
+
+/** Count CHARACTERS added / removed, which is what the reader is judging ("a
+ * word changed" vs "half the intro was rewritten"). Token counts would be less
+ * legible for CJK, where one token is often one character. */
+export const diffTextStats = (
+  segments: TextDiffSegment[]
+): { added: number; removed: number } => {
+  let added = 0
+  let removed = 0
+  for (const s of segments) {
+    if (s.op === 'insert') {
+      added += s.text.length
+    } else if (s.op === 'delete') {
+      removed += s.text.length
     }
   }
-  const out: DiffLine[] = []
-  let i = 0
-  let j = 0
-  while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      out.push({ type: 'same', text: a[i]! })
-      i++
-      j++
-    } else if (lcs[i + 1]![j]! >= lcs[i]![j + 1]!) {
-      out.push({ type: 'del', text: a[i]! })
-      i++
+  return { added, removed }
+}
+
+// Long untouched runs are folded the way a code review folds context: the
+// reader came for the change, not the 250 characters around it.
+export const TEXT_DIFF_ELIDE_OVER = 180
+const TEXT_DIFF_CONTEXT = 60
+
+export type TextDiffPiece =
+  | { kind: 'text'; op: TextDiffOp; text: string }
+  | { kind: 'elision'; count: number }
+
+/** True when folding would actually hide something, i.e. the toggle is worth
+ * offering. A single `equal` run means "no change at all" — never elide it, or
+ * an unchanged field renders as nothing but a fold marker. */
+export const isTextDiffElidable = (segments: TextDiffSegment[]): boolean =>
+  segments.length > 1 &&
+  segments.some((s) => s.op === 'equal' && s.text.length > TEXT_DIFF_ELIDE_OVER)
+
+/** Expand the segments into renderable pieces, folding long unchanged runs
+ * unless `expanded`. */
+export const elideTextDiff = (
+  segments: TextDiffSegment[],
+  expanded: boolean
+): TextDiffPiece[] => {
+  if (expanded || segments.length === 1) {
+    return segments.map((s) => ({ kind: 'text', op: s.op, text: s.text }))
+  }
+  const out: TextDiffPiece[] = []
+  segments.forEach((s, i) => {
+    if (s.op !== 'equal' || s.text.length <= TEXT_DIFF_ELIDE_OVER) {
+      out.push({ kind: 'text', op: s.op, text: s.text })
+      return
+    }
+    // Keep the context on the side that faces a change: the run before the
+    // first change only needs its tail, the run after the last only its head.
+    const c = TEXT_DIFF_CONTEXT
+    if (i === 0) {
+      out.push({ kind: 'elision', count: s.text.length - c })
+      out.push({ kind: 'text', op: 'equal', text: s.text.slice(-c) })
+    } else if (i === segments.length - 1) {
+      out.push({ kind: 'text', op: 'equal', text: s.text.slice(0, c) })
+      out.push({ kind: 'elision', count: s.text.length - c })
     } else {
-      out.push({ type: 'add', text: b[j]! })
-      j++
+      out.push({ kind: 'text', op: 'equal', text: s.text.slice(0, c) })
+      out.push({ kind: 'elision', count: s.text.length - 2 * c })
+      out.push({ kind: 'text', op: 'equal', text: s.text.slice(-c) })
     }
-  }
-  for (; i < n; i++) {
-    out.push({ type: 'del', text: a[i]! })
-  }
-  for (; j < m; j++) {
-    out.push({ type: 'add', text: b[j]! })
-  }
+  })
   return out
 }
 

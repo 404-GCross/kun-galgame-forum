@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // One field's old→new rendering, by the registry's diff hint (doc 21 §2.4):
-// inline scalars, line-level text, item-level lists, side-by-side images.
+// text (word-level unified diff), item-level lists, side-by-side images.
+//
+// Both text regimes — the `lines` hint for wiki intros and the bare scalar
+// fallback — go through TextDiff. The `lines` hint used to run a line-level LCS
+// and the scalar one printed "old → new" in full; neither pointed at the change
+// when a 400-character intro gained one word. The only difference left between
+// them is that `lines` preserves its own newlines.
 import { computed } from 'vue'
+import TextDiff from './TextDiff.vue'
 import type { EditFieldConfig } from './types'
-import {
-  diffItems,
-  diffLines,
-  formatEditItem,
-  formatEditValue
-} from './utils'
+import { diffItems, formatEditItem, formatEditValue } from './utils'
 
 const props = defineProps<{
   label: string
@@ -18,13 +20,21 @@ const props = defineProps<{
   config?: EditFieldConfig
 }>()
 
-const lines = computed(() =>
+// The scalar fallback diffs the DISPLAY form, not the raw value: an enum's
+// label, a boolean's 是/否. Diffing `true` against `false` would tint the whole
+// token anyway, and the reader never sees the raw value elsewhere.
+const text = computed(() =>
   props.diffHint === 'lines'
-    ? diffLines(
-        typeof props.from === 'string' ? props.from : '',
-        typeof props.to === 'string' ? props.to : ''
-      )
-    : []
+    ? {
+        from: typeof props.from === 'string' ? props.from : '',
+        to: typeof props.to === 'string' ? props.to : '',
+        preWrap: true
+      }
+    : {
+        from: formatEditValue(props.from, props.config),
+        to: formatEditValue(props.to, props.config),
+        preWrap: false
+      }
 )
 
 const items = computed(() =>
@@ -125,35 +135,7 @@ const imagePairs = computed(() => {
       </p>
     </div>
 
-    <!-- lines: LCS line diff -->
-    <div
-      v-else-if="diffHint === 'lines'"
-      class="overflow-x-auto rounded border border-default-200 text-sm"
-    >
-      <p
-        v-for="(line, i) in lines"
-        :key="i"
-        :class="[
-          'px-2 py-0.5 whitespace-pre-wrap',
-          line.type === 'add'
-            ? 'bg-success-50 text-success-700'
-            : line.type === 'del'
-              ? 'bg-danger-50 text-danger-700 line-through'
-              : 'text-default-600'
-        ]"
-      >
-        {{ line.type === 'add' ? '+ ' : line.type === 'del' ? '− ' : '  '
-        }}{{ line.text }}
-      </p>
-    </div>
-
-    <!-- inline scalar -->
-    <p v-else class="text-sm break-all">
-      <span class="text-danger-600 line-through">
-        {{ formatEditValue(from, config) }}
-      </span>
-      <KunIcon name="lucide:arrow-right" class="text-default-400 mx-1 inline" />
-      <span class="text-success-600">{{ formatEditValue(to, config) }}</span>
-    </p>
+    <!-- text: unified word-level diff (multi-line intros keep their newlines) -->
+    <TextDiff v-else :from="text.from" :to="text.to" :pre-wrap="text.preWrap" />
   </div>
 </template>

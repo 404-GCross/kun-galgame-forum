@@ -1,10 +1,9 @@
 // @vitest-environment nuxt
 //
 // SnapshotDiff structural-diff component spec. The Nuxt environment is
-// needed because the component reaches for the auto-imported KunChip /
-// KunNull / useDiff symbols at render time; happy-dom alone would
-// resolve them to undefined and the test would assert against an empty
-// HTML shell.
+// needed because the component reaches for auto-imported symbols at render
+// time (KunChip / KunNull / EditkitTextDiff); happy-dom alone would resolve
+// them to undefined and the test would assert against an empty HTML shell.
 import { describe, it, expect } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import SnapshotDiff from './SnapshotDiff.vue'
@@ -17,19 +16,23 @@ describe('SnapshotDiff', () => {
     expect(w.html()).toContain('无字段变化')
   })
 
-  it('scalar diff: emits both old and new fragments', async () => {
+  it('scalar diff: one unified block tinting only the changed run', async () => {
     const w = await mountSuspended(SnapshotDiff, {
       props: {
         changedKeys: { name_zh_cn: true },
-        oldSnap: { name_zh_cn: '旧标题' },
-        newSnap: { name_zh_cn: '新标题' }
+        oldSnap: { name_zh_cn: '碧蓝航线' },
+        newSnap: { name_zh_cn: '碧蓝幻想' }
       }
     })
     const html = w.html()
-    // useDiff marks added as <b> and removed as <strong>; the label
-    // should also surface from the field map.
     expect(html).toContain('简体中文标题')
-    expect(html).toMatch(/<b>|<strong>/)
+    // Deletions render as <del>, insertions as <ins> — the unified form.
+    expect(html).toContain('<del')
+    expect(html).toContain('<ins')
+    // The shared 碧蓝 run is emitted ONCE and untinted. Printing the whole
+    // field twice, one side red and one green, is what the 2-column view this
+    // replaced did — and why a small edit was invisible in it.
+    expect(w.text().match(/碧蓝/g)?.length).toBe(1)
   })
 
   it('array-of-scalars: tag_ids renders +/- badges, not raw JSON', async () => {
@@ -169,12 +172,13 @@ describe('SnapshotDiff', () => {
         }
       }
     })
-    // Side-by-side scalar diff wraps differing characters in <b>/<strong>
-    // for highlighting, so the rendered HTML interleaves tags between
-    // each char. Assert against `text()` (markup stripped) where the
-    // names should appear contiguously.
+    // Both names are resolved from the dict rather than shown as raw ids —
+    // but they are DIFFED, not printed whole: 蜂群系列 → 克莱托系列 shares the
+    // 系列 suffix, so only 蜂群 / 克莱托 are tinted and 系列 is emitted once.
+    // Asserting on the full names would be asserting the old duplicated view.
     const text = w.text()
-    expect(text).toContain('蜂群系列')
-    expect(text).toContain('克莱托系列')
+    expect(text).toContain('蜂群')
+    expect(text).toContain('克莱托')
+    expect(text.match(/系列/g)?.length).toBe(1)
   })
 })
