@@ -207,7 +207,7 @@ export const buildSitemapUrls = async (
       path: '/galgame-official',
       pick: (d) => ((d as { officials?: [] })?.officials ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
-      loc: (r) => `/galgame-official/c/${num(r, 'id')}`,
+      loc: (r) => `/galgame/official/${num(r, 'id')}`,
       priority: 0.5
     }
   ]
@@ -217,13 +217,13 @@ export const buildSitemapUrls = async (
     collectSingle(
       '/galgame-tag',
       (d) => ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
-      (r) => `/galgame-tag/c/${num(r, 'id')}`,
+      (r) => `/galgame/tag/${num(r, 'id')}`,
       0.5
     ),
     collectSingle(
       '/galgame-engine',
       (d) => (Array.isArray(d) ? (d as Record<string, unknown>[]) : []),
-      (r) => `/galgame-engine/c/${num(r, 'id')}`,
+      (r) => `/galgame/engine/${num(r, 'id')}`,
       0.5
     )
   ])

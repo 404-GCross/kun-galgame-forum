@@ -136,7 +136,7 @@ const countColorByCategory = (category: string): string => {
           v-for="tag in filteredTags"
           :key="tag.id"
           underline="none"
-          :to="`/galgame-tag/c/${tag.id}`"
+          :to="`/galgame/tag/${tag.id}`"
         >
           <KunChip
             class-name="bg-default-500/10 cursor-pointer"

@@ -131,8 +131,11 @@ const handleDelete = async (engine: StaffTaxonomyRow) => {
         class="border-default-200 flex items-center justify-between gap-3 rounded-lg border p-3"
       >
         <div class="flex min-w-0 items-center gap-2">
-          <!-- A wiki id: the legacy path is a 301 shell onto the canonical
-               catalog-id page. -->
+          <!-- A WIKI id, so this deliberately stays on the legacy path: it is a
+               301 shell that resolves to the canonical /galgame/engine/{catalogId}
+               page in one hop. Pointing it straight at the new path would feed a
+               wiki id to a route that reads catalog ids — the exact mix-up the
+               old `/c/` segment existed to prevent. -->
           <KunLink
             :to="`/galgame-engine/${engine.id}`"
             class-name="truncate font-medium"

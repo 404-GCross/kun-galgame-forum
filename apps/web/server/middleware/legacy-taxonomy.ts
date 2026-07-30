@@ -1,24 +1,31 @@
-// Legacy taxonomy URL shells (A2-3 / doc 106 R1).
+// Retired taxonomy URL shells (A2-3 / doc 106 R1, doc 146).
 //
-// The taxonomy detail pages moved from the wiki's id space to the catalog's,
-// and the live pages now live under a `/c/` segment:
+// Two generations of taxonomy URL are retired, and EVERY one of them lands on
+// its final form in a single hop:
 //
-//   /galgame-tag/{wikiId}       →  /galgame-tag/c/{catalogTagId}
-//   /galgame-official/{wikiId}  →  /galgame-official/c/{catalogLabelId}
-//   /galgame-engine/{wikiId}    →  /galgame-engine/c/{catalogEngineId}
+//   /galgame-tag/{wikiId}          →  /galgame/tag/{catalogTagId}
+//   /galgame-tag/c/{catalogId}     →  /galgame/tag/{catalogId}
+//   /galgame-tag                   →  /galgame/tag
+//   …and the same three shapes for official / engine.
 //
-// The split is not cosmetic. The two id spaces OVERLAP densely — 718 of the
-// 1,530 mapped wiki tag ids are themselves live catalog tag ids, and 442 of the
-// 1,507 retired ones are too — so a single path serving both meanings would
-// silently render the wrong entity for whichever one lost. A distinct segment
-// makes the question decidable forever: a bare number here is ALWAYS a wiki id,
-// `/c/{n}` is ALWAYS a catalog id, no matter how either range grows later.
+// The one-hop rule is the point. The obvious implementation — leave the gen-1
+// shells pointing at gen 2 and let the new gen-2 rule forward them again — costs
+// a redirect chain on exactly the URLs search engines already hold, which is
+// where link equity is lost and crawlers start giving up. So gen-1 resolution
+// targets the CURRENT form directly; both generations are resolved here, in one
+// pass, never by bouncing one off the other.
+//
+// Why gen 2 ever had a `/c/` segment: in the `/galgame-tag/` space a bare number
+// was a WIKI id, and the two id spaces OVERLAP densely — 718 of the 1,530 mapped
+// wiki tag ids are themselves live catalog tag ids, and 442 of the 1,507 retired
+// ones are too — so a single path serving both meanings would silently render
+// the wrong entity for whichever one lost. The discriminator made it decidable
+// forever. `/galgame/tag/` never served wiki ids, so it needs no such segment.
 //
 // This runs as global middleware rather than as shell PAGES so the redirect is
 // issued before any rendering — a crawler gets a clean 301 with no HTML body,
-// and there is no client-side hydration for a URL that is never meant to
-// render. Paths that do not match the strict legacy shape fall straight
-// through, including the `/c/…` pages themselves and the index pages.
+// and there is no client-side hydration for a URL that is never meant to render.
+// Paths that match nothing fall straight through, including the live pages.
 //
 // Three outcomes, and the difference between the last two is what a crawler
 // acts on:
@@ -29,17 +36,29 @@
 import {
   parseWikiId,
   resolveLegacyTag,
-  resolveLegacyEngine
+  resolveLegacyEngine,
+  resolveRenamedTaxonomyPath,
+  taxonomyDetailPath
 } from '../utils/kunTaxonomyRedirects'
 
 // Strict shape: exactly one numeric segment under one of the three families.
-// `/c/…` cannot match (it has a non-numeric segment), and neither can the
-// index pages or any deeper path.
+// `/c/…` cannot match (it has a non-numeric segment), and neither can the index
+// pages or any deeper path.
 const LEGACY_RE = /^\/galgame-(tag|official|engine)\/(\d+)$/
 
 export default defineEventHandler(async (event) => {
   if (event.method !== 'GET') return
-  const path = event.path.split('?')[0]!
+  const [path, query] = event.path.split('?') as [string, string?]
+
+  // Query survives the hop: the index pages carry filter + pagination state, and
+  // dropping it would silently reset a shared link to page 1.
+  const withQuery = (to: string) => (query ? `${to}?${query}` : to)
+
+  // gen 2 → now. Pure rename, no lookup: the id space is identical.
+  const renamed = resolveRenamedTaxonomyPath(path)
+  if (renamed) return sendRedirect(event, withQuery(renamed), 301)
+
+  // gen 1 → now, resolved straight to the current form (never via gen 2).
   const m = path.match(LEGACY_RE)
   if (!m) return
 
@@ -72,6 +91,9 @@ export default defineEventHandler(async (event) => {
   // something a frozen map could not do. An unreachable API falls through to a
   // 404 rather than erroring the request: a missing redirect is recoverable,
   // a 500 on a crawled URL is not.
+  //
+  // The API path below is the BACKEND's own endpoint namespace, which is
+  // unrelated to the frontend route rename and deliberately untouched by it.
   const id = await $fetch<{ data?: { id?: number } }>(
     `${useRuntimeConfig().apiBaseUrl}/api/galgame-official/legacy/${wikiId}`,
     { headers: { accept: 'application/json' } }
@@ -79,5 +101,5 @@ export default defineEventHandler(async (event) => {
     .then((r) => r?.data?.id)
     .catch(() => undefined)
 
-  if (id) return sendRedirect(event, `/galgame-official/c/${id}`, 301)
+  if (id) return sendRedirect(event, taxonomyDetailPath('official', id), 301)
 })

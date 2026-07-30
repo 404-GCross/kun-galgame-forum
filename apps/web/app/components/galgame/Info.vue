@@ -46,7 +46,7 @@ const getLanguageName = getGalgameOriginalLanguageName
           <KunLink
             v-for="item in engine"
             :key="item.id"
-            :to="`/galgame-engine/c/${item.id}`"
+            :to="`/galgame/engine/${item.id}`"
             underline="none"
             class-name="text-foreground hover:text-primary text-base font-semibold"
           >

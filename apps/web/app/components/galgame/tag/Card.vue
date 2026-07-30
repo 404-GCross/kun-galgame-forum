@@ -13,7 +13,7 @@ defineProps<{
     <KunCard
       :is-transparent="false"
       :is-hoverable="true"
-      :href="`/galgame-tag/c/${tag.id}`"
+      :href="`/galgame/tag/${tag.id}`"
     >
       <h3 class="text-default-900 font-semibold">
         <span

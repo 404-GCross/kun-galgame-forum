@@ -9,7 +9,7 @@ defineProps<{
 }>()
 
 // The detail chip now speaks the label's OWN kind (游戏品牌 / 同人社团 / …),
-// which is the same vocabulary the /galgame-official index renders — one map,
+// which is the same vocabulary the /galgame/official index renders — one map,
 // one wording. Before A2-R2 it printed the per-edge ROLE, which had no Chinese
 // entry anywhere and fell through to the raw English "developer".
 const getCategoryText = (category: string) =>
@@ -22,7 +22,7 @@ const getCategoryText = (category: string) =>
     <dd class="mt-1.5 space-y-3">
       <div class="space-y-2" v-for="item in official" :key="item.id">
         <KunLink
-          :to="`/galgame-official/c/${item.id}`"
+          :to="`/galgame/official/${item.id}`"
           underline="none"
           class-name="text-foreground hover:text-primary text-base font-semibold"
         >

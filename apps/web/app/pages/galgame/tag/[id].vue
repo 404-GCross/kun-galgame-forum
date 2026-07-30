@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 
-// `id` is a CANONICAL CATALOG tag id (A2-3 / doc 106 R1). The legacy wiki-id
-// URLs live one level up and are pure 301/410 shells — see
-// server/middleware/legacy-taxonomy.ts for why the two id spaces need separate
-// paths rather than one clever resolver.
+// `id` is a CANONICAL CATALOG tag id (A2-3 / doc 106 R1), carried bare — this
+// namespace needs no discriminator segment.
+//
+// The retired `/galgame-tag/` space did need one (`/galgame-tag/c/{n}`, doc 146):
+// there a bare number was a WIKI id, and the two id spaces overlap densely — 718
+// of the 1,530 mapped wiki tag ids are themselves live catalog tag ids — so one
+// path serving both meanings would silently render the wrong entity for whichever
+// one lost. `/galgame/tag/` never served wiki ids at all, so the ambiguity it was
+// guarding against cannot arise and the segment is pure baggage. The old space
+// survives only as 301 shells (server/middleware/legacy-taxonomy.ts).
 //
 // Staff affordances (edit / revision history) are deliberately NOT here any
 // more: those write ops address WIKI rows and this page no longer knows a wiki
@@ -54,25 +60,32 @@ const { data, status } = await useKunFetch<GalgameTagDetail>(
   }
 )
 
-if (data.value) {
-  if (data.value.category !== 'sexual') {
-    useKunSeoMeta({
-      title: `标签 ${data.value.name} 的 Galgame`,
-      description:
-        data.value.description ||
-        `含有标签「${data.value.name}」的 Galgame 作品合集, 例如 ${data.value.galgame
-          .slice(0, 5)
-          .map((g) => getPreferredLanguageText(g.name))
-          .join('、')} 等。`,
-      ...(data.value.galgame[0]?.banner
-        ? { ogImage: data.value.galgame[0].banner }
-        : {})
-    })
-  } else {
-    useKunDisableSeo(`标签 ${data.value.name} 的 Galgame`)
-  }
+// An unknown id is a real 404, not an empty 200 shell: this namespace went live
+// with no legacy id space behind it, so a miss means the entity does not exist
+// and a crawler must be told exactly that rather than indexing a blank page.
+if (!data.value) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: '未找到 Galgame 标签',
+    fatal: true
+  })
+}
+
+if (data.value.category !== 'sexual') {
+  useKunSeoMeta({
+    title: `标签 ${data.value.name} 的 Galgame`,
+    description:
+      data.value.description ||
+      `含有标签「${data.value.name}」的 Galgame 作品合集, 例如 ${data.value.galgame
+        .slice(0, 5)
+        .map((g) => getPreferredLanguageText(g.name))
+        .join('、')} 等。`,
+    ...(data.value.galgame[0]?.banner
+      ? { ogImage: data.value.galgame[0].banner }
+      : {})
+  })
 } else {
-  useKunDisableSeo('未找到 Galgame 标签')
+  useKunDisableSeo(`标签 ${data.value.name} 的 Galgame`)
 }
 </script>
 

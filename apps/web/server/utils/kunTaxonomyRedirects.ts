@@ -1,13 +1,22 @@
-// Legacy taxonomy URL → new catalog-id URL (A2-3 / doc 106 R1).
+// Legacy taxonomy URL → current canonical URL (A2-3 / doc 106 R1, doc 146).
 //
-// The taxonomy detail pages moved from the wiki's id space to the catalog's.
-// The two spaces OVERLAP densely — 718 of the 1,530 mapped wiki tag ids are
-// themselves live catalog tag ids, and 442 of the 1,507 retired ones are too —
-// so a bare `/galgame-tag/{n}` cannot be resolved to one meaning or the other.
-// That is why the new pages live under a distinct `/c/` segment and these
-// legacy paths became pure redirect shells: a bare numeric segment is ALWAYS a
-// wiki id, `/c/{n}` is ALWAYS a catalog id, and neither can be mistaken for the
-// other no matter how the two id ranges grow.
+// Two generations of URL are retired, and both redirect here in ONE hop:
+//
+//   gen 1  /galgame-tag/{wikiId}        wiki id space
+//   gen 2  /galgame-tag/c/{catalogId}   catalog id space, `/c/` discriminator
+//   now    /galgame/tag/{catalogId}     catalog id space, bare
+//
+// Why gen 2 needed the `/c/` segment: in the `/galgame-tag/` space a bare number
+// was a WIKI id, and the two id spaces OVERLAP densely — 718 of the 1,530 mapped
+// wiki tag ids are themselves live catalog tag ids, and 442 of the 1,507 retired
+// ones are too — so `/galgame-tag/{n}` could not be resolved to one meaning or
+// the other. The discriminator made the question decidable forever: a bare
+// number is ALWAYS a wiki id, `/c/{n}` is ALWAYS a catalog id, no matter how
+// either range grows.
+//
+// Why the current space does not need it: `/galgame/tag/` never served wiki ids
+// at all. The ambiguity the segment guarded against cannot arise there, so it is
+// pure baggage and the catalog id is carried bare.
 //
 // The maps are frozen exports of the production registry (infra
 // refs/proj/132-artifacts + 127-artifacts) and are vendored rather than fetched:
@@ -25,6 +34,17 @@ const engineMap = engineRedirects as Record<string, number>
 // crawler to drop it instead of re-checking forever.
 const goneTags = new Set<number>(tagGone as number[])
 
+export const TAXONOMY_FAMILIES = ['tag', 'official', 'engine'] as const
+export type TaxonomyFamily = (typeof TAXONOMY_FAMILIES)[number]
+
+// The single source for what a taxonomy URL looks like today. Every redirect
+// target is built from these, which is what structurally rules out a 301 chain:
+// no caller can name an intermediate form even by accident.
+export const taxonomyIndexPath = (family: TaxonomyFamily) => `/galgame/${family}`
+
+export const taxonomyDetailPath = (family: TaxonomyFamily, catalogId: number) =>
+  `/galgame/${family}/${catalogId}`
+
 export type LegacyResolution =
   | { kind: 'redirect'; to: string }
   | { kind: 'gone' }
@@ -40,7 +60,7 @@ export const parseWikiId = (raw: string | undefined): number | null => {
 /** Resolve a legacy tag id: 301 when mapped, 410 when retired, else 404. */
 export const resolveLegacyTag = (wikiId: number): LegacyResolution => {
   const target = tagMap[String(wikiId)]
-  if (target) return { kind: 'redirect', to: `/galgame-tag/c/${target}` }
+  if (target) return { kind: 'redirect', to: taxonomyDetailPath('tag', target) }
   if (goneTags.has(wikiId)) return { kind: 'gone' }
   return { kind: 'missing' }
 }
@@ -52,6 +72,31 @@ export const resolveLegacyTag = (wikiId: number): LegacyResolution => {
  */
 export const resolveLegacyEngine = (wikiId: number): LegacyResolution => {
   const target = engineMap[String(wikiId)]
-  if (target) return { kind: 'redirect', to: `/galgame-engine/c/${target}` }
+  if (target)
+    return { kind: 'redirect', to: taxonomyDetailPath('engine', target) }
   return { kind: 'missing' }
+}
+
+// The gen-2 `/galgame-{family}` space. Its index and its `/c/{id}` detail form
+// both carry straight over: the id space is unchanged and only the spelling of
+// the path moved, so this is a pure rename with no lookup involved.
+const RENAMED_INDEX_RE = /^\/galgame-(tag|official|engine)$/
+const RENAMED_DETAIL_RE = /^\/galgame-(tag|official|engine)\/c\/(\d+)$/
+
+/**
+ * Resolve a retired `/galgame-{family}` URL to its current form, or null when
+ * the path is not one of them. Catalog ids pass through untouched.
+ */
+export const resolveRenamedTaxonomyPath = (path: string): string | null => {
+  const index = path.match(RENAMED_INDEX_RE)
+  if (index) return taxonomyIndexPath(index[1] as TaxonomyFamily)
+
+  const detail = path.match(RENAMED_DETAIL_RE)
+  if (detail) {
+    const catalogId = Number(detail[2])
+    if (!Number.isInteger(catalogId) || catalogId <= 0) return null
+    return taxonomyDetailPath(detail[1] as TaxonomyFamily, catalogId)
+  }
+
+  return null
 }
