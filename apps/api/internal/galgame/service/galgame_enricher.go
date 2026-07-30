@@ -60,14 +60,17 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 	}
 
 	galgameIDs := make([]int, len(items))
-	userIDs := make([]int, len(items))
 	for i, g := range items {
 		galgameIDs[i] = g.ID
-		userIDs[i] = g.UserID
 	}
 
-	userMap := e.userClient.Hydrate(ctx, userIDs)
+	// Local stats batch — also the source of the author chip: the wiki-era
+	// creator is frozen on the local row (migration 066) because the catalog
+	// face carries no submitter (doc 106 R2 ②), which is why the users are
+	// hydrated from the local rows and NOT from the item's own (always-zero)
+	// UserID. Must therefore run BEFORE the Hydrate call below.
 	localMap := e.galgameRepo.FindLocalBatch(galgameIDs)
+	userMap := e.userClient.Hydrate(ctx, frozenCreatorIDs(galgameIDs, localMap))
 	// Platform/language badges come from the LOCAL galgame_resource rows — the
 	// galgame item (incl. Meilisearch search hits) carries neither — so the search /
 	// series / official / engine / tag cards match the /galgame list card's
@@ -88,7 +91,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
 			},
 			Banner:       g.Banner,
-			User:         userBriefToDTO(userMap[g.UserID]),
+			User:         frozenCreatorBrief(localMap[g.ID], userMap),
 			ContentLimit: g.ContentLimit,
 			// View is a kungal-local stat (each site has its own audience),
 			// not metadata; pull from the local stats row instead of galgame.

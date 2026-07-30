@@ -70,6 +70,17 @@ const sortedRatings = computed(() => {
 const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
   ratings.value.unshift(newRating)
 }
+
+// The 贡献者 card is really "创建者 + 贡献者": the creator chip is the wiki-era
+// 发布人 (frozen on the local row since the catalog face carries no submitter)
+// and stands on its own, so gating the whole card on a non-empty contributor
+// list hid the publisher of every game nobody has contributed resources to.
+// An unknown creator arrives as the zero user (id 0) — see the API's
+// frozenCreatorBrief — so the chip row is gated separately.
+const hasCreator = computed(() => props.galgame.user.id > 0)
+const hasContributorCard = computed(
+  () => hasCreator.value || !!props.galgame.contributor?.length
+)
 </script>
 
 <template>
@@ -193,7 +204,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
         />
 
         <KunCard
-          v-if="galgame.contributor?.length"
+          v-if="hasContributorCard"
           content-class="space-y-3"
           :is-hoverable="false"
           :is-transparent="false"
@@ -205,6 +216,7 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
           />
 
           <div
+            v-if="hasCreator"
             class="text-default-500 flex cursor-default flex-wrap items-center gap-2"
           >
             <KunUserChip :user="galgame.user" />

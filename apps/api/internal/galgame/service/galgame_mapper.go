@@ -38,6 +38,39 @@ func groupResourceMeta(rows []model.GalgameResourceMeta) (platforms, languages m
 	return
 }
 
+// frozenCreatorBrief resolves a galgame card's 发布人 chip from the FROZEN
+// wiki-era creator on the LOCAL row (migration 066), which is the only source
+// left: the catalog face deliberately carries no submitter, so the brief's /
+// item's own UserID is always 0 (client.CatalogItemToBrief leaves it zero) and
+// keying the user map off it blanked the chip on every card.
+//
+// An unknown creator — NULL column, or a catalog work with no local row at all,
+// whose zero-value GalgameLocalRow lands here — yields the zero brief, which the
+// frontend renders as no chip. It is returned WITHOUT consulting the user map on
+// purpose: 已注销用户 is what a lookup of user 0 produces, and "nobody knows who
+// submitted this" must never be shown as "a deleted account submitted this".
+//
+// NOT to be confused with the ownership lane: permission / notification code
+// reads the surviving /internal meta op (GalgameMetaRow.UserID), not this.
+func frozenCreatorBrief(row repository.GalgameLocalRow, userMap map[int]userclient.User) dto.UserBrief {
+	id := userclient.DerefID(row.CreatorUserID)
+	if id <= 0 {
+		return dto.UserBrief{}
+	}
+	return userBriefToDTO(userMap[id])
+}
+
+// frozenCreatorIDs is the batch half of frozenCreatorBrief: the distinct
+// creators of a local stats batch, for ONE Hydrate round-trip. `ids` is the
+// card order; a game with no local row (catalog-only) or a NULL creator
+// collapses to 0 and is dropped, so Hydrate is never asked about user 0 and
+// can't answer with a 已注销用户 placeholder.
+func frozenCreatorIDs(ids []int, localMap map[int]repository.GalgameLocalRow) []int {
+	return userclient.CollectIDs(ids, func(id int) int {
+		return userclient.DerefID(localMap[id].CreatorUserID)
+	})
+}
+
 // ──────────────────────────────────────────
 // Galgame → Detail DTO
 // ──────────────────────────────────────────

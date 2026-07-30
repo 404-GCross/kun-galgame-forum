@@ -25,6 +25,20 @@ func CollectIDs[T any](rows []T, idOf func(T) int) []int {
 	return ids
 }
 
+// DerefID reads a NULLABLE identity column (e.g. the frozen wiki-era galgame
+// creator snapshot, migration 066) as a plain user id, collapsing "unknown" to
+// 0. That 0 is exactly what the rest of this package treats as "no user":
+// CollectIDs skips it, so Hydrate is never asked about it, so the lookup misses
+// and yields the zero User. Rendering an unknown author therefore produces an
+// empty chip rather than the 已注销用户 placeholder Hydrate mints for every id
+// it IS asked about.
+func DerefID(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
 // Hydrate looks up `ids` and returns a *total* map (every id in `ids` is
 // present, missing/unknown ids get a Placeholder). Mapper code can then do
 // `m[r.UserID]` without nil-checks — either it's a real user or it's a

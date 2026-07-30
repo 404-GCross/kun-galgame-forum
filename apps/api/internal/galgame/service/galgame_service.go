@@ -203,15 +203,6 @@ func (s *GalgameService) fetchOwnerAndName(ctx context.Context, galgameID int) (
 	return row.UserID, truncate(row.Name(), constants.TextPreviewLength)
 }
 
-// derefIntOr returns *p, or def when p is nil — the frozen creator id is
-// nullable (unknown), and a nil must not silently become user 0.
-func derefIntOr(p *int, def int) int {
-	if p == nil {
-		return def
-	}
-	return *p
-}
-
 // firstNonEmpty returns the first non-blank argument, or "".
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
@@ -461,13 +452,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 	// face carries no submitter (doc 106 R2 ②).
 	localMap := s.galgameRepo.FindLocalBatch(ids)
 
-	userIDs := make([]int, 0, len(localMap))
-	for _, row := range localMap {
-		if row.CreatorUserID != nil {
-			userIDs = append(userIDs, *row.CreatorUserID)
-		}
-	}
-	userMap := s.userClient.Hydrate(ctx, userIDs)
+	userMap := s.userClient.Hydrate(ctx, frozenCreatorIDs(ids, localMap))
 
 	// Bayesian display rating per card (same formula as the rating sort).
 	ratingMap := s.listRepo.BayesianRatings(ids)
@@ -489,7 +474,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
 			},
 			Banner:       b.Banner,
-			User:         userBriefToDTO(userMap[b.UserID]),
+			User:         frozenCreatorBrief(localMap[id], userMap),
 			ContentLimit: b.ContentLimit,
 			View:         localMap[id].View,
 			LikeCount:    localMap[id].LikeCount,
