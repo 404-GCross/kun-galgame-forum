@@ -68,9 +68,9 @@ const platformLabels = computed(() => {
             </KunLink>
             <KunChip
               class-name="ml-2 -translate-y-1"
-              :color="galgame.content_limit === 'all' ? 'success' : 'danger'"
+              :color="galgame.age_limit === 'all' ? 'success' : 'danger'"
             >
-              {{ galgame.content_limit === 'all' ? '全年龄' : 'R18' }}
+              {{ galgame.age_limit === 'all' ? '全年龄' : 'R18' }}
             </KunChip>
           </h2>
           <p class="text-default-500 mt-1 text-sm">
