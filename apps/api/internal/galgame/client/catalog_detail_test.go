@@ -68,6 +68,54 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	return CatalogDetailToFull(d, gid)
 }
 
+// TestCatalogDetail_HeroPrefersTheLandscapeCover pins the detail hero against
+// the card: both must resolve to the wide art. The detail face ships a flat
+// covers[] ordered portrait-pin-first, so taking covers[0] — what this used to
+// do — put a portrait in a landscape hero frame for every work that has both.
+func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
+	t.Run("landscape present", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"},
+			{"url":"https://cdn.example/ef/gh/banner.webp","kind":"dig","width":1280,"height":720,"thumbhash":"B"}
+		]}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/ef/gh/banner.webp" {
+			t.Errorf("hero = %q, want the landscape cover", f.EffectiveBannerURL)
+		}
+		if f.EffectiveBannerWidth != 1280 || f.EffectiveBannerHeight != 720 || f.EffectiveBannerThumbhash != "B" {
+			t.Errorf("dims/thumbhash = %dx%d %q, want 1280x720 B",
+				f.EffectiveBannerWidth, f.EffectiveBannerHeight, f.EffectiveBannerThumbhash)
+		}
+		// The gallery itself is untouched — only the derived hero moved.
+		if len(f.Covers) != 2 || f.Covers[0].CDNURL != "https://cdn.example/ab/cd/portrait.webp" {
+			t.Errorf("covers[] order changed: %+v", f.Covers)
+		}
+	})
+
+	t.Run("portrait only falls back", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"}
+		]}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/ab/cd/portrait.webp" {
+			t.Errorf("hero = %q, want the portrait fallback rather than an empty hero", f.EffectiveBannerURL)
+		}
+	})
+
+	t.Run("dims unknown falls back to the pin", func(t *testing.T) {
+		// image_service has no entry for either cover, so orientation is
+		// unknowable — the server-ordered pin is the honest choice.
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/pinned.webp","kind":"main"},
+			{"url":"https://cdn.example/ef/gh/other.webp","kind":"dig"}
+		]}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/ab/cd/pinned.webp" {
+			t.Errorf("hero = %q, want the pinned cover when no dims are known", f.EffectiveBannerURL)
+		}
+	})
+}
+
 func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
 	// The same brand on three edges, plus a second label — the shape a doujin
 	// work with a circle and a publisher actually has.

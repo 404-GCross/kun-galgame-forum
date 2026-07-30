@@ -382,19 +382,22 @@ func refsMap(refs []catRef) map[string]string {
 }
 
 // coverFields projects the two-slot cover block onto the derived
-// effective-banner quintet the kungal briefs / items carry. Portrait is the
-// card key art (the wiki's effective banner was covers[sort_order=0], which is
-// the portrait pin for the overwhelming majority of rows); the banner slot is
-// the fallback so a landscape-only work still renders an image rather than a
-// blank card. `cover` (the list lane's single representative URL) is the last
-// resort for lanes that did not ask for include=covers.
+// effective-banner quintet the kungal briefs / items carry.
+//
+// The BANNER slot wins and portrait is the fallback: kungal's card and hero
+// frames are landscape, so a portrait pin is letterboxed or cropped into them.
+// (Ruled by the user after the re-anchoring shipped portrait-first — the
+// preference is for the wide banner art wherever a work has one.) A
+// portrait-only work still renders through the fallback rather than showing a
+// blank card, and `cover` — the list lane's single representative URL — remains
+// the last resort for lanes that did not ask for include=covers.
 func coverFields(covers *catCoverSlots, fallbackURL string) (hash, url string, w, h int, thumb string) {
 	slot := (*catCoverSlot)(nil)
 	if covers != nil {
-		if covers.Portrait != nil {
-			slot = covers.Portrait
-		} else if covers.Banner != nil {
+		if covers.Banner != nil {
 			slot = covers.Banner
+		} else if covers.Portrait != nil {
+			slot = covers.Portrait
 		}
 	}
 	if slot == nil {

@@ -76,15 +76,15 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		f.Status = statusFromClaimState(d.ClaimedBy.State)
 	}
 
-	// Effective banner: the portrait pin is the card/hero key art. covers[] is
-	// server-ordered (portrait pin first), so the first cover the caller may
-	// see is the right one — the same rule the list lane's portrait slot uses.
-	if len(f.Covers) > 0 {
-		f.EffectiveBannerHash = f.Covers[0].ImageHash
-		f.EffectiveBannerURL = f.Covers[0].CDNURL
-		f.EffectiveBannerWidth = f.Covers[0].Width
-		f.EffectiveBannerHeight = f.Covers[0].Height
-		f.EffectiveBannerThumbhash = f.Covers[0].Thumbhash
+	// Effective banner: the wide banner art wins, the portrait pin is the
+	// fallback — the same preference coverFields encodes for the list lane, so a
+	// game's card and its hero resolve to the same image.
+	if c := detailBannerCover(f.Covers); c != nil {
+		f.EffectiveBannerHash = c.ImageHash
+		f.EffectiveBannerURL = c.CDNURL
+		f.EffectiveBannerWidth = c.Width
+		f.EffectiveBannerHeight = c.Height
+		f.EffectiveBannerThumbhash = c.Thumbhash
 	}
 
 	// labels[] is one row per attribution EDGE, so a brand that both developed
@@ -138,6 +138,29 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		})
 	}
 	return f
+}
+
+// detailBannerCover picks the detail hero out of the projected covers: the
+// first LANDSCAPE row wins, and covers[0] — server-ordered, so the portrait pin
+// — is the fallback for a work that has no wide art at all.
+//
+// The detail face ships a flat covers[] rather than the list lane's two slots,
+// so orientation has to be derived here. It cannot come from `kind`: that is
+// the VNDB cover TYPE vocabulary ("main" / "pkgfront" / "dig" / …), which says
+// nothing about shape. The cutoff is the catalog's own portrait rule —
+// height > width × 1.05, written as the exact rational so a near-square cover
+// can never land in one slot on the card and the other on the hero.
+func detailBannerCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {
+	if len(covers) == 0 {
+		return nil
+	}
+	for i := range covers {
+		c := &covers[i]
+		if c.Width > 0 && c.Height > 0 && c.Height*20 <= c.Width*21 {
+			return c
+		}
+	}
+	return &covers[0]
 }
 
 // catalogTagCategory renders the tag's category chip. The wiki's three-value

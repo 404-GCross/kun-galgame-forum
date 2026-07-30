@@ -198,8 +198,10 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 	if b.NameJaJp != "Kun" || b.NameZhCn != "KunCN" {
 		t.Errorf("names not projected: %+v", b)
 	}
+	// This fixture has no banner slot, so the portrait fallback is what renders
+	// (slot preference itself is pinned by TestCoverSlots_BannerWinsPortraitFallsBack).
 	if b.EffectiveBannerURL != "https://cdn.example/ab/cd/abcdef.webp" || b.EffectiveBannerThumbhash != "TH" {
-		t.Errorf("portrait cover slot not projected: %+v", b)
+		t.Errorf("cover slot not projected: %+v", b)
 	}
 	if b.Refs["dlsite"] != "RJ01" {
 		t.Errorf("refs not projected (the DLsite purchase link reads this): %+v", b.Refs)
@@ -534,6 +536,59 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 			}
 			if got := q.Get("content_limit"); got != "sfw" {
 				t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
+			}
+		})
+	}
+}
+
+// TestCoverSlots_BannerWinsPortraitFallsBack pins the card key art. kungal's
+// card and hero frames are landscape, so the wide banner is the one the user
+// ruled for; a portrait-only work must still get an image rather than a blank
+// card, which is what makes this two assertions and not one.
+func TestCoverSlots_BannerWinsPortraitFallsBack(t *testing.T) {
+	const (
+		portraitSlot = `"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"}`
+		bannerSlot   = `"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B"}`
+	)
+	for name, tc := range map[string]struct {
+		covers   string
+		wantURL  string
+		wantW    int
+		wantH    int
+		wantHash string
+	}{
+		"both slots filled → banner": {
+			`{` + portraitSlot + `,` + bannerSlot + `}`,
+			"https://cdn.example/ef/gh/banner.webp", 1280, 720, "B",
+		},
+		"portrait only → portrait": {
+			`{` + portraitSlot + `,"banner":null}`,
+			"https://cdn.example/ab/cd/portrait.webp", 600, 800, "P",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			row := strings.Replace(liveRow(4242, 777, "Kun"),
+				`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null}`,
+				`"covers":`+tc.covers, 1)
+			rec := &catalogRecorder{}
+			srv := catalogStub(t, rec, map[string]int64{"777": 4242}, map[int64]string{4242: row})
+			c := New(srv.URL, "nm_test_key", "")
+
+			got, err := c.GetBatch(context.Background(), []int{777})
+			if err != nil {
+				t.Fatalf("GetBatch: %v", err)
+			}
+			b := got[777]
+			if b.EffectiveBannerURL != tc.wantURL {
+				t.Errorf("effective banner = %q, want %q", b.EffectiveBannerURL, tc.wantURL)
+			}
+			// The dims + thumbhash must come from the SAME slot, or the no-CLS box
+			// is reserved for one image and filled with another.
+			if b.EffectiveBannerWidth != tc.wantW || b.EffectiveBannerHeight != tc.wantH ||
+				b.EffectiveBannerThumbhash != tc.wantHash {
+				t.Errorf("dims/thumbhash = %dx%d %q, want %dx%d %q — they must ride with the chosen slot",
+					b.EffectiveBannerWidth, b.EffectiveBannerHeight, b.EffectiveBannerThumbhash,
+					tc.wantW, tc.wantH, tc.wantHash)
 			}
 		})
 	}
