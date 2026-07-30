@@ -6,6 +6,8 @@
 // rule forward it again — is invisible in a unit test that only checks "did it
 // redirect", which is why the assertions below check the SHAPE of every target
 // rather than just its presence.
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import {
   parseWikiId,
@@ -20,6 +22,7 @@ import {
   taxonomyIndexPath,
   taxonomyDetailPath
 } from '../shared/utils/kunTaxonomyPaths'
+import type { TaxonomyFamily } from '../shared/utils/kunTaxonomyPaths'
 import tagRedirects from '../server/data/wiki-tag-redirects.json'
 import engineRedirects from '../server/data/wiki-engine-redirects.json'
 import tagGone from '../server/data/wiki-tag-gone.json'
@@ -151,5 +154,45 @@ describe('merged catalog id hop', () => {
     // The retired-shell resolver only knows the `/galgame-…` space, so a
     // current-form URL falls straight through it — no second hop exists.
     expect(resolveRenamedTaxonomyPath(to)).toBeNull()
+  })
+})
+
+// The 500 that shipped with the hop (prod: /galgame/official/13323).
+//
+// `navigateTo` in a page's setup is not an early return: on SSR it parks a
+// redirect response and lets setup + the template finish, so a page that keeps
+// rendering does it against the tombstone payload (alias / galgame null) and
+// the resulting throw preempts the parked 301 with a 500. Nothing in the type
+// system says "stop here", so the guard is a source-shape invariant: a
+// taxonomy detail page that hops MUST also gate its template on the tombstone.
+describe('merged-id pages stop rendering after the hop', () => {
+  const pageSource = (family: TaxonomyFamily) =>
+    // Vitest runs with apps/web as the cwd; `import.meta.url` is rewritten by
+    // the Nuxt/Vite transform and does not point at this file on disk.
+    readFileSync(
+      resolve(process.cwd(), `app/pages/galgame/${family}/[id].vue`),
+      'utf-8'
+    )
+
+  it.each([...TAXONOMY_FAMILIES])(
+    '%s: a navigateTo in setup comes with a template gate',
+    (family) => {
+      const source = pageSource(family)
+      // tag / engine are not merge-capable today, so they have no hop at all —
+      // the day one grows a navigateTo, this assertion starts applying to it.
+      if (!source.includes('navigateTo(')) {
+        expect(source).not.toContain('moved_to')
+        return
+      }
+      const root = source.match(/<template>\s*\n\s*<div ([^>]*)>/)
+      expect(root?.[1]).toContain('!data.moved_to')
+    }
+  )
+
+  it('official: the SEO block is inside the not-moved gate', () => {
+    const source = pageSource('official')
+    const gate = source.indexOf('if (!moved) {')
+    expect(gate).toBeGreaterThan(-1)
+    expect(source.indexOf('useKunSeoMeta(')).toBeGreaterThan(gate)
   })
 })

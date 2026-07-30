@@ -67,6 +67,17 @@ const { data, status } = await useKunFetch<GalgameOfficialDetail>(
 // alongside it, so nothing of the survivor is ever painted under the old id.
 // The target is built from the shared path builder, so it is the FINAL form
 // and the hop can never become a chain.
+//
+// `navigateTo` is NOT an early return here, awaited or not: on the server it
+// only parks a redirect on ssrContext['~renderResponse'] and hands control
+// back, so the rest of setup AND the template still render — against the
+// tombstone payload (id 0, alias/galgame null). A throw from that render
+// preempts the parked redirect and the visitor gets a 500 instead of the 301
+// (prod: /galgame/official/13323 died on `alias.length`). So everything below
+// that touches the record is gated on `moved`, and the template root carries
+// the same gate as `!data.moved_to` — reactive, so a client-side hop stops
+// painting the dead brand too.
+const moved = !!data.value?.moved_to
 if (data.value?.moved_to) {
   await navigateTo(taxonomyDetailPath('official', data.value.moved_to), {
     redirectCode: 301,
@@ -85,14 +96,18 @@ if (!data.value) {
   })
 }
 
-useKunSeoMeta({
-  title: `${data.value.name} 会社`,
-  description: `${data.value.name}${data.value.alias?.length ? `, 即 ${data.value.alias.join('| ')}` : ''}, 查看会社 ${data.value.name} 制作的所有 Galgame`
-})
+// A tombstone has no name to describe and no URL of its own to be indexed at —
+// the survivor's page owns both.
+if (!moved) {
+  useKunSeoMeta({
+    title: `${data.value.name} 会社`,
+    description: `${data.value.name}${data.value.alias?.length ? `, 即 ${data.value.alias.join('| ')}` : ''}, 查看会社 ${data.value.name} 制作的所有 Galgame`
+  })
+}
 </script>
 
 <template>
-  <div v-if="data" class="space-y-6">
+  <div v-if="data && !data.moved_to" class="space-y-6">
     <KunHeader
       :name="`${data.name} 制作的 Galgame`"
       :description="data.description"
