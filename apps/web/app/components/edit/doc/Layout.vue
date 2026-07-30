@@ -211,12 +211,15 @@ provideDocEditorContext({
   <div class="contents">
     <ClientOnly>
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="order-2 space-y-6 sm:order-1 lg:col-span-1">
+        <!-- min-w-0: the editor track sizes from its content (long unbroken
+             markdown lines), which would otherwise widen it and squeeze the
+             metadata column as the user types. -->
+        <div class="order-2 min-w-0 space-y-6 sm:order-1 lg:col-span-1">
           <EditDocMetadataForm />
           <EditDocSubmitActions />
         </div>
 
-        <div class="order-1 space-y-4 sm:order-2 lg:col-span-2">
+        <div class="order-1 min-w-0 space-y-4 sm:order-2 lg:col-span-2">
           <EditDocTitle />
           <EditDocContentEditor />
         </div>

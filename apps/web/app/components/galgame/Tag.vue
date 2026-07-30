@@ -80,13 +80,20 @@ const filteredTags = computed(() => {
 
 // Color of the trailing "+N" badge encodes the tag's category. Same
 // mapping the leading "#" used to carry before the redesign:
-//   content   → primary (blue)
-//   sexual    → danger  (red)
-//   technical → success (green)
+//   content          → primary (blue)
+//   sexual           → danger  (red)
+//   meta / technical → success (green)
+//
+// `meta` is the live vocabulary; this only listed `technical` and so painted
+// every 作品属性 badge the grey fallback. The catalog re-anchoring replaced the
+// wiki's content/sexual/technical axis with a content|meta kind plus a sexual
+// flag (catalogTagCategory), so `technical` never arrives any more — it stays
+// mapped because rows synthesised from the old wiki data still carry it, and
+// both name the same non-content, non-adult bucket.
 const countColorByCategory = (category: string): string => {
   if (category === 'content') return 'text-primary'
   if (category === 'sexual') return 'text-danger'
-  if (category === 'technical') return 'text-success'
+  if (category === 'meta' || category === 'technical') return 'text-success'
   return 'text-default-500'
 }
 </script>
@@ -129,7 +136,9 @@ const countColorByCategory = (category: string): string => {
     <KunScrollShadow
       axis="vertical"
       shadow-size="3rem"
-      :class-name="isMobile ? 'max-h-[300px]' : 'max-h-[200px] md:max-h-[400px]'"
+      :class-name="
+        isMobile ? 'max-h-[300px]' : 'max-h-[200px] md:max-h-[400px]'
+      "
     >
       <TransitionGroup name="tag-list" tag="div" class="flex flex-wrap gap-1.5">
         <KunLink

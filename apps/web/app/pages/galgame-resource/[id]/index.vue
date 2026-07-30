@@ -54,15 +54,19 @@ if (data.value && data.value !== 'not found') {
 
       <KunAdAIFYBanner class-name="hidden lg:block" />
 
+      <!-- min-w-0 on both tracks: a `1fr` track floors at max-content, so a
+           long download link or a wide code block would push its column open
+           and shift the split as content loads. -->
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <GalgameResourceDetailPanel
-          class="lg:col-span-2"
+          class="min-w-0 lg:col-span-2"
           :galgame="data.galgame"
           :resource="data.resource"
           :refresh="refresh"
         />
 
         <GalgameResourceDetailRecommendations
+          class="min-w-0"
           :recommendations="data.recommendations"
         />
       </div>

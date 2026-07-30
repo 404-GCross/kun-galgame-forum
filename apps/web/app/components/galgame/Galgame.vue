@@ -121,8 +121,15 @@ const hasContributorCard = computed(
       <GalgameRatingRadarCard :ratings="sortedRatings" />
     </div>
 
+    <!-- min-w-0 on both tracks is load-bearing, not tidying. A `1fr` track is
+         minmax(AUTO, 1fr): its floor is the item's max-content width, so any
+         child wider than its share (a long URL in a comment, a wide table, an
+         image arriving without intrinsic size) pushes its own column open and
+         steals width from the other one. On a slow connection that happens as
+         each tab panel streams in, and the 2/1 split visibly jitters
+         side-to-side. min-w-0 lowers the floor to zero and pins the split. -->
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div class="order-1 flex flex-col gap-3 md:order-2 md:col-span-2">
+      <div class="order-1 flex min-w-0 flex-col gap-3 md:order-2 md:col-span-2">
         <KunTab
           v-model="activeTab"
           :items="contentTabs"
@@ -188,7 +195,7 @@ const hasContributorCard = computed(
       </div>
 
       <div
-        class="order-2 flex flex-col gap-3 md:order-1 md:col-span-1 md:sticky md:top-20 md:self-start"
+        class="order-2 flex min-w-0 flex-col gap-3 md:sticky md:top-20 md:order-1 md:col-span-1 md:self-start"
       >
         <div v-if="galgame.tag?.length" class="hidden md:block">
           <GalgameTag :tags="galgame.tag" variant="desktop" />
@@ -230,6 +237,5 @@ const hasContributorCard = computed(
         </KunCard>
       </div>
     </div>
-
   </div>
 </template>

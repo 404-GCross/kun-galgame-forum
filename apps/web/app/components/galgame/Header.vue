@@ -133,7 +133,10 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       <GalgameCovers v-model="coversOpen" :covers="galgame.covers" />
     </div>
 
-    <div className="flex flex-col gap-3 md:col-span-2">
+    <!-- min-w-0: a long unbroken title (Japanese names run wide with no space
+         to break on) would otherwise floor this `1fr` track at its max-content
+         width and squeeze the banner beside it. -->
+    <div className="flex min-w-0 flex-col gap-3 md:col-span-2">
       <div class="flex flex-wrap items-center gap-2">
         <h1 class="text-3xl">
           {{ getPreferredLanguageText(galgame.name) }}

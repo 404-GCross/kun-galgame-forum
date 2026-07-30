@@ -120,8 +120,11 @@ if (data.value) {
 </script>
 
 <template>
+  <!-- min-w-0: a `1fr` track floors at the item's max-content width, so a long
+       URL or a wide embed would push its column open and shift the 2/1 split as
+       content loads. Same fix as the galgame detail. -->
   <div v-if="data" class="grid grid-cols-1 gap-3 lg:grid-cols-3">
-    <div class="space-y-3 lg:col-span-2">
+    <div class="min-w-0 space-y-3 lg:col-span-2">
       <KunCard
         :is-transparent="false"
         :is-hoverable="false"
@@ -166,7 +169,7 @@ if (data.value) {
       <WebsiteCommentCommunityContainer :website-id="data.id" />
     </div>
 
-    <div class="space-y-3">
+    <div class="min-w-0 space-y-3">
       <WebsiteDetailInfo :data="data" />
 
       <KunCard :is-transparent="false" :is-hoverable="false" class-name="p-6">

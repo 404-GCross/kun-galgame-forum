@@ -158,8 +158,12 @@ const handleResourceUpdated = (res: ToolsetResource) => {
         <KunContent :content="renderKatex(data.content_html)" />
       </div>
 
+      <!-- min-w-0: this is the clearest case of the `1fr` blowout — the left
+           track swaps a fixed-height placeholder for an ApexCharts SVG, which
+           sizes itself from its content, so without a floor of 0 the columns
+           re-split the moment the chart lands. -->
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div class="space-y-3 md:col-span-1">
+        <div class="min-w-0 space-y-3 md:col-span-1">
           <template v-if="practicalityData">
             <ToolsetPracticalityChart
               :practicality-data="practicalityData"
@@ -171,7 +175,7 @@ const handleResourceUpdated = (res: ToolsetResource) => {
           </div>
         </div>
 
-        <div class="space-y-6 md:col-span-1">
+        <div class="min-w-0 space-y-6 md:col-span-1">
           <div class="space-y-2">
             <h3 class="font-semibold">发布者</h3>
             <KunUserChip :user="data.user" />
