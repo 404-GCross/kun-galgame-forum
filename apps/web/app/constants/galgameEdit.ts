@@ -19,9 +19,9 @@ const K = (name: string) => `galgame.game.${name}`
 // The relation fields store ids but the user searches + sees NAMES. Search
 // runs against the forum's taxonomy endpoints; the CURRENT ids are resolved
 // from the id→name maps the edit page builds off GET /galgame/:gid (which
-// already ships tag/official/engine/series resolved). tag/official have a
-// Meilisearch /search; engine has none (04-taxonomy.md — filter the full
-// list client-side); series proxies the wiki /series/search.
+// already ships tag/official/engine/series resolved). All four families answer
+// the same `/galgame-taxonomy/{family}/search` picker endpoint below, so none
+// of them is filtered client-side over a full list.
 
 /** id→name map (Map<number, string>) per taxonomy, built from the galgame
  * detail on the edit page and passed into the config factory. */
@@ -63,8 +63,9 @@ const searchTaxonomy =
 // form itself sets — so a contributor who can write the field can also fill it.
 //
 // Blank-query behaviour is the family's, not ours: tag / official return
-// nothing until you type (3,037 and 24,334 rows), engine / series return their
-// whole curated set (189 and 146).
+// nothing until you type (3,037 and 24,334 rows), engine / series enumerate
+// their whole curated set (189 and 146) — no page limit on that path upstream,
+// only a 1,000-row safety fuse. Typing turns it back into a capped search.
 const taxonomyPicker = (family: string) =>
   searchTaxonomy(`/galgame-taxonomy/${family}/search`)
 

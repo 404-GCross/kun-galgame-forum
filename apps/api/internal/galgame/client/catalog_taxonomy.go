@@ -356,7 +356,10 @@ func (c *GalgameClient) StaffTaxonomyDetail(ctx context.Context, family, id, tok
 //
 // Blank-query behaviour is a property of the FAMILY, not of this call: tag and
 // official return an empty list (open-ended vocabularies — type something),
-// engine and series return their whole small curated set.
+// engine and series ENUMERATE their whole small curated set (189 and 146 rows
+// today) — the upstream applies no page limit to that path, only a 1,000-row
+// safety fuse. A typed query is a search and stays capped at the picker's
+// ordinary page size.
 func (c *GalgameClient) TaxonomyPickerSearch(ctx context.Context, family, keywords, token string) ([]StaffTaxonomyRecord, *errors.AppError) {
 	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/taxonomy/"+family+"/search", token,
 		url.Values{"q": {keywords}}, c.apiKey)
