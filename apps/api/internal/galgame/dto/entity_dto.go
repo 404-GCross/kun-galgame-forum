@@ -96,6 +96,12 @@ type OfficialDetail struct {
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`
 	GalgameCount int64         `json:"galgame_count"`
+	// MovedTo is the ONLY field set when this label id was merged away
+	// upstream: the identity now lives on that catalog label id and the page
+	// must 301 to it in a single hop. Everything else stays zero on purpose —
+	// the survivor's content never travels under the dead id, or the same
+	// entity would exist at two URLs. Omitted entirely on a live label.
+	MovedTo int `json:"moved_to,omitempty"`
 }
 
 // ──────────────────────────────────────────

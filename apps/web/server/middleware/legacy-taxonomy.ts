@@ -37,9 +37,9 @@ import {
   parseWikiId,
   resolveLegacyTag,
   resolveLegacyEngine,
-  resolveRenamedTaxonomyPath,
-  taxonomyDetailPath
+  resolveRenamedTaxonomyPath
 } from '../utils/kunTaxonomyRedirects'
+import { taxonomyDetailPath } from '../../shared/utils/kunTaxonomyPaths'
 
 // Strict shape: exactly one numeric segment under one of the three families.
 // `/c/…` cannot match (it has a non-numeric segment), and neither can the index

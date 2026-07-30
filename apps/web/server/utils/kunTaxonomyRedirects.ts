@@ -23,6 +23,10 @@
 // they describe a one-time historical migration, so they can never drift, and a
 // redirect must not depend on a live service being reachable.
 
+// The path builders moved to shared/ (doc 148) — the detail PAGES need them
+// too, to hop a merged catalog id. Imported explicitly rather than leaned on
+// auto-import so this module stays runnable from a plain vitest context.
+import { taxonomyDetailPath } from '../../shared/utils/kunTaxonomyPaths'
 import tagRedirects from '../data/wiki-tag-redirects.json'
 import engineRedirects from '../data/wiki-engine-redirects.json'
 import tagGone from '../data/wiki-tag-gone.json'
@@ -33,17 +37,6 @@ const engineMap = engineRedirects as Record<string, number>
 // the URL was valid and the resource is permanently gone, which is what tells a
 // crawler to drop it instead of re-checking forever.
 const goneTags = new Set<number>(tagGone as number[])
-
-export const TAXONOMY_FAMILIES = ['tag', 'official', 'engine'] as const
-export type TaxonomyFamily = (typeof TAXONOMY_FAMILIES)[number]
-
-// The single source for what a taxonomy URL looks like today. Every redirect
-// target is built from these, which is what structurally rules out a 301 chain:
-// no caller can name an intermediate form even by accident.
-export const taxonomyIndexPath = (family: TaxonomyFamily) => `/galgame/${family}`
-
-export const taxonomyDetailPath = (family: TaxonomyFamily, catalogId: number) =>
-  `/galgame/${family}/${catalogId}`
 
 export type LegacyResolution =
   | { kind: 'redirect'; to: string }

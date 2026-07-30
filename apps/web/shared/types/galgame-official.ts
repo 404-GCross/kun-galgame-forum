@@ -34,4 +34,8 @@ export interface GalgameOfficialDetail {
   alias: string[]
   galgame: GalgameCard[]
   galgame_count: number
+  // Set — and alone — when this label id was merged away in the catalog: the
+  // identity lives on that id now and the page 301s there in one hop. Absent on
+  // a live label, so `if (data.moved_to)` is the whole check.
+  moved_to?: number
 }

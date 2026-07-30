@@ -98,9 +98,16 @@ func (s *OfficialService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.OfficialDetail, *errors.AppError) {
-	o, found, appErr := s.galgameClient.CatalogLabel(ctx, id)
+	o, found, movedTo, appErr := s.galgameClient.CatalogLabel(ctx, id)
 	if appErr != nil {
 		return nil, appErr
+	}
+	// Merged away upstream: hand the page the survivor's id and nothing else,
+	// so it can 301 in one hop instead of rendering a ghost — a dead label used
+	// to answer with its old name and an empty catalogue, which reads as a real
+	// but empty company page.
+	if movedTo != 0 {
+		return &dto.OfficialDetail{MovedTo: int(movedTo)}, nil
 	}
 	if !found {
 		return nil, errors.ErrNotFound("未找到该会社")

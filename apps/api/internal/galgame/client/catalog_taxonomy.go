@@ -14,6 +14,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"strconv"
 
@@ -160,21 +161,28 @@ func (c *GalgameClient) CatalogTaxonomyPageAt(ctx context.Context, entity string
 // CatalogLabel / CatalogTag / CatalogEngine fetch one full taxonomy record.
 // found=false on an unknown id (a 404, which is not an error for a page that
 // wants to render its own not-found state).
-func (c *GalgameClient) CatalogLabel(ctx context.Context, id string) (*CatalogLabelDetail, bool, *errors.AppError) {
+//
+// movedTo is non-zero on the third outcome, which only LABELS can produce:
+// the id was merged away and its identity now lives on that survivor. The
+// caller must 301 the browser there — never render the record it would find
+// under the old id. (Tags and engines are not merge-capable upstream, so their
+// movedTo is structurally always 0; it is threaded through anyway so the day
+// that changes is a compile-time conversation, not a silent ghost page.)
+func (c *GalgameClient) CatalogLabel(ctx context.Context, id string) (*CatalogLabelDetail, bool, int64, *errors.AppError) {
 	var rec CatalogLabelDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "labels", id, &rec)
-	return &rec, found, appErr
+	found, movedTo, appErr := c.catalogTaxonomyDetail(ctx, "labels", id, &rec)
+	return &rec, found, movedTo, appErr
 }
 
 func (c *GalgameClient) CatalogTag(ctx context.Context, id string) (*CatalogTagDetail, bool, *errors.AppError) {
 	var rec CatalogTagDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "tags", id, &rec)
+	found, _, appErr := c.catalogTaxonomyDetail(ctx, "tags", id, &rec)
 	return &rec, found, appErr
 }
 
 func (c *GalgameClient) CatalogEngine(ctx context.Context, id string) (*CatalogEngineDetail, bool, *errors.AppError) {
 	var rec CatalogEngineDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "engines", id, &rec)
+	found, _, appErr := c.catalogTaxonomyDetail(ctx, "engines", id, &rec)
 	return &rec, found, appErr
 }
 
@@ -187,19 +195,33 @@ func (c *GalgameClient) CatalogEngine(ctx context.Context, id string) (*CatalogE
 // caller's count can still include the handful of entries an editor flagged;
 // that is a rounding error next to the collapse, and the members lane (which
 // does carry the editorial gate) remains the authority on what renders.
-func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id string, out any) (bool, *errors.AppError) {
+func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id string, out any) (bool, int64, *errors.AppError) {
 	q := openPopulation(url.Values{})
-	data, appErr := c.GetV1(ctx, "/catalog/"+entity+"/"+id, q)
+	status, env, appErr := c.getV1Envelope(ctx, "/catalog/"+entity+"/"+id, q)
 	if appErr != nil {
-		if appErr.StatusCode == 404 {
-			return false, nil
+		return false, 0, appErr
+	}
+	switch {
+	case status == http.StatusNotFound:
+		return false, 0, nil
+	case status == http.StatusMovedPermanently && env.Code == catalogMovedCode:
+		var moved struct {
+			CurrentID int64 `json:"current_id"`
 		}
-		return false, appErr
+		if err := json.Unmarshal(env.Data, &moved); err != nil || moved.CurrentID == 0 {
+			// A 301 we cannot read is a miss, not a 500: the entity really is
+			// gone from this id either way, and a broken redirect payload must
+			// not take the page down with it.
+			return false, 0, nil
+		}
+		return false, moved.CurrentID, nil
+	case env.Code != 0:
+		return false, 0, errors.New(env.Code, env.Message, status)
 	}
-	if err := json.Unmarshal(data, out); err != nil {
-		return false, errors.ErrInternal("解析 Catalog 词表详情响应失败")
+	if err := json.Unmarshal(env.Data, out); err != nil {
+		return false, 0, errors.ErrInternal("解析 Catalog 词表详情响应失败")
 	}
-	return true, nil
+	return true, 0, nil
 }
 
 // CatalogEntityHit is one entity-search hit.

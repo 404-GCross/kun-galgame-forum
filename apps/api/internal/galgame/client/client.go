@@ -179,6 +179,15 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
+			// Never follow a redirect. The catalog answers a merged entity id
+			// with 301 + current_id precisely so the caller can redirect the
+			// BROWSER in one hop; auto-following would swallow that signal and
+			// return the survivor's record under the dead id — a duplicate page
+			// on two URLs, which is what the 301 exists to prevent. No other
+			// upstream endpoint answers 3xx, so this costs nothing elsewhere.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 		imageCDNBase: imageCDNBase,
 		briefCache:   map[batchCacheKey]batchCacheEntry[GalgameBrief]{},
@@ -310,6 +319,57 @@ func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, qu
 // face has no callers left anywhere in this repo (see catalog_face.go).
 func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
 	return c.getFace(ctx, c.v1Base, path, "", query, c.apiKey)
+}
+
+// catalogMovedCode mirrors the catalog service's errors.ErrMoved (12): the
+// requested ENTITY moved because its id was merged away, and the envelope's
+// data carries current_id. Distinct from a 404 (never existed) — the caller
+// must redirect, not render a not-found page.
+const catalogMovedCode = 12
+
+// getV1Envelope is getFace's sibling for the one case that has to see the HTTP
+// status and the envelope's data TOGETHER: a merged id answers 301 with a
+// non-zero code AND a data block, and doRequest deliberately collapses any
+// non-zero code into an AppError, dropping the block that says where to go.
+//
+// The client is configured not to follow redirects (see New), so the 301
+// arrives here rather than being silently replayed against the survivor's URL —
+// which would hand back the survivor's record under the dead id, the exact
+// outcome the catalog's 301 exists to prevent.
+func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
+	reqURL := c.v1Base + path
+	if len(query) > 0 {
+		reqURL += "?" + query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return 0, nil, errors.ErrInternal("创建请求失败")
+	}
+	if c.apiKey != "" {
+		req.Header.Set("X-API-Key", c.apiKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		slog.Error("Galgame 服务请求失败 (传输层)",
+			"method", req.Method, "url", req.URL.String(), "error", err)
+		return 0, nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
+	}
+	var result apiResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		slog.Error("解析 Galgame 响应失败 (非 JSON 响应)",
+			"method", req.Method, "url", req.URL.String(),
+			"status", resp.StatusCode, "body", bodySnippet(respBody))
+		return resp.StatusCode, nil, errors.New(errors.CodeBiz,
+			fmt.Sprintf("Galgame 服务返回了非预期响应 (HTTP %d)", resp.StatusCode), resp.StatusCode)
+	}
+	result.Data = rewriteBanners(result.Data, c.imageCDNBase)
+	return resp.StatusCode, &result, nil
 }
 
 // PostWithToken performs a POST with Bearer token.

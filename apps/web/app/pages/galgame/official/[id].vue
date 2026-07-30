@@ -60,6 +60,20 @@ const { data, status } = await useKunFetch<GalgameOfficialDetail>(
   }
 )
 
+// A merged 会社 keeps its old id addressable, but only as a 301: the catalog
+// merges duplicate labels, and the loser's id has to land on the survivor's
+// page rather than render a copy of it — two URLs for one company is exactly
+// what the redirect prevents. `moved_to` arrives instead of the record, never
+// alongside it, so nothing of the survivor is ever painted under the old id.
+// The target is built from the shared path builder, so it is the FINAL form
+// and the hop can never become a chain.
+if (data.value?.moved_to) {
+  await navigateTo(taxonomyDetailPath('official', data.value.moved_to), {
+    redirectCode: 301,
+    replace: true
+  })
+}
+
 // An unknown id is a real 404, not an empty 200 shell: this namespace went live
 // with no legacy id space behind it, so a miss means the entity does not exist
 // and a crawler must be told exactly that rather than indexing a blank page.

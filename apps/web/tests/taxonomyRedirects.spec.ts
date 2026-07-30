@@ -8,14 +8,18 @@
 // rather than just its presence.
 import { describe, it, expect } from 'vitest'
 import {
-  TAXONOMY_FAMILIES,
-  taxonomyIndexPath,
-  taxonomyDetailPath,
   parseWikiId,
   resolveLegacyTag,
   resolveLegacyEngine,
   resolveRenamedTaxonomyPath
 } from '../server/utils/kunTaxonomyRedirects'
+// The path builders moved to shared/ (doc 148): the detail pages need them too,
+// to hop a merged catalog id, and a page cannot import from server/.
+import {
+  TAXONOMY_FAMILIES,
+  taxonomyIndexPath,
+  taxonomyDetailPath
+} from '../shared/utils/kunTaxonomyPaths'
 import tagRedirects from '../server/data/wiki-tag-redirects.json'
 import engineRedirects from '../server/data/wiki-engine-redirects.json'
 import tagGone from '../server/data/wiki-tag-gone.json'
@@ -123,5 +127,29 @@ describe('parseWikiId', () => {
     expect(parseWikiId('1.5')).toBeNull()
     expect(parseWikiId('abc')).toBeNull()
     expect(parseWikiId(undefined)).toBeNull()
+  })
+})
+
+// A merged catalog id (doc 148) is the THIRD generation of stale taxonomy URL,
+// and the only one resolved at runtime rather than from a frozen map: the
+// catalog answers the detail request with `moved_to`, and the page hops there.
+// It obeys the same one-hop rule as the retired shells — which is only true
+// because the target comes from the shared builder rather than being spelled
+// out at the call site.
+describe('merged catalog id hop', () => {
+  it.each([...TAXONOMY_FAMILIES])(
+    'builds a final-form %s target from a survivor id',
+    (family) => {
+      const to = taxonomyDetailPath(family, 6935)
+      expect(isFinalForm(to)).toBe(true)
+      expect(to).toBe(`/galgame/${family}/6935`)
+    }
+  )
+
+  it('lands on a URL that no other rule would redirect again', () => {
+    const to = taxonomyDetailPath('official', 6935)
+    // The retired-shell resolver only knows the `/galgame-…` space, so a
+    // current-form URL falls straight through it — no second hop exists.
+    expect(resolveRenamedTaxonomyPath(to)).toBeNull()
   })
 })
