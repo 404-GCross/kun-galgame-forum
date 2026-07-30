@@ -91,17 +91,31 @@ type catIntros struct {
 }
 
 // catWorkLabel is one label attribution edge (include=labels / detail labels[]).
+//
+// LabelKind is the label's OWN nature (game_brand / doujin_circle / …) and Kind
+// is its role on THIS work (developer / publisher / …) — one label may attach
+// through several roles, so the same id can appear more than once here.
+//
+// Lang is the display name's own language tag; WorkCount is the nsfw-aware
+// number of works the same caller would page through via works?label_id= (both
+// A2-R2 supply). WorkCount has no omitempty on the wire and is absent only
+// while the supplying wave is undeployed — which lands on 0, the value the
+// consumer treats as "no badge".
 type catWorkLabel struct {
 	ID          int64  `json:"id"`
 	DisplayName string `json:"display_name"`
 	LabelKind   string `json:"label_kind"`
 	Kind        string `json:"kind"`
+	Lang        string `json:"lang"`
+	WorkCount   int    `json:"work_count"`
 }
 
 // catWorkEngine is one engine attribution (detail engines[], A2-1e).
+// WorkCount is the same nsfw-aware count as works?engine_id= (A2-R2).
 type catWorkEngine struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	WorkCount int    `json:"work_count"`
 }
 
 // catWorkLink is one non-identity external web link (detail links[], A2-1e).

@@ -278,6 +278,10 @@ type catWorkDetail struct {
 		Kind        string `json:"kind"`
 		Spoiler     int    `json:"spoiler"`
 		Sexual      bool   `json:"sexual"`
+		// WorkCount is omitempty upstream — only a canonical-mapped row has a
+		// count to report. An unmapped row therefore has NO key here, forever,
+		// and decodes to 0; those rows are dropped from the chip strip anyway.
+		WorkCount int `json:"work_count"`
 	} `json:"tags"`
 	Intro []struct {
 		Lang    string `json:"lang"`

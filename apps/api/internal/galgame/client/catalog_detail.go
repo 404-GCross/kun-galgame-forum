@@ -10,9 +10,13 @@ package client
 // Three blocks changed owner in this wave and the reasoning is worth keeping
 // next to the code:
 //
-//   - engines[] is now a first-class detail block (A2-1e). The old face carried
-//     a galgame_count per chip; the catalog engine edge does not, so the chip
-//     renders without the "+N" badge (the engine INDEX page still shows counts).
+//   - engines[] is now a first-class detail block (A2-1e). Since A2-R2 every
+//     attribution row — labels, tags and engines alike — carries the same
+//     nsfw-aware work_count the INDEX pages count with, so the "+N" chip is
+//     filled straight off the aggregate. The key is tolerated as MISSING: an
+//     unmapped source tag never has one, and no row has one until the supplying
+//     wave is deployed. Both decode to 0, which the FE renders as no badge at
+//     all rather than as "+ 0".
 //   - links[] carries {source, url} and no title: the retirement wave absorbed
 //     the wiki's user-typed captions away, so the FE renders the source key.
 //     The per-row user_id that drove the banned-author filter is gone with them
@@ -83,13 +87,27 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		f.EffectiveBannerThumbhash = f.Covers[0].Thumbhash
 	}
 
+	// labels[] is one row per attribution EDGE, so a brand that both developed
+	// and published a work arrives two or three times — and the 制作方 strip
+	// rendered it two or three times. Fold to one row per label id, first
+	// occurrence winning: the face orders the edges by kind, so the survivor is
+	// the same one on every request.
+	seenLabel := make(map[int64]bool, len(d.Labels))
 	for _, l := range d.Labels {
+		if seenLabel[l.ID] {
+			continue
+		}
+		seenLabel[l.ID] = true
 		f.Official = append(f.Official, dto.NextMoeOfficialRel{Official: dto.NextMoeOfficial{
 			ID: int(l.ID), Name: l.DisplayName,
-			// The attribution edge carries the label's ROLE on this work
-			// (developer / publisher / …), which is what the chip labels.
-			Category: l.Kind,
-			Alias:    []dto.NextMoeAlias{},
+			// The chip labels the label's OWN kind (game_brand / doujin_circle
+			// / …) rather than its per-edge role: a deduped row has no single
+			// role left, and this is the vocabulary the 会社 index already
+			// renders — one map, one wording, both surfaces.
+			Category:     l.LabelKind,
+			Lang:         l.Lang,
+			Alias:        []dto.NextMoeAlias{},
+			GalgameCount: l.WorkCount,
 		}})
 	}
 	for _, e := range d.Engines {
@@ -97,6 +115,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		ew.Engine.ID = int(e.ID)
 		ew.Engine.Name = e.Name
 		ew.Engine.Alias = []string{}
+		ew.Engine.GalgameCount = e.WorkCount
 		f.Engine = append(f.Engine, ew)
 	}
 	for _, t := range d.Tags {
@@ -113,7 +132,8 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 			SpoilerLevel: t.Spoiler,
 			Tag: dto.NextMoeTag{
 				ID: int(t.CanonicalID), Name: t.Name,
-				Category: catalogTagCategory(t.Kind, t.Sexual),
+				Category:     catalogTagCategory(t.Kind, t.Sexual),
+				GalgameCount: t.WorkCount,
 			},
 		})
 	}
