@@ -254,7 +254,12 @@ func TestCatalogBridge_UnresolvedGIDIsAbsentNotAnError(t *testing.T) {
 	}
 }
 
-func TestCatalogBridge_NSFWGateIsAParameterNotAPostFilter(t *testing.T) {
+// TestCatalogBridge_GatesAreParametersNotPostFilters pins the caliber the whole
+// A2-R5 wave exists for (doc 106 §38): kungal's SFW setting rides the EDITORIAL
+// axis (content_limit=), never the AGE axis (nsfw=). Closing the age gate for an
+// SFW caller was the incident — 94.5% of the registry is r18, so it deleted the
+// catalogue instead of filtering adult presentation.
+func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	rec := &catalogRecorder{}
 	srv := catalogStub(t, rec,
 		map[string]int64{"777": 4242},
@@ -262,26 +267,94 @@ func TestCatalogBridge_NSFWGateIsAParameterNotAPostFilter(t *testing.T) {
 	)
 	c := New(srv.URL, "nm_test_key", "")
 
-	// SFW caller: the works fetch must leave the gate closed…
+	// SFW caller: the age gate is OPEN, and the SFW preference travels as the
+	// editorial gate instead.
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, true); err != nil {
 		t.Fatalf("GetBatchPublic sfw: %v", err)
 	}
-	if v := rec.queryAt(1).Get("nsfw"); v != "" {
-		t.Errorf("sfw caller sent nsfw=%q, want it absent", v)
+	if v := rec.queryAt(1).Get("nsfw"); v != "1" {
+		t.Errorf("sfw caller sent nsfw=%q, want 1 — closing the age gate drops 94.5%% of the registry", v)
 	}
-	// …while the IDENTITY lookup always runs with nsfw=1, or an r18 game
-	// becomes unresolvable rather than merely invisible.
+	if v := rec.queryAt(1).Get("content_limit"); v != "sfw" {
+		t.Errorf("sfw caller sent content_limit=%q, want sfw — the setting must reach the wire as the editorial gate", v)
+	}
+	// The IDENTITY lookup always runs with nsfw=1 too, or an r18 game becomes
+	// unresolvable rather than merely invisible.
 	if v := rec.queryAt(0).Get("nsfw"); v != "1" {
 		t.Errorf("lookup sent nsfw=%q, want 1 (identity resolution is not content)", v)
 	}
 
-	// NSFW caller: a different cache key, so a fresh pair of calls with the gate open.
+	// NSFW caller: a different cache key, so a fresh pair of calls. The age gate
+	// is open for them too, and no editorial filter is sent at all.
 	before := rec.count()
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, false); err != nil {
 		t.Fatalf("GetBatchPublic nsfw: %v", err)
 	}
 	if v := rec.queryAt(before).Get("nsfw"); v != "1" {
 		t.Errorf("nsfw caller's works fetch sent nsfw=%q, want 1", v)
+	}
+	if v := rec.queryAt(before).Get("content_limit"); v != "" {
+		t.Errorf("nsfw caller sent content_limit=%q, want it absent (no editorial filter)", v)
+	}
+}
+
+// TestCatalogDisplayLimit_ReadsTheEditorialAxis is the projection half of the
+// same fix. The fixture is the exact shape that broke: an r18 GAME whose kungal
+// entry an editor graded sfw. Reading content_rating there marked it nsfw, which
+// noindexed the page and blurred the card; reading claimed_by.content_limit
+// keeps the age chip (r18) while the display axis stays sfw.
+func TestCatalogDisplayLimit_ReadsTheEditorialAxis(t *testing.T) {
+	r18SfwEntry := strings.Replace(
+		strings.Replace(liveRow(4242, 777, "Kun"), `"content_rating":"all_ages"`, `"content_rating":"r18"`, 1),
+		`"state":"live"`, `"state":"live","content_limit":"sfw"`, 1)
+
+	rec := &catalogRecorder{}
+	srv := catalogStub(t, rec, map[string]int64{"777": 4242}, map[int64]string{4242: r18SfwEntry})
+	c := New(srv.URL, "nm_test_key", "")
+
+	got, err := c.GetBatch(context.Background(), []int{777})
+	if err != nil {
+		t.Fatalf("GetBatch: %v", err)
+	}
+	b, ok := got[777]
+	if !ok {
+		t.Fatalf("row missing: %#v", got)
+	}
+	if b.ContentLimit != "sfw" {
+		t.Errorf("content_limit = %q, want sfw — the editorial verdict wins over the age rating", b.ContentLimit)
+	}
+	// The age axis is untouched: the R18 chip and the age-gated UI still read it.
+	if b.AgeLimit != "r18" {
+		t.Errorf("age_limit = %q, want r18 — the two axes are independent", b.AgeLimit)
+	}
+}
+
+// TestCatalogDisplayLimit_FallsBackToTheAgeAxis pins the pre-deployment window
+// and the unclaimed case: with no editorial verdict on the wire the projection
+// must keep the old, conservative reading rather than defaulting to sfw.
+func TestCatalogDisplayLimit_FallsBackToTheAgeAxis(t *testing.T) {
+	for name, claim := range map[string]string{
+		// The supplying wave is not deployed: claimed_by carries no content_limit.
+		"claim without the key": `"state":"live"`,
+		// An unrecognised value is an anomaly, not a verdict — never passed through.
+		"claim with a garbage value": `"state":"live","content_limit":"ssfw"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := strings.Replace(
+				strings.Replace(liveRow(4242, 777, "Kun"), `"content_rating":"all_ages"`, `"content_rating":"r18"`, 1),
+				`"state":"live"`, claim, 1)
+			rec := &catalogRecorder{}
+			srv := catalogStub(t, rec, map[string]int64{"777": 4242}, map[int64]string{4242: body})
+			c := New(srv.URL, "nm_test_key", "")
+
+			got, err := c.GetBatch(context.Background(), []int{777})
+			if err != nil {
+				t.Fatalf("GetBatch: %v", err)
+			}
+			if b := got[777]; b.ContentLimit != "nsfw" {
+				t.Errorf("content_limit = %q, want nsfw — with no verdict the age axis is the only signal", b.ContentLimit)
+			}
+		})
 	}
 }
 
@@ -336,7 +409,7 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	})
 
 	t.Run("entity search → /v1/catalog/search", func(t *testing.T) {
-		if _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 10, true); err != nil {
+		if _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 10); err != nil {
 			t.Fatalf("CatalogEntitySearch: %v", err)
 		}
 		if rec.path != "/v1/catalog/search" {
@@ -454,8 +527,13 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 			if got := q.Get(filter); got != "5" {
 				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
 			}
-			if q.Get("nsfw") != "" {
-				t.Error("an SFW caller must not open the nsfw gate")
+			// The member walk carries both gates, and an SFW caller's gate is the
+			// EDITORIAL one: closing the age gate here emptied every 词条 page.
+			if got := q.Get("nsfw"); got != "1" {
+				t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+			}
+			if got := q.Get("content_limit"); got != "sfw" {
+				t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
 			}
 		})
 	}

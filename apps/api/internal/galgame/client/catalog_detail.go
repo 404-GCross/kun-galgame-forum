@@ -42,7 +42,7 @@ import (
 func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull {
 	f := dto.NextMoeGalgameDetailFull{
 		ID:               gid,
-		ContentLimit:     contentLimitFromRating(d.ContentRating),
+		ContentLimit:     contentLimitOf(d.ClaimedBy, d.ContentRating),
 		AgeLimit:         ageLimitFromRating(d.ContentRating),
 		OriginalLanguage: productLocale(d.OLang),
 		ReleaseDate:      d.ReleaseDate,
@@ -235,7 +235,7 @@ type GalgameLink struct {
 
 // CatalogWorkLinks fetches one work's curated external links by kungal gid.
 func (c *GalgameClient) CatalogWorkLinks(ctx context.Context, gid int) ([]GalgameLink, *errors.AppError) {
-	d, found, appErr := c.CatalogWorkDetail(ctx, gid, "all")
+	d, found, appErr := c.CatalogWorkDetail(ctx, gid)
 	if appErr != nil {
 		return nil, appErr
 	}

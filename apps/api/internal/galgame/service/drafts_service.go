@@ -47,7 +47,6 @@ type DraftFilters struct {
 func (s *DraftsService) GetDrafts(
 	ctx context.Context,
 	page, limit int,
-	isSFW bool,
 	f DraftFilters,
 ) (*dto.DraftsPage, *errors.AppError) {
 	q := url.Values{
@@ -71,9 +70,14 @@ func (s *DraftsService) GetDrafts(
 	if f.OriginalLanguages != "" {
 		q.Set("olang", f.OriginalLanguages)
 	}
-	if !isSFW {
-		q.Set("nsfw", "1")
-	}
+	// The age gate is open like everywhere else. The EDITORIAL gate is
+	// deliberately absent here and only here: this lane pins claimed=false, so
+	// by contract every row has claimed_by null and therefore no editorial
+	// verdict to filter on. Sending content_limit=sfw could only ever be a
+	// no-op or — if the face reads a missing verdict as a non-match — empty the
+	// whole claim funnel for the SFW default. Nothing is leaked either way: a
+	// work no product has claimed has no product-sanitized presentation to hide.
+	client.OpenPopulation(q)
 
 	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {

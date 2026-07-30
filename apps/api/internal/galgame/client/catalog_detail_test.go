@@ -58,7 +58,7 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	srv := detailStub(t, gid, catalogID, body)
 	c := New(srv.URL, "nm_test_key", "")
 
-	d, found, appErr := c.CatalogWorkDetail(context.Background(), gid, "all")
+	d, found, appErr := c.CatalogWorkDetail(context.Background(), gid)
 	if appErr != nil {
 		t.Fatalf("CatalogWorkDetail: %v", appErr)
 	}

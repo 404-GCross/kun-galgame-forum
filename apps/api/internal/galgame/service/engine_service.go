@@ -37,14 +37,11 @@ const engineIndexPageCap = 20
 //
 // The FE engine index renders every engine at once (no pager), so the keyset
 // lane is walked to exhaustion here.
-func (s *EngineService) GetList(ctx context.Context, isSFW bool) ([]dto.EngineListItem, *errors.AppError) {
+func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *errors.AppError) {
 	items := []dto.EngineListItem{}
 	cursor := ""
 	for page := 0; page < engineIndexPageCap; page++ {
-		q := url.Values{"limit": {"100"}}
-		if !isSFW {
-			q.Set("nsfw", "1")
-		}
+		q := client.OpenPopulation(url.Values{"limit": {"100"}})
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}
@@ -76,7 +73,7 @@ func (s *EngineService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.EngineDetail, *errors.AppError) {
-	e, found, appErr := s.galgameClient.CatalogEngine(ctx, id, isSFW)
+	e, found, appErr := s.galgameClient.CatalogEngine(ctx, id)
 	if appErr != nil {
 		return nil, appErr
 	}

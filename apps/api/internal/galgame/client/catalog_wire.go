@@ -12,7 +12,8 @@ package client
 // Three conversions carry real semantics and are therefore named functions with
 // their reasoning attached rather than inline expressions:
 //
-//   - content_rating → the kungal sfw/nsfw binary (contentLimitFromRating)
+//   - claimed_by.content_limit → the kungal sfw/nsfw DISPLAY binary, with the
+//     age rating as the fallback only (contentLimitOf)
 //   - olang (BCP-47) → the kungal product locale keys (productLocale)
 //   - claimed_by.state → the card's lifecycle badge (statusFromClaimState)
 //
@@ -36,10 +37,16 @@ import (
 // State is the catalog-owned claim visibility (live | draft | hidden), NOT the
 // wiki status machine. A hidden row means the product withdrew the entry; it
 // must never render (that is the finding R7 exists for).
+//
+// ContentLimit is the CLAIMING product's own editorial verdict on the entry
+// (sfw | nsfw) — the wiki-body axis kungal's noindex / blur / 确认显示 gate has
+// always read. Every claim carries it; an unclaimed work has no claimed_by at
+// all and therefore no verdict (see contentLimitOf).
 type catClaimedBy struct {
-	Site   string `json:"site"`
-	WorkID int    `json:"work_id"`
-	State  string `json:"state"`
+	Site         string `json:"site"`
+	WorkID       int    `json:"work_id"`
+	State        string `json:"state"`
+	ContentLimit string `json:"content_limit"`
 }
 
 // catRef is one exact cross-source identity anchor.
@@ -210,11 +217,49 @@ const zeroTS = "0001-01-01T00:00:00Z"
 
 // ─── semantic conversions ────────────────────────────────────────────────
 
-// contentLimitFromRating maps the catalog's three-value content rating onto the
-// kungal sfw/nsfw binary. `sensitive` folds to sfw deliberately: it is the
-// rating for suggestive-but-not-adult works, which the wiki also carried as
-// content_limit=sfw, and the catalog's own sfw gate (nsfw=0) already returns
-// them. Folding it to nsfw instead would hide works that are visible today.
+// contentLimitOf resolves the kungal DISPLAY binary for one row: the claiming
+// product's own editorial verdict wins, the age-axis mapping is the fallback.
+//
+// The two axes answer different questions and conflating them was doc 106 §38:
+//
+//	content_rating (catalog) — how old you must be to play the GAME. 94.5% of
+//	                           the registry is r18: that is the medium, not a
+//	                           statement about kungal's page for it.
+//	content_limit  (wiki)    — whether the ENTRY's own display material is
+//	                           sanitized. This is what kungal's noindex / blur /
+//	                           确认显示 gate has always been keyed on; 4,812 of
+//	                           the 10,929 published entries carry the nsfw
+//	                           verdict — a set the age axis misstates in BOTH
+//	                           directions (5,568 sfw entries are rated r18, 50
+//	                           nsfw entries are rated all_ages).
+//
+// Driving content_limit off content_rating therefore marked 94.5% of the
+// catalogue nsfw — which noindexed the entire galgame surface (6,117 → 599
+// indexed pages) while simultaneously un-marking the entries an editor HAD
+// flagged, because their age rating happened to be all_ages.
+//
+// The fallback stays conservative rather than optimistic: an unclaimed work has
+// no editorial verdict at all (no claimed_by), and neither does a claim written
+// by a catalog that has not shipped the key yet — for both the age axis is the
+// only signal available, which is the pre-wave behaviour.
+func contentLimitOf(claimed *catClaimedBy, rating string) string {
+	if claimed != nil {
+		// A closed word list, not "non-empty wins": an unrecognised value would
+		// otherwise flow onto kungal's wire, where every consumer compares it
+		// against the literal "nsfw" and would read the garbage as sfw.
+		switch claimed.ContentLimit {
+		case "sfw", "nsfw":
+			return claimed.ContentLimit
+		}
+	}
+	return contentLimitFromRating(rating)
+}
+
+// contentLimitFromRating is contentLimitOf's FALLBACK — the age-axis reading,
+// used only where no editorial verdict exists. `sensitive` folds to sfw
+// deliberately: it is the rating for suggestive-but-not-adult works, which the
+// wiki also carried as content_limit=sfw. Folding it to nsfw instead would hide
+// works that are visible today.
 func contentLimitFromRating(rating string) string {
 	if rating == "r18" {
 		return "nsfw"
@@ -373,7 +418,7 @@ func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 		NameZhCn:         it.name("zh-cn"),
 		NameZhTw:         it.name("zh-tw"),
 		AgeLimit:         ageLimitFromRating(it.ContentRating),
-		ContentLimit:     contentLimitFromRating(it.ContentRating),
+		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
 		OriginalLanguage: productLocale(it.OLang),
 		ReleaseDate:      it.ReleaseDate,
 		// The wiki's own resource_update_time has no catalog counterpart and
@@ -472,7 +517,7 @@ func CatalogItemToNextMoeItem(it *CatalogWorkListItem) dto.NextMoeGalgameItem {
 		NameZhCn:     it.name("zh-cn"),
 		NameZhTw:     it.name("zh-tw"),
 		ReleaseDate:  it.ReleaseDate,
-		ContentLimit: contentLimitFromRating(it.ContentRating),
+		ContentLimit: contentLimitOf(it.ClaimedBy, it.ContentRating),
 		// release_precision is self-describing on the catalog wire: the partial
 		// ISO date's LENGTH is the precision (4 = year, 7 = month, 10 = day),
 		// per D7 table ②. Projecting it back to the old keyword keeps the

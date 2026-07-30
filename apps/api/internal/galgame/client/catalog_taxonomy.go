@@ -160,31 +160,35 @@ func (c *GalgameClient) CatalogTaxonomyPageAt(ctx context.Context, entity string
 // CatalogLabel / CatalogTag / CatalogEngine fetch one full taxonomy record.
 // found=false on an unknown id (a 404, which is not an error for a page that
 // wants to render its own not-found state).
-func (c *GalgameClient) CatalogLabel(ctx context.Context, id string, isSFW bool) (*CatalogLabelDetail, bool, *errors.AppError) {
+func (c *GalgameClient) CatalogLabel(ctx context.Context, id string) (*CatalogLabelDetail, bool, *errors.AppError) {
 	var rec CatalogLabelDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "labels", id, isSFW, &rec)
+	found, appErr := c.catalogTaxonomyDetail(ctx, "labels", id, &rec)
 	return &rec, found, appErr
 }
 
-func (c *GalgameClient) CatalogTag(ctx context.Context, id string, isSFW bool) (*CatalogTagDetail, bool, *errors.AppError) {
+func (c *GalgameClient) CatalogTag(ctx context.Context, id string) (*CatalogTagDetail, bool, *errors.AppError) {
 	var rec CatalogTagDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "tags", id, isSFW, &rec)
+	found, appErr := c.catalogTaxonomyDetail(ctx, "tags", id, &rec)
 	return &rec, found, appErr
 }
 
-func (c *GalgameClient) CatalogEngine(ctx context.Context, id string, isSFW bool) (*CatalogEngineDetail, bool, *errors.AppError) {
+func (c *GalgameClient) CatalogEngine(ctx context.Context, id string) (*CatalogEngineDetail, bool, *errors.AppError) {
 	var rec CatalogEngineDetail
-	found, appErr := c.catalogTaxonomyDetail(ctx, "engines", id, isSFW, &rec)
+	found, appErr := c.catalogTaxonomyDetail(ctx, "engines", id, &rec)
 	return &rec, found, appErr
 }
 
 // catalogTaxonomyDetail is the shared fetch+decode for the three detail lanes.
-// The nsfw gate rides along because work_count is nsfw-aware: a count that
-// disagreed with the member list the same caller can page is exactly the defect
-// the deprecated face's permanently-zero galgame_count was.
-func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id string, isSFW bool, out any) (bool, *errors.AppError) {
-	q := url.Values{}
-	applyNSFW(q, contentLimitFor(isSFW))
+//
+// The population runs OPEN (nsfw=1) and takes no caller preference: work_count
+// here is age-aware, and an SFW caller who closed the age gate saw the count —
+// and the member list behind it — collapse to the 5.5% of the registry that is
+// not r18. The editorial gate has no counterpart on this face, so an SFW
+// caller's count can still include the handful of entries an editor flagged;
+// that is a rounding error next to the collapse, and the members lane (which
+// does carry the editorial gate) remains the authority on what renders.
+func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id string, out any) (bool, *errors.AppError) {
+	q := openPopulation(url.Values{})
 	data, appErr := c.GetV1(ctx, "/catalog/"+entity+"/"+id, q)
 	if appErr != nil {
 		if appErr.StatusCode == 404 {
@@ -210,13 +214,17 @@ type CatalogEntityHit struct {
 //
 // The hit shape is identity-only (id + name) by design — it is a picker feed.
 // Consumers that need counts or metadata follow the id to the detail lane.
-func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int, isSFW bool) ([]CatalogEntityHit, *errors.AppError) {
+//
+// Like every other identity lane it runs with the age gate open: a picker that
+// cannot resolve an r18 maker's name is a picker that cannot be used for 94.5%
+// of the registry.
+func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, *errors.AppError) {
 	q := url.Values{
 		"type":  {searchType},
 		"q":     {keywords},
 		"limit": {strconv.Itoa(limit)},
 	}
-	applyNSFW(q, contentLimitFor(isSFW))
+	openPopulation(q)
 	data, appErr := c.GetV1(ctx, "/catalog/search", q)
 	if appErr != nil {
 		return nil, appErr

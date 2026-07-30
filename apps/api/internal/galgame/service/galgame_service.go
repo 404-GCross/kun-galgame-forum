@@ -253,7 +253,7 @@ func (s *GalgameService) GetDetail(
 	// published rows, so a banned (status=1) or unknown id comes back as a
 	// not-found AppError (the bridge's "该 Galgame 已被封禁" message is subsumed by
 	// the standard not-found — /v1 never returns a banned row).
-	d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID, "all")
+	d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID)
 	if appErr != nil {
 		return nil, appErr
 	}

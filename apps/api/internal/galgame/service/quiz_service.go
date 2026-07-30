@@ -835,9 +835,7 @@ func (s *QuizService) SearchGalgameOptions(
 		"claimed":     {"true"},
 		"claim_state": {"live"},
 	}
-	if !isSFW {
-		q.Set("nsfw", "1")
-	}
+	client.ApplyWorksGate(q, isSFW)
 	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		return empty

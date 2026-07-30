@@ -71,8 +71,14 @@ func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
 	if got := rec.get("sort"); got != "relevance" {
 		t.Errorf("sort = %q, want relevance", got)
 	}
-	if rec.get("nsfw") != "" {
-		t.Error("an SFW caller must not open the nsfw gate")
+	// The SFW preference travels as the EDITORIAL gate; the age gate stays open
+	// on every lane, because 94.5% of the registry is r18 and closing it deletes
+	// the catalogue instead of filtering adult presentation (doc 106 §38).
+	if got := rec.get("nsfw"); got != "1" {
+		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	}
+	if got := rec.get("content_limit"); got != "sfw" {
+		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
 	}
 }
 
@@ -85,6 +91,9 @@ func TestSearchGalgames_NSFWCallerStillOnlySeesPublished(t *testing.T) {
 	}
 	if got := rec.get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want 1 for an NSFW-opted caller", got)
+	}
+	if got := rec.get("content_limit"); got != "" {
+		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)
 	}
 	// The two gates are independent: opting into r18 must not open the
 	// lifecycle gate as a side effect.

@@ -48,7 +48,7 @@ func NewEntityHandler(
 
 // GetOfficialList — GET /galgame-official
 func (h *EntityHandler) GetOfficialList(c fiber.Ctx) error {
-	page, appErr := h.officialService.GetList(c.Context(), collectQuery(c), utils.IsSFW(c))
+	page, appErr := h.officialService.GetList(c.Context(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -57,7 +57,7 @@ func (h *EntityHandler) GetOfficialList(c fiber.Ctx) error {
 
 // SearchOfficials — GET /galgame-official/search
 func (h *EntityHandler) SearchOfficials(c fiber.Ctx) error {
-	items, appErr := h.officialService.Search(c.Context(), collectQuery(c), utils.IsSFW(c))
+	items, appErr := h.officialService.Search(c.Context(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -84,7 +84,7 @@ func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 
 // GetEngineList — GET /galgame-engine
 func (h *EntityHandler) GetEngineList(c fiber.Ctx) error {
-	items, appErr := h.engineService.GetList(c.Context(), utils.IsSFW(c))
+	items, appErr := h.engineService.GetList(c.Context())
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -120,7 +120,7 @@ func (h *EntityHandler) GetTagList(c fiber.Ctx) error {
 
 // SearchTags — GET /galgame-tag/search
 func (h *EntityHandler) SearchTags(c fiber.Ctx) error {
-	items, appErr := h.tagService.Search(c.Context(), collectQuery(c), utils.IsSFW(c))
+	items, appErr := h.tagService.Search(c.Context(), collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

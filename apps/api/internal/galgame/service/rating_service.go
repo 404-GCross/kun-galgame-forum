@@ -492,7 +492,7 @@ func (s *RatingService) buildRatingGalgame(
 	// content_limit=all (permissive): the rating page doesn't gate NSFW here (FE
 	// confirm card). Best-effort — an unreachable / not-found galgame leaves the
 	// summary at its zero-ish defaults + local rating stats below.
-	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID, "all"); appErr == nil && found {
+	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID); appErr == nil && found {
 		g := client.CatalogDetailToFull(d, galgameID)
 		summary.ID = g.ID
 		summary.Banner = g.Banner

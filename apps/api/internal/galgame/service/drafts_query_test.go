@@ -50,7 +50,7 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	rec := &draftsRecorder{}
 	svc := rec.service(t)
 
-	if _, appErr := svc.GetDrafts(context.Background(), 2, 24, true, DraftFilters{}); appErr != nil {
+	if _, appErr := svc.GetDrafts(context.Background(), 2, 24, DraftFilters{}); appErr != nil {
 		t.Fatalf("GetDrafts: %v", appErr)
 	}
 	if rec.path != "/v1/catalog/works/search" {
@@ -66,8 +66,15 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want 24", got)
 	}
-	if rec.get("nsfw") != "" {
-		t.Error("an SFW caller must not open the nsfw gate")
+	// The age gate is open on every lane (doc 106 §38). The EDITORIAL gate is
+	// absent here and only here: the funnel pins claimed=false, so no row can
+	// carry a wiki verdict for content_limit= to match against, and sending it
+	// could only empty the funnel for the SFW default.
+	if got := rec.get("nsfw"); got != "1" {
+		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	}
+	if got := rec.get("content_limit"); got != "" {
+		t.Errorf("content_limit = %q, want it absent on the unclaimed-works funnel", got)
 	}
 }
 
@@ -84,14 +91,14 @@ func TestDrafts_EntityScopeUsesCatalogIDs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			rec := &draftsRecorder{}
 			svc := rec.service(t)
-			if _, appErr := svc.GetDrafts(context.Background(), 1, 24, false, tc.filters); appErr != nil {
+			if _, appErr := svc.GetDrafts(context.Background(), 1, 24, tc.filters); appErr != nil {
 				t.Fatalf("GetDrafts: %v", appErr)
 			}
 			if got := rec.get(tc.param); got != tc.want {
 				t.Errorf("%s = %q, want %q", tc.param, got, tc.want)
 			}
 			if got := rec.get("nsfw"); got != "1" {
-				t.Errorf("nsfw = %q, want 1 for an NSFW-opted caller", got)
+				t.Errorf("nsfw = %q, want 1 on every lane", got)
 			}
 		})
 	}

@@ -59,27 +59,58 @@ const (
 	catalogDetailBriefInclude = "names,intros,labels,covers,refs"
 )
 
-// nsfwParam translates the kungal content_limit convention to the catalog
-// face's boolean gate. kungal's "" means "no filter" (the permissive default
-// the deprecated bridge had), and both "" and the explicit opt-ins map to
-// nsfw=1; only "sfw" leaves the gate closed.
+// ─── the two content gates ───────────────────────────────────────────────
 //
-// Filtering MUST stay on this side of the wire — the handbook forbids
-// downstream post-filtering, and the catalog face is the only place that can
-// drop an r18 row before it leaves the boundary.
-func nsfwParam(contentLimit string) string {
-	if contentLimit == "sfw" {
-		return ""
-	}
-	return "1"
+// The catalog exposes TWO independent content axes and kungal reads both. They
+// were conflated once and the bill was doc 106 §38, so the distinction is
+// spelled out here rather than left to the call sites:
+//
+//   - nsfw= is the AGE gate — may the caller see r18 WORKS at all. 94.5% of the
+//     registry is r18, so closing it does not filter adult presentation, it
+//     deletes the catalogue. Every kungal read lane therefore opens it
+//     unconditionally; the per-work rating still rides home on the row, so the
+//     R18 chip and the age-based UI keep working.
+//   - content_limit= is the EDITORIAL gate — the claiming product's verdict on
+//     whether an ENTRY's display material is sanitized. That is what kungal's
+//     user setting has always meant, so that is what the setting now translates
+//     into (see contentLimitOf in catalog_wire.go for the same split on the
+//     response side).
+//
+// Filtering MUST stay on this side of the wire in both cases — the handbook
+// forbids downstream post-filtering, and the face is the only place that can
+// drop a row before it leaves the boundary.
+
+// openPopulation opens the age gate on q. It is the WHOLE gate for the faces
+// that have no editorial filter (taxonomy index / detail, entity search, the
+// work detail aggregate): closing the age gate there would strip a maker's or a
+// tag's entire membership, and on the detail lane it 404'd every r18 game.
+func openPopulation(q url.Values) url.Values {
+	q.Set("nsfw", "1")
+	return q
 }
 
-// applyNSFW sets nsfw=1 on q when the content limit opts into adult content.
-func applyNSFW(q url.Values, contentLimit string) url.Values {
-	if v := nsfwParam(contentLimit); v != "" {
-		q.Set("nsfw", v)
+// OpenPopulation is openPopulation for the service layer, which builds the
+// taxonomy index queries itself.
+func OpenPopulation(q url.Values) url.Values { return openPopulation(q) }
+
+// applyWorksGate is openPopulation plus the editorial gate, for the three works
+// faces that accept content_limit= (works LIST, works/search, calendar).
+//
+// The vocabulary is the face's own closed word list; kungal's permissive ""
+// and "all" send nothing, which is "no editorial filter" — the same meaning
+// they carried on the deprecated wiki face.
+func applyWorksGate(q url.Values, contentLimit string) url.Values {
+	openPopulation(q)
+	switch contentLimit {
+	case "sfw", "nsfw":
+		q.Set("content_limit", contentLimit)
 	}
 	return q
+}
+
+// ApplyWorksGate is applyWorksGate in the isSFW form the service layer holds.
+func ApplyWorksGate(q url.Values, isSFW bool) url.Values {
+	return applyWorksGate(q, contentLimitFor(isSFW))
 }
 
 // contentLimitFor is the isSFW→content_limit convention shared by every public
@@ -200,7 +231,7 @@ func (c *GalgameClient) worksByCatalogIDs(ctx context.Context, ids []int64, incl
 		if include != "" {
 			q.Set("include", include)
 		}
-		applyNSFW(q, contentLimit)
+		applyWorksGate(q, contentLimit)
 
 		data, appErr := c.GetV1(ctx, "/catalog/works", q)
 		if appErr != nil {
@@ -312,9 +343,15 @@ type catWorkDetail struct {
 }
 
 // CatalogWorkDetail fetches one work's full aggregate by kungal gid. found is
-// false when the gid resolves to nothing, when the row is gated away by the
-// caller's content preference, or when the wiki has withdrawn the claim.
-func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int, contentLimit string) (*catWorkDetail, bool, *errors.AppError) {
+// false when the gid resolves to nothing or when the wiki has withdrawn the
+// claim — never because of the caller's content preference.
+//
+// The detail lane carries NO content gate by design. The page it feeds is
+// addressed by gid: the visitor asked for this exact entry, and kungal answers
+// with its own display gate (the 确认显示 card + noindex, both keyed on the
+// entry's editorial content_limit). Gating here instead 404'd every r18 game
+// for an SFW visitor — a broken link, not a filtered list.
+func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWorkDetail, bool, *errors.AppError) {
 	idMap, appErr := c.catalogIDsForGIDs(ctx, []int{gid})
 	if appErr != nil {
 		return nil, false, appErr
@@ -326,7 +363,7 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int, contentL
 	// spoilers=0 keeps the character roster's spoiler traits closed; the tag
 	// edges carry their own per-edge spoiler level for the FE to gate on.
 	q := url.Values{"spoilers": {"0"}}
-	applyNSFW(q, contentLimit)
+	openPopulation(q)
 	data, appErr := c.GetV1(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)
 	if appErr != nil {
 		if appErr.StatusCode == 404 {
@@ -408,7 +445,7 @@ func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values
 		// bounds the walk to addressable rows.
 		q.Set("claimed", "true")
 		q.Set("claim_state", claimStateLive)
-		applyNSFW(q, contentLimitFor(isSFW))
+		ApplyWorksGate(q, isSFW)
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}

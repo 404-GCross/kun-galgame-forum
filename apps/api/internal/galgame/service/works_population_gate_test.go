@@ -72,8 +72,14 @@ func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
 	if got := rec.query["tag_id"]; len(got) != 2 {
 		t.Errorf("tag_id = %v, want both requested ids", got)
 	}
-	if rec.get("nsfw") != "" {
-		t.Error("an SFW caller must not open the nsfw gate")
+	// The SFW preference travels as the EDITORIAL gate; the age gate stays open
+	// on every lane, because 94.5% of the registry is r18 and closing it deletes
+	// the catalogue instead of filtering adult presentation (doc 106 §38).
+	if got := rec.get("nsfw"); got != "1" {
+		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	}
+	if got := rec.get("content_limit"); got != "sfw" {
+		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
 	}
 }
 

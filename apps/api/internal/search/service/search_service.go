@@ -226,9 +226,7 @@ func (s *SearchService) SearchGalgames(
 		"include":     {galgameService.CatalogCardInclude},
 		"sort":        {"relevance"},
 	}
-	if !isSFW {
-		q.Set("nsfw", "1")
-	}
+	client.ApplyWorksGate(q, isSFW)
 
 	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {

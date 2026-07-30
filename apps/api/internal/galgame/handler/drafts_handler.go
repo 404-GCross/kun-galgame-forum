@@ -3,7 +3,6 @@ package handler
 import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/pkg/response"
-	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -38,7 +37,7 @@ func (h *DraftsHandler) GetDrafts(c fiber.Ctx) error {
 
 		OriginalLanguages: fiber.Query(c, "original_language", ""),
 	}
-	pageData, appErr := h.draftsService.GetDrafts(c.Context(), page, limit, utils.IsSFW(c), filters)
+	pageData, appErr := h.draftsService.GetDrafts(c.Context(), page, limit, filters)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

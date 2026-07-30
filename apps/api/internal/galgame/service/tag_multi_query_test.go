@@ -114,7 +114,10 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 	// NSFW must travel as a request parameter — post-filtering downstream is
 	// forbidden (the data has already left the boundary by then).
 	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 for an NSFW-opted caller", got)
+		t.Errorf("nsfw = %q, want 1 on every lane", got)
+	}
+	if got := rec.get("content_limit"); got != "" {
+		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)
 	}
 }
 
@@ -126,8 +129,13 @@ func TestGetByMultiTag_SFWGateStaysClosed(t *testing.T) {
 		url.Values{"tagIds": {"41"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
-	if rec.has("nsfw") {
-		t.Error("an SFW caller must not send nsfw at all — an empty value is still a value upstream")
+	// SFW is the EDITORIAL gate now: an SFW caller sees every r18 game whose
+	// kungal entry an editor graded sfw, which is 94.5% of the catalogue.
+	if got := rec.get("nsfw"); got != "1" {
+		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	}
+	if got := rec.get("content_limit"); got != "sfw" {
+		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
 	}
 }
 

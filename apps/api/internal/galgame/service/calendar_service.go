@@ -54,9 +54,7 @@ func bucketQuery(isSFW bool) url.Values {
 		"limit":   {strconv.Itoa(calendarPageLimit)},
 		"include": {CatalogCardInclude},
 	}
-	if !isSFW {
-		q.Set("nsfw", "1")
-	}
+	client.ApplyWorksGate(q, isSFW)
 	return q
 }
 

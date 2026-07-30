@@ -77,10 +77,9 @@ func tagCategory(kind, tier string) string {
 func (s *TagService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
-	isSFW bool,
 ) ([]dto.TagListItem, *errors.AppError) {
 	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags",
-		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20), isSFW)
+		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -133,9 +132,7 @@ func (s *TagService) GetByMultiTag(
 	for _, id := range splitCSV(ids) {
 		q.Add("tag_id", id)
 	}
-	if !isSFW {
-		q.Set("nsfw", "1")
-	}
+	client.ApplyWorksGate(q, isSFW)
 
 	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
@@ -158,10 +155,7 @@ func (s *TagService) GetList(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagListPage, *errors.AppError) {
-	base := url.Values{}
-	if !isSFW {
-		base.Set("nsfw", "1")
-	}
+	base := client.OpenPopulation(url.Values{})
 	rows, total, appErr := s.galgameClient.CatalogTaxonomyPageAt(ctx, "tags", base,
 		atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 100))
 	if appErr != nil {
@@ -193,7 +187,7 @@ func (s *TagService) GetDetail(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagDetail, *errors.AppError) {
-	t, found, appErr := s.galgameClient.CatalogTag(ctx, id, isSFW)
+	t, found, appErr := s.galgameClient.CatalogTag(ctx, id)
 	if appErr != nil {
 		return nil, appErr
 	}

@@ -28,30 +28,6 @@ func NewGalgameEnricher(
 	return &GalgameEnricher{galgameRepo: galgameRepo, metaRepo: metaRepo, userClient: userClient}
 }
 
-// FilterSFW removes NSFW items when the caller requests SFW-only content.
-func (e *GalgameEnricher) FilterSFW(items []dto.NextMoeGalgameItem, isSFW bool) []dto.NextMoeGalgameItem {
-	if !isSFW {
-		return items
-	}
-	out := make([]dto.NextMoeGalgameItem, 0, len(items))
-	for _, g := range items {
-		if g.ContentLimit == "sfw" {
-			out = append(out, g)
-		}
-	}
-	return out
-}
-
-// HasNSFW reports whether any item in the list is nsfw.
-func (e *GalgameEnricher) HasNSFW(items []dto.NextMoeGalgameItem) bool {
-	for _, g := range items {
-		if g.ContentLimit == "nsfw" {
-			return true
-		}
-	}
-	return false
-}
-
 // Samples returns up to `n` minimal samples (name + banner).
 func (e *GalgameEnricher) Samples(items []dto.NextMoeGalgameItem, n int) []dto.GalgameSample {
 	if n > len(items) {
