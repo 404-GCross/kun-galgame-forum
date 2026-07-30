@@ -439,10 +439,10 @@ func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values
 		}
 		q.Set("limit", strconv.Itoa(catalogIDsChunk))
 		// Only claimed works can map to a kungal gid, so let the face do that
-		// filtering instead of paging through works we would discard. The two
-		// gates are NOT redundant while the supplying wave is undeployed: the
-		// unknown claim_state is ignored then, and `claimed` is what still
-		// bounds the walk to addressable rows.
+		// filtering instead of paging through works we would discard. Since
+		// A2-R4 this lane understands claim_state as well, and `live` is what
+		// narrows the walk further to the PUBLISHED members; `claimed=true` is
+		// implied by it and stays as the explicit gid requirement.
 		q.Set("claimed", "true")
 		q.Set("claim_state", claimStateLive)
 		ApplyWorksGate(q, isSFW)

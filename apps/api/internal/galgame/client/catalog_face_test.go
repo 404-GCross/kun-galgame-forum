@@ -521,8 +521,11 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 			if got := q.Get("claim_state"); got != "live" {
 				t.Errorf("claim_state = %q, want live — without it the %s page lists unpublished works", got, family)
 			}
-			// Still bounded to addressable rows: until the supplying wave ships,
-			// `claimed` is the only gate the face actually understands.
+			// The face-side claim_state gate is LIVE (A2-R4), so the assertion
+			// above pins a filter that really narrows the population rather than
+			// one the face ignores. `claimed=true` rides along as the explicit
+			// statement of the other requirement — only a claimed work has a
+			// kungal gid — which a live claim now implies.
 			if got := q.Get("claimed"); got != "true" {
 				t.Errorf("claimed = %q, want true", got)
 			}
