@@ -24,7 +24,8 @@ import (
 //     gone.
 //   - The tag DAG did not migrate either, so "contains" mode can no longer
 //     expand a tag into its descendants. It degrades to a flat multi-tag AND,
-//     which the catalog now expresses natively (tag_id accepts up to ten ids).
+//     which the catalog now expresses natively (ONE tag_id parameter carrying
+//     up to ten comma-separated ids).
 type TagService struct {
 	galgameClient *client.GalgameClient
 	// enricher hydrates the multi-tag results with kungal-local data.
@@ -49,6 +50,13 @@ type TagMultiPage struct {
 // largest real term carries; a hypothetical bigger one truncates rather than
 // fanning out without limit on a request path.
 const taxonomyMemberPageCap = 200
+
+// maxTagFilterIDs mirrors the catalog works-search contract: tag_id carries up
+// to TEN comma-separated ids that are ANDed, and an eleventh is a 400. The
+// selector upstream of this lane sets no limit of its own, so the list is
+// truncated here — an over-eager selection then returns a slightly wider page
+// than asked for instead of failing the whole view.
+const maxTagFilterIDs = 10
 
 // CatalogCardInclude is the include= vocabulary a kungal CARD renders: the four
 // localized names and the two cover slots. Cards show no intro and no maker
@@ -93,7 +101,7 @@ func (s *TagService) Search(
 // GetByMultiTag — GET /galgame-tag/multi
 //
 // A galgame must carry EVERY selected tag (flat AND), which the catalog works
-// lane expresses with a repeated tag_id filter.
+// lane expresses with ONE comma-separated tag_id filter of up to ten ids.
 //
 // `mode=contains` used to additionally match each tag's DESCENDANTS, so 科幻
 // also admitted 硬科幻. The canonical vocabulary has no DAG, so that expansion
@@ -129,8 +137,15 @@ func (s *TagService) GetByMultiTag(
 		"include":     {CatalogCardInclude},
 		"sort":        {"released_desc"},
 	}
-	for _, id := range splitCSV(ids) {
-		q.Add("tag_id", id)
+	// ONE comma-joined tag_id, never a repeated parameter. The upstream reads
+	// this filter with Fiber's c.Query, which returns only the FIRST occurrence
+	// of a repeated key — so repeating it made every multi-select silently
+	// degrade to a filter on the first tag alone.
+	if selected := splitCSV(ids); len(selected) > 0 {
+		if len(selected) > maxTagFilterIDs {
+			selected = selected[:maxTagFilterIDs]
+		}
+		q.Set("tag_id", strings.Join(selected, ","))
 	}
 	client.ApplyWorksGate(q, isSFW)
 

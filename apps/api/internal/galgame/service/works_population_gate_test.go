@@ -68,9 +68,11 @@ func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
 	if got := rec.get("claim_state"); got != "live" {
 		t.Errorf("claim_state = %q, want live — without it the multi-tag page lists unpublished and unclaimed works", got)
 	}
-	// The tag scope must still travel, or the page becomes a global browse.
-	if got := rec.query["tag_id"]; len(got) != 2 {
-		t.Errorf("tag_id = %v, want both requested ids", got)
+	// The tag scope must still travel, or the page becomes a global browse —
+	// and both ids must ride the SAME comma-separated parameter, since the face
+	// reads only the first occurrence of a repeated key.
+	if got := rec.query["tag_id"]; len(got) != 1 || got[0] != "5,7" {
+		t.Errorf("tag_id = %v, want one param valued \"5,7\"", got)
 	}
 	// The SFW preference travels as the EDITORIAL gate; the age gate stays open
 	// on every lane, because 94.5% of the registry is r18 and closing it deletes
@@ -100,8 +102,10 @@ func TestQuizPicker_OffersPublishedWorksOnly(t *testing.T) {
 	if got := rec.get("claim_state"); got != "live" {
 		t.Errorf("claim_state = %q, want live — without it the picker offers unpublished games", got)
 	}
-	// Still bounded to addressable rows: until the supplying wave ships,
-	// `claimed` is the only gate the face actually understands.
+	// The face-side claim_state gate is LIVE, so the assertion above pins a
+	// filter that really narrows the offer. `claimed=true` rides along as the
+	// explicit statement of the other requirement — only a claimed work has a
+	// kungal gid to author a quiz against — which a live claim now implies.
 	if got := rec.get("claimed"); got != "true" {
 		t.Errorf("claimed = %q, want true", got)
 	}
