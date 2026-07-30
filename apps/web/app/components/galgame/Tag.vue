@@ -143,7 +143,13 @@ const countColorByCategory = (category: string): string => {
             :size="isMobile ? 'md' : 'sm'"
           >
             {{ tag.name }}
-            <span :class="cn('text-xs', countColorByCategory(tag.category))">
+            <!-- An unmapped source tag never gets a count from upstream, and
+                 no row has one before the supplying wave deploys — both land
+                 on 0, which must read as "no badge", not "+0". -->
+            <span
+              v-if="tag.galgame_count > 0"
+              :class="cn('text-xs', countColorByCategory(tag.category))"
+            >
               {{ `+${tag.galgame_count}` }}
             </span>
             <span v-if="tag.spoiler_level > 0" class="text-warning-600 text-xs">

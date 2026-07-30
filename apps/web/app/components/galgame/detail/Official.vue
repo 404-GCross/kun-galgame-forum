@@ -1,34 +1,19 @@
 <script setup lang="ts">
-import { KUN_GALGAME_OFFICIAL_LANGUAGE_MAP } from '~/constants/galgameOfficial'
+import {
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
+  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
+} from '~/constants/galgameOfficial'
 
 defineProps<{
   official: GalgameOfficialItem[]
 }>()
 
-const getOfficialCategoryInfo = (category: string) => {
-  switch (category) {
-    case 'company':
-      return {
-        text: '公司',
-        class: 'bg-primary-100 text-primary-800'
-      }
-    case 'individual':
-      return {
-        text: '个人',
-        class: 'bg-success-100 text-success-800'
-      }
-    case 'amateur':
-      return {
-        text: '同人',
-        class: 'bg-secondary-100 text-secondary-800'
-      }
-    default:
-      return {
-        text: category,
-        class: 'bg-default-100 text-default-800'
-      }
-  }
-}
+// The detail chip now speaks the label's OWN kind (游戏品牌 / 同人社团 / …),
+// which is the same vocabulary the /galgame-official index renders — one map,
+// one wording. Before A2-R2 it printed the per-edge ROLE, which had no Chinese
+// entry anywhere and fell through to the raw English "developer".
+const getCategoryText = (category: string) =>
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
 </script>
 
 <template>
@@ -36,33 +21,29 @@ const getOfficialCategoryInfo = (category: string) => {
     <dt class="text-default-500 text-sm font-medium">制作方</dt>
     <dd class="mt-1.5 space-y-3">
       <div class="space-y-2" v-for="item in official" :key="item.id">
-        <KunTooltip :text="`该会社制作了 ${item.galgame_count} 个 Galgame`">
-          <KunLink
-            :to="`/galgame-official/c/${item.id}`"
-            underline="none"
-            class-name="text-foreground hover:text-primary text-base font-semibold"
+        <KunLink
+          :to="`/galgame-official/c/${item.id}`"
+          underline="none"
+          class-name="text-foreground hover:text-primary text-base font-semibold"
+        >
+          {{ item.name }}
+          <!-- The badge (and its explanation) exist only when there is a real
+               count: an upstream that has not published work_count yet, or a
+               会社 with no other work, must render nothing rather than "+ 0". -->
+          <KunTooltip
+            v-if="item.galgame_count > 0"
+            :text="`该会社制作了 ${item.galgame_count} 个 Galgame`"
           >
-            {{ item.name }}
             <KunChip size="xs">
               {{ `+ ${item.galgame_count}` }}
             </KunChip>
-          </KunLink>
-        </KunTooltip>
+          </KunTooltip>
+        </KunLink>
 
         <div class="mt-1 flex items-center justify-between">
           <div class="flex items-center gap-x-2">
-            <KunChip
-              size="xs"
-              class-name="rounded-md"
-              :color="
-                item.category === 'company'
-                  ? 'primary'
-                  : item.category === 'individual'
-                    ? 'secondary'
-                    : 'success'
-              "
-            >
-              {{ getOfficialCategoryInfo(item.category).text }}
+            <KunChip size="xs" class-name="rounded-md" color="default">
+              {{ getCategoryText(item.category) }}
             </KunChip>
             <span class="text-default-500 dark:text-default-400 text-xs">
               {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[item.lang] || item.lang }}

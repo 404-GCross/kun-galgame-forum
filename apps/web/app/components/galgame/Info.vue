@@ -41,24 +41,27 @@ const getLanguageName = getGalgameOriginalLanguageName
           游戏引擎
         </dt>
         <dd
-          class="text-default-900 mt-1.5 text-base font-medium dark:text-white"
+          class="text-default-900 mt-1.5 flex flex-wrap items-center gap-x-3 text-base font-medium dark:text-white"
         >
-          <KunTooltip
+          <KunLink
             v-for="item in engine"
             :key="item.id"
-            :text="`${item.galgame_count} 个 Galgame 使用此引擎制作`"
+            :to="`/galgame-engine/c/${item.id}`"
+            underline="none"
+            class-name="text-foreground hover:text-primary text-base font-semibold"
           >
-            <KunLink
-              :to="`/galgame-engine/c/${item.id}`"
-              underline="none"
-              class-name="text-foreground hover:text-primary text-base font-semibold"
+            {{ item.name }}
+            <!-- No count (upstream not yet publishing one, or a genuinely
+                 unused engine) ⇒ no badge and no tooltip, never "+ 0". -->
+            <KunTooltip
+              v-if="item.galgame_count > 0"
+              :text="`${item.galgame_count} 个 Galgame 使用此引擎制作`"
             >
-              {{ item.name }}
               <KunChip size="xs">
                 {{ `+ ${item.galgame_count}` }}
               </KunChip>
-            </KunLink>
-          </KunTooltip>
+            </KunTooltip>
+          </KunLink>
         </dd>
       </div>
 
