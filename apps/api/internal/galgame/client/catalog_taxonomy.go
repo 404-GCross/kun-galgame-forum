@@ -392,8 +392,8 @@ func joinCSV(s []string) string {
 }
 
 // LookupWikiLabel resolves a legacy wiki 会社 id (galgame_official PK) to its
-// catalog label id, so the old /galgame-official/{wikiId} URLs can 301 onto the
-// new catalog-id space.
+// catalog label id, so the old /galgame-official/{wikiId} frontend URLs can 301
+// onto the canonical /galgame/official/{catalogId} page in a single hop.
 //
 // Unlike tags and engines — whose migrations were frozen into a static map —
 // makers resolve at RUNTIME through the registry's own external-ref index. The

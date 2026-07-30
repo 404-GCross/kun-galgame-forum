@@ -203,8 +203,16 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-tag/search", a.GalgameEntityHandler.SearchTags)
 	api.Get("/galgame-tag/multi", a.GalgameEntityHandler.GetMultiTagGalgames)
 	// Taxonomy detail :id is a CATALOG id (doc 106 R1) — the browse pages link
-	// into the new /galgame-{tag,official,engine}/c/ URL space and the legacy
-	// wiki-id URLs are FE-side redirect shells that never reach this API.
+	// into the /galgame/{tag,official,engine}/ URL space (doc 146) and every
+	// retired frontend URL, wiki-id or `/c/`-segmented, is an FE-side redirect
+	// shell that never reaches this API.
+	//
+	// NOTE the two namespaces are independent: this is the API's OWN kebab-case
+	// endpoint space and it deliberately did NOT move with the frontend rename.
+	// Moving it would drop these under the /galgame/:gid param route, making
+	// them order-dependent against it — the same shadowing hazard the detail
+	// sub-routes above are already grouped to dodge — for no gain: no client
+	// addresses the API by the frontend's URL shape.
 	api.Get("/galgame-tag/:id", a.GalgameEntityHandler.GetTagDetail)
 	api.Get("/galgame-official", a.GalgameEntityHandler.GetOfficialList)
 	api.Get("/galgame-official/search", a.GalgameEntityHandler.SearchOfficials)
