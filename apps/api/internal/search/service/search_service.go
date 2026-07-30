@@ -187,9 +187,16 @@ func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, lim
 //     SFW caller's page count matches its result count. The deprecated face
 //     filtered items in a re-hydration pass the total never saw, which made SFW
 //     pagination lossy.
-//   - the population is the whole catalog registry, not just the works kungal
-//     ingested (refs/proj/126 P1). Hits kungal has never seen render as
-//     未收录 cards through the enricher's IsOnForum=false branch.
+//   - the population is every PUBLISHED work of the registry — `claim_state=live`
+//     is the exact successor of the deprecated face's status=0. A2-3 opened the
+//     population to the whole registry (refs/proj/126 P1); that direction was
+//     REVOKED by user ruling after unpublished works surfaced in search
+//     (doc 106 §37), and the parameter is what takes it back. Live works kungal
+//     has not ingested still render as 未收录 cards through the enricher's
+//     IsOnForum=false branch — that is old-face parity, not the leak.
+//
+// The unclaimed-draft population is NOT reachable from here at all: the claim
+// funnel (/galgame/drafts, claimed=false) is its own deliberate lane.
 //
 // NSFW gating is upstream-only: passing nsfw=1 is what includes r18 hits, and
 // there is deliberately no post-filter here (the handbook forbids it — the data
@@ -208,11 +215,16 @@ func (s *SearchService) SearchGalgames(
 	}
 
 	q := url.Values{
-		"q":       {raw},
-		"page":    {strconv.Itoa(page)},
-		"limit":   {strconv.Itoa(limit)},
-		"include": {galgameService.CatalogCardInclude},
-		"sort":    {"relevance"},
+		"q":     {raw},
+		"page":  {strconv.Itoa(page)},
+		"limit": {strconv.Itoa(limit)},
+		// The published-only gate (doc 106 §37). CSV closed vocabulary; `live`
+		// alone is the successor of the wiki's status=0. Until the supplying
+		// wave is deployed the face ignores the unknown parameter, so the
+		// window behaves exactly as today and tightens on its own afterwards.
+		"claim_state": {"live"},
+		"include":     {galgameService.CatalogCardInclude},
+		"sort":        {"relevance"},
 	}
 	if !isSFW {
 		q.Set("nsfw", "1")
