@@ -120,10 +120,15 @@ func (s *TagService) GetByMultiTag(
 	// view needs; the browse lane is keyset-only. An empty q makes it a
 	// filter-only query, which the search face serves.
 	q := url.Values{
-		"page":    {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},
-		"limit":   {strconv.Itoa(atoiOr(rawQuery.Get("limit"), 24))},
-		"include": {CatalogCardInclude},
-		"sort":    {"released_desc"},
+		"page":  {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},
+		"limit": {strconv.Itoa(atoiOr(rawQuery.Get("limit"), 24))},
+		// Published members only (doc 106 §37). This is a public 词条 member
+		// list like the single-tag page, just reached through the search face,
+		// and it had NO claim gate at all — so it listed unclaimed registry
+		// rows on top of the unpublished claimed ones.
+		"claim_state": {"live"},
+		"include":     {CatalogCardInclude},
+		"sort":        {"released_desc"},
 	}
 	for _, id := range splitCSV(ids) {
 		q.Add("tag_id", id)

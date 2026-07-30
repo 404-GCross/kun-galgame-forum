@@ -829,8 +829,11 @@ func (s *QuizService) SearchGalgameOptions(
 		"sort":  {"relevance"},
 		// Only works kungal can actually address are pickable: an unclaimed
 		// catalog work has no gid, and a quiz option must point at a galgame the
-		// forum can render.
-		"claimed": {"true"},
+		// forum can render. `claimed` alone still admits an entry the wiki
+		// claimed but never published, so a quiz could be authored against a
+		// game no player can open — the authoring-side face of the §37 leak.
+		"claimed":     {"true"},
+		"claim_state": {"live"},
 	}
 	if !isSFW {
 		q.Set("nsfw", "1")
