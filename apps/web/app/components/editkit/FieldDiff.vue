@@ -8,8 +8,9 @@
 // when a 400-character intro gained one word. The only difference left between
 // them is that `lines` preserves its own newlines.
 import { computed } from 'vue'
+import ImageDiff from './ImageDiff.vue'
 import TextDiff from './TextDiff.vue'
-import type { EditFieldConfig } from './types'
+import type { EditFieldConfig, ImageDiffEntry } from './types'
 import { diffItems, formatEditItem, formatEditValue } from './utils'
 
 const props = defineProps<{
@@ -46,21 +47,36 @@ const items = computed(() =>
 const resolveImage = (value: unknown): string =>
   props.config?.resolveImage ? props.config.resolveImage(value) : ''
 
-// Image hint covers both a scalar imagehash field and image lists.
+// Image hint covers both a scalar imagehash field (banner) and image lists
+// (covers / screenshots).
 const isImage = computed(() => props.diffHint === 'image')
-const imagePairs = computed(() => {
+
+const imageEntry = (value: unknown): ImageDiffEntry => ({
+  url: resolveImage(value),
+  text: formatEditItem(value, props.config)
+})
+
+const present = (value: unknown): boolean =>
+  value !== null && value !== undefined && value !== ''
+
+const imageDiff = computed(() => {
   if (!isImage.value) {
-    return { removed: [] as string[], added: [] as string[] }
+    return { removed: [], added: [], keptCount: 0 }
   }
   if (Array.isArray(props.from) || Array.isArray(props.to)) {
     return {
-      removed: items.value.removed.map(resolveImage).filter((u) => u !== ''),
-      added: items.value.added.map(resolveImage).filter((u) => u !== '')
+      removed: items.value.removed.map(imageEntry),
+      added: items.value.added.map(imageEntry),
+      // Unchanged images are counted, not drawn — see ImageDiff.
+      keptCount: items.value.kept.length
     }
   }
+  // Scalar imagehash: a replace, so both sides are a change. An empty side is
+  // an image being cleared or set for the first time, not an entry to draw.
   return {
-    removed: [resolveImage(props.from)].filter((u) => u !== ''),
-    added: [resolveImage(props.to)].filter((u) => u !== '')
+    removed: present(props.from) ? [imageEntry(props.from)] : [],
+    added: present(props.to) ? [imageEntry(props.to)] : [],
+    keptCount: 0
   }
 })
 </script>
@@ -69,39 +85,13 @@ const imagePairs = computed(() => {
   <div class="space-y-1">
     <p class="text-default-700 text-sm font-semibold">{{ label }}</p>
 
-    <!-- image: side-by-side previews (falls back to text when unresolvable) -->
-    <div v-if="isImage" class="grid grid-cols-2 gap-2">
-      <div class="bg-danger-50 space-y-1 rounded p-2">
-        <p class="text-danger-600 text-xs">修改前</p>
-        <div v-if="imagePairs.removed.length" class="flex flex-wrap gap-1">
-          <img
-            v-for="(url, i) in imagePairs.removed"
-            :key="i"
-            :src="url"
-            loading="lazy"
-            class="max-h-24 rounded object-cover"
-          />
-        </div>
-        <p v-else class="text-default-500 text-xs break-all">
-          {{ formatEditValue(from, config) }}
-        </p>
-      </div>
-      <div class="bg-success-50 space-y-1 rounded p-2">
-        <p class="text-success-600 text-xs">修改后</p>
-        <div v-if="imagePairs.added.length" class="flex flex-wrap gap-1">
-          <img
-            v-for="(url, i) in imagePairs.added"
-            :key="i"
-            :src="url"
-            loading="lazy"
-            class="max-h-24 rounded object-cover"
-          />
-        </div>
-        <p v-else class="text-default-500 text-xs break-all">
-          {{ formatEditValue(to, config) }}
-        </p>
-      </div>
-    </div>
+    <!-- image: one unified strip, only the changed pictures drawn -->
+    <ImageDiff
+      v-if="isImage"
+      :removed="imageDiff.removed"
+      :added="imageDiff.added"
+      :kept-count="imageDiff.keptCount"
+    />
 
     <!-- items: added / removed chips -->
     <div v-else-if="diffHint === 'items'" class="space-y-1">

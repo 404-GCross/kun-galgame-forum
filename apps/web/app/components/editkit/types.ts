@@ -157,6 +157,14 @@ export interface EditFieldDiffRow {
   to: unknown
 }
 
+/** One picture in a unified image diff (ImageDiff). */
+export interface ImageDiffEntry {
+  /** Empty when the host config cannot resolve a preview for this item. */
+  url: string
+  /** Human identity, shown when there is no preview to draw. */
+  text: string
+}
+
 /** Minimal display identity the host resolves for uids. */
 export interface EditUser {
   id: number
