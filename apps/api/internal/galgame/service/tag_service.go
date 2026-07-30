@@ -215,8 +215,10 @@ func (s *TagService) GetDetail(
 		Description: preferredIntro(t.Intros),
 		// Tag aliases did not migrate (P2) — the canonical vocabulary has no
 		// alias table. Always empty rather than absent so the FE contract holds.
-		Alias:        []string{},
-		Galgame:      listCardsToEntityCards(page.Galgames),
+		Alias:   []string{},
+		Galgame: listCardsToEntityCards(page.Galgames),
+		// Same gated page as the rows — never t.WorkCount (upstream counts the
+		// tag's whole catalogue, published or not, forum-local or not).
 		GalgameCount: page.Total,
 	}, nil
 }

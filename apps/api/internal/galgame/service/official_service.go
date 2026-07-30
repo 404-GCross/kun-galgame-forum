@@ -129,12 +129,17 @@ func (s *OfficialService) GetDetail(
 		// counterpart; the label's own name IS the original in the common case
 		// (a Japanese brand is stored under its Japanese name), and the
 		// alternate spellings are in alias[].
-		Link:         firstLabelLink(o),
-		Category:     o.Kind,
-		Lang:         o.Lang,
-		Description:  preferredIntro(o.Intros),
-		Alias:        emptyStrSliceIfNil(o.Aliases),
-		Galgame:      listCardsToEntityCards(page.Galgames),
+		Link:        firstLabelLink(o),
+		Category:    o.Kind,
+		Lang:        o.Lang,
+		Description: preferredIntro(o.Intros),
+		Alias:       emptyStrSliceIfNil(o.Aliases),
+		Galgame:     listCardsToEntityCards(page.Galgames),
+		// The header count and the pager MUST come from the same gated page the
+		// rows do. o.WorkCount (upstream, nsfw-aware) is right there and is the
+		// wrong answer: it counts the label's whole catalogue, published or not
+		// and forum-local or not, so using it would put a pager on works this
+		// page cannot list.
 		GalgameCount: page.Total,
 	}, nil
 }

@@ -418,6 +418,49 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	})
 }
 
+// TestCatalogMemberGIDs_PublishedMembersOnly pins the entity-page member walk's
+// outgoing query, one pin per taxonomy family. The regression it guards is
+// invisible from this side — the 词条 page's list quietly WIDENS to include
+// entries the wiki claimed but never published (state=draft), which then render
+// as 未发布 cards on a public browse page (doc 106 §37, extended to the entity
+// pages by R4). `claimed=true` alone does not exclude them.
+func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
+	for family, filter := range map[string]string{
+		"tag":    "tag_id",
+		"label":  "label_id",
+		"engine": "engine_id",
+	} {
+		t.Run(family, func(t *testing.T) {
+			rec := &catalogRecorder{}
+			srv := catalogStub(t, rec, map[string]int64{}, map[int64]string{})
+			c := New(srv.URL, "nm_test_key", "")
+
+			if _, err := c.CatalogMemberGIDs(context.Background(),
+				url.Values{filter: {"5"}}, true, 200); err != nil {
+				t.Fatalf("CatalogMemberGIDs: %v", err)
+			}
+			if p := rec.pathAt(0); p != "/v1/catalog/works" {
+				t.Fatalf("path = %q, want /v1/catalog/works", p)
+			}
+			q := rec.queryAt(0)
+			if got := q.Get("claim_state"); got != "live" {
+				t.Errorf("claim_state = %q, want live — without it the %s page lists unpublished works", got, family)
+			}
+			// Still bounded to addressable rows: until the supplying wave ships,
+			// `claimed` is the only gate the face actually understands.
+			if got := q.Get("claimed"); got != "true" {
+				t.Errorf("claimed = %q, want true", got)
+			}
+			if got := q.Get(filter); got != "5" {
+				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
+			}
+			if q.Get("nsfw") != "" {
+				t.Error("an SFW caller must not open the nsfw gate")
+			}
+		})
+	}
+}
+
 // TestProductLocaleProjection pins the D7 language table — the mapping a card's
 // `original_language` label rides on.
 func TestProductLocaleProjection(t *testing.T) {

@@ -385,6 +385,11 @@ func (c *GalgameClient) CatalogWorksList(ctx context.Context, q url.Values) (*Ca
 // about. Only CLAIMED works contribute: an unclaimed catalog work has no
 // kungal row to filter, and no gid to key one by.
 //
+// The population is PUBLISHED members only (doc 106 §37, extended to the entity
+// pages by R4): `claimed=true` alone admits an entry the wiki has claimed but
+// never published — state=draft — which then rendered on the 词条 page as a
+// 未发布 card. That is the entity-page instance of the search leak.
+//
 // pageCap bounds the walk; a taxonomy term with more members than that is
 // truncated rather than allowed to fan out unboundedly on a request path.
 func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]int, *errors.AppError) {
@@ -397,8 +402,12 @@ func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values
 		}
 		q.Set("limit", strconv.Itoa(catalogIDsChunk))
 		// Only claimed works can map to a kungal gid, so let the face do that
-		// filtering instead of paging through works we would discard.
+		// filtering instead of paging through works we would discard. The two
+		// gates are NOT redundant while the supplying wave is undeployed: the
+		// unknown claim_state is ignored then, and `claimed` is what still
+		// bounds the walk to addressable rows.
 		q.Set("claimed", "true")
+		q.Set("claim_state", claimStateLive)
 		applyNSFW(q, contentLimitFor(isSFW))
 		if cursor != "" {
 			q.Set("cursor", cursor)

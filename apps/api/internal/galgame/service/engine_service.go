@@ -97,11 +97,13 @@ func (s *EngineService) GetDetail(
 	}
 
 	return &dto.EngineDetail{
-		ID:           int(e.ID),
-		Name:         e.Name,
-		Description:  e.Description,
-		Alias:        emptyStrSliceIfNil(e.Aliases),
-		Galgame:      listCardsToEntityCards(page.Galgames),
+		ID:          int(e.ID),
+		Name:        e.Name,
+		Description: e.Description,
+		Alias:       emptyStrSliceIfNil(e.Aliases),
+		Galgame:     listCardsToEntityCards(page.Galgames),
+		// Same gated page as the rows — never e.WorkCount (upstream counts the
+		// engine's whole catalogue, published or not, forum-local or not).
 		GalgameCount: page.Total,
 	}, nil
 }
