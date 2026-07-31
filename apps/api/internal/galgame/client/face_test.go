@@ -176,19 +176,4 @@ func TestFaceSelection_WithKey(t *testing.T) {
 			t.Errorf("Authorization = %q, want empty (no Basic auth on feeds)", rec.auth)
 		}
 	})
-
-	t.Run("revisions feed → internal + key", func(t *testing.T) {
-		if _, err := c.RecentRevisions(ctx, 0, 10); err != nil {
-			t.Fatalf("RecentRevisions: %v", err)
-		}
-		if rec.path != "/internal/galgame/revisions/recent" {
-			t.Errorf("path = %q, want /internal/galgame/revisions/recent", rec.path)
-		}
-		if rec.apiKey != "nm_test_key" {
-			t.Errorf("X-API-Key = %q, want nm_test_key on internal feed face", rec.apiKey)
-		}
-		if rec.auth != "" {
-			t.Errorf("Authorization = %q, want empty (no Basic auth on feeds)", rec.auth)
-		}
-	})
 }

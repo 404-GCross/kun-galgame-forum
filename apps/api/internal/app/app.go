@@ -505,9 +505,11 @@ func New(cfg *config.Config) *App {
 	galgameMessageRepo := galgameRepo.NewGalgameMessageRepository(db)
 	galgameMessageSvc := galgameService.NewGalgameMessageService(gc, galgameMessageRepo)
 	galgameMessageSync := galgameService.NewGalgameMessageSync(gc, galgameLocalRepo, userStateRepo, rdb)
-	// Mirrors galgame merged-revision (edit) events into galgame_activity so the
-	// forum activity timeline can show galgame edits (see migration 021).
-	galgameRevisionSync := galgameService.NewGalgameRevisionSync(gc, db, rdb)
+	// Mirrors editing-engine revisions into galgame_activity so the forum
+	// activity timeline can show galgame edits (migrations 021 + 067). Reads the
+	// catalog S2S client, not the wiki client: the engine is the author of every
+	// galgame field edit, so its feed is the authoritative source (wave 156 N3).
+	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, db, rdb)
 
 	// Website
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)

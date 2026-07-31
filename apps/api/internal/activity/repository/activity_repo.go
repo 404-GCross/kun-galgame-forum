@@ -507,8 +507,13 @@ func (r *ActivityRepository) FetchEditRevisions(activityIDs []int) (map[int]Edit
 		RevisionID int  `gorm:"column:wiki_revision_id"`
 		RevisionNo *int `gorm:"column:wiki_revision_number"`
 	}
+	// COALESCE because wiki_revision_id is NULL on every engine-fed row (wave
+	// 156 N3): those rows are identified by edit_revision_id and always carry a
+	// revision NUMBER, so they never need the id→number fallback that this
+	// column feeds. Scanning a NULL into the non-pointer int would error out and
+	// take the whole timeline page with it.
 	if err := r.db.Raw(`
-		SELECT id, wiki_revision_id, wiki_revision_number
+		SELECT id, COALESCE(wiki_revision_id, 0) AS wiki_revision_id, wiki_revision_number
 		FROM galgame_activity
 		WHERE id IN ?`, activityIDs).Scan(&rows).Error; err != nil {
 		return out, err

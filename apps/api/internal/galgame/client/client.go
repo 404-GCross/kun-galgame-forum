@@ -784,46 +784,6 @@ func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit i
 	return &feed, nil
 }
 
-// NextMoeRevision matches one item in /galgame/revisions/recent — a merged
-// (edit-landed) galgame revision. UserID is the editor (correct actor).
-type NextMoeRevision struct {
-	ID        int64  `json:"id"`
-	GalgameID int    `json:"galgame_id"`
-	Revision  int    `json:"revision"` // per-galgame number — the diff endpoint's :rev
-	UserID    int    `json:"user_id"`
-	Action    string `json:"action"`
-	Created   string `json:"created"`
-}
-
-// NextMoeRevisionFeed is the envelope returned by /galgame/revisions/recent.
-type NextMoeRevisionFeed struct {
-	Items   []NextMoeRevision `json:"items"`
-	HasMore bool              `json:"has_more"`
-}
-
-// RecentRevisions pulls a batch of merged-revision (edit) events from the
-// internal face using the service X-API-Key — the galgame-revision sync cron's
-// source for mirroring galgame edits into the local activity timeline.
-func (c *GalgameClient) RecentRevisions(ctx context.Context, sinceID int64, limit int) (*NextMoeRevisionFeed, *errors.AppError) {
-	if limit <= 0 {
-		limit = 1000
-	}
-
-	query := url.Values{
-		"since_id": {strconv.FormatInt(sinceID, 10)},
-		"limit":    {strconv.Itoa(limit)},
-	}
-	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/revisions/recent", "", query, c.apiKey)
-	if appErr != nil {
-		return nil, appErr
-	}
-	var feed NextMoeRevisionFeed
-	if err := json.Unmarshal(data, &feed); err != nil {
-		return nil, errors.ErrInternal("解析 galgame 修订 feed 失败")
-	}
-	return &feed, nil
-}
-
 // bodySnippet trims an upstream body for safe logging / error context.
 // Galgame errors are tiny JSON; a misconfigured upstream may return a large
 // HTML page, so cap it.

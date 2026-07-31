@@ -80,7 +80,7 @@ func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameMe
 		c.AddFunc("*/10 * * * *", galgameMessageSync)
 	}
 
-	// Every 10 min: mirror galgame merged-revision (edit) events into the local
+	// Every 10 min: mirror editing-engine revisions into the local
 	// galgame_activity timeline source. Same cadence as the message sync.
 	if galgameRevisionSync != nil {
 		c.AddFunc("*/10 * * * *", galgameRevisionSync)
