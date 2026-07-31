@@ -102,28 +102,6 @@ func (r *GalgameRepository) EnsureLocalStub(tx *gorm.DB, galgameID int) error {
 		Create(&model.GalgameLocal{ID: galgameID}).Error
 }
 
-// ReserveGalgameID hands out the next id from the local sequence WITHOUT
-// creating a row.
-//
-// The registry requires the product to name the id its submission will live at,
-// and kungal's id space is this table's — so a submission needs an id before it
-// exists anywhere. Inserting the stub here to get one would publish it: the
-// browse list is `FROM galgame g`, so a row IS an entry in the catalogue, and a
-// submission awaiting review is not one. The stub is created later, by the
-// claim-event cron, at the moment the claim actually goes live — which is
-// exactly the invariant the wiki flow had ("pending submissions get no stub").
-//
-// A submission that then fails to file leaves a hole in the sequence. That is
-// what sequences are for; the alternative is holding a database transaction
-// open across an HTTP call to another service.
-func (r *GalgameRepository) ReserveGalgameID(tx *gorm.DB) (int, error) {
-	var id int
-	if err := tx.Raw(`SELECT nextval('galgame_id_seq')`).Scan(&id).Error; err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
 // Touch marks a CONTENT update on a galgame (claim / merged edit) so the kungal
 // list (ORDER BY g.resource_update_time DESC) surfaces it: it ensures the local
 // stub exists, then sets `resource_update_time = now`. Engagement (like /

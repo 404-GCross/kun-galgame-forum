@@ -75,16 +75,18 @@ type SubmitResult struct {
 
 // Submit files a brand-new entry.
 //
-// THE ORDER IS THE INTERESTING PART. The id is reserved from kungal's own
-// sequence FIRST, because the registry records the id it is told and never
-// invents one — the product owns its key space. But only the id is taken, not a
-// row: the browse list is `FROM galgame`, so a row IS an entry in the
-// catalogue, and a submission awaiting review is not one. The stub is created
-// later by the claim-event cron, at the moment the claim actually goes live —
-// which preserves the invariant the wiki flow had ("a pending submission gets
-// no stub") without needing a second copy of the lifecycle locally.
+// THE ID COMES BACK, IT IS NOT SENT. kungal names no id: the registry mints the
+// work and the claim adopts that work's own primary key as the product id, which
+// the response returns and which is the gid from here on. One allocator for one
+// key space — the alternative, a local sequence advancing alongside the
+// registry's, is only correct while somebody keeps reseeding it, and its failure
+// mode is a silent collision that surfaces as "you already submitted this".
 //
-// A failed mint therefore leaves nothing behind but a gap in the sequence.
+// Nothing local is written here either way. The browse list is `FROM galgame`,
+// so a row IS an entry in the catalogue and a submission awaiting review is not
+// one; the stub is created later by the claim-event cron at the moment the claim
+// goes live. That is the invariant the wiki flow had ("a pending submission gets
+// no stub"), kept without a second copy of the lifecycle living locally.
 func (s *SubmissionService) Submit(
 	ctx context.Context,
 	actor catalogclient.EditActor,
@@ -97,18 +99,14 @@ func (s *SubmissionService) Submit(
 	if appErr != nil {
 		return nil, appErr
 	}
-	gid, err := s.galgameRepo.ReserveGalgameID(s.galgameRepo.DB().WithContext(ctx))
-	if err != nil {
-		slog.Error("submit: 预留本地 galgame id 失败", "error", err)
-		return nil, errors.ErrInternal("提交失败, 请稍后重试")
-	}
 	res, err := s.catalog.SubmitWork(ctx, catalogclient.WorkSubmitRequest{
 		Site: submissionSite, Actor: actor,
-		ProductWorkID: int64(gid), Fields: form.Fields(), Released: released,
+		Fields: form.Fields(), Released: released,
 	})
 	if err != nil {
 		return nil, claimActionError(err)
 	}
+	gid := int(res.ProductWorkID)
 	// The banner is not a submittable facet — a cover is a REFERENCE to bytes
 	// that must already exist, so it rides as the submission's first edit,
 	// visible to the reviewer alongside it. Best-effort: a failure here costs

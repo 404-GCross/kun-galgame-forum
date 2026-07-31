@@ -98,13 +98,22 @@ func (c *Client) ActOnClaim(ctx context.Context, workID int64, action string, re
 // the semantic actions). Covers and screenshots are not accepted either — the
 // bytes are uploaded first and attached as a later edit.
 //
-// ProductWorkID is allocated by the PRODUCT. The registry records the id it is
-// told and never invents one, which is what makes the forum's own id space
-// authoritative for its own entries.
+// ProductWorkID is OMITTED by kungal, and that is the whole id story: the
+// registry issues the identity and the claim adopts the minted work's own id,
+// which the response returns. One allocator instead of two.
+//
+// The alternative — the forum handing out ids from its own sequence — is what
+// this replaces, and it was a standing hazard rather than a mere preference:
+// two sequences advancing independently over one shared key space stay correct
+// only for as long as somebody keeps reseeding the follower, and the failure is
+// silent (a collision reads as "your submission already exists"). Adopting a
+// primary key is unique by construction and has nothing to keep in step.
 type WorkSubmitRequest struct {
-	Site          string          `json:"site"`
-	Actor         EditActor       `json:"actor"`
-	ProductWorkID int64           `json:"product_work_id"`
+	Site  string    `json:"site"`
+	Actor EditActor `json:"actor"`
+	// ProductWorkID anchors the claim at an id the product allocated. Omit it
+	// (0) to let the registry issue one; `omitempty` is what carries that.
+	ProductWorkID int64           `json:"product_work_id,omitempty"`
 	Fields        map[string]any  `json:"fields"`
 	Released      *WorkSubmitDate `json:"released,omitempty"`
 }
@@ -120,10 +129,15 @@ type WorkSubmitDate struct {
 
 // WorkSubmitResult is the minted identity plus its birth event.
 type WorkSubmitResult struct {
-	WorkID     int64  `json:"work_id"`
-	ClaimState string `json:"claim_state"`
-	EventID    int64  `json:"event_id"`
-	ReleaseID  int64  `json:"release_id,omitempty"`
+	WorkID int64 `json:"work_id"`
+	// ProductWorkID is the id the claim ended up anchored at. When the request
+	// omitted one it is the registry-issued identity — and therefore the gid
+	// kungal must use from here on. Always read this rather than assuming it
+	// equals WorkID: it is the field that stays correct either way.
+	ProductWorkID int64  `json:"product_work_id"`
+	ClaimState    string `json:"claim_state"`
+	EventID       int64  `json:"event_id"`
+	ReleaseID     int64  `json:"release_id,omitempty"`
 }
 
 // SubmitWork files a new submission. Idempotency is the claim's own unique key
