@@ -127,9 +127,10 @@ func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 
 // SearchWithPending — GET /api/galgame/search/wizard
 //
-// Dedicated endpoint for the 发布向导 flow. Forces include_pending=true so
-// callers don't accidentally use the public search and miss the "你已经
-// 提过这个" cue. Bearer attached so galgame returns this user's pending hits.
+// Dedicated endpoint for the 发布向导 flow: the catalog registry answers "does
+// this game already exist" and the wiki face still answers "…and did YOU
+// already submit it". The two lanes and the reasons they differ live in
+// service.WizardSearchPage; the Bearer is what makes the second one personal.
 //
 // Default search (/api/galgame/search) stays anonymous-only — first-time
 // visitors and SSR don't want "突然在首页看到自己的 pending" UX.
@@ -142,15 +143,9 @@ func (h *SubmissionHandler) SearchWithPending(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrAuthExpired())
 	}
 
-	q := collectQuery(c)
-	q.Set("include_pending", "true")
-	// Publish wizard must surface published games (0, for the "你已经提过这个"
-	// dedup cue) AND claimable VNDB drafts (2). Without status=2 the wizard can't
-	// find the bulk of the catalog that's still unclaimed VNDB drafts.
-	q.Set("status", "0,2")
-	data, appErr := h.svc.SearchWithPending(c.Context(), token, q)
+	page, appErr := h.svc.SearchWithPending(c.Context(), token, collectQuery(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	return c.JSON(fiber.Map{"code": 0, "message": "成功", "data": json.RawMessage(data)})
+	return response.OK(c, page)
 }

@@ -8,9 +8,16 @@
 // surfaces them; users don't need to know VNDB ids):
 //   1. Search by name → resolve to one of:
 //        status=0 已发布   → 前往发布资源 (/galgame/:gid)
-//        status=2 VNDB 草稿 → 认领并发布 (POST /:gid/claim, +3 萌萌点)
+//        status=2 草稿      → 认领并发布 (POST /:gid/claim, +3 萌萌点)
 //        status=3/4 自己的草稿 → 继续编辑 (/edit/galgame/draft/:gid)
 //   2. Nothing matches → 新建申请 → /edit/galgame/create
+//
+// `items` now comes off the catalog registry (claim_state=live,draft) while
+// `pending` — the caller's OWN submissions — still comes off the wiki face.
+// One consequence is visible here: the registry cannot tell an unclaimed VNDB
+// draft apart from someone else's submission awaiting review, so both arrive as
+// status=2 and the 认领 attempt is what discovers the difference (the wiki
+// refuses it). The copy below says so rather than pretending otherwise.
 
 interface SearchHit {
   id: number
@@ -66,8 +73,8 @@ const isClaiming = ref(false)
 
 const handleClaim = async (gid: number) => {
   const ok = await useComponentMessageStore().alert(
-    '认领此 VNDB 草稿吗?',
-    '认领后该条目立即变为已发布状态, 您将成为该 Galgame 的创建者, 并获得 +3 萌萌点。'
+    '认领此草稿吗?',
+    '认领后该条目立即变为已发布状态, 您将成为该 Galgame 的创建者, 并获得 +3 萌萌点。若该条目其实是他人正在审核中的投稿, 认领会被拒绝。'
   )
   if (!ok) return
 
@@ -146,8 +153,9 @@ onMounted(() => {
         </KunButton>
       </div>
       <p class="text-default-500 text-sm">
-        搜索覆盖已发布的 Galgame 及系统从 VNDB 同步的草稿 (可一键认领),
-        同时会显示您自己的待审核 / 已拒绝草稿。
+        搜索覆盖已发布的 Galgame 及尚未发布的草稿 (可一键认领),
+        同时会显示您自己的待审核 / 已拒绝草稿。草稿中可能包含他人正在审核中的投稿,
+        这类条目无法被认领。
       </p>
     </div>
 
@@ -185,9 +193,9 @@ onMounted(() => {
       </div>
 
       <!--
-        items: search hits. The wiki index also surfaces VNDB-source
-        drafts (status=2, the rows seeded by sync-vndb), so the action
-        MUST branch on status:
+        items: search hits. The registry also surfaces unpublished
+        entries (status=2, projected from claim_state=draft), so the
+        action MUST branch on status:
           status=0 已发布 → 前往发布资源
           status=2 VNDB 草稿 → 认领并发布 (status=2 is NOT viewable via
             /galgame/:gid, a blanket detail link would 404)

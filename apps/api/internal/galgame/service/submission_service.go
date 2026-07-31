@@ -132,14 +132,131 @@ func (s *SubmissionService) ListMine(
 	return s.galgameClient.GetWithToken(ctx, "/galgame/mine", token, query)
 }
 
-// SearchWithPending proxies GET /galgame/search?include_pending=true — the
-// "发布向导" flow. The handler is expected to have already set the
-// include_pending flag; we forward as-is so galgame sees the caller's JWT.userID
-// and merges the caller's pending hits into the response.
+// ─── the publish wizard search ───────────────────────────────────────────
+
+// wizardSearchInclude is the include= vocabulary a wizard row renders: the four
+// localized titles, the cover art, and the identity anchors (the row prints the
+// VNDB id).
+const wizardSearchInclude = "names,covers,refs"
+
+// wizardDefaultLimit mirrors the wizard's own page size; the FE always sends
+// one, this is only the floor for a hand-made request.
+const wizardDefaultLimit = 12
+
+// WizardSearchPage is the 发布向导 payload. Its two halves are answered by two
+// different faces, and that split is deliberate:
+//
+//   - Items is the CATALOG works search (claimed=true, claim_state=live,draft).
+//     The registry is the supply of record for "does this game already exist",
+//     which is the wizard's entire job — a miss here is a duplicate submission.
+//   - Pending is the caller's OWN status 3/4 submissions. The catalog has no
+//     per-user read face for that backlog (doc 156 P3: claim events only exist
+//     for post-N2 actions, and the whole population here predates them), so
+//     this half keeps querying the wiki face and is forwarded verbatim.
+type WizardSearchPage struct {
+	Items   []client.GalgameBrief `json:"items"`
+	Pending json.RawMessage       `json:"pending"`
+	Total   int64                 `json:"total"`
+}
+
+// SearchWithPending serves GET /galgame/search/wizard.
 func (s *SubmissionService) SearchWithPending(
 	ctx context.Context,
 	token string,
 	query url.Values,
+) (*WizardSearchPage, *errors.AppError) {
+	items, total, appErr := s.wizardItems(ctx, query)
+	if appErr != nil {
+		return nil, appErr
+	}
+	pending, appErr := s.wizardPending(ctx, token, query)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return &WizardSearchPage{Items: items, Pending: pending, Total: total}, nil
+}
+
+// wizardItems runs the catalog search lane.
+//
+// `claim_state=live,draft` is the registry spelling of the wiki's old
+// `status=0,2` filter, with one KNOWN and accepted widening: the catalog
+// projects wiki status 2 (unclaimed VNDB draft) and status 3 (someone else's
+// submission awaiting review) onto the same `draft` state, so other people's
+// pending submissions now surface here too. That is the right side of the trade
+// — an entry the wizard cannot see is an entry that gets submitted twice — and
+// the two are physically indistinguishable on the catalog wire, so the row
+// cannot be labelled any more precisely than "草稿". Claiming one of them still
+// goes to the wiki, which answers with the correct refusal.
+//
+// Only the AGE gate is opened, exactly as the wiki lane had it: the wizard is a
+// dedup tool for an authenticated submitter, and filtering its supply by the
+// reader's editorial preference would hide the very entries it exists to
+// surface.
+func (s *SubmissionService) wizardItems(
+	ctx context.Context,
+	query url.Values,
+) ([]client.GalgameBrief, int64, *errors.AppError) {
+	q := url.Values{
+		"q":           {query.Get("q")},
+		"page":        {strconv.Itoa(atoiOr(query.Get("page"), 1))},
+		"limit":       {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
+		"claimed":     {"true"},
+		"claim_state": {client.ClaimStateLiveOrDraft},
+		"include":     {wizardSearchInclude},
+	}
+	client.OpenPopulation(q)
+
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
+	if appErr != nil {
+		return nil, 0, appErr
+	}
+	items := make([]client.GalgameBrief, 0, len(res.Items))
+	for i := range res.Items {
+		row := &res.Items[i]
+		// A withdrawn claim must never be offered for 认领, and a row with no
+		// gid has no wizard action at all (every branch of the card links or
+		// posts by gid). `claimed=true` should already exclude the latter.
+		if !client.CatalogItemRenderable(row) || client.CatalogItemGID(row) == 0 {
+			continue
+		}
+		b := client.CatalogItemToBrief(row)
+		// The card reads `banner`; on the catalog wire the art arrives as the
+		// derived effective banner, which IS the same image the wiki lane put
+		// in that field.
+		b.Banner = b.EffectiveBannerURL
+		items = append(items, b)
+	}
+	return items, res.Total, nil
+}
+
+// wizardPending forwards the caller's own pending/declined submissions off the
+// wiki face. The query is the pre-switchover one byte for byte — include_pending
+// plus status=0,2 — because the face merges the caller's hits only when it is
+// serving a real search; we then keep just that half of the envelope.
+func (s *SubmissionService) wizardPending(
+	ctx context.Context,
+	token string,
+	query url.Values,
 ) (json.RawMessage, *errors.AppError) {
-	return s.galgameClient.GetWithToken(ctx, "/galgame/search", token, query)
+	q := make(url.Values, len(query)+2)
+	for k, v := range query {
+		q[k] = v
+	}
+	q.Set("include_pending", "true")
+	q.Set("status", "0,2")
+
+	data, appErr := s.galgameClient.GetWithToken(ctx, "/galgame/search", token, q)
+	if appErr != nil {
+		return nil, appErr
+	}
+	var parsed struct {
+		Pending json.RawMessage `json:"pending"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return nil, errors.ErrInternal("解析投稿搜索响应失败")
+	}
+	if len(parsed.Pending) == 0 {
+		return json.RawMessage("[]"), nil
+	}
+	return parsed.Pending, nil
 }

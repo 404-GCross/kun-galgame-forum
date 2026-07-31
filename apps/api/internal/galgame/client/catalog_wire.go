@@ -315,6 +315,12 @@ const (
 	claimStateHidden = "hidden"
 )
 
+// ClaimStateLiveOrDraft is the claim_state filter for lanes that want every
+// entry the wiki HAS, published or not — i.e. the publish wizard's dedup
+// supply. Public browse lanes want `live` alone (doc 106 §37); this one is the
+// deliberate exception.
+const ClaimStateLiveOrDraft = claimStateLive + "," + claimStateDraft
+
 // statusFromClaimState maps a claim state onto the kungal card status code.
 func statusFromClaimState(state string) int {
 	if state == claimStateLive {
