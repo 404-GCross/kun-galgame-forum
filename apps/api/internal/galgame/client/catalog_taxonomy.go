@@ -425,7 +425,7 @@ func joinCSV(s []string) string {
 // found=false on an unregistered id (the caller 404s).
 func (c *GalgameClient) LookupWikiLabel(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
 	q := url.Values{
-		"source":      {siteGalgameWiki},
+		"source":      {AnchorSourceCurated},
 		"external_id": {strconv.Itoa(wikiID)},
 		"type":        {"label"},
 		// Identity resolution is not content: gating it would make an r18

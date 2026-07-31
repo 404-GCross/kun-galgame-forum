@@ -94,11 +94,11 @@ func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, wo
 			items := make([]string, 0, len(body.Items))
 			for _, it := range body.Items {
 				if id, ok := lookup[it.ExternalID]; ok {
-					items = append(items, `{"source":"galgame_wiki","external_id":"`+it.ExternalID+
+					items = append(items, `{"source":"curated","external_id":"`+it.ExternalID+
 						`","type":"work","work":{"id":`+itoa(id)+`}}`)
 					continue
 				}
-				items = append(items, `{"source":"galgame_wiki","external_id":"`+it.ExternalID+
+				items = append(items, `{"source":"curated","external_id":"`+it.ExternalID+
 					`","type":"work","work":null}`)
 			}
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` + strings.Join(items, ",") + `]}}`))
@@ -149,7 +149,7 @@ func atoi64(s string) int64 {
 func liveRow(catalogID int64, gid int, name string) string {
 	return `{"id":` + itoa(catalogID) + `,"medium":"galgame","display_name":"` + name +
 		`","content_rating":"all_ages","olang":"ja","release_date":"2024-06-14",` +
-		`"claimed_by":{"site":"galgame_wiki","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
+		`"claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
 		`"updated":"2026-01-01T00:00:00Z","names":{"ja-jp":"` + name + `","zh-cn":"` + name + `CN"},` +
 		`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null},` +
 		`"refs":[{"source":"dlsite","external_id":"RJ01"},{"source":"vndb","external_id":"v19658"}]}`

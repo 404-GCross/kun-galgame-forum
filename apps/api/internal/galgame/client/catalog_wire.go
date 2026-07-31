@@ -31,7 +31,7 @@ import (
 // ─── catalog wire structs (only the fields this client reads) ─────────────
 
 // catClaimedBy is the cross-face content pointer. WorkID is the kungal gid
-// whenever Site == "galgame_wiki" — the ONLY bridge between the catalog id
+// whenever Site == ClaimSiteKungal — the ONLY bridge between the catalog id
 // space and kungal's own primary key (doc 106 R3: no dual-id model).
 //
 // State is the catalog-owned claim visibility (live | draft | hidden), NOT the
@@ -358,14 +358,26 @@ func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 // key spaces overlap, and a catalog id used as a gid would attach another
 // game's local stats (doc 106 R3).
 func (it *CatalogWorkListItem) gid() int {
-	if it.ClaimedBy == nil || it.ClaimedBy.Site != siteGalgameWiki {
+	if it.ClaimedBy == nil || it.ClaimedBy.Site != ClaimSiteKungal {
 		return 0
 	}
 	return it.ClaimedBy.WorkID
 }
 
-// siteGalgameWiki is the catalog claim site key for kungal's galgame entries.
-const siteGalgameWiki = "galgame_wiki"
+// ClaimSiteKungal is the catalog CLAIM SITE key for kungal's galgame entries —
+// the value `claimed_by.site` carries and the tenant the lifecycle actions are
+// filed under.
+//
+// It used to read `galgame_wiki`, and it used to be the SAME constant as the
+// external-ref source label below. They are two different namespaces that
+// merely agreed on a string for as long as the wiki was both the claiming
+// product and the provenance of the bridged rows, and they stop agreeing in
+// the W1 window: the re-site step rewrites `catalog_work.site` to `kungal`
+// while the source registry renames source 12's key to `curated`. Splitting
+// them is what lets each half be paired with the step that actually flips it —
+// see the P3 choreography table. Sharing one constant would have made the
+// second flip silently undo the first.
+const ClaimSiteKungal = "kungal"
 
 // refsMap flattens the exact identity anchors into the open source→id map the
 // kungal briefs carry (kungal reads "dlsite" for the 补票 purchase link).

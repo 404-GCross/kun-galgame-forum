@@ -34,6 +34,20 @@ import (
 // discover the limit as a failure.
 const catalogIDsChunk = 100
 
+// AnchorSourceCurated is the catalog_source KEY of source 12 — the provenance
+// under which every kungal entry's external_ref anchor is filed, and therefore
+// the only handle the gid -> work id bridge has.
+//
+// It is NOT the claim site (client.ClaimSiteKungal). The two were the same
+// string, `galgame_wiki`, for as long as the wiki was both the claiming product
+// and the provenance of the bridged rows; the W1 window separates them, because
+// the source registry renames source 12's key to `curated` while the re-site
+// step moves the claim to `kungal`. The source ID (12) does not move — only its
+// key — so this constant and the infra rename are ONE same-window pair: flip
+// them apart and every gid resolves to nothing, which reads as "every galgame
+// page 404s", not as an error anyone would trace to a renamed label.
+const AnchorSourceCurated = "curated"
+
 // Lookup memo TTLs. A HIT is a registry identity — stable for the lifetime of
 // both rows — so it is cached long. A MISS is not stable: the nightly
 // wikirescue pass registers newly created wiki entries (doc 106 R6), so a miss
@@ -161,7 +175,7 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		items := make([]map[string]string, 0, len(chunk))
 		for _, gid := range chunk {
 			items = append(items, map[string]string{
-				"source":      siteGalgameWiki,
+				"source":      AnchorSourceCurated,
 				"external_id": strconv.Itoa(gid),
 				"type":        "work",
 			})

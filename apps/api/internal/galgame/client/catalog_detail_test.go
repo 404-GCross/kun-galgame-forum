@@ -38,7 +38,7 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.S
 		switch {
 		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				`{"source":"galgame_wiki","external_id":"` + itoa(int64(gid)) +
+				`{"source":"curated","external_id":"` + itoa(int64(gid)) +
 				`","type":"work","work":{"id":` + itoa(catalogID) + `}}]}}`))
 		case req.URL.Path == "/v1/catalog/works/"+itoa(catalogID):
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":` + body + `}`))

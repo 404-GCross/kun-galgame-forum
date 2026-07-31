@@ -41,12 +41,12 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			r.catalogQ = req.URL.Query()
 			body = `{"code":0,"message":"ok","data":{"total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
-			   "claimed_by":{"site":"galgame_wiki","work_id":292,"state":"live"},
+			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
 			   "names":{"ja-jp":"白恋サクラ"},"refs":[{"source":"vndb","external_id":"v22610"}]},
 			  {"id":12,"display_name":"B","cover":"",
-			   "claimed_by":{"site":"galgame_wiki","work_id":9978,"state":"draft"}},
+			   "claimed_by":{"site":"kungal","work_id":9978,"state":"draft"}},
 			  {"id":13,"display_name":"withdrawn","cover":"",
-			   "claimed_by":{"site":"galgame_wiki","work_id":404,"state":"hidden"}},
+			   "claimed_by":{"site":"kungal","work_id":404,"state":"hidden"}},
 			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null}
 			]}}`
 		case strings.HasSuffix(req.URL.Path, "/galgame/search"):
