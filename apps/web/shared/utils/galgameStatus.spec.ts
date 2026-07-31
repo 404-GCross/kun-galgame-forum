@@ -6,31 +6,7 @@
 // auto-imported getPreferredLanguageText (which itself consults the
 // settings store for the user's locale priority).
 import { describe, it, expect } from 'vitest'
-import { galgameStatusBadge, galgameNameFromWire } from './galgameStatus'
-
-describe('galgameStatusBadge', () => {
-  it('maps each known status to the right (label,color)', () => {
-    // GalgameStatus enum: 0=Published, 1=Banned, 2=VndbDraft, 3=Pending, 4=Declined
-    expect(galgameStatusBadge(0)).toEqual({ label: '已发布', color: 'success' })
-    expect(galgameStatusBadge(1)).toEqual({ label: '已封禁', color: 'default' })
-    expect(galgameStatusBadge(2)).toEqual({
-      label: 'VNDB 草稿',
-      color: 'primary'
-    })
-    expect(galgameStatusBadge(3)).toEqual({ label: '待审核', color: 'warning' })
-    expect(galgameStatusBadge(4)).toEqual({ label: '已拒绝', color: 'danger' })
-  })
-
-  it('returns 未知/default for unknown / undefined status (intentional)', () => {
-    expect(galgameStatusBadge(undefined)).toEqual({
-      label: '未知',
-      color: 'default'
-    })
-    expect(galgameStatusBadge(99)).toEqual({ label: '未知', color: 'default' })
-    // -1 is also unknown; never silently treated as Published.
-    expect(galgameStatusBadge(-1)).toEqual({ label: '未知', color: 'default' })
-  })
-})
+import { galgameNameFromWire } from './galgameStatus'
 
 describe('galgameNameFromWire', () => {
   it('returns a localised name when at least one field is set', () => {

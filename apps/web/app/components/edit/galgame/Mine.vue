@@ -1,11 +1,14 @@
 <script setup lang="ts">
-// "我的提交" — lists the current user's pending/declined galgame drafts
-// served by GET /api/galgame/mine. This is the post-submit landing page
-// (replacing the legacy redirect to /galgame/:gid, which would 404 for
-// the submitter while status=3 is anonymously invisible).
+// "我的提交" — the works whose lifecycle the current user moved, served by
+// GET /api/galgame/mine off the registry's per-user claim face.
 //
-// See docs/galgame_wiki/07-submission.md §GET /galgame/mine for the
-// upstream wire format. Kungal forwards verbatim — no enrichment.
+// Each row carries the work's LATEST transition by anyone, which is why a
+// decline reason shows up here without a second request: what a submitter needs
+// on their own submission is the reviewer's verdict, an event they did not
+// cause.
+//
+// This is the post-submit landing page — a submission awaiting review has no
+// public page to redirect to.
 //
 // TEMPLATE SINGLE-ROOT: the root <KunCard> renders unconditionally and
 // must be the *only* top-level template node — NOT preceded by a
@@ -16,42 +19,61 @@
 // `v-if="data"` root has the same effect (empty comment vnode on
 // fetch failure). Hence: all conditional content lives INSIDE the card.
 
+// The face is cursor-paged, not offset-paged: this list is being written to
+// while it is read, and a cursor is what makes paging neither skip nor repeat a
+// row. `before` is the previous page's next_before.
 const pageData = reactive({
-  // Default 3,4 = pending + declined. Approved drafts disappear from
-  // this view since they're publicly listable as normal galgames.
-  status: '3,4',
-  page: 1,
+  before: 0,
   limit: 20
 })
 
-const { data, status, refresh } = await useKunFetch<MineGalgameList>(
+const { data, status, refresh } = await useKunFetch<UserClaimList>(
   '/galgame/mine',
   { query: pageData }
 )
 
-// status badge + wire-name resolution are shared (shared/utils/
-// galgameStatus.ts) so this list, the wizard, the draft editor and the
-// admin queue can't drift apart.
-const statusBadge = galgameStatusBadge
-const nameOf = (item: MineGalgameItem) => galgameNameFromWire(item, '(无标题)')
+// State badge is shared (shared/utils/galgameClaimState.ts) so this list, the
+// wizard, the draft editor and the moderation queue cannot drift apart.
+const stateBadge = galgameClaimStateBadge
+const nameOf = (item: UserClaimItem) => item.display_name || '(无标题)'
+// product_work_id IS the gid; a work with no anchor has no kungal page.
+const gidOf = (item: UserClaimItem) => item.product_work_id ?? 0
 
 const isWithdrawing = ref<Record<number, boolean>>({})
 
-const handleWithdraw = async (item: MineGalgameItem) => {
+const handleWithdraw = async (item: UserClaimItem) => {
   const ok = await useComponentMessageStore().alert(
     '确定撤回这条申请吗?',
-    '撤回后将不可恢复, 您仍然可以重新提交一份新的申请。'
+    '撤回后该条目会退回草稿状态, 不再公开展示。您填写的内容不会丢失, 随时可以重新提交。'
   )
   if (!ok) {
     return
   }
-  isWithdrawing.value = { ...isWithdrawing.value, [item.id]: true }
-  const res = await kunFetch<string>(`/galgame/${item.id}`, {
+  const gid = gidOf(item)
+  isWithdrawing.value = { ...isWithdrawing.value, [gid]: true }
+  const res = await kunFetch<string>(`/galgame/${gid}`, {
     method: 'DELETE'
   })
-  isWithdrawing.value = { ...isWithdrawing.value, [item.id]: false }
+  isWithdrawing.value = { ...isWithdrawing.value, [gid]: false }
   if (res !== null) {
     useMessage('已撤回', 'success')
+    refresh()
+  }
+}
+
+// A declined submission goes back to the queue without being re-typed — the
+// content is already on the entry, only its state moves.
+const isResubmitting = ref<Record<number, boolean>>({})
+
+const handleResubmit = async (item: UserClaimItem) => {
+  const gid = gidOf(item)
+  isResubmitting.value = { ...isResubmitting.value, [gid]: true }
+  const res = await kunFetch<unknown>(`/galgame/${gid}/resubmit`, {
+    method: 'POST'
+  })
+  isResubmitting.value = { ...isResubmitting.value, [gid]: false }
+  if (res !== null) {
+    useMessage('已重新提交审核', 'success')
     refresh()
   }
 }
@@ -61,7 +83,7 @@ const handleWithdraw = async (item: MineGalgameItem) => {
   <div class="space-y-4">
     <KunHeader
       name="我的 Galgame 提交"
-      description="您提交的 Galgame 申请, 待审核 / 已拒绝的草稿都会显示在此处。审核通过的 Galgame 会成为公开条目, 不再列在这里。"
+      description="您提交的 Galgame 申请, 审核中 / 已拒绝 / 草稿都会显示在此处。审核通过的 Galgame 会成为公开条目, 不再列在这里。"
     >
       <template #endContent>
         <div class="flex gap-2">
@@ -87,16 +109,9 @@ const handleWithdraw = async (item: MineGalgameItem) => {
     <div v-else-if="data.items.length" class="flex flex-col gap-3">
       <div
         v-for="item in data.items"
-        :key="item.id"
+        :key="item.work_id"
         class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-center"
       >
-        <KunImage
-          :src="getEffectiveBanner(item, { variant: 'mini' }) || '/kungalgame.webp'"
-          loading="lazy"
-          placeholder="/placeholder.webp"
-          class="h-20 w-32 shrink-0 rounded object-cover"
-          :style="{ aspectRatio: '16/9' }"
-        />
         <div class="min-w-0 flex-1 space-y-1">
           <div class="flex flex-wrap items-center gap-2">
             <h3
@@ -107,39 +122,47 @@ const handleWithdraw = async (item: MineGalgameItem) => {
             <KunChip
               size="xs"
               variant="flat"
-              :color="statusBadge(item.status).color"
+              :color="stateBadge(item.claim_state).color"
             >
-              {{ statusBadge(item.status).label }}
+              {{ stateBadge(item.claim_state).label }}
             </KunChip>
           </div>
           <div class="text-default-500 flex flex-wrap items-center gap-2 text-sm">
-            <span>VNDB: {{ item.vndb_id || '—' }}</span>
-            <span>·</span>
-            <span>提交于 <KunTime :time="item.created" /></span>
-            <template v-if="item.updated !== item.created">
+            <span>提交于 <KunTime :time="item.first_acted_at" /></span>
+            <template v-if="item.last_event_at !== item.first_acted_at">
               <span>·</span>
-              <span>最后修改 <KunTime :time="item.updated" /></span>
+              <span>最后处理 <KunTime :time="item.last_event_at" /></span>
             </template>
           </div>
           <div
-            v-if="
-              item.status === GalgameStatus.Declined && item.decline_reason
-            "
+            v-if="item.claim_state === CLAIM_STATE_DECLINED && item.last_reason"
             class="text-danger bg-danger/10 mt-1 rounded-md px-2 py-1 text-sm"
           >
-            被拒原因: {{ item.decline_reason }}
+            被拒原因: {{ item.last_reason }}
           </div>
         </div>
         <div class="flex shrink-0 gap-2">
-          <KunLink :to="`/edit/galgame/draft/${item.id}`">
+          <KunLink :to="`/galgame/${gidOf(item)}/edit`">
             <KunButton size="sm" variant="flat">编辑</KunButton>
           </KunLink>
           <KunButton
+            v-if="item.claim_state === CLAIM_STATE_DECLINED"
+            size="sm"
+            color="primary"
+            variant="flat"
+            :loading="isResubmitting[gidOf(item)]"
+            :disabled="isResubmitting[gidOf(item)]"
+            @click="handleResubmit(item)"
+          >
+            重新提交
+          </KunButton>
+          <KunButton
+            v-else-if="item.claim_state !== CLAIM_STATE_DRAFT"
             size="sm"
             color="danger"
             variant="flat"
-            :loading="isWithdrawing[item.id]"
-            :disabled="isWithdrawing[item.id]"
+            :loading="isWithdrawing[gidOf(item)]"
+            :disabled="isWithdrawing[gidOf(item)]"
             @click="handleWithdraw(item)"
           >
             撤回
@@ -150,11 +173,13 @@ const handleWithdraw = async (item: MineGalgameItem) => {
 
     <KunNull v-else-if="data && !data.items.length" />
 
-    <KunPagination
-      v-if="data && data.total > pageData.limit"
-      v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.total / pageData.limit)"
-      :is-loading="status === 'pending'"
-    />
+    <KunButton
+      v-if="data && data.next_before"
+      variant="flat"
+      :loading="status === 'pending'"
+      @click="pageData.before = data.next_before"
+    >
+      加载更多
+    </KunButton>
   </div>
 </template>

@@ -157,42 +157,50 @@ export interface GalgameCard {
   effective_banner_thumbhash?: string
 }
 
-// MineGalgameItem matches the per-row shape of GET /api/galgame/mine.
-// Wire-format keeps snake_case (passed through verbatim from wiki).
-// See docs/galgame_wiki/07-submission.md §GET /galgame/mine.
+// UserClaimItem is one row of GET /api/galgame/mine — a work whose lifecycle
+// this user moved.
 //
-// Optional name_* / banner_* / vndb_id reflect that wiki's example
-// payload only includes name_zh_cn — other languages may simply be
-// absent for drafts that don't have a translation yet. Marking these
-// required would be a type lie that crashes strict consumers.
-export interface MineGalgameItem {
-  id: number
-  status: number
-  vndb_id?: string
-  name_en_us?: string
-  name_ja_jp?: string
-  name_zh_cn?: string
-  name_zh_tw?: string
-  banner?: string
-  content_limit?: string
-  // U1: wire is snake_case (verbatim from wiki /galgame/mine).
-  release_date?: string | null
-  release_date_tba?: boolean
-  // U2 / K-PR6: kungal walker injects effective_banner_url on the
-  // verbatim wiki wire (banner_image_hash retired in wiki PR5).
-  effective_banner_hash?: string
-  effective_banner_url?: string
-  created: string
-  updated: string
-  // Only present when status=4 (declined): the latest admin decline
-  // reason, lifted from the wiki message payload server-side so the
-  // "我的提交" page shows "被拒 + 原因" without a second /messages/mine
-  // call. omitempty otherwise. See docs/galgame_wiki/07-submission.md.
-  decline_reason?: string
+// It is the registry's per-user claim face verbatim, and it answers a different
+// question from the wiki list it replaces. The wiki listed ROWS THE USER OWNED;
+// this lists works the user ACTED ON, because the registry has no owner column
+// and cannot have one — a registry row outlives any account.
+//
+// The last_* block is the work's most recent transition BY ANYONE, not by this
+// user. That is the point of it: what a submitter needs to see on their own
+// submission is the reviewer's verdict and note, which is by definition an
+// event they did not cause. `last_reason` is where a decline reason arrives,
+// with no second request.
+export interface UserClaimItem {
+  work_id: number
+  display_name: string
+  site: string
+  // product_work_id IS the gid — the id kungal told the registry to record —
+  // so it is what every link and action on this row is keyed by. Nullable on
+  // the wire because the registry allows an unanchored claim; a kungal row
+  // always has one.
+  product_work_id: number | null
+  claim_state: string
+
+  last_event_id: number
+  last_from_state: string | null
+  last_to_state: string
+  last_reason: string | null
+  last_actor_uid: number
+  last_event_at: string
+
+  // first_acted_at is when THIS user first touched the claim — "submitted on"
+  // for the common case.
+  first_acted_at: string
+  acted_count: number
 }
 
-export interface MineGalgameList {
-  items: MineGalgameItem[]
+// UserClaimList is one DESCENDING cursor page. `next_before` is the cursor for
+// the following page (0 = no more rows); `total` counts every matching row
+// under the same filter, independent of the cursor, which is what lets this one
+// face also answer "how many have I published".
+export interface UserClaimList {
+  items: UserClaimItem[]
+  next_before: number
   total: number
 }
 

@@ -1,8 +1,26 @@
-// galgame.game presentation config for the schema-driven editor (E3a).
+// catalog.work presentation config for the schema-driven editor.
 // The eternal field keys are infra's editing-engine contract
-// (kun-galgame-infra internal/platform/galgame/editspec/keys.go); this map is
+// (kun-galgame-infra internal/platform/catalog/editspec/work.go); this map is
 // the HOST side of the editkit boundary — labels, controls, option lists and
 // image resolution all live here, never inside components/editkit.
+//
+// The move off the wiki entity is a RESHAPE, not a rename, and three of the
+// differences are visible to the user:
+//
+//   - Four localized title columns plus an alias list become ONE `titles` list
+//     of {lang, title, kind}. Same for the four synopsis columns.
+//   - `links` is a list of URLs. The wiki's per-link NAME is gone: the registry
+//     classifies a link by where it points, so a hand-typed name was a second,
+//     disagreeing answer to a question the URL already settles.
+//   - `vndb_id` / `bid` are NOT editable fields and are absent by design.
+//     They are identity ANCHORS, not properties: a field edit is reversible and
+//     an identity claim is not, so correcting one goes through the report flow
+//     (add the right link, say why) and a curator adjudicates it. See the entry
+//     hint below.
+//
+// Also absent, by 03 §6-1 / §3: the release-date trio (the registry expresses
+// precision as a nullable date tail on a release row) and `status` (lifecycle
+// is claim_state, moved by semantic actions, never by patching a field).
 
 import type {
   EditFieldConfig,
@@ -11,9 +29,9 @@ import type {
 } from '~/components/editkit/types'
 import GalgameEditIntroEditor from '~/components/galgame/edit/IntroEditor.vue'
 
-export const GALGAME_EDIT_ENTITY_TYPE = 'galgame.game'
+export const GALGAME_EDIT_ENTITY_TYPE = 'catalog.work'
 
-const K = (name: string) => `galgame.game.${name}`
+const K = (name: string) => `catalog.work.${name}`
 
 // ---- taxonomy name pickers (entity-picker control) -------------------------
 // The relation fields store ids but the user searches + sees NAMES. Search
@@ -52,12 +70,12 @@ const searchTaxonomy =
     return (data ?? []).map((o) => ({ value: o.id, label: taxName(o.name) }))
   }
 
-// These four pickers feed galgame.game.{tag,official,engine}_ids / series_id,
-// which the editing engine applies to the WIKI galgame row — so they must
-// return WIKI ids, and they read the taxonomy picker rather than the public
-// browse lanes: those moved to the catalog id space in the A2-3 re-anchoring,
-// and feeding a catalog id into a wiki-id edit proposal would silently attach
-// the wrong tags rather than fail.
+// These four pickers feed catalog.work.{tag_ids,labels,engine_ids,series_ids},
+// which the editing engine applies to the REGISTRY work — so they must return
+// REGISTRY ids. The picker endpoint follows the write target: feeding an id
+// from the other space into a proposal attaches the wrong tags rather than
+// failing, which is why the picker and the payload can never be switched
+// separately.
 //
 // The picker is gated on being signed in, which is the same bar the submission
 // form itself sets — so a contributor who can write the field can also fill it.
@@ -92,9 +110,8 @@ const GROUP_TITLES = '标题'
 const GROUP_INTRO = '介绍'
 const GROUP_BASIC = '基本信息'
 const GROUP_RELATIONS = '关联条目'
-const GROUP_EXTRAS = '别名与链接'
+const GROUP_EXTRAS = '链接'
 const GROUP_IMAGES = '图片'
-const GROUP_IDENTITY = '标识与管理'
 
 export const GALGAME_EDIT_GROUP_ORDER = [
   GROUP_TITLES,
@@ -102,14 +119,49 @@ export const GALGAME_EDIT_GROUP_ORDER = [
   GROUP_BASIC,
   GROUP_RELATIONS,
   GROUP_EXTRAS,
-  GROUP_IMAGES,
-  GROUP_IDENTITY
+  GROUP_IMAGES
 ]
 
-// Groups whose fields collapse behind a per-field sub-tab (SchemaForm
-// `tabbedGroups`): the intro group's four languages share one editor + a
-// language switch, keeping the page compact.
-export const GALGAME_EDIT_TABBED_GROUPS = [GROUP_INTRO]
+// No group collapses behind sub-tabs any more: the four language columns each
+// tab used to hold are one list field now, so the tab strip would have exactly
+// one tab.
+export const GALGAME_EDIT_TABBED_GROUPS: string[] = []
+
+/** Where a user reports a wrong VNDB / Bangumi id.
+ *
+ * The editor deliberately cannot change one. An identity anchor is not a
+ * property of the entry — it asserts that this entry and that external record
+ * are the same work — and unlike a field edit that assertion is not reversible
+ * by whoever made it. So the entry point is the ordinary edit flow with an
+ * explanation attached: add the correct link, say why the current one is
+ * wrong, and a curator confirms it against the registry's own conflict check. */
+export const GALGAME_EDIT_IDENTITY_HINT =
+  'VNDB / Bangumi ID 属于条目身份, 不能直接修改。如果发现挂错了, 请在「链接」里补上正确的 VNDB / Bangumi 链接, 并在提交说明里写明原因, 由资料库管理员核对后修正。'
+
+/** Title kinds, mirroring the registry enum. */
+const TITLE_KIND_OPTIONS: EditSelectOption[] = [
+  { value: 0, label: '官方名' },
+  { value: 1, label: '别名' },
+  { value: 2, label: '缩写' }
+]
+
+/** Languages the registry accepts on a title / synopsis. An alias carries no
+ * language at all — it is a string people also call the work by and belongs to
+ * none — which is why the empty option is offered rather than hidden. */
+const TITLE_LANG_OPTIONS: EditSelectOption[] = [
+  { value: 'ja', label: '日语' },
+  { value: 'zh-Hans', label: '简中' },
+  { value: 'zh-Hant', label: '繁中' },
+  { value: 'en', label: '英语' },
+  { value: '', label: '无语言 (别名)' }
+]
+
+const INTRO_LANG_OPTIONS: EditSelectOption[] = [
+  { value: 'ja', label: '日语' },
+  { value: 'zh-Hans', label: '简中' },
+  { value: 'zh-Hant', label: '繁中' },
+  { value: 'en', label: '英语' }
+]
 
 const imageRow = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -203,97 +255,88 @@ const uploadScreenshotItem = async (
 export const createGalgameEditConfig = (
   names: GalgameEditNames = {}
 ): EditFieldConfigMap => ({
-  [K('name_en_us')]: { label: '英语标题', group: GROUP_TITLES },
-  [K('name_ja_jp')]: { label: '日语标题', group: GROUP_TITLES },
-  [K('name_zh_cn')]: { label: '简体中文标题', group: GROUP_TITLES },
-  [K('name_zh_tw')]: { label: '繁体中文标题', group: GROUP_TITLES },
-
-  // Intros use the image-free markdown editor (component escape hatch). Images
-  // are removed at the editor (disableImage) AND stripped by the backend. The
-  // four languages share one sub-tab (tabLabel = the short language name).
-  [K('intro_en_us')]: {
-    label: '英语介绍',
-    tabLabel: '英语',
-    group: GROUP_INTRO,
-    component: GalgameEditIntroEditor
-  },
-  [K('intro_ja_jp')]: {
-    label: '日语介绍',
-    tabLabel: '日语',
-    group: GROUP_INTRO,
-    component: GalgameEditIntroEditor
-  },
-  [K('intro_zh_cn')]: {
-    label: '简体中文介绍',
-    tabLabel: '简中',
-    group: GROUP_INTRO,
-    component: GalgameEditIntroEditor
-  },
-  [K('intro_zh_tw')]: {
-    label: '繁体中文介绍',
-    tabLabel: '繁中',
-    group: GROUP_INTRO,
-    component: GalgameEditIntroEditor
+  // One list, four languages, plus the aliases that used to be their own
+  // field. `kind` is what tells them apart, and an alias is the one kind that
+  // may carry no language.
+  [K('titles')]: {
+    label: '标题与别名',
+    group: GROUP_TITLES,
+    control: 'object-list',
+    columns: [
+      { key: 'lang', label: '语言', control: 'select', options: TITLE_LANG_OPTIONS, width: 'w-32' },
+      { key: 'title', label: '标题', placeholder: '标题 / 别名' },
+      { key: 'kind', label: '类型', control: 'select', options: TITLE_KIND_OPTIONS, width: 'w-28' }
+    ],
+    newRow: () => ({ lang: 'ja', title: '', kind: 0 }),
+    formatItem: (item) => {
+      const row = item as { lang?: string; title?: string; kind?: number }
+      const kind = TITLE_KIND_OPTIONS.find((o) => o.value === row.kind)?.label ?? ''
+      return `${row.title ?? ''}${row.lang ? ` (${row.lang})` : ''}${kind ? ` · ${kind}` : ''}`
+    },
+    description: '至少要有一条官方名。别名可以留空语言。'
   },
 
-  [K('release_date')]: {
-    label: '发售日期',
-    group: GROUP_BASIC,
-    control: 'date',
-    nullable: true
+  [K('display_name')]: {
+    label: '条目名',
+    group: GROUP_TITLES,
+    description: '条目在跨站场合显示的单一名称, 通常与原文官方名一致'
   },
-  [K('release_date_tba')]: {
-    label: '发售日待定 (TBA)',
-    group: GROUP_BASIC,
-    control: 'switch'
+
+  [K('intros')]: {
+    label: '介绍',
+    group: GROUP_INTRO,
+    control: 'object-list',
+    columns: [
+      { key: 'lang', label: '语言', control: 'select', options: INTRO_LANG_OPTIONS, width: 'w-32' },
+      { key: 'intro', label: '正文', control: 'textarea' }
+    ],
+    newRow: () => ({ lang: 'zh-Hans', intro: '' }),
+    formatItem: (item) => {
+      const row = item as { lang?: string; intro?: string }
+      return `${row.lang ?? ''}: ${(row.intro ?? '').slice(0, 40)}`
+    },
+    description: '每种语言一条。图片会被后端剥离。'
   },
-  [K('release_precision')]: {
-    label: '发售日精度',
-    group: GROUP_BASIC,
-    options: [
-      { value: '', label: '未指定' },
-      { value: 'day', label: '精确到日' },
-      { value: 'month', label: '精确到月' },
-      { value: 'year', label: '精确到年' },
-      { value: 'tba', label: '待定' },
-      { value: 'unknown', label: '未知' }
-    ]
-  },
-  [K('original_language')]: {
+
+  [K('olang')]: {
     label: '原始语言',
     group: GROUP_BASIC,
     options: [
-      { value: 'ja-jp', label: '日语' },
-      { value: 'zh-cn', label: '简体中文' },
-      { value: 'zh-tw', label: '繁体中文' },
-      { value: 'en-us', label: '英语' }
+      { value: 'ja', label: '日语' },
+      { value: 'zh-Hans', label: '简体中文' },
+      { value: 'zh-Hant', label: '繁体中文' },
+      { value: 'en', label: '英语' }
     ]
   },
-  [K('age_limit')]: {
+  // Two DIFFERENT axes that used to be spelled alike. content_rating is what
+  // the GAME is rated; display_nsfw is whether the material we would render
+  // for it (cover, gallery, synopsis) is safe to show. Most r18 games carry
+  // editorially safe display material, so collapsing them hides a healthy
+  // catalogue.
+  [K('content_rating')]: {
     label: '年龄分级',
     group: GROUP_BASIC,
     options: [
-      { value: 'all', label: '全年龄' },
-      { value: 'r18', label: 'R18' }
+      { value: 0, label: '全年龄' },
+      { value: 1, label: '敏感' },
+      { value: 2, label: 'R18' }
     ]
   },
-  [K('content_limit')]: {
-    label: '内容限制',
+  [K('display_nsfw')]: {
+    label: '展示素材为 NSFW',
     group: GROUP_BASIC,
-    options: [
-      { value: 'sfw', label: 'SFW' },
-      { value: 'nsfw', label: 'NSFW' }
-    ]
+    control: 'switch',
+    description: '封面 / 画廊 / 简介是否含成人内容, 与年龄分级是两条独立的轴'
   },
 
-  [K('series_id')]: {
+  [K('series_ids')]: {
     label: '所属系列',
     group: GROUP_RELATIONS,
     control: 'entity-picker',
-    multiple: false,
+    multiple: true,
     searchEntities: searchSeries,
     resolveEntities: resolveFrom(names.series),
-    description: '搜索并选择所属系列；留空表示不属于任何系列'
+    description: '搜索并选择所属系列'
   },
   [K('tag_ids')]: {
     label: '标签',
@@ -304,7 +347,7 @@ export const createGalgameEditConfig = (
     resolveEntities: resolveFrom(names.tag),
     description: '搜索标签名称添加'
   },
-  [K('official_ids')]: {
+  [K('labels')]: {
     label: '会社',
     group: GROUP_RELATIONS,
     control: 'entity-picker',
@@ -323,25 +366,16 @@ export const createGalgameEditConfig = (
     description: '搜索引擎名称添加'
   },
 
-  [K('aliases')]: {
-    label: '别名',
-    group: GROUP_EXTRAS,
-    placeholder: '输入别名后回车添加'
-  },
-  // control pinned explicitly: the generic list derivation would render a
-  // tag input and stringify the {name, link} rows to "[object Object]".
+  // URLs only. The registry classifies a link by where it points, so a
+  // hand-typed name was a second answer to a question the URL already settles.
   [K('links')]: {
     label: '相关链接',
     group: GROUP_EXTRAS,
-    control: 'link-list'
+    control: 'string-list',
+    placeholder: '粘贴 http(s) 链接后回车添加',
+    description: GALGAME_EDIT_IDENTITY_HINT
   },
 
-  [K('banner')]: {
-    label: '横幅图',
-    group: GROUP_IMAGES,
-    resolveImage: imageRow,
-    uploadImage: uploadBanner
-  },
   [K('covers')]: {
     label: '封面',
     group: GROUP_IMAGES,
@@ -360,24 +394,6 @@ export const createGalgameEditConfig = (
     uploadImage: uploadScreenshotItem,
     normalizeItems: normalizeImageItems,
     description: '拖拽可调整展示顺序'
-  },
-
-  [K('vndb_id')]: {
-    label: 'VNDB ID',
-    group: GROUP_IDENTITY,
-    placeholder: '形如 v12345'
-  },
-  [K('bid')]: { label: 'Bangumi ID', group: GROUP_IDENTITY, nullable: true },
-  [K('status')]: {
-    label: '状态',
-    group: GROUP_IDENTITY,
-    options: [
-      { value: 0, label: '已发布' },
-      { value: 1, label: '已封禁' },
-      { value: 2, label: 'VNDB 草稿' },
-      { value: 3, label: '待审核' },
-      { value: 4, label: '已拒绝' }
-    ]
   }
 })
 
@@ -390,7 +406,7 @@ export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap =
 
 /** Field key → Chinese label (falls back to the bare key tail). */
 export const galgameEditLabel = (key: string): string =>
-  GALGAME_EDIT_FIELD_CONFIG[key]?.label ?? key.replace('galgame.game.', '')
+  GALGAME_EDIT_FIELD_CONFIG[key]?.label ?? key.replace('catalog.work.', '')
 
 export const galgameEditFieldConfig = (
   key: string

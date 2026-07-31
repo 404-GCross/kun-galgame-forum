@@ -33,7 +33,7 @@ export type EditControl =
   | 'date'
   | 'string-list'
   | 'number-list'
-  | 'link-list'
+  | 'object-list'
   | 'entity-picker'
   | 'image'
   | 'image-list'
@@ -42,6 +42,26 @@ export type EditControl =
 export interface EditSelectOption {
   value: string | number
   label: string
+}
+
+/** One column of an `object-list` field: which key of each row it edits, how
+ * that key is edited, and what to call it.
+ *
+ * The control exists because the registry models several fields as lists of
+ * SMALL OBJECTS — a title is {lang, title, kind}, a synopsis is {lang, intro} —
+ * where the wiki had one flat column per language. A widget per shape would be
+ * a widget per field; a column spec is the same widget told what the rows look
+ * like. Unknown keys are preserved on round-trip, because the engine rejects a
+ * value that dropped one. */
+export interface EditObjectColumn {
+  key: string
+  label: string
+  /** How this cell is edited. `select` needs `options`. */
+  control?: 'input' | 'textarea' | 'select'
+  options?: EditSelectOption[]
+  placeholder?: string
+  /** Tailwind width class for the cell, e.g. 'w-32'. Absent = flex-1. */
+  width?: string
 }
 
 /** Host-supplied per-field presentation config (labels, controls, option
@@ -60,6 +80,10 @@ export interface EditFieldConfig {
   placeholder?: string
   /** number control: empty input maps to null instead of 0. */
   nullable?: boolean
+  /** object-list: the row shape. Required for that control. */
+  columns?: EditObjectColumn[]
+  /** object-list: the row a "add" button appends. Absent = every column blank. */
+  newRow?: () => Record<string, unknown>
   /** Custom scalar display (diff + readonly rendering). */
   formatValue?: (value: unknown) => string
   /** Custom list-item display (items diff + readonly rendering). */

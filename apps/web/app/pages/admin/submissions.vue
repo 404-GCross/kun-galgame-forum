@@ -1,105 +1,65 @@
 <script setup lang="ts">
-// Galgame submission review queue. Lists messages from the wiki
-// /admin/galgame/messages endpoint (proxied through kungal) and exposes
-// approve / decline / ban actions via PUT /api/admin/galgame/:gid/status.
+// Galgame submission review queue: the entries whose claim is `pending`, with
+// the four verdicts.
 //
-// See docs/galgame_wiki/06-admin.md §PUT /admin/galgame/:gid/status for
-// the upstream contract and 08-messages.md for the message shape.
-
-// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
-// on /admin/galgame/messages + /admin/galgame/:gid/status. UX guard — the real
-// boundary is the API (and the wiki admin API behind it).
+// It used to list MESSAGES — a log of things that had happened, read as a
+// worklist by convention — which meant the queue and reality could disagree.
+// This lists the CLAIMS themselves, so an entry leaves the queue because its
+// state moved and for no other reason. There is no "mark as handled" because
+// there is nothing to mark.
+//
+// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator
+// entry gate. UX guard only — the real boundary is the API, and behind it the
+// registry re-checks the acting user against catalog.claim.review.
 definePageMeta({ middleware: 'moderator' })
 
 useKunDisableSeo('Galgame 审核')
 
-interface AdminQueueGalgame {
+// One pending entry, as the registry's works list renders it.
+interface PendingClaim {
   id: number
-  name_zh_cn?: string
-  name_ja_jp?: string
-  name_en_us?: string
-  name_zh_tw?: string
-  banner?: string
-  // K-PR6: banner_image_hash retired in wiki PR5. walker injects
-  // effective_banner_url on every wiki object that carries
-  // effective_banner_hash, including embeddeds in wiki messages.
-  effective_banner_hash?: string
-  effective_banner_url?: string
-  status: number
-  user_id?: number
+  display_name: string
+  // claimed_by.work_id IS the gid: the id kungal told the registry to record,
+  // and therefore the id every action and link here is keyed by. The registry
+  // work id is NOT interchangeable with it — the two ranges overlap.
+  claimed_by: { site: string; work_id: number; state: string } | null
+  names?: Record<string, string>
+  updated?: string
 }
 
-interface AdminQueueActor {
-  id: number
-  name: string
-  avatar: string
+interface PendingQueueEnvelope {
+  items: PendingClaim[]
+  next_cursor: string | null
 }
 
-interface AdminQueueMessage {
-  id: number
-  type: string
-  galgame_id: number
-  galgame: AdminQueueGalgame | null
-  actor_user_id: number
-  actor?: AdminQueueActor
-  payload: Record<string, unknown> | null
-  created_at: string
-}
-
-interface AdminQueueEnvelope {
-  items: AdminQueueMessage[]
-  total: number
-}
-
-// Default filter: submitted + edited_pending (both are "needs review"
-// triggers). admin can toggle whichever they want to drill into.
+// The queue reads the LIVE list, not the search index: a search index reflects
+// a claim-state change only at the next rebuild, and a moderation queue showing
+// entries somebody approved an hour ago is worse than no queue.
 const pageData = reactive({
-  type: 'submitted,edited_pending',
-  page: 1,
-  limit: 20
+  cursor: '',
+  limit: 30
 })
 
-const { data, status, refresh } = await useKunFetch<AdminQueueEnvelope>(
-  '/admin/galgame/messages',
+const { data, status, refresh } = await useKunFetch<PendingQueueEnvelope>(
+  '/admin/galgame/submissions',
   { query: pageData }
 )
 
-// Wire-name resolution is shared (shared/utils/galgameStatus.ts).
-// typeBadge stays local: the admin queue wants queue-specific wording
-// ("新提交" / "修订重审") distinct from the user-facing notification
-// wording in the message center, so this is intentionally NOT shared.
-// Row title. Prefer the galgame's localized name; for a brand-new submission
-// whose names aren't imported yet (name_* all empty), fall back to the VNDB id
-// carried in the `submitted` payload so the row stays identifiable, then to
-// #id. (The message brief itself carries no vndb_id — only the payload does.)
-// Once infra ships reviewer-visible drafts, 查看 opens the full detail anyway.
-const displayName = (msg: AdminQueueMessage): string => {
-  const named = msg.galgame ? galgameNameFromWire(msg.galgame, '') : ''
-  if (named) return named
-  const vndb =
-    msg.payload && typeof msg.payload.vndb_id === 'string'
-      ? msg.payload.vndb_id
-      : ''
-  if (vndb) return `VNDB ${vndb}`
-  return msg.galgame ? `#${msg.galgame.id}` : `#${msg.galgame_id}`
-}
+const gidOf = (row: PendingClaim) => row.claimed_by?.work_id ?? 0
 
-const typeBadge = (t: string) => {
-  switch (t) {
-    case 'submitted':
-      return { label: '新提交', color: 'primary' as const }
-    case 'edited_pending':
-      return { label: '修订重审', color: 'warning' as const }
-    default:
-      return { label: t, color: 'default' as const }
-  }
+// Row title: the entry's localized name, falling back to the registry's own
+// display name and then to the gid.
+const displayName = (row: PendingClaim): string => {
+  const localized = row.names
+    ? getPreferredLanguageText({
+        'en-us': row.names['en-us'] ?? '',
+        'ja-jp': row.names['ja-jp'] ?? '',
+        'zh-cn': row.names['zh-cn'] ?? '',
+        'zh-tw': row.names['zh-tw'] ?? ''
+      })
+    : ''
+  return localized || row.display_name || `#${gidOf(row)}`
 }
-
-const filterTabs = [
-  { value: 'submitted,edited_pending', label: '全部' },
-  { value: 'submitted', label: '仅新提交' },
-  { value: 'edited_pending', label: '仅修订重审' }
-] as const
 
 const isActing = ref<Record<number, boolean>>({})
 
@@ -111,8 +71,7 @@ type ReasonAction = 'decline' | 'ban'
 
 interface ReasonContext {
   action: ReasonAction
-  target: AdminQueueMessage
-  status: number
+  target: PendingClaim
 }
 
 const isReasonModalOpen = ref(false)
@@ -138,12 +97,8 @@ const modalRequiresReason = computed(
   () => reasonContext.value?.action === 'decline'
 )
 
-const openReasonModal = (action: ReasonAction, target: AdminQueueMessage) => {
-  reasonContext.value = {
-    action,
-    target,
-    status: action === 'decline' ? 4 : 1
-  }
+const openReasonModal = (action: ReasonAction, target: PendingClaim) => {
+  reasonContext.value = { action, target }
   reasonText.value = ''
   isReasonModalOpen.value = true
 }
@@ -158,34 +113,34 @@ const closeReasonModal = () => {
   }, 300)
 }
 
-const applyStatus = async (
-  gid: number,
-  msgId: number,
-  target: number,
+// One verdict. The action IS the vocabulary — there is no status integer to
+// PUT — so "who decided this and why" is recorded by the write itself rather
+// than by a reviewer remembering to note it somewhere.
+const applyVerdict = async (
+  row: PendingClaim,
+  action: 'approve' | 'decline' | 'ban',
   reason: string
 ) => {
-  // PUT /api/admin/galgame/:gid/status — kungal forwards to wiki with the
-  // admin's Bearer attached so wiki's revision/message audit records the
-  // right actor.
-  isActing.value = { ...isActing.value, [msgId]: true }
-  const res = await kunFetch<unknown>(`/admin/galgame/${gid}/status`, {
-    method: 'PUT',
-    body: { status: target, reason }
+  const gid = gidOf(row)
+  isActing.value = { ...isActing.value, [gid]: true }
+  const res = await kunFetch<unknown>(`/admin/galgame/${gid}/review`, {
+    method: 'POST',
+    body: { action, reason }
   })
-  isActing.value = { ...isActing.value, [msgId]: false }
+  isActing.value = { ...isActing.value, [gid]: false }
   if (res !== null) {
     useMessage('已处理', 'success')
     refresh()
   }
 }
 
-const handleApprove = async (msg: AdminQueueMessage) => {
+const handleApprove = async (row: PendingClaim) => {
   const ok = await useComponentMessageStore().alert(
-    `通过《${displayName(msg)}》?`,
-    '通过后该 Galgame 立即公开发布, 提交者会收到通知并自动获得 +3 萌萌点 (通过资料库 cron 同步)。'
+    `通过《${displayName(row)}》?`,
+    '通过后该 Galgame 立即公开发布, 提交者会收到通知并自动获得 +3 萌萌点 (由资料库事件同步发放)。'
   )
   if (!ok) return
-  await applyStatus(msg.galgame_id, msg.id, 0, '')
+  await applyVerdict(row, 'approve', '')
 }
 
 const handleConfirmReason = async () => {
@@ -196,9 +151,8 @@ const handleConfirmReason = async () => {
     useMessage('拒绝原因不能为空', 'warn')
     return
   }
-  const msgId = ctx.target.id
   closeReasonModal()
-  await applyStatus(ctx.target.galgame_id, msgId, ctx.status, trimmed)
+  await applyVerdict(ctx.target, ctx.action, trimmed)
 }
 </script>
 
@@ -206,82 +160,48 @@ const handleConfirmReason = async () => {
   <div v-if="data" class="w-full space-y-4">
     <KunHeader
       name="Galgame 审核"
-      description="审核用户提交的新 Galgame 及对自己草稿的修订。通过后立即公开发布并向提交者发放 +3 萌萌点; 拒绝时需说明原因, 提交者可据此修改后重新提交。"
-    >
-      <template #endContent>
-        <div class="flex flex-wrap gap-2">
-          <KunButton
-            v-for="tab in filterTabs"
-            :key="tab.value"
-            size="sm"
-            :variant="pageData.type === tab.value ? 'flat' : 'light'"
-            @click="pageData.type = tab.value"
-          >
-            {{ tab.label }}
-          </KunButton>
-        </div>
-      </template>
-    </KunHeader>
+      description="审核用户提交的新 Galgame。通过后立即公开发布并向提交者发放 +3 萌萌点; 拒绝时需说明原因, 提交者可据此修改后重新提交。"
+    />
 
     <KunDivider />
 
     <div v-if="data.items.length" class="flex flex-col gap-3">
       <div
-        v-for="msg in data.items"
-        :key="msg.id"
+        v-for="row in data.items"
+        :key="row.id"
         class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-start"
       >
-        <KunImage
-          v-if="getEffectiveBanner(msg.galgame)"
-          :src="getEffectiveBanner(msg.galgame, { variant: 'mini' })"
-          loading="lazy"
-          placeholder="/placeholder.webp"
-          class="h-20 w-32 shrink-0 rounded object-cover"
-          :style="{ aspectRatio: '16/9' }"
-        />
         <div class="min-w-0 flex-1 space-y-1">
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="truncate text-lg font-medium">
-              {{ displayName(msg) }}
+              {{ displayName(row) }}
             </h3>
             <KunChip
               size="xs"
               variant="flat"
-              :color="typeBadge(msg.type).color"
+              :color="galgameClaimStateBadge(row.claimed_by?.state).color"
             >
-              {{ typeBadge(msg.type).label }}
+              {{ galgameClaimStateBadge(row.claimed_by?.state).label }}
             </KunChip>
           </div>
           <div
             class="text-default-500 flex flex-wrap items-center gap-2 text-sm"
           >
-            <span>
-              提交者:
-              <KunLink v-if="msg.actor" :to="`/user/${msg.actor.id}`">
-                {{ msg.actor.name }}
-              </KunLink>
-              <template v-else>#{{ msg.actor_user_id }}</template>
-            </span>
-            <span>·</span>
-            <span><KunTime :time="msg.created_at" /></span>
-            <span>·</span>
-            <span>galgame_id: {{ msg.galgame_id }}</span>
+            <span v-if="row.updated"><KunTime :time="row.updated" /></span>
+            <span v-if="row.updated">·</span>
+            <span>galgame_id: {{ gidOf(row) }}</span>
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-          <KunLink
-            v-if="msg.galgame"
-            :to="`/galgame/${msg.galgame.id}`"
-            target="_blank"
-          >
+          <KunLink :to="`/galgame/${gidOf(row)}/edit`" target="_blank">
             <KunButton size="sm" variant="flat">查看</KunButton>
           </KunLink>
           <KunButton
             size="sm"
             color="success"
-            :loading="isActing[msg.id]"
-            :disabled="isActing[msg.id]"
-            @click="handleApprove(msg)"
+            :loading="isActing[gidOf(row)]"
+            :disabled="isActing[gidOf(row)]"
+            @click="handleApprove(row)"
           >
             通过
           </KunButton>
@@ -289,9 +209,9 @@ const handleConfirmReason = async () => {
             size="sm"
             color="danger"
             variant="flat"
-            :loading="isActing[msg.id]"
-            :disabled="isActing[msg.id]"
-            @click="openReasonModal('decline', msg)"
+            :loading="isActing[gidOf(row)]"
+            :disabled="isActing[gidOf(row)]"
+            @click="openReasonModal('decline', row)"
           >
             拒绝
           </KunButton>
@@ -299,9 +219,9 @@ const handleConfirmReason = async () => {
             size="sm"
             color="default"
             variant="light"
-            :loading="isActing[msg.id]"
-            :disabled="isActing[msg.id]"
-            @click="openReasonModal('ban', msg)"
+            :loading="isActing[gidOf(row)]"
+            :disabled="isActing[gidOf(row)]"
+            @click="openReasonModal('ban', row)"
           >
             封禁
           </KunButton>
@@ -309,14 +229,16 @@ const handleConfirmReason = async () => {
       </div>
     </div>
 
-    <KunNull v-if="!data.total" />
+    <KunNull v-if="!data.items.length" />
 
-    <KunPagination
-      v-if="data.total > pageData.limit"
-      v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.total / pageData.limit)"
-      :is-loading="status === 'pending'"
-    />
+    <KunButton
+      v-if="data.next_cursor"
+      variant="flat"
+      :loading="status === 'pending'"
+      @click="pageData.cursor = data.next_cursor ?? ''"
+    >
+      加载更多
+    </KunButton>
 
     <KunModal
       :model-value="isReasonModalOpen"

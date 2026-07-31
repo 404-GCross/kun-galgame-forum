@@ -23,7 +23,7 @@ const { data, status: fetchStatus } =
 
 const briefName = (item: GalgameEditProposalItem): string => {
   if (!item.galgame) {
-    return `Galgame #${item.entity_id}`
+    return `Galgame #${item.gid || item.entity_id}`
   }
   const name: KunLanguage = {
     'en-us': item.galgame.name_en_us,
@@ -31,7 +31,7 @@ const briefName = (item: GalgameEditProposalItem): string => {
     'zh-cn': item.galgame.name_zh_cn,
     'zh-tw': item.galgame.name_zh_tw
   }
-  return getPreferredLanguageText(name) || `Galgame #${item.entity_id}`
+  return getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
 }
 </script>
 
@@ -73,7 +73,7 @@ const briefName = (item: GalgameEditProposalItem): string => {
           >
             <template #title>
               <KunLink
-                :to="`/galgame/${proposal.entity_id}`"
+                :to="`/galgame/${(proposal as GalgameEditProposalItem).gid}`"
                 size="sm"
                 class-name="font-medium"
               >

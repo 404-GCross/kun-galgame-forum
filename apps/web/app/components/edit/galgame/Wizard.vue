@@ -3,21 +3,26 @@
 // duplicate submissions out of the moderation queue by surfacing existing
 // records before the user fills out a full form.
 //
-// Two paths only (VNDB-id precise lookup was removed — the wiki has the
-// full VNDB set synced as status=2 drafts, so a name search already
-// surfaces them; users don't need to know VNDB ids):
+// Two paths only (VNDB-id precise lookup was removed — the registry holds the
+// full VNDB set as unpublished drafts, so a name search already surfaces them;
+// users don't need to know VNDB ids):
 //   1. Search by name → resolve to one of:
-//        status=0 已发布   → 前往发布资源 (/galgame/:gid)
-//        status=2 草稿      → 认领并发布 (POST /:gid/claim, +3 萌萌点)
-//        status=3/4 自己的草稿 → 继续编辑 (/edit/galgame/draft/:gid)
+//        live     → 前往发布资源 (/galgame/:gid)
+//        draft    → 认领并发布 (POST /:gid/claim, +3 萌萌点)
+//        pending  → 他人投稿审核中, no action (see below)
 //   2. Nothing matches → 新建申请 → /edit/galgame/create
 //
-// `items` now comes off the catalog registry (claim_state=live,draft) while
-// `pending` — the caller's OWN submissions — still comes off the wiki face.
-// One consequence is visible here: the registry cannot tell an unclaimed VNDB
-// draft apart from someone else's submission awaiting review, so both arrive as
-// status=2 and the 认领 attempt is what discovers the difference (the wiki
-// refuses it). The copy below says so rather than pretending otherwise.
+// Both halves are the registry's. `pending` is the caller's own backlog off the
+// per-user claim face; `items` is the registry search with
+// claim_state=live,draft,pending.
+//
+// `pending` in that list is the one worth explaining: it is somebody ELSE's
+// submission awaiting review. The wizard has to SHOW it — an entry it hides is
+// an entry that gets submitted twice, which is the whole failure this screen
+// exists to prevent — but 认领 on it would be refused, so the row is labelled
+// 审核中 and offers no action. Until the projector separates the two, such rows
+// arrive as `draft` instead and behave as they always did: the 认领 attempt is
+// what discovers the difference.
 
 interface SearchHit {
   id: number
@@ -27,15 +32,13 @@ interface SearchHit {
   name_en_us?: string
   name_zh_tw?: string
   banner?: string
-  // K-PR6: banner_image_hash retired in wiki PR5; effective_banner_hash
-  // is the derived banner source (= covers[sort_order=0].image_hash).
   effective_banner_hash?: string
-  status?: number
+  claim_state?: string
 }
 
 interface WizardSearchResp {
   items: SearchHit[]
-  pending?: SearchHit[]
+  pending?: UserClaimItem[]
   total: number
 }
 
@@ -44,12 +47,13 @@ const hasSearched = ref(false)
 const isSearching = ref(false)
 const searchResults = ref<WizardSearchResp | null>(null)
 
-// status badge + wire-name resolution are shared (shared/utils/
-// galgameStatus.ts). Fallback (VNDB id / #id) computed per call site.
+// State badge + wire-name resolution are shared (shared/utils/
+// galgameClaimState.ts). Fallback (VNDB id / #id) computed per call site.
 const nameOfHit = (h: SearchHit): string =>
   galgameNameFromWire(h, h.vndb_id ? `VNDB ${h.vndb_id}` : `#${h.id}`)
 
-const statusBadge = galgameStatusBadge
+const stateBadge = galgameClaimStateBadge
+const gidOfPending = (item: UserClaimItem) => item.product_work_id ?? 0
 
 const handleSearch = async () => {
   if (!q.value.trim()) {
@@ -57,9 +61,8 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  // /galgame/search/wizard forces include_pending=true server-side; the
-  // Bearer is attached automatically by the session middleware so wiki
-  // resolves the caller's own pending list.
+  // The session identifies the caller, which is what makes the `pending` half
+  // personal — it is their own claim history, not a filter over the search.
   const res = await kunFetch<WizardSearchResp>('/galgame/search/wizard', {
     method: 'GET',
     query: { q: q.value.trim(), limit: 12 }
@@ -79,14 +82,14 @@ const handleClaim = async (gid: number) => {
   if (!ok) return
 
   isClaiming.value = true
-  const result = await kunFetch<{ id: number }>(`/galgame/${gid}/claim`, {
-    method: 'POST',
-    body: {}
-  })
+  const result = await kunFetch<{ to_state: string }>(
+    `/galgame/${gid}/claim`,
+    { method: 'POST', body: {} }
+  )
   isClaiming.value = false
-  if (result?.id) {
+  if (result?.to_state) {
     useKunLoliInfo('认领成功, 已发布', 5)
-    await navigateTo(`/galgame/${result.id}`)
+    await navigateTo(`/galgame/${gid}`)
   }
 }
 
@@ -153,53 +156,54 @@ onMounted(() => {
         </KunButton>
       </div>
       <p class="text-default-500 text-sm">
-        搜索覆盖已发布的 Galgame 及尚未发布的草稿 (可一键认领),
-        同时会显示您自己的待审核 / 已拒绝草稿。草稿中可能包含他人正在审核中的投稿,
-        这类条目无法被认领。
+        搜索覆盖已发布的 Galgame、尚未发布的草稿 (可一键认领), 以及他人正在审核中的投稿
+        (标记为「审核中」, 无法认领); 同时会显示您自己的待审核 / 已拒绝投稿。
       </p>
     </div>
 
     <div v-if="searchResults" class="space-y-4">
-      <!-- pending: own status=3/4 hits, most actionable, shown first -->
+      <!-- pending: the caller's OWN backlog, most actionable, shown first -->
       <div
         v-if="searchResults.pending && searchResults.pending.length"
         class="space-y-2"
       >
         <h3 class="text-default-700 text-sm font-bold">您的待审 / 已拒草稿</h3>
         <div
-          v-for="hit in searchResults.pending"
-          :key="`pending-${hit.id}`"
+          v-for="item in searchResults.pending"
+          :key="`pending-${item.work_id}`"
           class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-center"
         >
           <div class="min-w-0 flex-1 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h4 class="truncate font-medium">{{ nameOfHit(hit) }}</h4>
+              <h4 class="truncate font-medium">
+                {{ item.display_name || `#${item.work_id}` }}
+              </h4>
               <KunChip
                 size="xs"
                 variant="flat"
-                :color="statusBadge(hit.status).color"
+                :color="stateBadge(item.claim_state).color"
               >
-                {{ statusBadge(hit.status).label }}
+                {{ stateBadge(item.claim_state).label }}
               </KunChip>
             </div>
-            <p class="text-default-500 text-sm">
-              VNDB: {{ hit.vndb_id || '—' }}
+            <p v-if="item.last_reason" class="text-default-500 text-sm">
+              {{ item.last_reason }}
             </p>
           </div>
-          <KunLink :to="`/edit/galgame/draft/${hit.id}`">
+          <KunLink :to="`/galgame/${gidOfPending(item)}/edit`">
             <KunButton size="sm" variant="flat">继续编辑</KunButton>
           </KunLink>
         </div>
       </div>
 
       <!--
-        items: search hits. The registry also surfaces unpublished
-        entries (status=2, projected from claim_state=draft), so the
-        action MUST branch on status:
-          status=0 已发布 → 前往发布资源
-          status=2 VNDB 草稿 → 认领并发布 (status=2 is NOT viewable via
-            /galgame/:gid, a blanket detail link would 404)
-          status=3/4 → 继续编辑
+        items: search hits. The registry surfaces unpublished entries too, so
+        the action MUST branch on claim_state:
+          live    → 前往发布资源
+          draft   → 认领并发布 (a draft has no public page; a blanket detail
+                    link would 404)
+          pending → somebody else's submission under review: shown so it is not
+                    submitted twice, but there is nothing this user may do to it
       -->
       <div v-if="searchResults.items.length" class="space-y-2">
         <h3 class="text-default-700 text-sm font-bold">匹配的 Galgame</h3>
@@ -222,9 +226,9 @@ onMounted(() => {
               <KunChip
                 size="xs"
                 variant="flat"
-                :color="statusBadge(hit.status).color"
+                :color="stateBadge(hit.claim_state).color"
               >
-                {{ statusBadge(hit.status).label }}
+                {{ stateBadge(hit.claim_state).label }}
               </KunChip>
             </div>
             <p class="text-default-500 text-sm">
@@ -232,7 +236,7 @@ onMounted(() => {
             </p>
           </div>
           <KunButton
-            v-if="hit.status === GalgameStatus.VndbDraft"
+            v-if="isClaimableState(hit.claim_state)"
             size="sm"
             :loading="isClaiming"
             :disabled="isClaiming"
@@ -240,15 +244,12 @@ onMounted(() => {
           >
             认领并发布
           </KunButton>
-          <KunLink
-            v-else-if="
-              hit.status === GalgameStatus.Pending ||
-              hit.status === GalgameStatus.Declined
-            "
-            :to="`/edit/galgame/draft/${hit.id}`"
+          <span
+            v-else-if="hit.claim_state === CLAIM_STATE_PENDING"
+            class="text-default-400 shrink-0 text-sm"
           >
-            <KunButton size="sm" variant="flat">继续编辑</KunButton>
-          </KunLink>
+            他人投稿审核中
+          </span>
           <KunLink v-else :to="`/galgame/${hit.id}`">
             <KunButton size="sm" variant="flat">前往发布资源</KunButton>
           </KunLink>

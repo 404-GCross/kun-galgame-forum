@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { submitGalgameSchema } from '~/validations/galgame'
 
-// After the submission flow landed (docs/galgame_wiki/07-submission.md),
-// regular users go through POST /galgame/submit which creates a status=3
-// draft awaiting moderation. The legacy POST /galgame endpoint is now
-// gated to admin/moderator at both the wiki and kungal layers, so calling
-// it as a normal user returns 403. The post-success redirect goes to
-// /edit/galgame/mine — status=3 isn't anonymously visible, so /galgame/:gid
-// would 404 for the submitter until approval.
+// POST /galgame/submit mints a registry work in the `pending` claim state and
+// records the birth as a claim event, so "who submitted this and when" is a
+// fact rather than a column somebody has to remember to fill. The legacy admin
+// direct-publish endpoint is gone: publishing and submitting are one lifecycle
+// now, so a moderator submits here too and approves from the queue.
+//
+// The post-success redirect goes to /edit/galgame/mine — a pending submission
+// has no public page to land on.
 
 // No vndb_id: submission is exclusively for VNDB-unlisted works (wiki has
 // the full VNDB set as claimable drafts already) — see Galgame.vue.
@@ -48,8 +49,7 @@ const handleSubmitGalgame = async () => {
     // U1: empty string = unknown; wiki schema accepts "" or YYYY-MM-DD.
     release_date: release_date.value,
     release_date_tba: release_date_tba.value,
-    banner,
-    aliases: String(aliases.value)
+    banner
   }
   const result = submitGalgameSchema.safeParse(data)
   if (!result.success) {
@@ -75,28 +75,32 @@ const handleSubmitGalgame = async () => {
     useMessage(10525, 'info', 7777)
   }
 
-  // multipart 上传约定参见 docs/galgame_wiki/01-galgame.md "Banner 上传":
-  //   data: 整个 JSON 串
-  //   file: 可选图片二进制
+  // The banner is uploaded FIRST and travels as a hash. A cover is a reference
+  // to bytes that must already exist, so it cannot ride the mint — it is
+  // attached as the submission's first edit, which is also how the reviewer
+  // sees it alongside the rest.
   const { banner: _bannerBlob, ...jsonFields } = data
-  const formData = new FormData()
-  formData.append('data', JSON.stringify(jsonFields))
-  if (banner instanceof Blob) {
-    formData.append('file', banner)
+  let bannerHash = ''
+  if (banner instanceof File) {
+    const uploaded = await uploadGalgameImage(banner, 'galgame_banner', banner.name)
+    if (uploaded) {
+      bannerHash = uploaded.hash
+    }
   }
-  // POST /galgame/submit returns the created draft (`{id, status: 3, ...}`).
-  // We only need `id` to confirm success — the redirect goes to the
-  // submitter's pending list, not the public detail page.
-  const created = await kunFetch<{ id: number; status: number }>(
+  const created = await kunFetch<{ gid: number; claim_state: string }>(
     '/galgame/submit',
     {
       method: 'POST',
-      body: formData
+      body: {
+        ...jsonFields,
+        aliases: aliases.value,
+        banner_hash: bannerHash
+      }
     }
   )
   isPublishing.value = false
 
-  if (created?.id) {
+  if (created?.gid) {
     await deleteImage('kun-galgame-publish-banner')
     // Clear the persisted wizard-step draft key (set by Galgame.vue via
     // useLocalStorage) so the next "new submission" starts at step ①

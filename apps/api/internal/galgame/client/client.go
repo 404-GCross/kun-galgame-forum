@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -398,13 +397,6 @@ func (c *GalgameClient) DeleteWithToken(ctx context.Context, path, token string,
 	return c.mutateWithToken(ctx, "DELETE", path, token, body, contentType)
 }
 
-// PatchWithToken performs a PATCH with Bearer token. Used by user draft
-// edits (PATCH /galgame/:gid for status IN (3,4)). See PostWithToken for
-// contentType semantics.
-func (c *GalgameClient) PatchWithToken(ctx context.Context, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
-	return c.mutateWithToken(ctx, "PATCH", path, token, body, contentType)
-}
-
 func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
 	if contentType == "" {
 		contentType = "application/json"
@@ -449,89 +441,10 @@ func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token
 	return c.doRequest(req)
 }
 
-// NextMoeUserStats is the user galgame stats from galgame service.
-type NextMoeUserStats struct {
-	GalgameCreated      int64 `json:"galgame_created"`
-	GalgameCreatedToday int64 `json:"galgame_created_today"`
-	GalgameContributed  int64 `json:"galgame_contributed"`
-	PRMerged            int64 `json:"pr_merged"`
-}
-
-// GetUserStats fetches galgame-related stats for a user from galgame.
-func (c *GalgameClient) GetUserStats(ctx context.Context, userID int) (*NextMoeUserStats, error) {
-	path := fmt.Sprintf("/galgame/user/%d/stats", userID)
-	data, appErr := c.Get(ctx, path, nil)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	var stats NextMoeUserStats
-	if err := json.Unmarshal(data, &stats); err != nil {
-		return nil, err
-	}
-	return &stats, nil
-}
-
 // NextMoeUserGalgames is the paginated published-galgame list for a user.
 type NextMoeUserGalgames struct {
 	Galgames []GalgameBrief `json:"galgames"`
 	Total    int64          `json:"total"`
-}
-
-// GetUserGalgames fetches a user's PUBLISHED galgames (briefs, newest first,
-// paginated) from the galgame — the source for the profile "已发布 Galgame" tab.
-// kungal's local galgame mirror has no user_id (ownership is galgame-managed after
-// the OAuth migration), so this galgame endpoint is the only way to answer "what
-// has this user published". NSFW gating is done server-side by the galgame.
-//
-//	isSFW=true  → content_limit=sfw  (drop NSFW server-side)
-//	isSFW=false → content_limit=all
-func (c *GalgameClient) GetUserGalgames(ctx context.Context, userID, page, limit int, isSFW bool) ([]GalgameBrief, int64, *errors.AppError) {
-	contentLimit := "all"
-	if isSFW {
-		contentLimit = "sfw"
-	}
-	query := url.Values{
-		"page":          {strconv.Itoa(page)},
-		"limit":         {strconv.Itoa(limit)},
-		"content_limit": {contentLimit},
-	}
-	data, appErr := c.Get(ctx, fmt.Sprintf("/galgame/user/%d/galgames", userID), query)
-	if appErr != nil {
-		return nil, 0, appErr
-	}
-	var resp NextMoeUserGalgames
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, 0, errors.ErrInternal("解析 Galgame 用户 Galgame 列表失败")
-	}
-	return resp.Galgames, resp.Total, nil
-}
-
-// GetUserContributedGalgames fetches a user's CONTRIBUTED galgames — the
-// games they created OR edited/claimed — from the galgame (briefs, paginated,
-// same shape + NSFW gating as GetUserGalgames). Source for the profile
-// "贡献的 Galgame" tab. This is the superset of the "已发布" (created) list:
-// "已发布" answers "what did this user create", "贡献的" adds games they only
-// edited. Backed by galgame's GET /galgame/user/:id/contributed.
-func (c *GalgameClient) GetUserContributedGalgames(ctx context.Context, userID, page, limit int, isSFW bool) ([]GalgameBrief, int64, *errors.AppError) {
-	contentLimit := "all"
-	if isSFW {
-		contentLimit = "sfw"
-	}
-	query := url.Values{
-		"page":          {strconv.Itoa(page)},
-		"limit":         {strconv.Itoa(limit)},
-		"content_limit": {contentLimit},
-	}
-	data, appErr := c.Get(ctx, fmt.Sprintf("/galgame/user/%d/contributed", userID), query)
-	if appErr != nil {
-		return nil, 0, appErr
-	}
-	var resp NextMoeUserGalgames
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, 0, errors.ErrInternal("解析 Galgame 用户贡献 Galgame 列表失败")
-	}
-	return resp.Galgames, resp.Total, nil
 }
 
 // NextMoeAdminStats is the admin stats response from galgame service.
@@ -696,51 +609,22 @@ func (c *GalgameClient) batchByGIDs(ctx context.Context, ids []int, contentLimit
 	return result, nil
 }
 
-// ──────────────────────────────────────────
-// Submission (user-identity, Bearer-forwarded)
-// ──────────────────────────────────────────
-
-// SubmitDraft posts a new pending submission (status=3). Returns the galgame
-// response data raw so the handler can forward verbatim. See
-// docs/galgame_wiki/07-submission.md §POST /galgame/submit.
-func (c *GalgameClient) SubmitDraft(ctx context.Context, token string, body []byte, contentType string) (json.RawMessage, *errors.AppError) {
-	return c.PostWithToken(ctx, "/galgame/submit", token, json.RawMessage(body), contentType)
-}
-
-// ClaimDraft flips a VNDB-source draft (status=2) to published (status=0)
-// and assigns the caller as creator + contributor. Server enforces the
-// status precondition.
-func (c *GalgameClient) ClaimDraft(ctx context.Context, token string, gid int) (json.RawMessage, *errors.AppError) {
-	path := "/galgame/" + strconv.Itoa(gid) + "/claim"
-	return c.PostWithToken(ctx, path, token, json.RawMessage(`{}`), "application/json")
-}
-
-// PatchDraft updates the caller's own pending/declined draft (status IN 3,4).
-// If the row was status=4, the galgame flips it back to status=3 (re-queues).
-func (c *GalgameClient) PatchDraft(ctx context.Context, token string, gid int, body []byte, contentType string) (json.RawMessage, *errors.AppError) {
-	path := "/galgame/" + strconv.Itoa(gid)
-	return c.PatchWithToken(ctx, path, token, json.RawMessage(body), contentType)
-}
-
-// DeleteDraft hard-deletes the caller's own pending/declined draft. Galgame
-// CASCADEs the associated galgame tables; kungal still needs to clean its
-// local stub if interaction lazy-created one.
-func (c *GalgameClient) DeleteDraft(ctx context.Context, token string, gid int) *errors.AppError {
-	path := "/galgame/" + strconv.Itoa(gid)
-	_, err := c.DeleteWithToken(ctx, path, token, nil, "")
-	return err
-}
-
 // bodySnippet trims an upstream body for safe logging / error context.
 // Galgame errors are tiny JSON; a misconfigured upstream may return a large
 // HTML page, so cap it.
 func bodySnippet(b []byte) string {
-	const max = 512
+	const max = 300
 	if len(b) > max {
-		return string(b[:max]) + "…(truncated)"
+		return string(b[:max]) + "…"
 	}
 	return string(b)
 }
+
+// The user-submission write lane retired with the wiki's submission surface.
+// SubmitDraft / ClaimDraft / PatchDraft / DeleteDraft all wrote a wiki row's
+// `status` column; the lifecycle is claim_state now, moved through semantic
+// actions on the registry (pkg/catalogclient/claims.go), so there is nothing
+// left for this client to forward.
 
 func (c *GalgameClient) doRequest(req *http.Request) (json.RawMessage, *errors.AppError) {
 	resp, err := c.httpClient.Do(req)

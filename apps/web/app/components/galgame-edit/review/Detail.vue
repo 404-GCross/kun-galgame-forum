@@ -40,7 +40,7 @@ const isOpen = computed(() => proposal.value?.status === 'open')
 const exitTo = computed(() =>
   canModerate.value
     ? '/galgame-edit/review'
-    : `/galgame/${proposal.value?.entity_id ?? ''}/edit`
+    : `/galgame/${proposal.value?.gid ?? ''}/edit`
 )
 const effective = computed(
   () => proposal.value?.effective_patch ?? proposal.value?.patch ?? {}
@@ -178,8 +178,8 @@ const userName = (uid?: number) => {
       >
         <KunHeader :name="`审阅提案 #${proposal.id}`" scale="h2" />
         <div class="flex flex-wrap items-center gap-2 text-sm">
-          <KunLink :to="`/galgame/${proposal.entity_id}`" size="sm">
-            前往条目 #{{ proposal.entity_id }}
+          <KunLink :to="`/galgame/${proposal.gid}`" size="sm">
+            前往条目 #{{ proposal.gid }}
           </KunLink>
           <span class="text-default-400">
             提案人：{{ userName(proposal.proposer_uid) }} ·

@@ -87,6 +87,16 @@ export interface GalgameEditGameBrief {
 }
 
 export interface GalgameEditProposalItem extends GalgameEditProposal {
+  /**
+   * The kungal id this proposal's entry lives at.
+   *
+   * NOT interchangeable with `entity_id`. That is a registry work id whose
+   * range OVERLAPS kungal's gids, so a link built from it lands on a different
+   * game and nothing reports an error. The BFF translates and stamps this;
+   * every link and route in the UI reads it. 0 = kungal does not claim the
+   * entry, so there is no page to link to.
+   */
+  gid: number
   galgame?: GalgameEditGameBrief
 }
 

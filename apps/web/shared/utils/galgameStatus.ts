@@ -1,52 +1,12 @@
-import { GalgameStatus } from '../types/galgame'
 import { getPreferredLanguageText } from './getPreferredLanguageText'
 
-// Centralised galgame submission-status presentation. Every consumer
-// (publish wizard, my-submissions list, draft editor, admin review
-// queue, wiki notifications) renders status the same way, and a new
-// status value only needs touching here.
+// Wire-format name resolution, shared so every galgame surface resolves a
+// title identically.
 //
-// Rationale: the "VNDB 草稿 shown with a 前往发布资源 button" bug came
-// from each component carrying its own copy of this mapping, so one
-// place (the wizard's search-items block) lagged behind the others.
-// Keeping the status→{label,color} and wire→name logic in one module
-// makes that class of drift impossible.
-
-// Subset of KunUIColor actually used for status badges. Assignable to
-// KunChip's `color` prop (which is the full KunUIColor union).
-type GalgameStatusColor =
-  | 'default'
-  | 'primary'
-  | 'success'
-  | 'warning'
-  | 'danger'
-
-export interface GalgameStatusBadge {
-  label: string
-  color: GalgameStatusColor
-}
-
-// status may be undefined for rows where the wire format omits it
-// (older briefs / partial projections) — fall through to "未知" rather
-// than guessing "已发布", which would mislabel hidden drafts.
-export const galgameStatusBadge = (
-  status: number | undefined
-): GalgameStatusBadge => {
-  switch (status) {
-    case GalgameStatus.Published:
-      return { label: '已发布', color: 'success' }
-    case GalgameStatus.Banned:
-      return { label: '已封禁', color: 'default' }
-    case GalgameStatus.VndbDraft:
-      return { label: 'VNDB 草稿', color: 'primary' }
-    case GalgameStatus.Pending:
-      return { label: '待审核', color: 'warning' }
-    case GalgameStatus.Declined:
-      return { label: '已拒绝', color: 'danger' }
-    default:
-      return { label: '未知', color: 'default' }
-  }
-}
+// The status→badge half of this module retired with the wiki status machine:
+// lifecycle is claim_state now, and its presentation lives in
+// galgameClaimState.ts. The two vocabularies are not a rename of each other, so
+// keeping a translation layer between them would have been a third vocabulary.
 
 // Wire-format galgame rows carry snake_case name_<locale> columns; the
 // rest of the site keys KunLanguage by hyphenated locale. Build the

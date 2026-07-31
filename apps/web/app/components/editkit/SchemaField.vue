@@ -6,7 +6,11 @@
 // KunUI primitives + self-contained types only.
 import { computed, ref, watch } from 'vue'
 import { useSortable } from '@vueuse/integrations/useSortable'
-import type { EditFieldConfig, EditSchemaField } from './types'
+import type {
+  EditFieldConfig,
+  EditObjectColumn,
+  EditSchemaField
+} from './types'
 import {
   editValueEqual,
   formatEditItem,
@@ -62,12 +66,8 @@ const editable = computed(() => !props.disabled && readonlyReason.value === '')
 const textBuffer = ref('')
 const boolBuffer = ref(false)
 const stringList = ref<string[]>([])
-interface LinkRow {
-  name: string
-  link: string
-  [key: string]: unknown
-}
-const linkRows = ref<LinkRow[]>([])
+type ObjectRow = Record<string, unknown>
+const objectRows = ref<ObjectRow[]>([])
 
 const syncFromValue = () => {
   const v = props.modelValue
@@ -81,9 +81,9 @@ const syncFromValue = () => {
     case 'number-list':
       stringList.value = Array.isArray(v) ? v.map((x) => String(x)) : []
       break
-    case 'link-list':
-      linkRows.value = Array.isArray(v)
-        ? (v as LinkRow[]).map((row) => ({ ...row }))
+    case 'object-list':
+      objectRows.value = Array.isArray(v)
+        ? (v as ObjectRow[]).map((row) => ({ ...row }))
         : []
       break
     default:
@@ -148,26 +148,51 @@ const emitStringList = (items: string[]) => {
   )
 }
 
-const emitLinkRows = () => {
+const objectColumns = computed(() => props.config?.columns ?? [])
+
+// A select column edits a string, but the underlying key may be numeric (a
+// title's `kind` is an enum int). Coerce back to the option's own type so the
+// engine sees the value it declared rather than its decimal spelling.
+const coerceColumnValue = (col: EditObjectColumn, raw: string): unknown => {
+  const match = (col.options ?? []).find((o) => String(o.value) === raw)
+  return match ? match.value : raw
+}
+
+// A row is dropped only when EVERY declared column is blank — a title with a
+// language and no text is a mistake the user is mid-way through, not something
+// to silently discard while they type. The rest of the row is spread through
+// untouched: the engine rejects a value that lost a key it wrote.
+const emitObjectRows = () => {
+  const cols = objectColumns.value
   emit(
     'update:modelValue',
-    linkRows.value
-      .filter((row) => row.name.trim() !== '' || row.link.trim() !== '')
-      .map((row) => ({
-        ...row,
-        name: row.name.trim(),
-        link: row.link.trim()
-      }))
+    objectRows.value
+      .filter((row) =>
+        cols.some((c) => String(row[c.key] ?? '').trim() !== '')
+      )
+      .map((row) => {
+        const out: ObjectRow = { ...row }
+        for (const c of cols) {
+          if (typeof out[c.key] === 'string') {
+            out[c.key] = (out[c.key] as string).trim()
+          }
+        }
+        return out
+      })
   )
 }
 
-const addLinkRow = () => {
-  linkRows.value.push({ name: '', link: '', source: '', source_key: '' })
+const addObjectRow = () => {
+  const blank: ObjectRow = {}
+  for (const c of objectColumns.value) {
+    blank[c.key] = c.control === 'select' ? (c.options?.[0]?.value ?? '') : ''
+  }
+  objectRows.value.push({ ...blank, ...(props.config?.newRow?.() ?? {}) })
 }
 
-const removeLinkRow = (index: number) => {
-  linkRows.value.splice(index, 1)
-  emitLinkRows()
+const removeObjectRow = (index: number) => {
+  objectRows.value.splice(index, 1)
+  emitObjectRows()
 }
 
 const selectOptions = computed(() =>
@@ -370,37 +395,58 @@ const pinImageItem = (index: number) => {
         :description="config?.description"
         @update:model-value="emitStringList"
       />
-      <div v-else-if="control === 'link-list'" class="space-y-2">
+      <div v-else-if="control === 'object-list'" class="space-y-2">
         <div
-          v-for="(row, index) in linkRows"
+          v-for="(row, index) in objectRows"
           :key="index"
           class="flex items-start gap-2"
         >
-          <KunInput
-            v-model="row.name"
-            placeholder="名称"
-            class-name="w-1/3"
-            @update:model-value="emitLinkRows"
-          />
-          <KunInput
-            v-model="row.link"
-            placeholder="https://…"
-            class-name="flex-1"
-            @update:model-value="emitLinkRows"
-          />
+          <template v-for="col in objectColumns" :key="col.key">
+            <KunSelect
+              v-if="col.control === 'select'"
+              :model-value="String(row[col.key] ?? '')"
+              :options="(col.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))"
+              :class-name="col.width ?? 'flex-1'"
+              @update:model-value="
+                (v: string | string[] | null) => {
+                  row[col.key] = coerceColumnValue(col, String(v ?? ''))
+                  emitObjectRows()
+                }
+              "
+            />
+            <KunTextarea
+              v-else-if="col.control === 'textarea'"
+              v-model="row[col.key] as string"
+              :placeholder="col.placeholder ?? col.label"
+              :class-name="col.width ?? 'flex-1'"
+              @update:model-value="emitObjectRows"
+            />
+            <KunInput
+              v-else
+              v-model="row[col.key] as string"
+              :placeholder="col.placeholder ?? col.label"
+              :class-name="col.width ?? 'flex-1'"
+              @update:model-value="emitObjectRows"
+            />
+          </template>
           <KunButton
             :is-icon-only="true"
             variant="light"
             color="danger"
             size="sm"
-            @click="removeLinkRow(index)"
+            @click="removeObjectRow(index)"
           >
             <KunIcon name="lucide:x" />
           </KunButton>
         </div>
-        <KunButton variant="flat" color="default" size="sm" @click="addLinkRow">
+        <KunButton
+          variant="flat"
+          color="default"
+          size="sm"
+          @click="addObjectRow"
+        >
           <KunIcon name="lucide:plus" />
-          添加链接
+          添加一行
         </KunButton>
         <p v-if="config?.description" class="text-default-400 text-xs">
           {{ config.description }}
