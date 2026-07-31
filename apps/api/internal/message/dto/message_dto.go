@@ -39,9 +39,8 @@ type MessageResponse struct {
 type MessageListResponse struct {
 	Messages []MessageResponse `json:"messages"`
 	// `total` (not `totalCount`) to match the convention used elsewhere in
-	// the codebase — e.g. dto.GalgameRevisionListPage, the galgame PR list,
-	// every paginated list type. The previous `totalCount` tag silently
-	// broke pagination on /message/notice (FE reads `data.value.total`).
+	// the codebase — every paginated list type. The previous `totalCount` tag
+	// silently broke pagination on /message/notice (FE reads `data.value.total`).
 	Total int64 `json:"total"`
 }
 

@@ -1,8 +1,6 @@
 package app
 
 import (
-	"strings"
-
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/perm"
 
@@ -568,28 +566,13 @@ func (a *App) setupRoutes() {
 	taxonomyWrite.Delete("/galgame-official/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
 	taxonomyWrite.Delete("/galgame-engine/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
 
-	// U3 taxonomy revisions + revert (K-PR5). ToGalgamePath's kebab prefix
-	// rewrite (/galgame-tag → /tag, /galgame-series → /series) maps these
-	// to the galgame's per-entity revision endpoints.
+	// The taxonomy revision history / single-snapshot / revert proxies (three
+	// routes per entity) were retired in wave 156 (N3): a census of the whole
+	// frontend found no consumer — the composable and its two components were
+	// mounted nowhere — and 03 定案 §4 retires the taxonomy console outright
+	// rather than re-targeting it, so nothing will grow one back. Taxonomy
+	// history now lives only where the editing engine keeps it.
 	//
-	// Revision GETs forward the caller's bearer (via optAuth) — the galgame
-	// gates taxonomy revision history behind auth (02-revisions §"后端透传
-	// Bearer 代理"), so a token-less GET 401's for everyone.
-	//
-	// All four entities (tag / official / engine / series) are included.
-	// Series only surfaces its own name/alias/description edits — membership
-	// changes (a galgame joining/leaving) are recorded as galgame-side
-	// revisions — but that is still useful history, so it is no longer
-	// excluded (the prior exclusion was a stale earlier-version decision).
-	for _, ent := range []string{"galgame-tag", "galgame-official", "galgame-engine", "galgame-series"} {
-		galgameEnt := strings.TrimPrefix(ent, "galgame-")
-		// LIST is hydrated (real user name/avatar, camelCase {items,total});
-		// the single-revision snapshot stays a raw proxy (the FE diff builder
-		// consumes the galgame's verbatim snake_case snapshot).
-		optAuth.Get("/"+ent+"/:id/revisions", a.GalgameProxyHandler.GetTaxonomyRevisions(galgameEnt))
-		optAuth.Get("/"+ent+"/:id/revisions/:rev", a.GalgameProxyHandler.ProxyGetWithToken)
-		taxonomyWrite.Post("/"+ent+"/:id/revert", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	}
 	// Series create (POST) + the modal's id→name resolver stay open — the public
 	// /galgame-series page lets any logged-in user create a series; edit / delete
 	// are admin-only.

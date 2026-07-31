@@ -177,53 +177,6 @@ export const kunGalgameSortFieldOptions: KunSelectOption[] = [
   { value: 'created', label: '创建顺序' }
 ]
 
-// The old PR status/action/type maps retired with the old-wire editor (E3b);
-// the field-label map below stays — SnapshotDiff (taxonomy history + the
-// activity feed's edit cards) still renders snapshot keys through it.
-export const KUN_GALGAME_RESOURCE_PULL_REQUEST_I18N_FIELD_MAP: Record<
-  string,
-  string | KunLanguage
-> = {
-  // Old version compatible
-  'name.en-us': '英语标题',
-  'name.ja-jp': '日语标题',
-  'name.zh-cn': '简体中文标题',
-  'name.zh-tw': '繁体中文标题',
-  'introduction.en-us': '英语介绍',
-  'introduction.ja-jp': '日语介绍',
-  'introduction.zh-cn': '简体中文介绍',
-  'introduction.zh-tw': '繁体中文介绍',
-  tags: '标签',
-  series: '系列',
-  alias: '别名',
-  official: '官网',
-
-  engine: '引擎',
-  // Legacy camelCase keys (kept for diff display of historical PRs).
-  vndbId: 'VNDB ID',
-  contentLimit: '内容限制',
-  // Wire-format snake_case keys (current wiki API).
-  vndb_id: 'VNDB ID',
-  content_limit: '内容限制',
-  age_limit: '年龄分级',
-  original_language: '原始语言',
-  // U1: replaces the legacy `released` free-form string.
-  release_date: '发售日期',
-  release_date_tba: '发售日 TBA',
-  // U2: presence-replace arrays in PR / direct-edit payloads.
-  covers: '封面',
-  screenshots: '画廊',
-  aliases: '别名',
-  name_en_us: '英语标题',
-  name_ja_jp: '日语标题',
-  name_zh_cn: '简体中文标题',
-  name_zh_tw: '繁体中文标题',
-  intro_en_us: '英语介绍',
-  intro_ja_jp: '日语介绍',
-  intro_zh_cn: '简体中文介绍',
-  intro_zh_tw: '繁体中文介绍'
-}
-
 export const galgameIntroductionLanguageTabs: KunTabItem[] = [
   {
     textValue: '英语介绍',
