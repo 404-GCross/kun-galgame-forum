@@ -501,10 +501,13 @@ func New(cfg *config.Config) *App {
 
 	// Galgame message stream: user notifications + admin queue + per-user
 	// "read up to" cursor. The cron-driven ingestion lives in
-	// galgameMessageSync below.
+	// galgameClaimSync below.
 	galgameMessageRepo := galgameRepo.NewGalgameMessageRepository(db)
 	galgameMessageSvc := galgameService.NewGalgameMessageService(gc, galgameMessageRepo)
-	galgameMessageSync := galgameService.NewGalgameMessageSync(gc, galgameLocalRepo, userStateRepo, rdb)
+	// Cron-driven ingestion of claim-state transitions: local stub lifecycle
+	// plus the publication reward. Reads the registry's claim-event feed over
+	// S2S — the wiki message feed it replaces retires with the wiki tables.
+	galgameClaimSync := galgameService.NewGalgameClaimEventSync(catalogCli, galgameLocalRepo, rdb)
 	// Mirrors editing-engine revisions into galgame_activity so the forum
 	// activity timeline can show galgame edits (migrations 021 + 067). Reads the
 	// catalog S2S client, not the wiki client: the engine is the author of every
@@ -679,7 +682,7 @@ func New(cfg *config.Config) *App {
 		ToolsetPracticalityHandler:  toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
 		ToolsetResourceHandler:      toolsetHandler.NewResourceHandler(toolsetResourceSvc),
 		ToolsetUploadHandler:        toolsetHandler.NewUploadHandler(toolsetUploadSvc),
-		CronStop:                    cronPkg.Start(db, rdb, imgCli, galgameMessageSync.Run, galgameRevisionSync.Run),
+		CronStop:                    cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run),
 	}
 
 	// Load the runtime permission overrides (BOTH the role and user layers) into

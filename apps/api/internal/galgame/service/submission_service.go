@@ -21,7 +21,7 @@ import (
 //
 //	submit → 0 (no reward; deferred until approval to deter spam)
 //	claim  → +3 (claim publishes immediately, no review queue)
-//	approved (via cron) → +3 (handled in GalgameMessageSync, not here)
+//	approved (via cron) → +3 (handled in GalgameClaimEventSync, not here)
 //	declined / delete → no reward to reclaim (never granted)
 type SubmissionService struct {
 	galgameClient *client.GalgameClient

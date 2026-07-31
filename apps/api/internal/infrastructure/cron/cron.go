@@ -21,13 +21,11 @@ const scheduleTZ = "Asia/Shanghai"
 
 // Start creates and starts all scheduled tasks. Returns a stop function.
 //
-// galgameMessageSync (optional, may be nil) drives the periodic ingestion of
-// admin-triggered events from the galgame message feed. Scheduled every 10
-// minutes — see docs/galgame_wiki/07-submission.md §调用方 cron 同步本地
-// status (the cron pace was bumped from daily so users see their +3
-// moemoepoint within a normal page-refresh window after admin approves
-// their submission).
-func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameMessageSync func(), galgameRevisionSync func()) func() {
+// galgameClaimSync (optional, may be nil) drives the periodic ingestion of
+// claim-state transitions from the registry's claim-event feed. Scheduled
+// every 10 minutes so a reviewer's decision — and the +3 that rides on it —
+// reaches the submitter within a normal page-refresh window.
+func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameClaimSync func(), galgameRevisionSync func()) func() {
 	loc, err := time.LoadLocation(scheduleTZ)
 	if err != nil {
 		slog.Warn("加载定时任务时区失败, 回退到进程本地时区", "tz", scheduleTZ, "error", err)
@@ -73,11 +71,11 @@ func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameMe
 		slog.Warn("image client 未配置, 跳过内容图 reference-ping —— 内容图存在被 image-gc 回收的风险")
 	}
 
-	// Every 10 min: pull galgame submission-stream events and apply local
-	// side effects (+3 moemoepoint on approve, drop stub on ban). Skipped
-	// when the caller didn't wire a sync (e.g. tests).
-	if galgameMessageSync != nil {
-		c.AddFunc("*/10 * * * *", galgameMessageSync)
+	// Every 10 min: pull claim-state transitions and apply local side effects
+	// (seed the stub on live, drop it on hidden, +3 on approval). Skipped when
+	// the caller didn't wire a sync (e.g. tests).
+	if galgameClaimSync != nil {
+		c.AddFunc("*/10 * * * *", galgameClaimSync)
 	}
 
 	// Every 10 min: mirror editing-engine revisions into the local

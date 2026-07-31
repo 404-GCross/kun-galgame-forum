@@ -731,59 +731,6 @@ func (c *GalgameClient) DeleteDraft(ctx context.Context, token string, gid int) 
 	return err
 }
 
-// ──────────────────────────────────────────
-// Message feed (service identity, X-API-Key)
-// ──────────────────────────────────────────
-
-// NextMoeMessageGalgameBrief is the brief embed inside each NextMoeMessage.
-// Null on hard-deleted galgames — consumers must null-check.
-type NextMoeMessageGalgameBrief struct {
-	ID     int `json:"id"`
-	Status int `json:"status"`
-}
-
-// NextMoeMessage matches the per-message shape in /galgame/messages/feed.
-// See docs/galgame_wiki/08-messages.md for the wire format.
-type NextMoeMessage struct {
-	ID           int64                       `json:"id"`
-	Type         string                      `json:"type"`
-	GalgameID    int                         `json:"galgame_id"`
-	Galgame      *NextMoeMessageGalgameBrief `json:"galgame"`
-	ActorUserID  int                         `json:"actor_user_id"`
-	TargetUserID *int                        `json:"target_user_id"`
-	Payload      json.RawMessage             `json:"payload"`
-	CreatedAt    string                      `json:"created_at"`
-}
-
-// NextMoeMessageFeed is the envelope returned by /galgame/messages/feed.
-type NextMoeMessageFeed struct {
-	Items   []NextMoeMessage `json:"items"`
-	HasMore bool             `json:"has_more"`
-}
-
-// MessagesFeed pulls a batch of admin-triggered events (approved /
-// declined / banned / unbanned) from the internal face using the service
-// X-API-Key. Used by the galgame-message sync cron.
-func (c *GalgameClient) MessagesFeed(ctx context.Context, sinceID int64, limit int) (*NextMoeMessageFeed, *errors.AppError) {
-	if limit <= 0 {
-		limit = 1000
-	}
-
-	query := url.Values{
-		"since_id": {strconv.FormatInt(sinceID, 10)},
-		"limit":    {strconv.Itoa(limit)},
-	}
-	data, appErr := c.getFace(ctx, c.internalBase, "/galgame/messages/feed", "", query, c.apiKey)
-	if appErr != nil {
-		return nil, appErr
-	}
-	var feed NextMoeMessageFeed
-	if err := json.Unmarshal(data, &feed); err != nil {
-		return nil, errors.ErrInternal("解析 galgame 消息 feed 失败")
-	}
-	return &feed, nil
-}
-
 // bodySnippet trims an upstream body for safe logging / error context.
 // Galgame errors are tiny JSON; a misconfigured upstream may return a large
 // HTML page, so cap it.
