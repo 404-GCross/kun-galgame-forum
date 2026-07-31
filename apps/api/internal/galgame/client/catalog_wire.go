@@ -377,14 +377,40 @@ func refsMap(refs []catRef) map[string]string {
 	}
 	out := make(map[string]string, len(refs))
 	for _, r := range refs {
-		// First anchor per source wins: a work can carry several release-level
-		// anchors of one source (dlsite digital + physical) and the product
-		// links to one of them.
-		if _, seen := out[r.Source]; !seen {
+		prev, seen := out[r.Source]
+		switch {
+		case !seen:
+			out[r.Source] = r.ExternalID
+		case r.Source == sourceVNDB && !isVndbWorkID(prev) && isVndbWorkID(r.ExternalID):
+			// VNDB is the one source whose anchors are not interchangeable: a
+			// work commonly carries BOTH a release anchor (r69531) and the work
+			// anchor (v27920), and only the latter is what kungal means by
+			// "the VNDB id" — it is the one the wizard prints and the one every
+			// VNDB link is built from. It wins regardless of arrival order.
 			out[r.Source] = r.ExternalID
 		}
+		// Otherwise first anchor per source wins: a work can carry several
+		// release-level anchors of one source (dlsite digital + physical) and
+		// the product links to one of them.
 	}
 	return out
+}
+
+const sourceVNDB = "vndb"
+
+// isVndbWorkID reports whether an external id is a vndb WORK anchor: `v`
+// followed by at least one digit and nothing else. Stricter than a prefix test
+// on purpose — `v`, `v12a` and `vn3` are not work ids.
+func isVndbWorkID(s string) bool {
+	if len(s) < 2 || s[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // coverFields projects the two-slot cover block onto the derived
