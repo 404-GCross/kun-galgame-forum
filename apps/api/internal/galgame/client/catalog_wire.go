@@ -358,26 +358,36 @@ func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 // key spaces overlap, and a catalog id used as a gid would attach another
 // game's local stats (doc 106 R3).
 func (it *CatalogWorkListItem) gid() int {
-	if it.ClaimedBy == nil || it.ClaimedBy.Site != ClaimSiteKungal {
+	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
 		return 0
 	}
 	return it.ClaimedBy.WorkID
 }
 
 // ClaimSiteKungal is the catalog CLAIM SITE key for kungal's galgame entries —
-// the value `claimed_by.site` carries and the tenant the lifecycle actions are
-// filed under.
+// the value `claimed_by.site` carries and the tenant lifecycle actions are
+// filed under. This is the value kungal WRITES.
 //
-// It used to read `galgame_wiki`, and it used to be the SAME constant as the
-// external-ref source label below. They are two different namespaces that
-// merely agreed on a string for as long as the wiki was both the claiming
-// product and the provenance of the bridged rows, and they stop agreeing in
-// the W1 window: the re-site step rewrites `catalog_work.site` to `kungal`
-// while the source registry renames source 12's key to `curated`. Splitting
-// them is what lets each half be paired with the step that actually flips it —
-// see the P3 choreography table. Sharing one constant would have made the
-// second flip silently undo the first.
+// It is not the external-ref source key (client.anchorSourceKeys), though the
+// two spelled `galgame_wiki` alike for as long as the wiki was both the
+// claiming product and the provenance of the bridged rows. They stop agreeing
+// in the W1 window, and in different steps.
 const ClaimSiteKungal = "kungal"
+
+// claimSiteLegacy is what `claimed_by.site` reads until the re-site step
+// rewrites it. Recognising both is what keeps the reader correct on either
+// side of that step, so the flip needs no coordinated deploy: a constant
+// matching only the new value would return gid 0 for every row until the data
+// caught up, and a gid of 0 does not raise anything — it just quietly removes
+// every card's link and every entry's local stats.
+//
+// Removable once the re-site has soaked. It is only ever READ; nothing writes
+// it.
+const claimSiteLegacy = "galgame_wiki"
+
+func isKungalClaim(site string) bool {
+	return site == ClaimSiteKungal || site == claimSiteLegacy
+}
 
 // refsMap flattens the exact identity anchors into the open source→id map the
 // kungal briefs carry (kungal reads "dlsite" for the 补票 purchase link).

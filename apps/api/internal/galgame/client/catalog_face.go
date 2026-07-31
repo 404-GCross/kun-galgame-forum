@@ -34,19 +34,25 @@ import (
 // discover the limit as a failure.
 const catalogIDsChunk = 100
 
-// AnchorSourceCurated is the catalog_source KEY of source 12 — the provenance
-// under which every kungal entry's external_ref anchor is filed, and therefore
-// the only handle the gid -> work id bridge has.
+// anchorSourceKeys are the catalog_source KEYS of source 12 — the provenance
+// every kungal entry's external_ref anchor is filed under, and therefore the
+// only handle the gid -> work id bridge has. Source 12 is being RENAMED from
+// `galgame_wiki` to `curated`; its id does not move, only its key.
 //
-// It is NOT the claim site (client.ClaimSiteKungal). The two were the same
-// string, `galgame_wiki`, for as long as the wiki was both the claiming product
-// and the provenance of the bridged rows; the W1 window separates them, because
-// the source registry renames source 12's key to `curated` while the re-site
-// step moves the claim to `kungal`. The source ID (12) does not move — only its
-// key — so this constant and the infra rename are ONE same-window pair: flip
-// them apart and every gid resolves to nothing, which reads as "every galgame
-// page 404s", not as an error anyone would trace to a renamed label.
-const AnchorSourceCurated = "curated"
+// This is a list rather than a constant so the rename needs no coordination.
+// A one-value constant would have to flip in the same deploy as the infra
+// rename, and between the two deploys every gid would resolve to nothing —
+// which presents as "every galgame page 404s", not as anything a reader would
+// trace back to a renamed label. Asking for both keys costs one extra lookup
+// item per gid and is correct on either side of the rename, before it and
+// after it, in either deploy order.
+//
+// The legacy key is removable once the rename has soaked; it is the only thing
+// in this list that is temporary.
+//
+// NOT to be confused with the claim SITE (ClaimSiteKungal): the two happened to
+// spell `galgame_wiki` alike, and stop doing so in different steps.
+var anchorSourceKeys = []string{"curated", "galgame_wiki"}
 
 // Lookup memo TTLs. A HIT is a registry identity — stable for the lifetime of
 // both rows — so it is cached long. A MISS is not stable: the nightly
@@ -167,18 +173,24 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		return out, nil
 	}
 
+	// Each gid costs one lookup item PER source key, so the gid stride is the
+	// face's item ceiling divided by however many keys are in flight.
+	gidStride := max(catalogIDsChunk/len(anchorSourceKeys), 1)
+
 	resolved := make(map[int]int64, len(missing))
-	for start := 0; start < len(missing); start += catalogIDsChunk {
-		end := min(start+catalogIDsChunk, len(missing))
+	for start := 0; start < len(missing); start += gidStride {
+		end := min(start+gidStride, len(missing))
 		chunk := missing[start:end]
 
-		items := make([]map[string]string, 0, len(chunk))
+		items := make([]map[string]string, 0, len(chunk)*len(anchorSourceKeys))
 		for _, gid := range chunk {
-			items = append(items, map[string]string{
-				"source":      AnchorSourceCurated,
-				"external_id": strconv.Itoa(gid),
-				"type":        "work",
-			})
+			for _, source := range anchorSourceKeys {
+				items = append(items, map[string]string{
+					"source":      source,
+					"external_id": strconv.Itoa(gid),
+					"type":        "work",
+				})
+			}
 		}
 		data, appErr := c.postFace(ctx, c.v1Base, "/catalog/lookup/batch",
 			url.Values{"nsfw": {"1"}}, map[string]any{"items": items}, c.apiKey)
@@ -196,6 +208,9 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		if err := json.Unmarshal(data, &parsed); err != nil {
 			return nil, errors.ErrInternal("解析 Catalog 批量解析响应失败")
 		}
+		// A gid can come back once per source key. Both name source 12, so
+		// both name the same registry row — whichever lands last is the same
+		// identity, and only one of them resolves at all outside the rename.
 		for _, it := range parsed.Items {
 			if it.Work == nil {
 				continue

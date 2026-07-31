@@ -424,8 +424,21 @@ func joinCSV(s []string) string {
 //
 // found=false on an unregistered id (the caller 404s).
 func (c *GalgameClient) LookupWikiLabel(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
+	// The singular lookup takes ONE source, so source 12's rename is walked
+	// key by key rather than asked for in one shot. The keys are tried in
+	// post-rename order, so once the rename has soaked this is one call again.
+	for _, source := range anchorSourceKeys {
+		id, found, appErr := c.lookupLabelBySource(ctx, source, wikiID)
+		if appErr != nil || found {
+			return id, found, appErr
+		}
+	}
+	return 0, false, nil
+}
+
+func (c *GalgameClient) lookupLabelBySource(ctx context.Context, source string, wikiID int) (int64, bool, *errors.AppError) {
 	q := url.Values{
-		"source":      {AnchorSourceCurated},
+		"source":      {source},
 		"external_id": {strconv.Itoa(wikiID)},
 		"type":        {"label"},
 		// Identity resolution is not content: gating it would make an r18
