@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
+	galgameService "kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
@@ -18,6 +19,7 @@ import (
 type UserContentService struct {
 	userContentRepo *repository.UserContentRepository
 	galgameClient   *client.GalgameClient
+	galgameStats    *galgameService.GalgameUserStatsService
 	userClient      *userclient.Client
 	community       *communityclient.Client
 }
@@ -25,12 +27,14 @@ type UserContentService struct {
 func NewUserContentService(
 	userContentRepo *repository.UserContentRepository,
 	galgameClient *client.GalgameClient,
+	galgameStats *galgameService.GalgameUserStatsService,
 	userClient *userclient.Client,
 	community *communityclient.Client,
 ) *UserContentService {
 	return &UserContentService{
 		userContentRepo: userContentRepo,
 		galgameClient:   galgameClient,
+		galgameStats:    galgameStats,
 		userClient:      userClient,
 		community:       community,
 	}
@@ -68,28 +72,33 @@ func (s *UserContentService) GetUserGalgameCards(
 	if s.hideTarget(ctx, userID) {
 		return []dto.UserGalgameCard{}, 0, nil
 	}
-	// "已发布" (galgame_publish): ownership lives in the galgame — kungal's local
-	// galgame mirror has no user_id after the OAuth migration — so the list
-	// comes straight from the galgame endpoint (already ordered, paginated and
-	// NSFW-filtered there). Other types (like / favorite / comment) still join
-	// local relation tables for the IDs, then enrich via the galgame batch.
+	// "已发布" (galgame_publish): the entries whose claim this user carried to
+	// live. Ownership is no longer a column anywhere — the registry has none by
+	// design — so the list is derived from what the user DID, and the claim's
+	// product id IS the gid the cards are keyed by.
 	if req.Type == "galgame_publish" {
-		briefs, total, galgameErr := s.galgameClient.GetUserGalgames(ctx, userID, req.Page, req.Limit, isSFW)
-		if galgameErr != nil {
-			return []dto.UserGalgameCard{}, 0, nil
+		ids, total, err := s.galgameStats.PublishedGIDs(ctx, int64(userID), req.Page, req.Limit)
+		if err != nil || len(ids) == 0 {
+			return []dto.UserGalgameCard{}, total, nil
 		}
-		return s.buildGalgameCards(ctx, briefs), total, nil
+		return s.galgameCardsByIDs(ctx, ids, isSFW), total, nil
 	}
 
-	// "贡献的" (galgame_contributed): created ∪ edited — also galgame-owned, same
-	// galgame-paginated/NSFW-filtered list shape as 已发布, just a different
-	// endpoint. Superset of galgame_publish.
+	// "贡献的" (galgame_contributed): the DISTINCT entries this user has landed a
+	// merged edit on. It is no longer a superset of 已发布 — publishing and
+	// editing are different acts on different faces, and conflating them was
+	// only possible while one table recorded both.
 	if req.Type == "galgame_contributed" {
-		briefs, total, galgameErr := s.galgameClient.GetUserContributedGalgames(ctx, userID, req.Page, req.Limit, isSFW)
-		if galgameErr != nil {
+		ids, err := s.galgameStats.ContributedGIDs(ctx, int64(userID))
+		if err != nil {
 			return []dto.UserGalgameCard{}, 0, nil
 		}
-		return s.buildGalgameCards(ctx, briefs), total, nil
+		total := int64(len(ids))
+		ids = pageSlice(ids, req.Page, req.Limit)
+		if len(ids) == 0 {
+			return []dto.UserGalgameCard{}, total, nil
+		}
+		return s.galgameCardsByIDs(ctx, ids, isSFW), total, nil
 	}
 
 	ids, total, err := s.userContentRepo.FindUserGalgameIDs(userID, req.Type, req.Page, req.Limit, req.ShowNoResource)
@@ -115,6 +124,44 @@ func (s *UserContentService) GetUserGalgameCards(
 		}
 	}
 	return s.buildGalgameCards(ctx, briefs), total, nil
+}
+
+// galgameCardsByIDs hydrates an ORDERED gid list into profile cards, dropping
+// the ids the content gate filtered out — the same "not found ⇒ skip this card"
+// contract every other tab uses.
+func (s *UserContentService) galgameCardsByIDs(
+	ctx context.Context,
+	ids []int,
+	isSFW bool,
+) []dto.UserGalgameCard {
+	briefMap, galgameErr := s.galgameClient.GetBatchPublic(ctx, ids, isSFW)
+	if galgameErr != nil {
+		return []dto.UserGalgameCard{}
+	}
+	briefs := make([]client.GalgameBrief, 0, len(ids))
+	for _, id := range ids {
+		if b, ok := briefMap[id]; ok {
+			briefs = append(briefs, b)
+		}
+	}
+	return s.buildGalgameCards(ctx, briefs)
+}
+
+// pageSlice takes the caller's offset page out of a fully-materialised list.
+// Used only where the upstream face has no offset paging of its own and the
+// list is bounded by construction.
+func pageSlice(ids []int, page, limit int) []int {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	start := (page - 1) * limit
+	if start >= len(ids) {
+		return nil
+	}
+	return ids[start:min(start+limit, len(ids))]
 }
 
 // buildGalgameCards turns an ORDERED slice of galgame briefs into profile cards,

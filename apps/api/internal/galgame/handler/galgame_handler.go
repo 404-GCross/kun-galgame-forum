@@ -23,30 +23,6 @@ func NewGalgameHandler(galgameService *service.GalgameService) *GalgameHandler {
 	return &GalgameHandler{galgameService: galgameService}
 }
 
-// ──────────────────────────────────────────
-// Create (proxy to galgame with local side effects)
-// ──────────────────────────────────────────
-
-// Create — POST /api/galgame
-func (h *GalgameHandler) Create(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-
-	// Session-stored token; see middleware.GetAccessToken for rationale.
-	token := middleware.GetAccessToken(c)
-	if token == "" {
-		return response.Error(c, errors.ErrAuthExpired())
-	}
-
-	data, appErr := h.galgameService.Create(c.Context(), user.ID, token, c.Body(), c.Get("Content-Type"))
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return c.JSON(fiber.Map{"code": 0, "message": "成功", "data": data})
-}
-
 // The old-wire PR handlers (SubmitPR / MergePR / DeclinePR) retired in E3b —
 // every kungal edit write flows through the editing-engine BFF
 // (edit_handler.go), which carries their notification / moemoepoint /

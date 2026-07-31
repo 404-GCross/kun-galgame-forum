@@ -408,17 +408,21 @@ func (a *App) setupRoutes() {
 	authed.Put("/website/:domain/like", a.WebsiteHandler.ToggleLike)
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)
 
-	// Galgame submission flow (authenticated, any role) — see
-	// docs/galgame_wiki/07-submission.md. The wizard search forces
-	// include_pending=true so the caller sees their own pending hits.
+	// Galgame submission flow (authenticated, any role). Each of these is one
+	// semantic action on the registry's claim; there is no "patch my draft"
+	// any more, because a draft's FIELDS are edited through the same editing
+	// face as any other entry's and only its STATE moves here.
+	//
+	// DELETE is 撤回, not deletion: the claim returns to draft and the registry
+	// row — an identity other products and the edit history point at — survives.
 	//
 	// /mine + /search/wizard are registered earlier (above the
 	// /galgame/:gid catch-all) because Fiber matches in registration
 	// order; see the comment near api.Get("/galgame/mine", ...) above.
 	authed.Post("/galgame/submit", a.GalgameSubmissionHandler.Submit)
 	authed.Post("/galgame/:gid/claim", a.GalgameSubmissionHandler.Claim)
-	authed.Patch("/galgame/:gid", a.GalgameSubmissionHandler.PatchDraft)
-	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.DeleteDraft)
+	authed.Post("/galgame/:gid/resubmit", a.GalgameSubmissionHandler.Resubmit)
+	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
 
 	// Galgame message stream — user notifications + per-user read marker.
 	authed.Get("/galgame/messages/mine", a.GalgameMessageHandler.MessagesMine)
@@ -492,18 +496,11 @@ func (a *App) setupRoutes() {
 	// (Create, which seeds the kungal-local stub) go through GalgameHandler
 	// instead; the old-wire PR writes retired in E3b (the editing-engine BFF
 	// carries their side effects now).
-	// POST /galgame is the "admin direct publish" bypass — galgame gates it
-	// to admin/moderator (see docs/galgame_wiki/01-galgame.md §POST). Most
-	// users go through POST /galgame/submit instead. We mirror the gate
-	// here so non-admin attempts fail fast before the galgame hop.
-	//
-	// INFRA-PROXY (mirrors infra key `galgame.create`, moderator+): the galgame
-	// re-checks; this RequireModerator stays a fail-fast mirror, NOT a
-	// pkg/perm boundary (truth lives in infra).
-	authed.Post("/galgame",
-		middleware.RequireModerator(),
-		a.GalgameHandler.Create,
-	)
+	// POST /galgame — the wiki's "admin direct publish" bypass — is gone. It
+	// existed because publishing and submitting were two different writes; they
+	// are now one lifecycle, so a moderator files a submission through the same
+	// wizard as everyone else and approves it from the queue. Two writes, both
+	// recorded, instead of one that left no trace of who published what.
 	// Editing engine (E3a): the schema-driven editor + the kungal review
 	// queue over the generic edit face (S2S actor assertion — see
 	// galgame/handler/edit_handler.go). The entry gates are exactly that —
@@ -640,18 +637,20 @@ func (a *App) setupRoutes() {
 	// INFRA-PROXY (galgame re-checks), the resource-publish ban is PURE-FORUM, so
 	// each route carries its own gate rather than a shared group middleware.
 	galgameAdmin := authed.Group("")
-	// INFRA-PROXY (mirrors infra key `galgame.review_submission`, moderator+):
-	// the galgame submission review queue. Galgame requires admin/moderator (per
-	// docs/galgame_wiki/06-admin.md + 08-messages.md); RequireModerator is the
-	// local mirror, forwarding via ProxyWriteWithToken so the galgame sees the
-	// calling admin's identity for the revision/message side effects.
-	galgameAdmin.Get("/admin/galgame/messages", middleware.RequireModerator(), a.GalgameMessageHandler.AdminMessages)
-	// INFRA-PROXY (mirrors infra key `edit.galgame.game.status`, moderator+):
-	// approve/decline/ban status transitions land as engine direct edits.
-	galgameAdmin.Put(
-		"/admin/galgame/:gid/status",
+	// INFRA-PROXY (mirrors infra key `catalog.claim.review`, moderator+): the
+	// submission review queue and its four verdicts. RequireModerator is the
+	// ENTRY gate; the registry re-checks the asserted actor against
+	// catalog.claim.review, which is granted moderator and up so the queue keeps
+	// exactly the staffing it had on the wiki.
+	//
+	// The queue reads pending CLAIMS, not a message log: an entry leaves it
+	// because its state moved, so the list cannot drift from reality the way a
+	// read-marker over a message table can.
+	galgameAdmin.Get("/admin/galgame/submissions", middleware.RequireModerator(), a.GalgameClaimReviewHandler.PendingQueue)
+	galgameAdmin.Post(
+		"/admin/galgame/:gid/review",
 		middleware.RequireModerator(),
-		a.GalgameProxyHandler.ProxyWriteWithToken("PUT"),
+		a.GalgameClaimReviewHandler.Review,
 	)
 	// PURE-FORUM: the local resource_publish_banned kill-switch (migration 061)
 	// is enforced entirely by the forum — gated on galgame.ban_resource_publish.

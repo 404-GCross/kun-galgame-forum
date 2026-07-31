@@ -3,17 +3,15 @@ package service
 // The publish wizard is the site's only defence against duplicate submissions,
 // so both halves of its query are pinned here:
 //
-//   - the ITEMS half must hit the catalog search with claim_state=live,draft.
-//     Narrowing that to `live` hides every unpublished entry, which is the
-//     shape of the 52k incident: what the wizard cannot see gets submitted
+//   - the ITEMS half must hit the catalog search with claim_state=live,draft,
+//     pending. Narrowing that to `live` hides every unpublished entry, which is
+//     the shape of the 52k incident: what the wizard cannot see gets submitted
 //     again.
-//   - the PENDING half must still hit the WIKI face with include_pending=true.
-//     The catalog has no per-user read face for the pre-N5 backlog, so
-//     re-pointing this half would silently empty "您的待审 / 已拒草稿".
+//   - the PENDING half must hit the registry's PER-USER claim face. It used to
+//     ride the wiki search's include_pending merge, which is why it could only
+//     be asked as part of a search; it is now a question in its own right.
 
 import (
-	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,13 +20,15 @@ import (
 	"testing"
 
 	"kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/pkg/catalogclient"
 )
 
 type wizardRecorder struct {
-	mu       sync.Mutex
-	catalogQ url.Values
-	wikiQ    url.Values
-	wikiHits int
+	mu        sync.Mutex
+	catalogQ  url.Values
+	claimsQ   url.Values
+	claimsHit int
+	wikiHits  int
 }
 
 func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
@@ -49,23 +49,34 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":404,"state":"hidden"}},
 			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null}
 			]}}`
+		case strings.Contains(req.URL.Path, "/claims"):
+			r.claimsQ = req.URL.Query()
+			r.claimsHit++
+			body = `{"code":0,"message":"ok","data":{"items":[
+			  {"work_id":64689,"display_name":"曇った瞳に恋してる","site":"kungal",
+			   "product_work_id":64689,"claim_state":"pending","last_event_id":9,
+			   "last_from_state":"draft","last_to_state":"pending","last_reason":null,
+			   "last_actor_uid":7,"last_event_at":"2026-07-31T00:00:00Z",
+			   "first_acted_at":"2026-07-31T00:00:00Z","acted_count":1}
+			],"next_before":0,"total":1}}`
 		case strings.HasSuffix(req.URL.Path, "/galgame/search"):
-			r.wikiQ = req.URL.Query()
 			r.wikiHits++
-			body = `{"code":0,"message":"ok","data":{"items":[{"id":1}],"total":1,
-			  "pending":[{"id":64689,"status":3,"name_ja_jp":"曇った瞳に恋してる"}]}}`
 		}
 		r.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
-	return NewSubmissionService(client.New(srv.URL, "nm_test_key", ""), nil)
+	return NewSubmissionService(
+		client.New(srv.URL, "nm_test_key", ""),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		nil,
+	)
 }
 
 func wizardSearch(t *testing.T, svc *SubmissionService) *WizardSearchPage {
 	t.Helper()
-	page, appErr := svc.SearchWithPending(context.Background(), "tok",
+	page, appErr := svc.SearchWithPending(t.Context(), 7,
 		url.Values{"q": {"sakura"}, "limit": {"12"}})
 	if appErr != nil {
 		t.Fatalf("SearchWithPending: %v", appErr)
@@ -77,8 +88,12 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if got := rec.catalogQ.Get("claim_state"); got != "live,draft" {
-		t.Errorf("claim_state = %q, want live,draft — `live` alone hides every unpublished entry", got)
+	// `pending` is asked for BEFORE the projector produces it, so the wizard and
+	// the projector fix need not ship together. Dropping it here would mean a
+	// second coordinated deploy the day the projector starts separating "nobody
+	// has claimed this" from "somebody is waiting on a review".
+	if got := rec.catalogQ.Get("claim_state"); got != "live,draft,pending" {
+		t.Errorf("claim_state = %q, want live,draft,pending — `live` alone hides every unpublished entry", got)
 	}
 	if got := rec.catalogQ.Get("claimed"); got != "true" {
 		t.Errorf("claimed = %q, want true — an unclaimed work has no gid to act on", got)
@@ -117,10 +132,6 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 {
 		t.Errorf("ids = %d,%d, want the gids 292,9978", page.Items[0].ID, page.Items[1].ID)
 	}
-	if page.Items[0].Status != 0 || page.Items[1].Status != 2 {
-		t.Errorf("statuses = %d,%d, want live→0 and draft→2",
-			page.Items[0].Status, page.Items[1].Status)
-	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)
 	}
@@ -133,43 +144,51 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	}
 }
 
-func TestWizard_PendingStaysOnTheWikiFace(t *testing.T) {
+func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if rec.wikiHits != 1 {
-		t.Fatalf("wiki face hits = %d, want exactly 1 — the pending half has no catalog counterpart", rec.wikiHits)
+	if rec.claimsHit != 1 {
+		t.Fatalf("per-user claim face hits = %d, want exactly 1", rec.claimsHit)
 	}
-	if got := rec.wikiQ.Get("include_pending"); got != "true" {
-		t.Errorf("include_pending = %q, want true", got)
+	if rec.wikiHits != 0 {
+		t.Errorf("wiki face hits = %d, want 0 — the pending half is terminal now", rec.wikiHits)
 	}
-	if got := rec.wikiQ.Get("status"); got != "0,2" {
-		t.Errorf("status = %q, want the pre-switchover 0,2 verbatim", got)
+	// Scoped to kungal's own tenant and to the states a submitter is waiting on:
+	// an unscoped query would show another product's backlog, and including
+	// `live` would put finished entries back into "还没通过".
+	if got := rec.claimsQ.Get("site"); got != "kungal" {
+		t.Errorf("site = %q, want kungal", got)
 	}
-	var pending []struct {
-		ID     int `json:"id"`
-		Status int `json:"status"`
+	if got := rec.claimsQ.Get("claim_state"); got != "pending,declined" {
+		t.Errorf("claim_state = %q, want pending,declined", got)
 	}
-	if err := json.Unmarshal(page.Pending, &pending); err != nil {
-		t.Fatalf("pending is not an array: %v", err)
+	if len(page.Pending) != 1 || page.Pending[0].WorkID != 64689 {
+		t.Fatalf("pending = %+v, want the caller's own pending claim", page.Pending)
 	}
-	if len(pending) != 1 || pending[0].ID != 64689 || pending[0].Status != 3 {
-		t.Errorf("pending = %+v, want the caller's own status-3 row forwarded verbatim", pending)
+	// The row carries the LATEST transition by anyone — which is how a decline
+	// reason reaches the submitter without a second query.
+	if page.Pending[0].ClaimState != "pending" || page.Pending[0].LastToState != "pending" {
+		t.Errorf("pending row = %+v, want the current state and its last transition", page.Pending[0])
 	}
 }
 
-func TestWizard_PendingIsAnEmptyArrayWhenTheFaceOmitsIt(t *testing.T) {
+func TestWizard_PendingIsAnEmptyArrayWhenTheUserHasNone(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":null,"next_before":0,"total":0}}`))
 	}))
 	t.Cleanup(srv.Close)
-	svc := NewSubmissionService(client.New(srv.URL, "nm_test_key", ""), nil)
+	svc := NewSubmissionService(
+		client.New(srv.URL, "nm_test_key", ""),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		nil,
+	)
 
 	page := wizardSearch(t, svc)
 	// `null` would make the FE's `pending.length` read throw on some paths; an
 	// empty array is the shape the component already handles.
-	if string(page.Pending) != "[]" {
-		t.Errorf("pending = %s, want []", page.Pending)
+	if page.Pending == nil || len(page.Pending) != 0 {
+		t.Errorf("pending = %v, want an empty array", page.Pending)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/role"
@@ -42,20 +41,21 @@ type CreatorEligibility struct {
 // application to the central OAuth queue. The forum owns the POLICY; OAuth owns
 // the queue + admin review + role grant.
 type CreatorService struct {
-	ratingRepo    *repository.RatingRepository
-	galgameClient *client.GalgameClient
-	userClient    *userclient.Client
+	ratingRepo *repository.RatingRepository
+	stats      *GalgameUserStatsService
+	userClient *userclient.Client
 }
 
-func NewCreatorService(ratingRepo *repository.RatingRepository, galgameClient *client.GalgameClient, userClient *userclient.Client) *CreatorService {
-	return &CreatorService{ratingRepo: ratingRepo, galgameClient: galgameClient, userClient: userClient}
+func NewCreatorService(ratingRepo *repository.RatingRepository, stats *GalgameUserStatsService, userClient *userclient.Client) *CreatorService {
+	return &CreatorService{ratingRepo: ratingRepo, stats: stats, userClient: userClient}
 }
 
 func (s *CreatorService) eligibility(ctx context.Context, userID int) (*CreatorEligibility, *errors.AppError) {
-	stats, err := s.galgameClient.GetUserStats(ctx, userID)
-	if err != nil {
-		return nil, errors.ErrInternal("获取贡献统计失败")
-	}
+	// The two galgame criteria are derived from the registry now: accepted edits
+	// are merged proposals, published entries are live claims. Both degrade to 0
+	// rather than failing the snapshot — eligibility is a disjunction, so a
+	// missing criterion must not deny the ones that are present.
+	stats := s.stats.Stats(ctx, int64(userID))
 	reviews, rErr := s.ratingRepo.CountReviewsWithMinLength(userID, creatorReviewMinLen)
 	if rErr != nil {
 		return nil, errors.ErrInternal("统计简评失败")
@@ -65,8 +65,8 @@ func (s *CreatorService) eligibility(ctx context.Context, userID int) (*CreatorE
 	// snapshot; the user can still qualify via PR / galgame / 简评.
 	moe, _ := s.userClient.GetMoemoepoint(ctx, userID)
 	e := &CreatorEligibility{
-		MergedPRs:         stats.PRMerged,
-		GalgamesPublished: stats.GalgameCreated,
+		MergedPRs:         stats.MergedEdits,
+		GalgamesPublished: stats.Published,
 		Reviews100:        reviews,
 		Moemoepoint:       int64(moe),
 		NeedMergedPRs:     creatorMinMergedPRs,

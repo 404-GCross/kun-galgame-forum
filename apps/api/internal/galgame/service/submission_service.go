@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	stderrors "errors"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strconv"
 
@@ -11,125 +12,288 @@ import (
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
+	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/errors"
 )
 
-// SubmissionService handles the user-driven submission lifecycle for new
-// galgames per docs/galgame_wiki/07-submission.md.
+// SubmissionService owns the user-driven submission lifecycle: file a new
+// entry, publish an existing unpublished one, withdraw, resubmit, and list your
+// own submissions.
 //
-// Reward policy (decision 1 in the kungal/wiki integration plan):
+// Every one of those is now a SEMANTIC ACTION on the registry's claim, not a
+// write to a wiki row. The shape of the change is worth stating once, because
+// it is not a rename:
 //
-//	submit → 0 (no reward; deferred until approval to deter spam)
-//	claim  → +3 (claim publishes immediately, no review queue)
-//	approved (via cron) → +3 (handled in GalgameClaimEventSync, not here)
-//	declined / delete → no reward to reclaim (never granted)
+//   - The wiki's `status` integer is gone. Lifecycle is claim_state, and it
+//     moves only through the eight actions — there is no field to patch, which
+//     is what let the wiki's status column become a vocabulary nobody could
+//     reason about.
+//   - "Delete my draft" has no counterpart and deliberately gets none. A
+//     registry row is an IDENTITY; it does not stop existing because a product
+//     withdrew its claim on it. 撤稿 is `withdraw` (back to draft), and the
+//     entry can be resubmitted rather than re-typed.
+//   - "My submissions" is answered by the registry's per-user face, which reads
+//     the claim-event log. A user's submissions are precisely the works whose
+//     lifecycle they moved, so the list needs no owner column — and could not
+//     have one, since a registry row outlives any account.
+//
+// Reward policy is unchanged, and each route pays from exactly one place:
+//
+//	submit   → 0 (deferred to approval, to deter spam)
+//	claim    → +3 here, in the request path, under the original key
+//	approved → +3 from the claim-event cron (never both: the cron pays only the
+//	           pending → live route, this pays only the draft → live one)
 type SubmissionService struct {
 	galgameClient *client.GalgameClient
+	catalog       *catalogclient.Client
 	galgameRepo   *repository.GalgameRepository
 }
 
 func NewSubmissionService(
 	galgameClient *client.GalgameClient,
+	catalog *catalogclient.Client,
 	galgameRepo *repository.GalgameRepository,
 ) *SubmissionService {
 	return &SubmissionService{
 		galgameClient: galgameClient,
+		catalog:       catalog,
 		galgameRepo:   galgameRepo,
 	}
 }
 
-// Submit forwards a pending submission to galgame. NO local side effects:
-//   - no stub (status=3 isn't publicly listable, so no need to seed the
-//     local `galgame` index; if the user self-interacts later the
-//     interaction path lazy-creates the stub)
-//   - no moemoepoint (deferred to approval via cron)
-//
-// Galgame enforces the daily quota (20009) and vndb_id format/uniqueness.
-func (s *SubmissionService) Submit(
-	ctx context.Context,
-	token string,
-	body []byte,
-	contentType string,
-) (json.RawMessage, *errors.AppError) {
-	return s.galgameClient.SubmitDraft(ctx, token, body, contentType)
+// submissionSite is the tenant kungal files its claims under. It must equal the
+// forum OAuth client's catalog_site binding or every owner action is a 403.
+const submissionSite = client.ClaimSiteKungal
+
+// SubmitResult is what the wizard needs after filing: the id the entry will
+// live at on kungal, plus the registry identity behind it.
+type SubmitResult struct {
+	GID        int    `json:"gid"`
+	WorkID     int64  `json:"work_id"`
+	ClaimState string `json:"claim_state"`
 }
 
-// Claim flips a VNDB-source draft (status=2) directly to published
-// (status=0) on the galgame, then runs two best-effort local side effects:
-//   - creates the local stub so the galgame appears in kungal's list query;
-//   - awards the claimer +3 moemoepoint via OAuth.
+// Submit files a brand-new entry.
 //
-// Idempotency does NOT rely on a local lock (there is none): re-claiming is
-// blocked galgame-side (it only accepts status=2), and the OAuth award uses a
-// STABLE key per (galgame, claimer) so even a retried claim can't double-award.
+// THE ORDER IS THE INTERESTING PART. The id is reserved from kungal's own
+// sequence FIRST, because the registry records the id it is told and never
+// invents one — the product owns its key space. But only the id is taken, not a
+// row: the browse list is `FROM galgame`, so a row IS an entry in the
+// catalogue, and a submission awaiting review is not one. The stub is created
+// later by the claim-event cron, at the moment the claim actually goes live —
+// which preserves the invariant the wiki flow had ("a pending submission gets
+// no stub") without needing a second copy of the lifecycle locally.
 //
-// Galgame failure → no local side effect runs (correct).
-// Local failure after galgame success → log; the +3 is forfeited but the
-// publish itself stands. Avoiding a half-rollback of galgame state.
-func (s *SubmissionService) Claim(
+// A failed mint therefore leaves nothing behind but a gap in the sequence.
+func (s *SubmissionService) Submit(
 	ctx context.Context,
-	userID int,
-	token string,
-	gid int,
-) (json.RawMessage, *errors.AppError) {
-	data, appErr := s.galgameClient.ClaimDraft(ctx, token, gid)
+	actor catalogclient.EditActor,
+	form *SubmissionForm,
+) (*SubmitResult, *errors.AppError) {
+	if form.DisplayName() == "" {
+		return nil, errors.ErrValidation("请至少填写一个语言的标题")
+	}
+	released, appErr := form.Released()
 	if appErr != nil {
 		return nil, appErr
 	}
+	gid, err := s.galgameRepo.ReserveGalgameID(s.galgameRepo.DB().WithContext(ctx))
+	if err != nil {
+		slog.Error("submit: 预留本地 galgame id 失败", "error", err)
+		return nil, errors.ErrInternal("提交失败, 请稍后重试")
+	}
+	res, err := s.catalog.SubmitWork(ctx, catalogclient.WorkSubmitRequest{
+		Site: submissionSite, Actor: actor,
+		ProductWorkID: int64(gid), Fields: form.Fields(), Released: released,
+	})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	// The banner is not a submittable facet — a cover is a REFERENCE to bytes
+	// that must already exist, so it rides as the submission's first edit,
+	// visible to the reviewer alongside it. Best-effort: a failure here costs
+	// the cover, never the submission.
+	if patch := form.CoverPatch(); patch != nil {
+		if _, err := s.catalog.CreateEditProposal(ctx, catalogclient.EditCreateRequest{
+			EntityType: catalogclient.EntityTypeWork, EntityID: res.WorkID,
+			Site: submissionSite, Patch: patch, Note: "投稿时提交的横幅图", Actor: actor,
+		}); err != nil {
+			slog.Warn("submit: 附加横幅图失败", "work", res.WorkID, "error", err)
+		}
+	}
+	return &SubmitResult{GID: gid, WorkID: res.WorkID, ClaimState: res.ClaimState}, nil
+}
 
-	// Claiming is a content update: ensure the local stub exists AND bump
-	// galgame.resource_update_time, so the claimed galgame both appears in
-	// kungal's list query and rises to the top of the "sort by update time" view
-	// (Touch does both — replaces the old stub-only create which didn't bump).
-	if err := s.galgameRepo.Touch(s.galgameRepo.DB(), gid); err != nil {
+// Claim publishes an entry the registry already holds as an unpublished draft
+// — the wizard's "this game is already listed, I'll finish it" path.
+//
+// It needs no minting: the work already carries kungal's product id, so the
+// whole operation is one state move. The two local side effects are unchanged,
+// including the moemoepoint key, which is stable per (galgame, claimer) so a
+// retried claim cannot double-award.
+func (s *SubmissionService) Claim(
+	ctx context.Context,
+	actor catalogclient.EditActor,
+	gid int,
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	res, appErr := s.act(ctx, actor, gid, catalogclient.ClaimActionPublish, "")
+	if appErr != nil {
+		return nil, appErr
+	}
+	// Publishing is a content update: ensure the stub exists AND bump
+	// resource_update_time, so the entry both appears in the browse list and
+	// rises to the top of the "recently updated" view.
+	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
 		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
 	}
-	// Award +3 via OAuth (no local +=). Stable key per (galgame, claimer) so a
-	// re-claim can't double-award.
-	moemoepoint.Award(userID, constants.RewardCreateGalgame,
+	moemoepoint.Award(int(actor.UserID), constants.RewardCreateGalgame,
 		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
-		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.Itoa(userID)))
-	return data, nil
+		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(actor.UserID, 10)))
+	return res, nil
 }
 
-// PatchDraft forwards an edit to the user's own pending/declined draft.
-// No local side effects — galgame holds all metadata and the row remains
-// invisible to other users until approval.
-func (s *SubmissionService) PatchDraft(
+// Resubmit sends a draft (or a declined submission) back to the review queue.
+// It replaces the STATE half of the old "PATCH my draft"; the CONTENT half is
+// an ordinary edit now, filed through the editing face like every other change
+// to the same entry — one write path for a field, whoever is changing it.
+func (s *SubmissionService) Resubmit(
 	ctx context.Context,
-	token string,
+	actor catalogclient.EditActor,
 	gid int,
-	body []byte,
-	contentType string,
-) (json.RawMessage, *errors.AppError) {
-	return s.galgameClient.PatchDraft(ctx, token, gid, body, contentType)
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	return s.act(ctx, actor, gid, catalogclient.ClaimActionSubmit, "")
 }
 
-// DeleteDraft hard-deletes the user's own pending/declined draft on the
-// galgame, then defensively removes any kungal stub the user may have
-// lazy-created by self-interacting with the pending row. Idempotent.
+// Withdraw pulls a submission back to draft.
 //
-// Galgame failure → don't touch local state.
-func (s *SubmissionService) DeleteDraft(
+// This is where "删除我的投稿" went. The registry row survives — it is an
+// identity that anchors, edit history and other products point at — so the
+// product's claim retreats to draft instead of the row being destroyed. The
+// entry stops being publicly listed, which is what the user asked for, and can
+// be resubmitted without re-typing it.
+func (s *SubmissionService) Withdraw(
 	ctx context.Context,
-	token string,
+	actor catalogclient.EditActor,
 	gid int,
-) *errors.AppError {
-	if appErr := s.galgameClient.DeleteDraft(ctx, token, gid); appErr != nil {
-		return appErr
-	}
-	s.galgameRepo.DeleteLocalStub(gid)
-	return nil
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	return s.act(ctx, actor, gid, catalogclient.ClaimActionWithdraw, "")
 }
 
-// ListMine proxies GET /galgame/mine — the user's own submissions across
-// all statuses. Thin pass-through; identity comes from the forwarded Bearer.
+// act resolves a gid to its registry work and performs one owner action.
+func (s *SubmissionService) act(
+	ctx context.Context,
+	actor catalogclient.EditActor,
+	gid int,
+	action string,
+	reason string,
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	workID, appErr := s.workIDOf(ctx, gid)
+	if appErr != nil {
+		return nil, appErr
+	}
+	res, err := s.catalog.ActOnClaim(ctx, workID, action, catalogclient.ClaimActionRequest{
+		Site: submissionSite, Actor: actor, Reason: reason,
+	})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	return res, nil
+}
+
+func (s *SubmissionService) workIDOf(ctx context.Context, gid int) (int64, *errors.AppError) {
+	ids, appErr := s.galgameClient.CatalogWorkIDs(ctx, []int{gid})
+	if appErr != nil {
+		return 0, appErr
+	}
+	workID, ok := ids[gid]
+	if !ok {
+		return 0, errors.ErrNotFound("条目不存在")
+	}
+	return workID, nil
+}
+
+// claimActionError maps the lifecycle face's refusals onto the house envelope.
+//
+// A 409 keeps its status AND its message: an illegal transition names the state
+// the claim is actually in, and that is the point of semantic actions — the
+// losing side of a race has already been told what happened, and should
+// re-render rather than retry.
+func claimActionError(err error) *errors.AppError {
+	var apiErr *catalogclient.EditAPIError
+	switch {
+	case stderrors.Is(err, catalogclient.ErrNotConfigured):
+		return errors.New(errors.CodeBiz, "资料库服务暂不可用", http.StatusServiceUnavailable)
+	case stderrors.As(err, &apiErr):
+		switch apiErr.Status {
+		case http.StatusForbidden:
+			return errors.ErrForbidden("你没有权限执行此操作")
+		case http.StatusNotFound:
+			return errors.ErrNotFound("条目不存在")
+		case http.StatusUnprocessableEntity:
+			return errors.ErrValidation(apiErr.Message)
+		case http.StatusConflict:
+			return errors.New(errors.CodeBiz, apiErr.Message, http.StatusConflict)
+		}
+		slog.Error("claim action: 上游错误", "status", apiErr.Status, "code", apiErr.Code, "msg", apiErr.Message)
+	default:
+		slog.Warn("claim action: catalog 不可达", "error", err)
+	}
+	return errors.New(errors.CodeBiz, "资料库服务暂不可用", http.StatusServiceUnavailable)
+}
+
+// ─── my submissions ──────────────────────────────────────────────────────
+
+// mineStates is the default filter of the 我的提交 page: everything that is not
+// yet a published entry. A live claim leaves this list because it has become a
+// public entry with a page of its own — the same rule the wiki list followed
+// when it filtered to status 3,4.
+var mineStates = []string{
+	catalogclient.ClaimStatePending,
+	catalogclient.ClaimStateDeclined,
+	catalogclient.ClaimStateDraft,
+}
+
+// ListMine returns the caller's own submissions, newest activity first.
+//
+// The summary on each row is the work's LATEST transition BY ANYONE, which is
+// deliberate: what a submitter needs to see on their own submission is the
+// reviewer's verdict and note — an event they did not cause. That is why the
+// wiki's separate "my notifications" query has no successor here.
 func (s *SubmissionService) ListMine(
 	ctx context.Context,
-	token string,
+	uid int64,
 	query url.Values,
-) (json.RawMessage, *errors.AppError) {
-	return s.galgameClient.GetWithToken(ctx, "/galgame/mine", token, query)
+) (*catalogclient.UserClaimPage, *errors.AppError) {
+	states := mineStates
+	if raw := query.Get("claim_state"); raw != "" {
+		states = splitCSV(raw)
+	}
+	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
+		Site:        submissionSite,
+		ClaimStates: states,
+		Before:      int64(atoiOr(query.Get("before"), 0)),
+		Limit:       atoiOr(query.Get("limit"), 20),
+	})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	if page.Items == nil {
+		page.Items = []catalogclient.UserClaimItem{}
+	}
+	return page, nil
+}
+
+// CountMine is ListMine reduced to its total — the per-user statistic the
+// profile page needs. The total is counted under the same filter and is
+// independent of the cursor, which is what lets one face answer both.
+func (s *SubmissionService) CountMine(ctx context.Context, uid int64, states []string) (int64, error) {
+	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
+		Site: submissionSite, ClaimStates: states, Limit: 1,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return page.Total, nil
 }
 
 // ─── the publish wizard search ───────────────────────────────────────────
@@ -143,33 +307,29 @@ const wizardSearchInclude = "names,covers,refs"
 // one, this is only the floor for a hand-made request.
 const wizardDefaultLimit = 12
 
-// WizardSearchPage is the 发布向导 payload. Its two halves are answered by two
-// different faces, and that split is deliberate:
+// WizardSearchPage is the 发布向导 payload.
 //
-//   - Items is the CATALOG works search (claimed=true, claim_state=live,draft).
-//     The registry is the supply of record for "does this game already exist",
-//     which is the wizard's entire job — a miss here is a duplicate submission.
-//   - Pending is the caller's OWN status 3/4 submissions. The catalog has no
-//     per-user read face for that backlog (doc 156 P3: claim events only exist
-//     for post-N2 actions, and the whole population here predates them), so
-//     this half keeps querying the wiki face and is forwarded verbatim.
+// Both halves are the registry's now. Items answers "does this game already
+// exist" — a miss there is a duplicate submission, the failure the wizard
+// exists to prevent — and Pending is the caller's own backlog, read from the
+// per-user claim face.
 type WizardSearchPage struct {
-	Items   []client.GalgameBrief `json:"items"`
-	Pending json.RawMessage       `json:"pending"`
-	Total   int64                 `json:"total"`
+	Items   []client.GalgameBrief         `json:"items"`
+	Pending []catalogclient.UserClaimItem `json:"pending"`
+	Total   int64                         `json:"total"`
 }
 
 // SearchWithPending serves GET /galgame/search/wizard.
 func (s *SubmissionService) SearchWithPending(
 	ctx context.Context,
-	token string,
+	uid int64,
 	query url.Values,
 ) (*WizardSearchPage, *errors.AppError) {
 	items, total, appErr := s.wizardItems(ctx, query)
 	if appErr != nil {
 		return nil, appErr
 	}
-	pending, appErr := s.wizardPending(ctx, token, query)
+	pending, appErr := s.wizardPending(ctx, uid)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -178,15 +338,13 @@ func (s *SubmissionService) SearchWithPending(
 
 // wizardItems runs the catalog search lane.
 //
-// `claim_state=live,draft` is the registry spelling of the wiki's old
-// `status=0,2` filter, with one KNOWN and accepted widening: the catalog
-// projects wiki status 2 (unclaimed VNDB draft) and status 3 (someone else's
-// submission awaiting review) onto the same `draft` state, so other people's
-// pending submissions now surface here too. That is the right side of the trade
-// — an entry the wizard cannot see is an entry that gets submitted twice — and
-// the two are physically indistinguishable on the catalog wire, so the row
-// cannot be labelled any more precisely than "草稿". Claiming one of them still
-// goes to the wiki, which answers with the correct refusal.
+// The claim-state list is `live,draft,pending`, and `pending` is the addition.
+// It closes the gap 160 recorded: the wiki projector folded "unclaimed VNDB
+// draft" and "someone else's submission awaiting review" onto the same `draft`
+// word, so the wizard could SHOW the second kind but had no way to say what it
+// was. Asking for the state before the projector starts producing it is
+// deliberate — today the term matches nothing, so this ships on its own and the
+// projector fix follows without a coordinated deploy.
 //
 // Only the AGE gate is opened, exactly as the wiki lane had it: the wizard is a
 // dedup tool for an authenticated submitter, and filtering its supply by the
@@ -201,7 +359,7 @@ func (s *SubmissionService) wizardItems(
 		"page":        {strconv.Itoa(atoiOr(query.Get("page"), 1))},
 		"limit":       {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
 		"claimed":     {"true"},
-		"claim_state": {client.ClaimStateLiveOrDraft},
+		"claim_state": {client.ClaimStateWizard},
 		"include":     {wizardSearchInclude},
 	}
 	client.OpenPopulation(q)
@@ -229,34 +387,24 @@ func (s *SubmissionService) wizardItems(
 	return items, res.Total, nil
 }
 
-// wizardPending forwards the caller's own pending/declined submissions off the
-// wiki face. The query is the pre-switchover one byte for byte — include_pending
-// plus status=0,2 — because the face merges the caller's hits only when it is
-// serving a real search; we then keep just that half of the envelope.
+// wizardPending is the caller's own backlog, off the per-user claim face — the
+// terminal source. The wiki lane it replaces answered the same question by
+// merging the caller's own rows into a search response, which is why it could
+// only ever be asked as part of a search.
 func (s *SubmissionService) wizardPending(
 	ctx context.Context,
-	token string,
-	query url.Values,
-) (json.RawMessage, *errors.AppError) {
-	q := make(url.Values, len(query)+2)
-	for k, v := range query {
-		q[k] = v
+	uid int64,
+) ([]catalogclient.UserClaimItem, *errors.AppError) {
+	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
+		Site:        submissionSite,
+		ClaimStates: []string{catalogclient.ClaimStatePending, catalogclient.ClaimStateDeclined},
+		Limit:       wizardDefaultLimit,
+	})
+	if err != nil {
+		return nil, claimActionError(err)
 	}
-	q.Set("include_pending", "true")
-	q.Set("status", "0,2")
-
-	data, appErr := s.galgameClient.GetWithToken(ctx, "/galgame/search", token, q)
-	if appErr != nil {
-		return nil, appErr
+	if page.Items == nil {
+		return []catalogclient.UserClaimItem{}, nil
 	}
-	var parsed struct {
-		Pending json.RawMessage `json:"pending"`
-	}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析投稿搜索响应失败")
-	}
-	if len(parsed.Pending) == 0 {
-		return json.RawMessage("[]"), nil
-	}
-	return parsed.Pending, nil
+	return page.Items, nil
 }

@@ -275,6 +275,47 @@ func (c *GalgameClient) worksByCatalogIDs(ctx context.Context, ids []int64, incl
 	return out, nil
 }
 
+// CatalogWorkIDs exposes the identity half of the bridge on its own: gids in,
+// catalog work ids out, absent for anything the registry does not know.
+//
+// The lifecycle and editing lanes need this WITHOUT the row fetch that
+// CatalogRowsByGIDs bolts on — an action addresses a work by registry id and
+// reads nothing back — and deriving the mapping from a rendered row would make
+// those lanes depend on the content gates, which have no business deciding
+// whether a moderator may approve something or an owner may edit it.
+func (c *GalgameClient) CatalogWorkIDs(ctx context.Context, gids []int) (map[int]int64, *errors.AppError) {
+	if len(gids) == 0 {
+		return map[int]int64{}, nil
+	}
+	return c.catalogIDsForGIDs(ctx, gids)
+}
+
+// GIDsByCatalogIDs is the bridge run BACKWARDS: registry work ids in, kungal
+// gids out, absent for works kungal does not claim.
+//
+// The editing engine keys everything on the registry id now, while every kungal
+// URL is a gid — so each proposal, revision and activity row has to come home
+// before it can be linked. There is no reverse memo: the forward cache is keyed
+// by gid, and the rows that need this arrive in pages that are already batched.
+func (c *GalgameClient) GIDsByCatalogIDs(ctx context.Context, ids []int64) (map[int64]int, *errors.AppError) {
+	if len(ids) == 0 {
+		return map[int64]int{}, nil
+	}
+	rows, appErr := c.worksByCatalogIDs(ctx, ids, "", "all")
+	if appErr != nil {
+		return nil, appErr
+	}
+	out := make(map[int64]int, len(rows))
+	for i := range rows {
+		// NOT filtered by isRenderable: this is an identity lookup. A withdrawn
+		// entry still has edit history, and a reviewer still has to reach it.
+		if gid := rows[i].gid(); gid > 0 {
+			out[rows[i].ID] = gid
+		}
+	}
+	return out, nil
+}
+
 // CatalogRowsByGIDs is the whole bridge in one call: kungal gids in, catalog
 // rows out, keyed back by gid. Rows whose claim the wiki has withdrawn
 // (state=hidden) are dropped here — a single choke point, so no lane can

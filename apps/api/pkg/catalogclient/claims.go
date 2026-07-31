@@ -87,6 +87,52 @@ func (c *Client) ActOnClaim(ctx context.Context, workID int64, action string, re
 		c, "/api/v1/catalog/works/"+strconv.FormatInt(workID, 10)+"/claim-actions/"+action, req)
 }
 
+// WorkSubmitRequest mints a registry work straight into `pending` — the
+// registry-native replacement for the wiki's "submit a new galgame" write.
+//
+// Fields is keyed by the SAME field keys the editing face registers for
+// catalog.work, so one schema drives both the submission form and every later
+// edit of the same entry. Two keys the matrix does not have and this face
+// therefore refuses: a work-level release date (send Released; it becomes one
+// curated release row) and a status (lifecycle is claim_state, moved only by
+// the semantic actions). Covers and screenshots are not accepted either — the
+// bytes are uploaded first and attached as a later edit.
+//
+// ProductWorkID is allocated by the PRODUCT. The registry records the id it is
+// told and never invents one, which is what makes the forum's own id space
+// authoritative for its own entries.
+type WorkSubmitRequest struct {
+	Site          string          `json:"site"`
+	Actor         EditActor       `json:"actor"`
+	ProductWorkID int64           `json:"product_work_id"`
+	Fields        map[string]any  `json:"fields"`
+	Released      *WorkSubmitDate `json:"released,omitempty"`
+}
+
+// WorkSubmitDate is the fuzzy submitted date. The nullable tail IS the
+// precision — {Y:2019} means "sometime in 2019" — so there is no separate
+// precision enum and an omitted date means TBA.
+type WorkSubmitDate struct {
+	Y int16 `json:"y"`
+	M int16 `json:"m,omitempty"`
+	D int16 `json:"d,omitempty"`
+}
+
+// WorkSubmitResult is the minted identity plus its birth event.
+type WorkSubmitResult struct {
+	WorkID     int64  `json:"work_id"`
+	ClaimState string `json:"claim_state"`
+	EventID    int64  `json:"event_id"`
+	ReleaseID  int64  `json:"release_id,omitempty"`
+}
+
+// SubmitWork files a new submission. Idempotency is the claim's own unique key
+// (medium, site, product_work_id): a retried wizard gets a 409 naming the work
+// it already created and its current state, and never mints a second identity.
+func (c *Client) SubmitWork(ctx context.Context, req WorkSubmitRequest) (*WorkSubmitResult, error) {
+	return editPost[WorkSubmitResult](ctx, c, "/api/v1/catalog/works/submit", req)
+}
+
 // ClaimEventFeedItem is one claim transition.
 //
 // FromState is null exactly once per claim — the transition that created it —

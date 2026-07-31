@@ -310,16 +310,23 @@ func productLocale(olang string) string {
 //	                 side "there is no forum entry for this work" is the same
 //	                 statement, and the claim card is exactly the right CTA.
 const (
-	claimStateLive   = "live"
-	claimStateDraft  = "draft"
-	claimStateHidden = "hidden"
+	claimStateLive    = "live"
+	claimStateDraft   = "draft"
+	claimStatePending = "pending"
+	claimStateHidden  = "hidden"
 )
 
-// ClaimStateLiveOrDraft is the claim_state filter for lanes that want every
-// entry the wiki HAS, published or not — i.e. the publish wizard's dedup
-// supply. Public browse lanes want `live` alone (doc 106 §37); this one is the
+// ClaimStateWizard is the claim_state filter for lanes that want every entry
+// the registry HAS, published or not — i.e. the publish wizard's dedup supply.
+// Public browse lanes want `live` alone (doc 106 §37); this one is the
 // deliberate exception.
-const ClaimStateLiveOrDraft = claimStateLive + "," + claimStateDraft
+//
+// `pending` is listed even though the projector does not produce it yet: the
+// wiki-era projection folded "unclaimed draft" and "awaiting review" onto
+// `draft`, and the fix that separates them lands separately. Asking for the
+// word first is what makes the two independent — today it matches nothing, and
+// the day it starts matching, the wizard already knows how to label it.
+const ClaimStateWizard = claimStateLive + "," + claimStateDraft + "," + claimStatePending
 
 // statusFromClaimState maps a claim state onto the kungal card status code.
 func statusFromClaimState(state string) int {

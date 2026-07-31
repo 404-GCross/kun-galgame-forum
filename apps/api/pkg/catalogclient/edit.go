@@ -173,6 +173,21 @@ func (e *EditAPIError) Error() string {
 
 const editBase = "/api/v1/catalog/edit"
 
+// EntityTypeWork is the registry's editable work entity — the target of every
+// galgame field edit since the wiki's `galgame.game` entity retired.
+//
+// The two are the SAME rows: the rekey moved the engine's proposals and
+// revisions onto this type and onto registry ids, so an entry's history did not
+// restart. What did change is the id space of `entity_id`, which is now a
+// registry work id and no longer a gid — every consumer that builds a URL from
+// it has to come back through the bridge first, or it links to a different
+// game without erroring.
+const EntityTypeWork = "catalog.work"
+
+// FieldKeyPrefix guards a pass-through patch: only this family's keys may ride
+// the BFF (the engine re-validates each one against its registry anyway).
+const FieldKeyPrefix = EntityTypeWork + "."
+
 // CreateEditProposal files an edit against the generic edit face.
 func (c *Client) CreateEditProposal(ctx context.Context, req EditCreateRequest) (*EditCreateResult, error) {
 	return editPost[EditCreateResult](ctx, c, editBase+"/proposals", req)
@@ -232,6 +247,14 @@ func (c *Client) RevertEditEntity(ctx context.Context, site, entityType string, 
 // ListEditProposals lists proposals newest-first (the review queue and the
 // "my proposals" reads).
 func (c *Client) ListEditProposals(ctx context.Context, f EditProposalFilter) ([]EditProposal, error) {
+	page, err := c.listProposalsPage(ctx, proposalQuery(f))
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func proposalQuery(f EditProposalFilter) url.Values {
 	q := url.Values{}
 	if f.EntityType != "" {
 		q.Set("entity_type", f.EntityType)
@@ -251,13 +274,31 @@ func (c *Client) ListEditProposals(ctx context.Context, f EditProposalFilter) ([
 	if f.Limit > 0 {
 		q.Set("limit", strconv.Itoa(f.Limit))
 	}
-	data, err := editGet[struct {
-		Items []EditProposal `json:"items"`
-	}](ctx, c, editBase+"/proposals?"+q.Encode())
+	return q
+}
+
+// CountEditProposals answers "how many proposals match", without paging.
+//
+// The list face's `total` is counted under the same filter and is independent
+// of `limit`, so this asks for one row and reads the count off it. Paging a
+// capped list to arrive at the same number is how a contribution threshold
+// silently pins itself to the page size.
+func (c *Client) CountEditProposals(ctx context.Context, f EditProposalFilter) (int64, error) {
+	f.Limit = 1
+	page, err := c.listProposalsPage(ctx, proposalQuery(f))
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return data.Items, nil
+	return page.Total, nil
+}
+
+type proposalListPage struct {
+	Items []EditProposal `json:"items"`
+	Total int64          `json:"total"`
+}
+
+func (c *Client) listProposalsPage(ctx context.Context, q url.Values) (*proposalListPage, error) {
+	return editGet[proposalListPage](ctx, c, editBase+"/proposals?"+q.Encode())
 }
 
 // ListEditRevisions reads an entity's revision log, newest-first.

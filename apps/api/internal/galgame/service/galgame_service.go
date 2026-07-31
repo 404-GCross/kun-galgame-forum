@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
 	"strconv"
 	"time"
 
@@ -64,74 +62,6 @@ func NewGalgameService(
 		galgameClient:      galgameClient,
 		userClient:         userClient,
 	}
-}
-
-// ──────────────────────────────────────────
-// Create — POST /galgame
-// ──────────────────────────────────────────
-
-// Create forwards the payload to galgame, then awards moemoepoint and creates
-// the local stub row for the new galgame. Returns the raw galgame response body
-// so the handler can forward it verbatim.
-//
-// Daily-limit policy (mirrors topic create, formerly nitro
-// api/galgame/index.post.ts:43): a user can create at most
-// `moemoepoint/10 + 1` galgames per 24h. The limit is checked BEFORE the
-// galgame call so we don't pollute galgame with rejects, using galgame's own
-// `galgame_created_today` stat as the canonical day-count (kungal has no
-// local creation log post-migration). There's still a thin race window
-// between the check and galgame accepting the create — acceptable because
-// galgame rejects duplicate vndb_id, which is the main spam vector.
-//
-// Post-success local side effects (stub row + moemoepoint +3) run inside
-// a single transaction with SELECT … FOR UPDATE on kungal_user_state, so
-// concurrent self-double-submits can't double-reward.
-func (s *GalgameService) Create(
-	ctx context.Context,
-	userID int,
-	token string,
-	body []byte,
-	contentType string,
-) (json.RawMessage, *errors.AppError) {
-	// Daily-limit gate.
-	state, err := s.stateRepo.FindByID(userID)
-	if err != nil {
-		return nil, errors.ErrNotFound("未找到该用户")
-	}
-	dailyLimit := int64(state.Moemoepoint/10 + 1)
-	if galgameStats, sErr := s.galgameClient.GetUserStats(ctx, userID); sErr == nil && galgameStats != nil {
-		if galgameStats.GalgameCreatedToday >= dailyLimit {
-			return nil, errors.ErrBadRequest("您今日发布的 Galgame 已达上限")
-		}
-	}
-	// On galgame stats failure we choose to allow the create rather than
-	// hard-fail — galgame itself remains the authority on VNDB-ID uniqueness.
-
-	// Forward to galgame.
-	data, appErr := s.galgameClient.PostWithToken(ctx, "/galgame", token, json.RawMessage(body), contentType)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	var created dto.NextMoeCreatedResp
-	_ = json.Unmarshal(data, &created)
-
-	if created.ID > 0 {
-		// Local stub so the galgame appears in kungal's list query. Idempotent
-		// (OnConflict DoNothing), so no row lock needed. Log-only on failure:
-		// the galgame create already succeeded; a missing stub self-heals on the
-		// first interaction (lazy stub) and the approved-cron stub seed.
-		if err := s.galgameRepo.CreateLocalStub(s.galgameRepo.DB(), created.ID); err != nil {
-			slog.Warn("创建本地 galgame stub 失败", "gid", created.ID, "error", err)
-		}
-		// NOTE: deliberately no moemoepoint award here. A fresh create lands as
-		// status=pending on the galgame; +RewardCreateGalgame is granted exactly
-		// once when it is actually approved, via the galgame "approved" message in
-		// wiki_message_sync (Ref "galgame"). Awarding at create time too would
-		// double-count (the same galgame paid twice) and would pay out for
-		// content that may yet be declined.
-	}
-	return data, nil
 }
 
 // ──────────────────────────────────────────

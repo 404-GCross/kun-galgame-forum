@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"kun-galgame-api/internal/galgame/client"
+	galgameService "kun-galgame-api/internal/galgame/service"
 	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/user/dto"
@@ -30,6 +31,7 @@ type UserService struct {
 	userStatsRepo *repository.UserStatsRepository
 	rdb           *redis.Client
 	galgameClient *client.GalgameClient
+	galgameStats  *galgameService.GalgameUserStatsService
 	userClient    *userclient.Client
 	community     *communityclient.Client
 	// commentCache memoizes per-user community visible_posts for a few minutes so
@@ -43,6 +45,7 @@ func NewUserService(
 	userStatsRepo *repository.UserStatsRepository,
 	rdb *redis.Client,
 	galgameClient *client.GalgameClient,
+	galgameStats *galgameService.GalgameUserStatsService,
 	userClient *userclient.Client,
 	community *communityclient.Client,
 ) *UserService {
@@ -51,6 +54,7 @@ func NewUserService(
 		userStatsRepo: userStatsRepo,
 		rdb:           rdb,
 		galgameClient: galgameClient,
+		galgameStats:  galgameStats,
 		userClient:    userClient,
 		community:     community,
 		commentCache:  newVisiblePostsCache(),
@@ -122,11 +126,14 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID int) (*dto.User
 	profile.Dislike = stats.Dislike
 	profile.DailyTopicCount = stats.DailyTopicCount
 
-	if galgameStats, err := s.galgameClient.GetUserStats(ctx, userID); err == nil && galgameStats != nil {
-		profile.Galgame = galgameStats.GalgameCreated
-		profile.DailyGalgameCount = galgameStats.GalgameCreatedToday
-		profile.ContributeGalgame = galgameStats.GalgameContributed
-	}
+	// Derived from the registry rather than counted in a wiki table: published =
+	// this user's live claims, contributed = the DISTINCT entries their merged
+	// edits touched. Both degrade to 0 on an unreachable face; a profile page
+	// has other reasons to render.
+	galgameStats := s.galgameStats.Stats(ctx, int64(userID))
+	profile.Galgame = galgameStats.Published
+	profile.DailyGalgameCount = int64(galgameStats.PublishedToday)
+	profile.ContributeGalgame = int64(galgameStats.Contributed)
 
 	return profile, nil
 }

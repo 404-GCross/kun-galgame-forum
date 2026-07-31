@@ -139,6 +139,7 @@ type App struct {
 	GalgameStaffTaxonomyHandler    *galgameHandler.StaffTaxonomyHandler
 	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
 	GalgameMessageHandler          *galgameHandler.GalgameMessageHandler
+	GalgameClaimReviewHandler      *galgameHandler.ClaimReviewHandler
 	GalgameEditHandler             *galgameHandler.EditHandler
 	ActivityHandler                *activityHandler.ActivityHandler
 	ImageHandler                   *imageHandler.ImageHandler
@@ -430,10 +431,15 @@ func New(cfg *config.Config) *App {
 		slog.Warn("link-live-checker NOT configured; resource 报告失效 falls back to legacy single-report-expires — set LINK_CHECKER_BASE_URL / LINK_CHECKER_API_KEY")
 	}
 
+	// Per-user contribution stats, derived from the registry's claim log and the
+	// engine's merged proposals — the wiki stats endpoint they replace counted
+	// rows in tables that are going away.
+	galgameUserStatsSvc := galgameService.NewGalgameUserStatsService(catalogCli, gc)
+
 	// Services
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
-	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, uc, communityCli)
-	userContentService := service.NewUserContentService(userContentRepo, gc, uc, communityCli)
+	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, galgameUserStatsSvc, uc, communityCli)
+	userContentService := service.NewUserContentService(userContentRepo, gc, galgameUserStatsSvc, uc, communityCli)
 	messageSvc := msgService.NewMessageService(messageRepository, userStateRepo, uc)
 	chatSvc := msgService.NewChatService(chatRepository, uc)
 	notifier := msgService.NewNotifier(messageRepository)
@@ -470,7 +476,7 @@ func New(cfg *config.Config) *App {
 	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc, trustCheck, trustScan)
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)
 	galgameQuizSvc := galgameService.NewQuizService(galgameQuizRepo, gc, uc, trustCheck, trustScan)
-	creatorSvc := galgameService.NewCreatorService(galgameRatingRepo, gc, uc)
+	creatorSvc := galgameService.NewCreatorService(galgameRatingRepo, galgameUserStatsSvc, uc)
 	galgameLocalRepo := galgameRepo.NewGalgameRepository(db)
 	galgameInteractionRepo := galgameRepo.NewGalgameInteractionRepository(db)
 	galgameListRepo := galgameRepo.NewGalgameListRepository(db)
@@ -497,13 +503,15 @@ func New(cfg *config.Config) *App {
 	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
-	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, galgameLocalRepo)
+	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, catalogCli, galgameLocalRepo)
 
 	// Galgame message stream: user notifications + admin queue + per-user
 	// "read up to" cursor. The cron-driven ingestion lives in
 	// galgameClaimSync below.
 	galgameMessageRepo := galgameRepo.NewGalgameMessageRepository(db)
 	galgameMessageSvc := galgameService.NewGalgameMessageService(gc, galgameMessageRepo)
+	// Submission moderation: the pending-claim queue + the four verdicts.
+	galgameClaimReviewSvc := galgameService.NewClaimReviewService(gc, catalogCli)
 	// Cron-driven ingestion of claim-state transitions: local stub lifecycle
 	// plus the publication reward. Reads the registry's claim-event feed over
 	// S2S — the wiki message feed it replaces retires with the wiki tables.
@@ -512,7 +520,7 @@ func New(cfg *config.Config) *App {
 	// activity timeline can show galgame edits (migrations 021 + 067). Reads the
 	// catalog S2S client, not the wiki client: the engine is the author of every
 	// galgame field edit, so its feed is the authoritative source (wave 156 N3).
-	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, db, rdb)
+	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
 
 	// Website
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
@@ -674,6 +682,7 @@ func New(cfg *config.Config) *App {
 		GalgameStaffTaxonomyHandler: galgameHandler.NewStaffTaxonomyHandler(gc),
 		GalgameSubmissionHandler:    galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameMessageHandler:       galgameHandler.NewGalgameMessageHandler(galgameMessageSvc),
+		GalgameClaimReviewHandler:   galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
 		GalgameEditHandler:          galgameHandler.NewEditHandler(catalogCli, platformEditCli, gc, uc, notifier, galgameLocalRepo),
 		ActivityHandler:             activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:                imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, gc)),
