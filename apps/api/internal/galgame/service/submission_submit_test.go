@@ -46,14 +46,33 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 		r.mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(req.URL.Path, "/catalog/works/submit") {
+		switch {
+		case strings.HasSuffix(req.URL.Path, "/catalog/works/submit"):
 			// The registry-issued identity: product_work_id ADOPTS work_id.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{` +
 				`"work_id":90210,"product_work_id":90210,` +
 				`"claim_state":"pending","event_id":5}}`))
-			return
+		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
+			// A freshly minted work has NO external_ref anchor.
+			var body struct {
+				Items []struct {
+					ExternalID string `json:"external_id"`
+				} `json:"items"`
+			}
+			_ = json.Unmarshal(raw, &body)
+			out := make([]string, 0, len(body.Items))
+			for _, it := range body.Items {
+				out = append(out, `{"external_id":"`+it.ExternalID+`","work":null}`)
+			}
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
+				strings.Join(out, ",") + `]}}`))
+		case strings.HasSuffix(req.URL.Path, "/catalog/works"):
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
+				`{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}` +
+				`],"next_cursor":null}}`))
+		default:
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":1}}}`))
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":1}}}`))
 	}))
 	t.Cleanup(srv.Close)
 	return NewSubmissionService(
@@ -114,6 +133,32 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	}
 	if rec.editBody["entity_id"] != float64(90210) {
 		t.Errorf("entity_id = %v, want the registry work id 90210", rec.editBody["entity_id"])
+	}
+}
+
+// The round trip that the whole switchover rests on: file a submission, take
+// the id the registry issued, and reach the same work by it.
+//
+// It is a separate test because the two halves are answered by DIFFERENT
+// mechanisms — the mint adopts the work's own key, and the read has to fall
+// through to identity because no anchor was ever written. Either half working
+// alone still leaves every new entry 404ing on its own page, silently.
+func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
+	rec := &submitRecorder{}
+	svc := rec.service(t)
+
+	res, appErr := svc.Submit(t.Context(), catalogclient.EditActor{UserID: 7},
+		&SubmissionForm{NameJaJP: "白恋サクラ", AgeLimit: "all", ContentLimit: "sfw"})
+	if appErr != nil {
+		t.Fatalf("Submit: %v", appErr)
+	}
+
+	workID, appErr := svc.workIDOf(t.Context(), res.GID)
+	if appErr != nil {
+		t.Fatalf("resolving the freshly issued gid %d: %v", res.GID, appErr)
+	}
+	if workID != res.WorkID {
+		t.Errorf("gid %d resolved to work %d, want %d", res.GID, workID, res.WorkID)
 	}
 }
 

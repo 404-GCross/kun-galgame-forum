@@ -5,7 +5,7 @@ package client
 // projections back onto kungal's own DTOs.
 //
 // The one structural cost of re-anchoring is the ID BRIDGE. kungal is keyed on
-// the wiki gid end to end (local rows, resources, ratings, collections, the
+// the gid end to end (local rows, resources, ratings, collections, the
 // /galgame/{gid} URL) and doc 106 R3 rules that it stays that way — no dual-id
 // model, no data migration. So every call that starts from a kungal gid takes
 // two hops:
@@ -16,6 +16,16 @@ package client
 // and every row that comes back maps home through `claimed_by.work_id`. The
 // first hop is memoized (identity mappings essentially never change), so the
 // steady state is one extra round-trip per cold batch, not per request.
+//
+// The first hop has TWO routes, and which one answers depends on who issued the
+// gid. A wiki-era gid was issued upstream and is recorded as an external_ref
+// anchor, so the anchor lookup finds it. A gid issued by the registry itself —
+// every entry submitted after the switchover, where the claim adopts the work's
+// own primary key — has no anchor to find, because an anchor records what some
+// upstream handed out and there was no upstream. Those resolve through
+// adoptedWorkIDs instead, which reads the id as a work id and keeps the row only
+// if it points back. Both routes are inside catalogIDsForGIDs, so every caller
+// gets both without knowing there are two.
 
 import (
 	"context"
@@ -223,6 +233,25 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		}
 	}
 
+	// Anything the anchors did not answer gets one more chance, through the
+	// identity route.
+	var unresolved []int
+	for _, gid := range missing {
+		if _, ok := resolved[gid]; !ok {
+			unresolved = append(unresolved, gid)
+		}
+	}
+	if len(unresolved) > 0 {
+		adopted, appErr := c.adoptedWorkIDs(ctx, unresolved)
+		if appErr != nil {
+			return nil, appErr
+		}
+		for gid, id := range adopted {
+			resolved[gid] = id
+			out[gid] = id
+		}
+	}
+
 	c.gidMu.Lock()
 	if len(c.gidCache) > batchCacheMaxEntries {
 		clear(c.gidCache)
@@ -237,6 +266,49 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		c.gidCache[gid] = gidLookupEntry{catalogID: id, found: ok, expire: now.Add(ttl)}
 	}
 	c.gidMu.Unlock()
+	return out, nil
+}
+
+// adoptedWorkIDs is the second half of the gid bridge, and it exists because
+// the registry now issues kungal's ids.
+//
+// A work minted through the submission face carries NO external_ref anchor: an
+// anchor records the id some upstream issued for a work, and for a brand-new
+// submission there is no upstream — the claim adopts the work's own primary
+// key. So the anchor lookup above, which is the only route the bridge had,
+// answers nothing for every entry submitted after the switchover, and answers
+// it as "no such work" rather than as an error. Every page of a new entry would
+// 404 silently.
+//
+// The route back is to read the id AS a work id — but only after the row agrees
+// that it is the one being asked for. THE ROUND-TRIP CHECK IS NOT DEFENSIVE, IT
+// IS THE WHOLE CORRECTNESS ARGUMENT: a legacy gid is also a syntactically valid
+// work id, so resolving gid 42 by fetching work 42 would hand back a different
+// game. An adopted id satisfies `claimed_by.work_id == the id we asked for` by
+// construction; a coincidence does not.
+//
+// The gates are opened for the same reason the anchor lookup opens them: this
+// resolves an IDENTITY. Filtering it by the reader's content preference would
+// make an r18 entry unresolvable rather than merely invisible, and the
+// visibility decision belongs to the row fetch that follows.
+func (c *GalgameClient) adoptedWorkIDs(ctx context.Context, gids []int) (map[int]int64, *errors.AppError) {
+	ids := make([]int64, len(gids))
+	for i, gid := range gids {
+		ids[i] = int64(gid)
+	}
+	rows, appErr := c.worksByCatalogIDs(ctx, ids, "", "all")
+	if appErr != nil {
+		return nil, appErr
+	}
+	out := make(map[int]int64, len(rows))
+	for i := range rows {
+		row := &rows[i]
+		// gid() already requires the claim to be ours; this additionally
+		// requires it to point back at the id we asked for.
+		if gid := row.gid(); gid > 0 && int64(gid) == row.ID {
+			out[gid] = row.ID
+		}
+	}
 	return out, nil
 }
 

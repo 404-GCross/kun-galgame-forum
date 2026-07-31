@@ -250,9 +250,14 @@ func TestCatalogBridge_UnresolvedGIDIsAbsentNotAnError(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("got %#v, want empty", got)
 	}
-	// Nothing to fetch ⇒ the second hop must not fire at all.
-	if rec.count() != 1 {
-		t.Errorf("made %d calls, want 1 (no works fetch when the lookup resolved nothing)", rec.count())
+	// A gid the anchors do not know now gets the IDENTITY attempt before it is
+	// given up on — that is the route every registry-issued id arrives by, and
+	// skipping it would 404 every entry submitted after the switchover. What
+	// must survive that extra hop is this test's actual subject: a gid nothing
+	// claims is still ABSENT rather than an error, and is never resolved to
+	// whatever work happens to carry its number.
+	if rec.count() != 2 {
+		t.Errorf("made %d calls, want 2 (anchor lookup, then the identity attempt)", rec.count())
 	}
 }
 
