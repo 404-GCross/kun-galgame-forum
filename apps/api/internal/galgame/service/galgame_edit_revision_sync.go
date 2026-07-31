@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/pkg/catalogclient"
 
 	"github.com/redis/go-redis/v9"
@@ -31,8 +32,13 @@ import (
 // effectively exactly-once. A transient failure holds the cursor.
 type GalgameEditRevisionSync struct {
 	catalog *catalogclient.Client
-	db      *gorm.DB
-	rdb     *redis.Client
+	// galgameClient brings a revision's entity id home. The feed is keyed on
+	// REGISTRY work ids and galgame_activity.galgame_id is a gid; the two spaces
+	// overlap, so writing one into the other attaches the edit card to a
+	// different game and raises nothing.
+	galgameClient *client.GalgameClient
+	db            *gorm.DB
+	rdb           *redis.Client
 	// batch is the feed page size. A field rather than a bare constant so the
 	// paging tests can drive several pages without a 1000-row fixture; nothing
 	// in production ever sets it to anything but editRevisionBatch.
@@ -41,10 +47,14 @@ type GalgameEditRevisionSync struct {
 
 func NewGalgameEditRevisionSync(
 	catalog *catalogclient.Client,
+	galgameClient *client.GalgameClient,
 	db *gorm.DB,
 	rdb *redis.Client,
 ) *GalgameEditRevisionSync {
-	return &GalgameEditRevisionSync{catalog: catalog, db: db, rdb: rdb, batch: editRevisionBatch}
+	return &GalgameEditRevisionSync{
+		catalog: catalog, galgameClient: galgameClient,
+		db: db, rdb: rdb, batch: editRevisionBatch,
+	}
 }
 
 const (
@@ -53,8 +63,9 @@ const (
 	// rows in different namespaces, so inheriting the old cursor would resume at
 	// a meaningless offset.
 	editRevisionCursorKey = "catalog:rev:cron:since"
-	// editRevisionEntityType narrows the global feed to galgame entities.
-	editRevisionEntityType = "galgame.game"
+	// editRevisionEntityType narrows the global feed to the registry's works —
+	// the type kungal's galgame edits now target.
+	editRevisionEntityType = catalogclient.EntityTypeWork
 	// editRevisionBatch is the page size (the feed caps at 1000).
 	editRevisionBatch = 1000
 	// editRevisionMaxPages guards against a runaway feed.
@@ -110,10 +121,12 @@ func (s *GalgameEditRevisionSync) Run() {
 			break
 		}
 
+		gidByWork := s.gidsFor(ctx, page.Items)
+
 		holding := false
 		for i := range page.Items {
 			rev := &page.Items[i]
-			if err := s.upsert(rev); err != nil {
+			if err := s.upsert(rev, gidByWork[rev.EntityID]); err != nil {
 				// Transient DB failure: hold the cursor BEFORE this id so the
 				// next tick re-attempts (idempotent ON CONFLICT).
 				slog.Warn("catalog 修订入库失败, 持有游标重试", "rev_id", rev.ID, "error", err)
@@ -174,15 +187,48 @@ func isTimelineEdit(action int16) bool {
 // NULL: the row has no wiki-side identity.
 //
 // Entity CREATIONS are skipped (see isTimelineEdit).
-func (s *GalgameEditRevisionSync) upsert(rev *catalogclient.EditRevisionFeedItem) error {
+func (s *GalgameEditRevisionSync) upsert(rev *catalogclient.EditRevisionFeedItem, gid int) error {
 	if !isTimelineEdit(rev.Action) {
+		return nil
+	}
+	if gid == 0 {
+		// An edit to a work kungal does not claim. Not an error and not a retry:
+		// the registry is shared, and another product's entries have no place on
+		// this timeline. Advancing past it is correct.
 		return nil
 	}
 	return s.db.Exec(`
 		INSERT INTO galgame_activity (edit_revision_id, wiki_revision_number, galgame_id, user_id, type, created)
 		VALUES (?, ?, ?, ?, 'GALGAME_EDIT', ?)
 		ON CONFLICT (edit_revision_id) DO NOTHING
-	`, rev.ID, rev.Seq, rev.EntityID, rev.ActorUID, rev.CreatedAt).Error
+	`, rev.ID, rev.Seq, gid, rev.ActorUID, rev.CreatedAt).Error
+}
+
+// gidsFor translates a page's entity ids in ONE call. A failure yields an empty
+// map, which makes every row of the page a skip — and because the cursor only
+// advances past rows that were applied, a page whose translation failed is
+// retried rather than silently dropped.
+func (s *GalgameEditRevisionSync) gidsFor(
+	ctx context.Context,
+	items []catalogclient.EditRevisionFeedItem,
+) map[int64]int {
+	workIDs := make([]int64, 0, len(items))
+	seen := make(map[int64]bool, len(items))
+	for i := range items {
+		if id := items[i].EntityID; !seen[id] {
+			seen[id] = true
+			workIDs = append(workIDs, id)
+		}
+	}
+	if s.galgameClient == nil {
+		return map[int64]int{}
+	}
+	gids, appErr := s.galgameClient.GIDsByCatalogIDs(ctx, workIDs)
+	if appErr != nil {
+		slog.Warn("catalog 修订 work id → gid 失败", "error", appErr)
+		return map[int64]int{}
+	}
+	return gids
 }
 
 // readCursor returns the stored cursor, whether one existed, and any Redis

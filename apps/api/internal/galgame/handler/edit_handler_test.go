@@ -51,24 +51,38 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 	return nil
 }
 
-// fakeGalgame serves the ownership meta read (owner lookup + notification
-// naming): one game, id 1, created by uid 7.
+// fakeGalgame serves the ID BRIDGE both directions for one entry: gid 1 ⇄
+// registry work 1000. The two are deliberately different numbers — an id that
+// happened to match on both sides would hide exactly the bug the bridge exists
+// to prevent.
 func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The edit lane reads ownership off the SURVIVING /internal face, not
-		// the catalog: the catalog carries no submitter (doc 106 R2 ①) and this
-		// op is status-blind, so the owner of an unpublished entry resolves too.
-		if r.URL.Path == "/internal/galgame/meta" {
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"gid":1,"user_id":7,"status":0,"name_zh_cn":"测试游戏","name_zh_tw":"","name_ja_jp":"","name_en_us":""}]}}`))
-			return
+		switch r.URL.Path {
+		case "/v1/catalog/lookup/batch":
+			raw, _ := io.ReadAll(r.Body)
+			if strings.Contains(string(raw), `"external_id":"1"`) {
+				_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"external_id":"1","work":{"id":1000}}]}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[]}}`))
+		case "/v1/catalog/works":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":1000,` +
+				`"claimed_by":{"site":"kungal","work_id":1,"state":"live"},` +
+				`"names":{"zh-cn":"测试游戏"}}],"next_cursor":null}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))
 		}
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
 }
+
+// fakeOwners is the submitter snapshot: entry gid 1 was created by uid 7.
+type fakeOwners map[int]int
+
+func (f fakeOwners) OwnerOf(gid int) int { return f[gid] }
 
 // fakeEditFace records every edit-face request and serves canned replies.
 type fakeEditFace struct {
@@ -126,36 +140,36 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 		// ── Platform propose face (/internal/edit/*) — byte-identical envelopes,
 		// minus Huma's "$schema" decoration (invisible to the BFF's decode). ──
 		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"merged":false,"proposal":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","patch":{}}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/internal/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[]}}`))
 		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals/7/withdraw":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"withdrawn","patch":{}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
 		case r.Method == "GET" && r.URL.Path == "/internal/edit/snapshot":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"galgame.game","entity_id":1,"values":{"galgame.game.name_zh_cn":"现值"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/internal/edit/schema/galgame.game":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"galgame.game","fields":[{"key":"galgame.game.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
+		case r.Method == "GET" && r.URL.Path == "/internal/edit/schema/catalog.work":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","patch":{}}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/7":
 			// An open kungal proposal on game 1 by uid 9 — the review target.
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"open","proposer_uid":9,"patch":{"galgame.game.name_zh_cn":"新标题"}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/merge":
 			// The merged revision carries an amender → the notice marks the correction.
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["galgame.game.name_zh_cn"],"snapshot":{}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/decline":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/amendments":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"galgame.game.name_zh_cn":"修正"}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/revert":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"galgame.game","entity_id":1,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["galgame.game.name_zh_cn"],"snapshot":{}}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/55":
 			// A proposal OUTSIDE kungal's tenant — the BFF must 404 it.
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"galgame.game","entity_id":1,"site":"galgame_wiki","status":"open","patch":{}}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"catalog.work","entity_id":1000,"site":"letmoe","status":"open","patch":{}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/snapshot":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"galgame.game","entity_id":1,"values":{"galgame.game.name_zh_cn":"现值"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/schema/galgame.game":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"galgame.game","fields":[{"key":"galgame.game.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
+		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/schema/catalog.work":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[]}}`))
 		default:
@@ -170,7 +184,11 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 // editTestApp wires the edit routes exactly like router.go, with a stubbed
 // session user (nil = anonymous → the auth stub rejects like middleware.Auth).
 func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
-	return editTestAppFull(t, catalogURL, "", user, nil)
+	// The id bridge is wired for every app: it is not optional infrastructure
+	// any more, it is how a kungal route reaches an entity at all. The
+	// degradation test passes an empty catalog URL, which leaves the EDIT face
+	// unconfigured — the thing it is actually asserting.
+	return editTestAppFull(t, catalogURL, fakeGalgame(t).URL, user, nil)
 }
 
 // editTestAppFull additionally wires a fake galgame (owner lookup / naming) and
@@ -186,7 +204,10 @@ func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middlewa
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")
 	}
-	h := NewEditHandler(cc, pc, galgameClient, nil, notifier, nil) // nil user client/repo = best-effort off
+	// nil user client / repo = best-effort enrichment off. The submitter lookup
+	// is a narrow port so the owner-review gates are testable without a database.
+	h := NewEditHandler(cc, pc, galgameClient, nil, notifier, nil).
+		WithOwners(fakeOwners{1: 7})
 
 	app := fiber.New()
 	authStub := func(c fiber.Ctx) error {
@@ -245,7 +266,7 @@ func TestEditDegradesWhenUnconfigured(t *testing.T) {
 	app := editTestApp(t, "", moderatorUser) // empty base URL = not configured
 	for _, tc := range []struct{ method, path, body string }{
 		{"GET", "/api/galgame/1/edit/bootstrap", ""},
-		{"POST", "/api/galgame/1/edit/proposals", `{"patch":{"galgame.game.name_zh_cn":"x"}}`},
+		{"POST", "/api/galgame/1/edit/proposals", `{"patch":{"catalog.work.name_zh_cn":"x"}}`},
 		{"GET", "/api/galgame/1/edit/revisions", ""},
 		{"GET", "/api/galgame-edit/queue", ""},
 		{"GET", "/api/galgame-edit/mine", ""},
@@ -266,7 +287,7 @@ func TestEditActorAssertionShape(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, moderatorUser)
 	status, raw := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals",
-		`{"patch":{"galgame.game.name_zh_cn":"新标题"},"note":"typo"}`)
+		`{"patch":{"catalog.work.name_zh_cn":"新标题"},"note":"typo"}`)
 	if status != http.StatusOK {
 		t.Fatalf("submit: status = %d body %s", status, raw)
 	}
@@ -274,11 +295,11 @@ func TestEditActorAssertionShape(t *testing.T) {
 		t.Fatalf("staff submit must be a single S2S call, got %+v", fake.requests)
 	}
 	body := fake.requests[0].Body
-	if body["entity_type"] != "galgame.game" || body["site"] != "kungal" {
+	if body["entity_type"] != "catalog.work" || body["site"] != "kungal" {
 		t.Fatalf("entity/site assertion wrong: %v", body)
 	}
 	patch := body["patch"].(map[string]any)
-	if patch["galgame.game.name_zh_cn"] != "新标题" {
+	if patch["catalog.work.name_zh_cn"] != "新标题" {
 		t.Fatalf("patch not passed through verbatim: %v", patch)
 	}
 	actor := body["actor"].(map[string]any)
@@ -301,7 +322,7 @@ func TestEditSubmitLocalValidation(t *testing.T) {
 	app := editTestApp(t, fake.server(t).URL, plainUser)
 	for _, body := range []string{
 		`{"patch":{}}`,
-		`{"patch":{"catalog.work.display_name":"x"}}`,
+		`{"patch":{"galgame.game.name_zh_cn":"x"}}`,
 		`{"patch":{"gid":1}}`,
 	} {
 		status, _ := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals", body)
@@ -342,7 +363,7 @@ func TestEditReviewEntryGates(t *testing.T) {
 		{"POST", "/api/galgame-edit/proposals/7/merge"},
 		{"POST", "/api/galgame-edit/proposals/7/decline"},
 	} {
-		status, _ := doJSON(t, app, tc.method, tc.path, `{"note":"x","set":{"galgame.game.name_zh_cn":"y"}}`)
+		status, _ := doJSON(t, app, tc.method, tc.path, `{"note":"x","set":{"catalog.work.name_zh_cn":"y"}}`)
 		if status != http.StatusForbidden {
 			t.Fatalf("%s %s as non-owner: status = %d, want 403", tc.method, tc.path, status)
 		}
@@ -415,7 +436,7 @@ func TestEditOwnerReview(t *testing.T) {
 
 // TestEditDeclineNotification: adjudication (decline) requires admin/ren or the
 // game's owner — a plain moderator is forbidden (sanctioned split: view is
-// moderator+, decide is admin+, mirroring infra edit.galgame.game.review). Once
+// moderator+, decide is admin+, mirroring infra edit.catalog.work.review). Once
 // a valid decider acts, the decline reason travels to the proposer in full on
 // the decline notice (E3b ruling 1).
 func TestEditDeclineNotification(t *testing.T) {
@@ -545,7 +566,7 @@ func TestEditBootstrapShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if out.Data.Gid != 1 || out.Data.Values["galgame.game.name_zh_cn"] != "现值" {
+	if out.Data.Gid != 1 || out.Data.Values["catalog.work.name_zh_cn"] != "现值" {
 		t.Fatalf("bootstrap shape wrong: %s", raw)
 	}
 	if len(out.Data.Fields) != 1 || out.Data.CanReview {

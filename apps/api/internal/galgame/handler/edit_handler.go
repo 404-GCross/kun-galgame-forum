@@ -61,6 +61,36 @@ type EditHandler struct {
 	users         *userclient.Client                // best-effort attribution enrichment
 	notifier      msgService.Notifier               // best-effort decision notifications
 	repo          *repository.GalgameRepository
+	// owners answers "who submitted this entry", by gid. It is an interface
+	// rather than a direct repo read because it is the ONE fact the edit face
+	// needs from the forum's own tables, and naming it separates "the author we
+	// render" from "the row we store" — the owner-review gate must agree with
+	// the author chip, and a narrow port is what keeps that reviewable.
+	owners EntryOwners
+}
+
+// EntryOwners resolves an entry's submitter. The registry carries none by
+// design — a registry row outlives any account — so this is the forum's own
+// frozen snapshot (galgame.creator_user_id, migration 066), the same column the
+// author chip renders.
+type EntryOwners interface {
+	// OwnerOf returns the submitter's uid, or 0 when unknown. Unknown fails the
+	// owner check CLOSED; moderators are unaffected.
+	OwnerOf(gid int) int
+}
+
+// repoOwners adapts the galgame repository to EntryOwners.
+type repoOwners struct{ repo *repository.GalgameRepository }
+
+func (r repoOwners) OwnerOf(gid int) int {
+	if r.repo == nil || gid <= 0 {
+		return 0
+	}
+	row := r.repo.FindLocal(gid)
+	if row.CreatorUserID == nil {
+		return 0
+	}
+	return *row.CreatorUserID
 }
 
 func NewEditHandler(
@@ -70,8 +100,15 @@ func NewEditHandler(
 ) *EditHandler {
 	return &EditHandler{
 		catalog: catalog, platform: platform, galgameClient: galgameClient,
-		users: users, notifier: notifier, repo: repo,
+		users: users, notifier: notifier, repo: repo, owners: repoOwners{repo: repo},
 	}
+}
+
+// WithOwners swaps the submitter lookup. Only the assembly point and tests use
+// it; production always gets the repository adapter.
+func (h *EditHandler) WithOwners(owners EntryOwners) *EditHandler {
+	h.owners = owners
+	return h
 }
 
 // editUser is the attribution shape lists carry (contribution attribution
@@ -124,12 +161,19 @@ func collectProposalUIDs(items []catalogclient.EditProposal) map[int]bool {
 // forum OAuth client's oauth_clients.catalog_site binding.
 const catalogSite = "kungal"
 
-// entityTypeGame is the galgame family's entity type (infra editspec).
-const entityTypeGame = "galgame.game"
+// entityTypeGame is the entity type kungal's edits target.
+//
+// It is the REGISTRY's work now, not the wiki's galgame row — same history,
+// same proposals, same revision numbers (the rekey moved them), but a different
+// ID SPACE. Every id crossing this boundary therefore has to be translated:
+// a kungal URL is a gid, the engine speaks registry work ids, and the two
+// overlap, so a missed translation links to a different game instead of
+// failing.
+const entityTypeGame = catalogclient.EntityTypeWork
 
-// fieldKeyPrefix guards the pass-through patch: only galgame.game.* keys may
+// fieldKeyPrefix guards the pass-through patch: only this family's keys may
 // ride this BFF (the engine re-validates each key against the registry).
-const fieldKeyPrefix = "galgame.game."
+const fieldKeyPrefix = catalogclient.FieldKeyPrefix
 
 var errEditDown = errors.New(errors.CodeBiz, "资料库编辑服务暂不可用", http.StatusServiceUnavailable)
 
@@ -165,42 +209,108 @@ func isPlainActor(actor catalogclient.EditActor) bool {
 	return !role.CanModerate(actor.Roles) && !actor.IsEntityOwner
 }
 
-// gameMeta reads one galgame's ownership meta (best-effort; nil = unknown).
+// ownerOf answers "who created this entry", by gid.
 //
-// This is a PERMISSION + NOTIFICATION lane, so it reads the surviving
-// /internal ownership op rather than any public read: the catalog carries no
-// submitter by design (doc 106 R2 ①), and — decisively — that op is
-// STATUS-BLIND. The published-only read this used to call returned nothing for
-// an entry in review, so the owner assertion silently degraded to "not the
-// owner" and locked the true owner out of editing their own draft.
-func (h *EditHandler) gameMeta(ctx context.Context, gid int64) *client.GalgameMetaRow {
-	if h.galgameClient == nil || gid <= 0 {
-		return nil
+// The registry carries no submitter and never will — a registry row outlives
+// any account, so owning it is not a fact about it. The forum keeps its own
+// answer instead: `galgame.creator_user_id`, the frozen wiki-era submitter
+// snapshot (migration 066) that already backs the author chip on every card.
+// Reading the SAME column the product renders is the point: an owner-review
+// gate that disagreed with the author shown on screen would be impossible to
+// explain.
+//
+// 0 = unknown, which fails the owner check closed. Moderators are unaffected.
+func (h *EditHandler) ownerOf(_ context.Context, gid int64) int {
+	if h.owners == nil {
+		return 0
 	}
-	rows, appErr := h.galgameClient.GalgameMeta(ctx, []int{int(gid)})
+	return h.owners.OwnerOf(int(gid))
+}
+
+// isGameOwner reports whether uid created the entry behind a REGISTRY work id.
+// Fail-closed: an unresolvable work degrades the owner assertion to false.
+func (h *EditHandler) isGameOwner(ctx context.Context, workID, uid int64) bool {
+	gid := h.gidOf(ctx, workID)
+	if gid == 0 {
+		return false
+	}
+	owner := h.ownerOf(ctx, int64(gid))
+	return owner > 0 && int64(owner) == uid
+}
+
+// workIDOf translates a kungal gid into the registry work id the engine keys
+// on. A gid the registry does not know has no editable entity.
+func (h *EditHandler) workIDOf(ctx context.Context, gid int64) (int64, *errors.AppError) {
+	if h.galgameClient == nil {
+		// No bridge, no editable entity. The edit face degrades as a whole (the
+		// frontend hides its entries) rather than falling back to a gid, which
+		// would address a different work.
+		return 0, errEditDown
+	}
+	ids, appErr := h.galgameClient.CatalogWorkIDs(ctx, []int{int(gid)})
 	if appErr != nil {
-		slog.Warn("galgame edit: ownership meta lookup failed", "gid", gid, "error", appErr)
-		return nil
+		return 0, appErr
 	}
-	if m, ok := rows[int(gid)]; ok {
-		return &m
+	workID, ok := ids[int(gid)]
+	if !ok {
+		return 0, errors.ErrNotFound("条目不存在")
 	}
-	return nil
+	return workID, nil
 }
 
-// isGameOwner reports whether uid created the galgame row. Fail-closed: an
-// unreachable upstream degrades the owner assertion to false (moderators are
-// unaffected; the owner retries).
-func (h *EditHandler) isGameOwner(ctx context.Context, gid, uid int64) bool {
-	m := h.gameMeta(ctx, gid)
-	return m != nil && m.UserID > 0 && int64(m.UserID) == uid
+// editEntry is one entry resolved from a registry work id into everything the
+// side-effect lanes need: the kungal id its rows and URLs are keyed by, the
+// author the owner-review gate and the "someone proposed an edit" notice are
+// addressed to, and a title for the notice body.
+//
+// It is resolved ONCE per decision rather than looked up per use — the three
+// facts come from two different places (the registry for the title, the forum
+// for the author) and reading them separately at three call sites is how they
+// start disagreeing.
+type editEntry struct {
+	GID      int
+	OwnerUID int
+	Name     string
 }
 
-func briefName(m *client.GalgameMetaRow) string {
-	if m == nil {
+// entryOf resolves a registry work id. A zero GID means kungal does not claim
+// the work, and every side effect keyed on it is then correctly skipped.
+func (h *EditHandler) entryOf(ctx context.Context, workID int64) editEntry {
+	gid := h.gidOf(ctx, workID)
+	if gid == 0 {
+		return editEntry{}
+	}
+	entry := editEntry{GID: gid, OwnerUID: h.ownerOf(ctx, int64(gid))}
+	if h.galgameClient != nil {
+		if rows, appErr := h.galgameClient.CatalogRowsByGIDs(ctx, []int{gid}, "names", "all"); appErr == nil {
+			if row, ok := rows[gid]; ok {
+				brief := client.CatalogItemToBrief(&row)
+				entry.Name = briefName(&brief)
+			}
+		}
+	}
+	return entry
+}
+
+// gidOf is the reverse: one registry work id home to its gid, 0 when kungal
+// does not claim it.
+func (h *EditHandler) gidOf(ctx context.Context, workID int64) int {
+	if h.galgameClient == nil {
+		return 0
+	}
+	gids, appErr := h.galgameClient.GIDsByCatalogIDs(ctx, []int64{workID})
+	if appErr != nil {
+		slog.Warn("galgame edit: work id → gid failed", "work", workID, "error", appErr)
+		return 0
+	}
+	return gids[workID]
+}
+
+func briefName(b *client.GalgameBrief) string {
+	if b == nil {
 		return ""
 	}
-	for _, n := range []string{m.NameZhCN, m.NameZhTW, m.NameJaJP, m.NameEnUS} {
+	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
 		if n != "" {
 			return n
 		}
@@ -209,15 +319,16 @@ func briefName(m *client.GalgameMetaRow) string {
 }
 
 // notifyDecision sends the proposer a forum in-site message about a merge /
-// decline (E3b ruling 1). Best-effort and never rolls back the decision;
-// Emit itself swallows self-notifications.
-func (h *EditHandler) notifyDecision(prop *catalogclient.EditProposal, senderID int64, kind msgService.NotifyKind, content string) {
+// decline. gid — NOT the proposal's entity id — because a forum message links
+// by kungal id; a registry id in that column points the notice at a different
+// entry, and 0 is the honest "no link" the message system already handles.
+func (h *EditHandler) notifyDecision(prop *catalogclient.EditProposal, gid int, senderID int64, kind msgService.NotifyKind, content string) {
 	if h.notifier == nil {
 		return
 	}
 	if err := h.notifier.Emit(nil, msgService.Spec{
 		SenderID: int(senderID), ReceiverID: int(prop.ProposerUID),
-		Kind: kind, Content: content, GalgameID: int(prop.EntityID),
+		Kind: kind, Content: content, GalgameID: gid,
 	}); err != nil {
 		slog.Warn("galgame edit: decision notification failed",
 			"proposal", prop.ID, "kind", kind, "error", err)
@@ -297,13 +408,17 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	ctx := c.Context()
-	// Owner-review (E3b): the game's creator projects can_review on the
+	workID, appErr := h.workIDOf(ctx, gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	// Owner-review (E3b): the entry's creator projects can_review on the
 	// default keys — the capability rides the schema projection, the UI
 	// holds zero policy logic.
-	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
+	actor.IsEntityOwner = h.isGameOwner(ctx, workID, actor.UserID)
 	// Snapshot is policy-irrelevant → the platform propose face for everyone (P6).
 	token := middleware.GetAccessToken(c)
-	values, err := h.platform.Snapshot(ctx, token, entityTypeGame, gid)
+	values, err := h.platform.Snapshot(ctx, token, entityTypeGame, workID)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -312,9 +427,9 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	// staff/owner keep the S2S asserted projection so their capabilities show (P6).
 	var schema *catalogclient.EditSchema
 	if isPlainActor(actor) {
-		schema, err = h.platform.GetSchema(ctx, token, entityTypeGame, gid)
+		schema, err = h.platform.GetSchema(ctx, token, entityTypeGame, workID)
 	} else {
-		schema, err = h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, gid, actor)
+		schema, err = h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
 	}
 	if err != nil {
 		return editError(c, err)
@@ -377,7 +492,11 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 	// asserts roles but not ownership; mirror Bootstrap's owner check so the
 	// engine sees the same capability. Only for a valid request (avoids the
 	// S2S brief lookup on rejected input; the brief is warm from Bootstrap).
-	actor.IsEntityOwner = h.isGameOwner(c.Context(), gid, actor.UserID)
+	workID, appErr := h.workIDOf(c.Context(), gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	actor.IsEntityOwner = h.isGameOwner(c.Context(), workID, actor.UserID)
 	// P6 split: a plain proposer files through the platform propose face (no actor
 	// asserted — the platform derives it from the Bearer, tenant from the key
 	// binding); staff/owner stay on the S2S actor-assertion channel so their
@@ -389,11 +508,11 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 	)
 	if isPlainActor(actor) {
 		result, err = h.platform.CreateProposal(c.Context(), middleware.GetAccessToken(c), catalogclient.PlatformCreateRequest{
-			EntityType: entityTypeGame, EntityID: gid, Patch: req.Patch, Note: req.Note,
+			EntityType: entityTypeGame, EntityID: workID, Patch: req.Patch, Note: req.Note,
 		})
 	} else {
 		result, err = h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
-			EntityType: entityTypeGame, EntityID: gid, Site: catalogSite,
+			EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
 			Patch: req.Patch, Note: req.Note, Actor: actor,
 		})
 	}
@@ -416,12 +535,18 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 // the old galgame PR id space (the E2 transform bumped the sequence past it), so
 // wiki_pr_id stays the idempotency key.
 func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient.EditProposal) {
-	meta := h.gameMeta(ctx, prop.EntityID)
-	if h.notifier != nil && meta != nil && meta.UserID > 0 {
+	// EntityID is a REGISTRY id; every row below is keyed by gid, so it comes
+	// home first. Writing the work id into galgame_activity.galgame_id would
+	// attach the card to whichever entry happens to hold that gid.
+	entry := h.entryOf(ctx, prop.EntityID)
+	if entry.GID == 0 {
+		return
+	}
+	if h.notifier != nil && entry.OwnerUID > 0 {
 		if err := h.notifier.Emit(nil, msgService.Spec{
-			SenderID: int(prop.ProposerUID), ReceiverID: meta.UserID,
-			Kind: msgService.NotifyRequested, Content: briefName(meta),
-			GalgameID: int(prop.EntityID),
+			SenderID: int(prop.ProposerUID), ReceiverID: entry.OwnerUID,
+			Kind: msgService.NotifyRequested, Content: entry.Name,
+			GalgameID: entry.GID,
 		}); err != nil {
 			slog.Warn("galgame edit: requested notification failed", "proposal", prop.ID, "error", err)
 		}
@@ -431,7 +556,7 @@ func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient
 			INSERT INTO galgame_activity (wiki_pr_id, galgame_id, user_id, type, created)
 			VALUES (?, ?, ?, 'GALGAME_PR_CREATION', now())
 			ON CONFLICT (wiki_pr_id) DO NOTHING
-		`, prop.ID, prop.EntityID, prop.ProposerUID).Error; err != nil {
+		`, prop.ID, entry.GID, prop.ProposerUID).Error; err != nil {
 			slog.Warn("galgame edit: activity timeline write failed", "proposal", prop.ID, "error", err)
 		}
 	}
@@ -446,7 +571,11 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	items, err := h.catalog.ListEditRevisions(c.Context(), entityTypeGame, gid, queryInt(c, "limit"))
+	workID, appErr := h.workIDOf(c.Context(), gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	items, err := h.catalog.ListEditRevisions(c.Context(), entityTypeGame, workID, queryInt(c, "limit"))
 	if err != nil {
 		return editError(c, err)
 	}
@@ -463,7 +592,7 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 		// are NOT included — they hold no edit.galgame.game.review, so the
 		// engine would reject their revert anyway.
 		canRevert = role.CanAdminister(user.Roles) ||
-			h.isGameOwner(c.Context(), gid, int64(user.ID))
+			h.isGameOwner(c.Context(), workID, int64(user.ID))
 	}
 	return response.OK(c, fiber.Map{
 		"gid": gid, "items": items, "users": h.userMap(c.Context(), uids),
@@ -501,7 +630,11 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	actor.IsEntityOwner = h.isGameOwner(ctx, gid, actor.UserID)
+	workID, appErr := h.workIDOf(ctx, gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	actor.IsEntityOwner = h.isGameOwner(ctx, workID, actor.UserID)
 	// Review-grade gate: admin ⊂ ren, or the game's owner (mirrors can_revert
 	// and the engine's per-field review rule; moderators excluded).
 	//
@@ -511,7 +644,7 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
 		return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
 	}
-	result, err := h.catalog.RevertEditEntity(ctx, catalogSite, entityTypeGame, gid, req.ToSeq, req.Note, actor)
+	result, err := h.catalog.RevertEditEntity(ctx, catalogSite, entityTypeGame, workID, req.ToSeq, req.Note, actor)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -528,7 +661,11 @@ func (h *EditHandler) Diff(c fiber.Ctx) error {
 	if from < 1 || to < 1 {
 		return response.Error(c, errors.ErrBadRequest("需要 from/to 版本号"))
 	}
-	diff, err := h.catalog.DiffEditRevisions(c.Context(), entityTypeGame, gid, from, to)
+	workID, appErr := h.workIDOf(c.Context(), gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	diff, err := h.catalog.DiffEditRevisions(c.Context(), entityTypeGame, workID, from, to)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -539,40 +676,62 @@ func (h *EditHandler) Diff(c fiber.Ctx) error {
 // Review queue + my proposals (proposal-scoped)
 // ──────────────────────────────────────────
 
-// proposalItem is one enriched list row: the proposal + a best-effort
-// galgame brief (nil when the galgame batch read fails — the UI falls back to
-// the bare gid link).
+// proposalItem is one enriched list row: the proposal, the kungal id it belongs
+// to, and a best-effort brief.
+//
+// GID is not decoration — it is the ONLY safe way for a client to link to the
+// entry. `entity_id` is a registry work id whose space OVERLAPS kungal's, so a
+// UI that builds /galgame/{entity_id} lands on a different game and reports no
+// error at all. Every list that reaches a template therefore carries the
+// translated id, and the templates read that.
 type proposalItem struct {
 	catalogclient.EditProposal
-	Galgame *client.GalgameMetaRow `json:"galgame,omitempty"`
+	GID     int                  `json:"gid"`
+	Galgame *client.GalgameBrief `json:"galgame,omitempty"`
 }
 
 func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProposal) []proposalItem {
-	ids := make([]int, 0, len(items))
-	seen := make(map[int]bool, len(items))
+	workIDs := make([]int64, 0, len(items))
+	seen := make(map[int64]bool, len(items))
 	for i := range items {
-		gid := int(items[i].EntityID)
-		if !seen[gid] {
-			seen[gid] = true
-			ids = append(ids, gid)
+		if id := items[i].EntityID; !seen[id] {
+			seen[id] = true
+			workIDs = append(workIDs, id)
 		}
 	}
-	// The proposal cards show the entry's title and owner — the same two facts
-	// the owner assertion needs, from the same status-blind op, so a proposal
-	// against an unpublished entry is not a blank card.
-	var metas map[int]client.GalgameMetaRow
-	if len(ids) > 0 && h.galgameClient != nil {
+	var gidByWork map[int64]int
+	if len(workIDs) > 0 && h.galgameClient != nil {
 		var appErr *errors.AppError
-		if metas, appErr = h.galgameClient.GalgameMeta(ctx, ids); appErr != nil {
-			slog.Warn("galgame edit: ownership meta enrichment failed", "error", appErr)
+		if gidByWork, appErr = h.galgameClient.GIDsByCatalogIDs(ctx, workIDs); appErr != nil {
+			slog.Warn("galgame edit: work id → gid enrichment failed", "error", appErr)
+		}
+	}
+	gids := make([]int, 0, len(gidByWork))
+	for _, gid := range gidByWork {
+		gids = append(gids, gid)
+	}
+	// The cards show the entry's title. `content_limit=all` because a review
+	// queue that cannot see an entry's name cannot review it — the editorial
+	// gate is a reader preference, not an authorization.
+	var briefs map[int]client.GalgameBrief
+	if len(gids) > 0 && h.galgameClient != nil {
+		rows, appErr := h.galgameClient.CatalogRowsByGIDs(ctx, gids, "names,covers", "all")
+		if appErr != nil {
+			slog.Warn("galgame edit: brief enrichment failed", "error", appErr)
+		} else {
+			briefs = make(map[int]client.GalgameBrief, len(rows))
+			for gid := range rows {
+				row := rows[gid]
+				briefs[gid] = client.CatalogItemToBrief(&row)
+			}
 		}
 	}
 	out := make([]proposalItem, 0, len(items))
 	for i := range items {
-		item := proposalItem{EditProposal: items[i]}
-		if m, ok := metas[int(items[i].EntityID)]; ok {
-			meta := m
-			item.Galgame = &meta
+		item := proposalItem{EditProposal: items[i], GID: gidByWork[items[i].EntityID]}
+		if b, ok := briefs[item.GID]; ok {
+			brief := b
+			item.Galgame = &brief
 		}
 		out = append(out, item)
 	}
@@ -614,8 +773,18 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 	if _, appErr := editActor(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
+	// ?gid narrows to one entry — a kungal id, so it crosses the bridge before
+	// it can name an entity.
+	var entityID int64
+	if gid := queryInt(c, "gid"); gid > 0 {
+		workID, appErr := h.workIDOf(c.Context(), int64(gid))
+		if appErr != nil {
+			return response.Error(c, appErr)
+		}
+		entityID = workID
+	}
 	items, err := h.platform.MineProposals(c.Context(), middleware.GetAccessToken(c), catalogclient.PlatformMineFilter{
-		EntityType: entityTypeGame, EntityID: int64(queryInt(c, "gid")),
+		EntityType: entityTypeGame, EntityID: entityID,
 		Status: c.Query("status"), Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
@@ -706,8 +875,12 @@ func (h *EditHandler) GameProposals(c fiber.Ctx) error {
 	default:
 		return response.Error(c, errors.ErrBadRequest("未知的提案状态"))
 	}
+	workID, appErr := h.workIDOf(c.Context(), gid)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
 	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
-		EntityType: entityTypeGame, EntityID: gid, Site: catalogSite,
+		EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
 		Status: status, Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
@@ -858,16 +1031,17 @@ func (h *EditHandler) mergeSideEffects(ctx context.Context, prop *catalogclient.
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame_pr", int(prop.EntityID)),
 			moemoepoint.Key("galgame_edit_merged", strconv.FormatInt(prop.ID, 10)))
 	}
-	if h.repo != nil {
-		if err := h.repo.Touch(h.repo.DB().WithContext(ctx), int(prop.EntityID)); err != nil {
-			slog.Warn("galgame edit: resource_update_time bump failed", "gid", prop.EntityID, "error", err)
+	entry := h.entryOf(ctx, prop.EntityID)
+	if h.repo != nil && entry.GID > 0 {
+		if err := h.repo.Touch(h.repo.DB().WithContext(ctx), entry.GID); err != nil {
+			slog.Warn("galgame edit: resource_update_time bump failed", "gid", entry.GID, "error", err)
 		}
 	}
-	content := briefName(h.gameMeta(ctx, prop.EntityID))
+	content := entry.Name
 	if rev != nil && rev.AmenderUID != nil {
 		content = strings.TrimSpace(content + "（审核时有修正）")
 	}
-	h.notifyDecision(prop, mergerID, msgService.NotifyMerged, content)
+	h.notifyDecision(prop, entry.GID, mergerID, msgService.NotifyMerged, content)
 }
 
 // Decline — POST /galgame-edit/proposals/:id/decline (auth; moderator or
@@ -902,11 +1076,12 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
+	entry := h.entryOf(ctx, target.EntityID)
 	content := req.Note
-	if name := briefName(h.gameMeta(ctx, target.EntityID)); name != "" {
-		content = name + "：" + req.Note
+	if entry.Name != "" {
+		content = entry.Name + "：" + req.Note
 	}
-	h.notifyDecision(target, actor.UserID, msgService.NotifyDeclined, content)
+	h.notifyDecision(target, entry.GID, actor.UserID, msgService.NotifyDeclined, content)
 	return response.OK(c, prop)
 }
 

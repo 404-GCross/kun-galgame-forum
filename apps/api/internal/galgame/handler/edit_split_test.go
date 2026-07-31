@@ -61,7 +61,7 @@ func assertNoAssertionFields(t *testing.T, r recordedRequest) {
 // asserted); the game's owner and staff stay on the S2S actor-assertion face so
 // their direct-edit automerge is preserved.
 func TestEditSubmitSplit(t *testing.T) {
-	const body = `{"patch":{"galgame.game.name_zh_cn":"新标题"},"note":"typo"}`
+	const body = `{"patch":{"catalog.work.name_zh_cn":"新标题"},"note":"typo"}`
 
 	// Plain actor (no galgame wired → owner lookup is false) → platform.
 	t.Run("plain→platform", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestEditSubmitSplit(t *testing.T) {
 			t.Fatalf("plain submit must be one platform create, got %+v", plat)
 		}
 		assertNoAssertionFields(t, plat[0])
-		if plat[0].Body["entity_type"] != "galgame.game" || plat[0].Body["patch"] == nil {
+		if plat[0].Body["entity_type"] != "catalog.work" || plat[0].Body["patch"] == nil {
 			t.Fatalf("platform create body missing entity_type/patch: %v", plat[0].Body)
 		}
 	})
@@ -143,8 +143,8 @@ func TestEditMineViaPlatform(t *testing.T) {
 		t.Fatalf("mine must be one platform list, got %+v", plat)
 	}
 	assertNoAssertionFields(t, plat[0])
-	if !strings.Contains(plat[0].Query, "entity_type=galgame.game") ||
-		!strings.Contains(plat[0].Query, "entity_id=1") ||
+	if !strings.Contains(plat[0].Query, "entity_type=catalog.work") ||
+		!strings.Contains(plat[0].Query, "entity_id=1000") ||
 		!strings.Contains(plat[0].Query, "status=open") {
 		t.Fatalf("mine query must forward entity/status narrowing only: %q", plat[0].Query)
 	}
@@ -190,7 +190,7 @@ func TestEditBootstrapSchemaSplit(t *testing.T) {
 			switch r.Path {
 			case "/internal/edit/snapshot":
 				sawSnapshot = true
-			case "/internal/edit/schema/galgame.game":
+			case "/internal/edit/schema/catalog.work":
 				sawSchema = true
 			}
 		}

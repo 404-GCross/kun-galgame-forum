@@ -59,7 +59,7 @@ func (f *revFeedStub) server(t *testing.T) *catalogclient.Client {
 // stopping on a short one — rather than at 0.
 func TestFeedHeadWalksToTheLastID(t *testing.T) {
 	stub := &revFeedStub{total: 250, page: 100}
-	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil)
+	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil, nil)
 	s.batch = stub.page
 
 	head, err := s.feedHead(context.Background())
@@ -88,7 +88,7 @@ func TestFeedHeadWalksToTheLastID(t *testing.T) {
 // no galgame revisions yet must still start syncing from the beginning.
 func TestFeedHeadOnEmptyFeed(t *testing.T) {
 	stub := &revFeedStub{total: 0, page: 100}
-	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil)
+	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil, nil)
 	s.batch = stub.page
 
 	head, err := s.feedHead(context.Background())
