@@ -1,132 +1,167 @@
 ![kun-galgame-forum](https://kungal.com/kungalgame.webp)
 
-### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
+### **[English](../../README.md)** | **[日本語](jp.md)** | **[简体中文](chs.md)** | **[繁體中文](cht.md)**
 
 **お問い合わせ：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
-この画像は、ゲーム [Ark Order](https://apps.qoo-app.com/en/app/9593) から提供されており、キャラクターは 'こん'（Kun）です。
+画像はゲーム [Ark Order](https://apps.qoo-app.com/en/app/9593) のキャラクター「KUN（鯤）」です。
 
-> **AI 支援開発について：** 本プロジェクトはバージョン **5.1.0** 以降、Claude Code を含む（ただしこれに限らない）LLM 支援ツールを用いた Vibe Coding を採用しています。**5.0.70** までのすべてのコードは完全に手書きで記述されました。最後の完全手書きコードベースはこちら：[v5.0.70 (commit b4ad59e)](https://github.com/KunMoe/kun-galgame-forum/tree/b4ad59eb77d3eaf36d082aa528651039816e1dfa)
+> **AI 支援開発について：** 本プロジェクトでは **5.1.0** 以降、Codex や Claude Code などの LLM 支援開発ツールを使用しています。**5.0.70** までのコードはすべて手作業で書かれました。最後の完全手書き版は [v5.0.70（commit b4ad59e）](https://github.com/KunMoe/kun-galgame-forum/tree/b4ad59eb77d3eaf36d082aa528651039816e1dfa) です。
 
-# 鯤 ギャルゲームフォーラム
+# 鯤 Galgame フォーラム
 
-## ウェブサイト紹介
+## プロジェクト紹介
 
-鯤 ギャルゲームはギャルゲーのジャンルに情熱を注ぐ個人のコレクティブです。現在、以下のサブウェブサイトが含まれています：
+鯤 Galgame は、ビジュアルノベルと Galgame を愛する人々のコミュニティです。現在、次の公開サイトがあります。
 
-- [鯤 ギャルゲームフォーラム](https://kungal.com) (このプロジェクト)
-- [鯤 ギャルゲームステッカーパック](https://sticker.kungal.com) (ギャルゲーステッカーパックの収集と作成に特化したウェブサイト)
-- [鯤 ギャルゲーム開発ドキュメント](https://soft.moe/kun-visualnovel-docs/kun-forum.html) (このフォーラムは完全にオープンソースであり、開発ドキュメントはここで公開されます)
-- [鯤 ギャルゲーム ナビゲーションページ](https://nav.kungal.org/) （完全オープンソースのナビゲーションサイトです！ 鯤 ギャルゲーム のすべてのサブサイトにアクセスできます！）
-- [鯤 ギャルゲーム パッチサイト](https://www.moyu.moe) (現時点で世界最先端のビジュアルノベルパッチ資源サイト！永久無料！)
-- [鯤 ギャルゲーム ダウンページ](https://down.kungal.com/) （やむを得ずダウンする場合、フォーラムは強制的にこのページにリダイレクトされます）
+- [鯤 Galgame フォーラム](https://www.kungal.com)（本プロジェクト）
+- [鯤 Galgame スタンプ集](https://sticker.kungal.com)
+- [鯤 Galgame 開発ドキュメント](https://soft.moe/kun-visualnovel-docs/kun-forum.html)
+- [鯤 Galgame ナビゲーション](https://nav.kungal.org/)
+- [鯤 Galgame パッチサイト](https://www.moyu.moe)
+- [鯤 Galgame フォーラム ステータスページ](https://down.kungal.com/)
 
-詳しい情報は、ウェブサイトの「私たちについて」ページをご覧ください
+詳しくは[鯤 Galgame について](https://www.kungal.com/kungalgame)をご覧ください。
 
-https://www.kungal.com/ja-jp/kungalgame
+## 機能
 
-## 特徴
-
-- **Galgame データベース** — コミュニティ主導の Galgame カタログ。VNDB 連携、多言語メタデータ (EN / JA / ZH-CN / ZH-TW)、評価、タグ、エンジン情報、開発者プロフィールに対応
-- **リソース共有** — ゲームパッチ、翻訳、ボイスパックなどのリソースをアップロード・共有。提供者の追跡、プラットフォーム/言語フィルターを搭載
-- **ディスカッションフォーラム** — リッチな Markdown 編集 (Milkdown + CodeMirror)、返信、ネストコメント、投票、いいね、お気に入りを備えた本格的なトピックシステム
-- **共同編集** — Git 風の PR (Pull Request) ワークフローで Galgame 情報を編集。編集履歴の記録と貢献者クレジット付き
-- **ダイレクトメッセージ＆チャット** — Go バックエンドが提供するダイレクトメッセージと連絡先リスト
-- **萌萌点（Moemoepoint）システム** — 投稿・リソース共有・Galgame 情報編集などの貢献で得られるコミュニティ評価ポイント。共有 OAuth サービスを通じてエコシステム全体で統一
-- **リッチコンテンツ編集** — KaTeX 数式、コードハイライト、ドラッグ＆ドロップ画像アップロードに対応した Milkdown Markdown エディター
-- **ダーク / ライトテーマ** — システム連動のカラーモード。ページ透過度・フォント・背景画像のカスタマイズに対応
-- **SEO 最適化** — サーバーサイドレンダリング、構造化データ (Schema.org)、サイトマップ生成、Galgame・トピックの RSS フィード
+- **ビジュアルノベルカタログ** — 共有 Catalog レジストリによるコミュニティ投稿と審査。VNDB 参照、多言語メタデータ、評価、タグ、エンジン、会社、発売情報に対応
+- **リソース共有** — ゲームパッチ、翻訳、音声パックなどを共有し、提供者、プラットフォーム、言語で絞り込み
+- **ディスカッションフォーラム** — トピック、返信、ネストコメント、投票、リアクション、推薦、お気に入り、下書き、モデレーションフロー
+- **共同編集** — Catalog 編集エンジンによる Git 形式の提案、レビュー、改訂履歴、リバート、貢献者記録
+- **プライベートメッセージとチャット** — ダイレクトメッセージ、連絡先、既読状態、リアクション、送信取消
+- **萌萌点（Moemoepoint）** — エコシステム共通の貢献ポイント。正規の残高と台帳は OAuth が管理
+- **リッチコンテンツ編集** — Milkdown と CodeMirror を基盤にした共通 KUN エディター。KaTeX、シンタックスハイライト、メンション、画像アップロードに対応
+- **外観のカスタマイズ** — ライト・ダークモード、ページ透明度、フォント、背景画像、コンテンツレーティング設定
+- **検索と発見** — Meilisearch による検索、ランキング、アクティビティフィード、発売カレンダー、コレクション、推薦
+- **SEO とフィード** — Nuxt SSR、Schema.org メタデータ、分割サイトマップ、正規化リダイレクト、トピックとビジュアルノベルの RSS
 
 ## アーキテクチャ
 
-本プロジェクトは **pnpm workspace モノレポ** で、Go バックエンドと Nuxt フロントエンドで構成されています。共有の PostgreSQL / Redis / Meilisearch および OAuth・画像・Galgame Wiki サービスを所有する **`kun-galgame-infra`** エコシステムの下流アプリです。
+本リポジトリは Go API と Nuxt フロントエンドを収めた **pnpm workspace モノレポ**です。KUN エコシステムの ID・共通サービス基盤である [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra) の下流アプリケーションでもあります。
 
-| パッケージ | 役割 |
-|------|------|
-| `apps/api` | **Go (Fiber + GORM) REST API** — 認証、フォーラム、Galgame DB、リソース、検索、メッセージ、定期ジョブ |
-| `apps/web` | **Nuxt 4 SSR フロントエンド** — Vue 3、Go API を呼び出す。Nitro サーバーは RSS フィードのみを提供 |
+| パッケージ | 役割                                                                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api` | **Go Fiber v3 BFF / REST API** — フォーラムデータと操作を所有し、レスポンスを集約し、共通サービスを呼び出し、定期同期ジョブを実行                                                        |
+| `apps/web` | **Nuxt 4 SSR フロントエンド** — Vue ページ、コンポーネント、Pinia 状態、検証、SEO、ブラウザー操作。Nitro はフィード、サイトマップデータ、コンテンツ画像処理、旧 URL のリダイレクトを提供 |
+
+フォーラムはトピック、返信、メッセージ、リソース、評価、クイズ、コレクション、ツールセット、ローカルカウンター、自身の PostgreSQL schema を所有します。次の共通機能は infra が唯一の正規情報源です。
+
+| 機能                                          | 正規の情報源                                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ID とユーザープロフィール                     | OAuth。数値ユーザー ID はすべてのサービスで共通                                          |
+| ブラウザーログイン                            | Redis を使う不透明な `kungal_session` Cookie。OAuth token はブラウザー保存領域に置かない |
+| 萌萌点の残高と台帳                            | OAuth。フォーラムには必要な場合だけキャッシュビューを保持                                |
+| ビジュアルノベルのメタデータ、claim、編集履歴 | Catalog。新規投稿はレジストリが発行した work ID をフォーラムの gid として採用            |
+| アバターとコンテンツ画像                      | コンテンツアドレス方式の `image_service`                                                 |
+| Galgame とリソースのコメントスレッド          | 共通 Community サービス                                                                  |
+| 通報と措置                                    | 共通 Trust サービス                                                                      |
+| ツールセットのアーカイブ                      | 共通 Artifact サービス                                                                   |
+
+廃止された Galgame Wiki 系は、新機能向けの契約ではありません。Catalog 切り替えの完了までは一部の互換読み取りと通知画面が残りますが、新しい投稿、claim、審査、編集フローは Catalog を対象にします。
 
 ## 技術スタック
 
-| レイヤー | 技術 |
-|-------|-----------|
-| フロントエンド | [Nuxt 4](https://nuxt.com/) (Vue 3 SSR + Nitro node-server) |
-| UI レイヤー | `@kungal/ui-nuxt` — 共有 Nuxt レイヤー |
-| スタイル | [Tailwind CSS 4](https://tailwindcss.com/) |
-| 状態管理 | [Pinia](https://pinia.vuejs.org/)（永続化付き） |
-| エディター | [Milkdown](https://milkdown.dev/) + [CodeMirror](https://codemirror.net/) |
-| バックエンド API | [Go 1.26](https://go.dev/) + [Fiber v2](https://gofiber.io/) |
-| データベース | PostgreSQL + [GORM](https://gorm.io/)、生 SQL マイグレーション（Prisma は不使用） |
-| キャッシュ | Redis |
-| 検索 | [Meilisearch](https://www.meilisearch.com/) |
-| 認証 | JWT（デュアルトークン — access + refresh）+ OAuth (`kun-galgame-infra`) |
-| オブジェクトストレージ | S3 互換（画像は Cloudflare R2、ツールセットアップロードは Backblaze B2） |
-| スケジューラ | [robfig/cron](https://github.com/robfig/cron)（日次リセット、統計など） |
-| バリデーション | [Zod](https://zod.dev/)（フロントエンド） |
-| デプロイ | Docker → GHCR → [Dokploy](https://dokploy.com/)（または `scripts/` 経由で PM2） |
-| アクセス解析 | [Umami](https://umami.is/) |
+| レイヤー               | 技術                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| フロントエンド         | [Nuxt 4](https://nuxt.com/) + Vue 3 SSR（Nitro node-server）                                             |
+| UI                     | `@kungal/ui-nuxt` と `@kungal/ui-vue`                                                                    |
+| エディター             | `@kungal/editor-nuxt`、Milkdown、CodeMirror                                                              |
+| スタイル               | [Tailwind CSS 4](https://tailwindcss.com/)                                                               |
+| 状態管理               | [Pinia](https://pinia.vuejs.org/) と永続化状態                                                           |
+| バックエンド API       | [Go 1.26](https://go.dev/) + [Fiber v3](https://gofiber.io/)                                             |
+| データベース           | PostgreSQL + [GORM](https://gorm.io/)。明示的な生 SQL migration を使用し、AutoMigrate は実行しない       |
+| キャッシュとセッション | Redis                                                                                                    |
+| 検索                   | [Meilisearch](https://www.meilisearch.com/)                                                              |
+| 認証                   | OAuth を背後に持つ BFF セッション。90 日間のスライディング有効期限                                       |
+| 共通サービス           | Catalog、Community、Trust、Image、Artifact、OAuth クライアント                                           |
+| スケジューラー         | [robfig/cron](https://github.com/robfig/cron) による日次メンテナンスと Catalog イベント同期              |
+| 検証とテスト           | Zod、Vitest、Vue Test Utils、Go tests                                                                    |
+| デプロイ               | Docker イメージを GHCR に公開し、[Dokploy](https://dokploy.com/) でデプロイ。旧 PM2 スクリプトも利用可能 |
+| アクセス解析           | [Umami](https://umami.is/)                                                                               |
 
 ## プロジェクト構成
 
 ```text
 ├── apps/
-│   ├── api/                 # Go Fiber バックエンド (REST API)
-│   │   ├── cmd/             # server、migrate および各種ワンオフ backfill/sync ツール
-│   │   ├── internal/        # ドメインモジュール (user、topic、galgame、moemoepoint、message、search…)
-│   │   ├── migrations/      # 生 SQL マイグレーション (.up.sql / .down.sql)
-│   │   └── pkg/             # 横断的関心事 (config、logger、health…)
+│   ├── api/                 # Go Fiber v3 BFF / REST API
+│   │   ├── cmd/             # server、migrate、ワンオフ保守ツール
+│   │   ├── internal/        # ドメイン handler、service、repository、model
+│   │   ├── migrations/      # 明示的な .up.sql / .down.sql migration
+│   │   └── pkg/             # 共通クライアント、設定、エラー、権限、ユーティリティ
 │   └── web/                 # Nuxt 4 SSR フロントエンド
-│       ├── app/             # ページ、コンポーネント、composable、ストア (Pinia)、バリデーション
-│       ├── server/          # Nitro ルート（RSS フィードのみ）
-│       └── shared/          # 共有 TypeScript 型・ユーティリティ
-├── docker/                  # Dockerfile + 環境変数サンプル + Docker README
-├── docker-compose*.yml      # base (joins infra) + prod
-├── scripts/                 # PM2 デプロイスクリプト (deploy / start / stop / restart)
-└── docs/                    # ドキュメント
+│       ├── app/             # ページ、コンポーネント、composable、Pinia store、スタイル
+│       ├── server/          # Nitro フィード、サイトマップソース、ミドルウェア、リダイレクト
+│       └── shared/          # 共通 TypeScript 型とユーティリティ
+├── docker/                  # Dockerfile、環境変数サンプル、デプロイ説明
+├── docker-compose*.yml      # ローカル統合環境と本番環境の構成
+├── scripts/                 # 旧 PM2 ライフサイクルスクリプト
+└── docs/                    # プロジェクト文書と生成された読み取り専用の契約ミラー
 ```
 
 ## はじめに
 
-**前提条件：** Node.js 22+（Corepack/pnpm 同梱）、Go 1.26+、PostgreSQL、Redis、および（任意で）Meilisearch。完全な機能には `kun-galgame-infra` のサービス（OAuth、画像、Galgame Wiki）も必要です。
+**前提条件：** Corepack 付き Node.js 24+、Go 1.26+、PostgreSQL、Redis、Meilisearch。ローカルですべての機能を使うには、`kun-galgame-infra` の OAuth、Catalog、Image、Artifact、Community、Trust サービスも必要です。
+
+最初にローカル共通基盤を起動します。
 
 ```bash
-# ワークスペースの依存関係をインストール
+cd /path/to/kun-galgame-infra
+docker compose -f docker-compose.dev.yml up -d
+# 任意：本番に近い形で匿名化されたデータを使い、ローカル DB を更新します。
+./scripts/refresh-dev-db.sh
+```
+
+次にフォーラムを設定して起動します。
+
+```bash
+corepack enable
 pnpm install
 
-# 環境変数を設定（アプリごと）
-cp apps/api/.env.example apps/api/.env   # Go API：DB、Redis、OAuth、S3、メール、検索…
-cp apps/web/.env.example apps/web/.env   # Nuxt：API ベース URL、OAuth クライアント、画像/Wiki URL
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 
-# データベースマイグレーションを実行（リポジトリ横断の順序は docs/ を参照）
+# 本リポジトリの通常のローカル DB migration を適用します。
 pnpm migrate
 
-# フロント・バックを同時に起動 — API は :2334、Web は :2333
+# API：http://127.0.0.1:2334、Web：http://127.0.0.1:2333
 pnpm dev
-#   pnpm dev:api   # Go API のみ（air ホットリロード）→ http://127.0.0.1:2334
-#   pnpm dev:web   # Nuxt のみ                       → http://127.0.0.1:2333
 ```
 
-または、コンテナでスタック全体を実行します（[`docker/README.md`](/docker/README.md) 参照）：
+コミット済みの環境変数サンプルはローカル infra stack を参照します。サービス profile、データベース更新、ローカル認証情報については [infra 開発環境ガイド](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md) を参照してください。リポジトリ横断の ID migration には追加の順序要件があります。詳しくは [docs/migration/user/README.md](../migration/user/README.md) を参照してください。
+
+Infra のネットワークが利用可能になった後、フォーラムをコンテナで実行することもできます。
 
 ```bash
-docker compose up -d api web        # kun-galgame-infra must be running first
+docker compose run --rm migrate
+docker compose up -d kungal-api web
 ```
+
+コンテナとデプロイの完全な手順は [docker/README.md](../../docker/README.md) を参照してください。
 
 ## スクリプト
 
-| コマンド | 説明 |
-|---------|-------------|
-| `pnpm dev` | API + Web を同時に起動（並列） |
-| `pnpm dev:web` / `pnpm dev:api` | 単一アプリを起動 |
-| `pnpm build` | 本番ビルド — Go API のあと Nuxt web |
-| `pnpm lint` / `pnpm lint:fix` | ESLint（フロントエンド） |
-| `pnpm typecheck` | `vue-tsc` 型チェック（フロントエンド） |
-| `pnpm format` | アプリ横断で Prettier / gofmt |
-| `pnpm vet` | `go vet`（バックエンド） |
-| `pnpm test:api` | `go test`（バックエンド） |
-| `pnpm migrate` / `pnpm migrate:down` | DB マイグレーションの実行 / ロールバック（バックエンド） |
-| `pnpm sitemap` | サイトマップを生成 |
-| `pnpm prod:deploy` / `prod:start` / `prod:stop` / `prod:restart` | PM2 デプロイスクリプト |
+| コマンド                                                         | 説明                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------- |
+| `pnpm dev`                                                       | API と Web を同時に起動                              |
+| `pnpm dev:web` / `pnpm dev:api`                                  | いずれか一方のアプリを起動                           |
+| `pnpm build`                                                     | Go API のあとに Nuxt フロントエンドをビルド          |
+| `pnpm lint` / `pnpm lint:fix`                                    | フロントエンドの ESLint 問題を検査または修正         |
+| `pnpm typecheck`                                                 | フロントエンドの `vue-tsc` 型チェックを実行          |
+| `pnpm -F web test`                                               | フロントエンドの Vitest テストを実行                 |
+| `pnpm test:api`                                                  | Go テストを実行                                      |
+| `pnpm vet`                                                       | `go vet` を実行                                      |
+| `pnpm format`                                                    | Prettier と gofmt で両アプリを整形                   |
+| `pnpm migrate` / `pnpm migrate:down`                             | 本リポジトリの DB migration を適用またはロールバック |
+| `pnpm prod:deploy` / `prod:start` / `prod:stop` / `prod:restart` | 旧 PM2 ライフサイクルスクリプトを実行                |
+| `pnpm prod:logs`                                                 | 旧 PM2 ログを表示                                    |
+
+## 開発上の境界
+
+- `docs/oauth/`、`docs/image_service/`、`docs/artifact/` は生成された読み取り専用の契約ミラーです。原本は `kun-galgame-infra` で変更し、`kungal-docs` を通じて同期します。
+- データベース schema の変更には `apps/api/migrations/` の番号付き migration が必要です。API 起動時に GORM AutoMigrate は実行されません。
+- フロントエンドではローカル代替コンポーネントを作る前に KunUI を使用してください。KunUI は上流パッケージであり、本リポジトリでは変更しません。
+- フロントエンドとバックエンドのレスポンス構造を一致させてください。Go API は安定した `{ code, message, data }` envelope を返します。
 
 ## 参加 / お問い合わせ
 
@@ -139,4 +174,4 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## ライセンス
 
-このプロジェクトは `AGPL-3.0` オープンソースライセンスに従います。
+本プロジェクトは `AGPL-3.0` ライセンスで公開されています。

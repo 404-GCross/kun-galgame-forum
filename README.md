@@ -1,144 +1,167 @@
 ![kun-galgame-forum](https://kungal.com/kungalgame.webp)
 
-### **[English](/README.md)** | **[日本語](/docs/readme/jp.md)** | **[简体中文](/docs/readme/chs.md)** | **[繁體中文](/docs/readme/cht.md)**
+### **[English](README.md)** | **[日本語](docs/readme/jp.md)** | **[简体中文](docs/readme/chs.md)** | **[繁體中文](docs/readme/cht.md)**
 
-**Contact us：[Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
+**Contact us: [Telegram](https://telegram.me/kungalgame) | [Discord](https://discord.com/invite/5F4FS2cXhX)**
 
-The image is sourced from the game [Ark Order](https://apps.qoo-app.com/en/app/9593), featuring the character 'KUN' (鲲).
+The image is sourced from the game [Ark Order](https://apps.qoo-app.com/en/app/9593) and features the character KUN (鲲).
 
-> **Note on AI-assisted development:** Starting from version **5.1.0**, this project uses LLM-assisted tools including but not limited to Claude Code for Vibe Coding. All code up to and including version **5.0.70** was written entirely by hand. The last purely hand-written codebase can be found at: [v5.0.70 (commit b4ad59e)](https://github.com/KunMoe/kun-galgame-forum/tree/b4ad59eb77d3eaf36d082aa528651039816e1dfa)
+> **AI-assisted development:** Since version **5.1.0**, this project has used LLM-assisted development tools, including Codex and Claude Code. All code through version **5.0.70** was written entirely by hand. The last fully hand-written revision is [v5.0.70 (commit b4ad59e)](https://github.com/KunMoe/kun-galgame-forum/tree/b4ad59eb77d3eaf36d082aa528651039816e1dfa).
 
 # KUN Visual Novel Forum
 
 ## Website Introduction
 
-KUN Visual Novel is a collective of individuals passionate about the Galgame genre. It currently consists of the following sub-websites:
+KUN Visual Novel is a community of people who love visual novels and Galgames. Its public sites include:
 
-- [KUN Visual Novel Forum](https://kungal.com) (this project)
-- [KUN Visual Novel Sticker Pack](https://sticker.kungal.com) (a website dedicated to collecting and creating Galgame sticker packs)
-- [KUN Visual Novel Development Documentation](https://soft.moe/kun-visualnovel-docs/kun-forum.html) (this forum is entirely open source, and the development documentation will be publicly available here)
-- [Kun Visual Novel Navigation Page](https://nav.kungal.org/) （A completely open-source navigation site! You can visit all Kun Visual Novel subsites!）
-- [Kun Visual Novel Patch](https://www.moyu.moe) (The most advanced visual novel patch resource website in the world at the moment! Free forever!)
-- [Kun Visual Novel Forum Downtime Page](https://down.kungal.com/) （In the event of unavoidable downtime, we will forcibly redirect the forum to this page.）
+- [KUN Visual Novel Forum](https://www.kungal.com) (this project)
+- [KUN Visual Novel Sticker Pack](https://sticker.kungal.com)
+- [KUN Visual Novel Development Documentation](https://soft.moe/kun-visualnovel-docs/kun-forum.html)
+- [KUN Visual Novel Navigation](https://nav.kungal.org/)
+- [KUN Visual Novel Patch](https://www.moyu.moe)
+- [KUN Visual Novel Forum Status Page](https://down.kungal.com/)
 
-For more information, please visit the website's About Us page directly
-
-https://www.kungal.com/kungalgame
+For more information, visit [About KUN Visual Novel](https://www.kungal.com/kungalgame).
 
 ## Features
 
-- **Galgame Database** — Community-driven Galgame catalog with VNDB integration, multi-language metadata (EN / JA / ZH-CN / ZH-TW), ratings, tags, engine info, and developer profiles
-- **Resource Sharing** — Upload and share game patches, translations, voice packs, and other resources with provider tracking and platform/language filters
-- **Discussion Forum** — Full-featured topic system with rich Markdown editing (Milkdown + CodeMirror), replies, nested comments, polls, upvotes, and favorites
-- **Collaborative Editing** — Git-style PR (Pull Request) workflow for Galgame information edits, with edit history tracking and contributor credits
-- **Private Messaging & Chat** — Direct messages and contact list served by the Go API
-- **Moemoepoint System** — Community reputation points earned through contributions (posting, sharing resources, editing Galgame info), unified across the ecosystem via the shared OAuth service
-- **Rich Content Editing** — Milkdown Markdown editor with KaTeX math formulas, code highlighting, and image upload via drag & drop
-- **Dark / Light Theme** — System-aware color mode with customizable page transparency, fonts, and background images
-- **SEO Optimized** — Server-side rendering, structured data (Schema.org), sitemap generation, and RSS feeds for Galgames and topics
+- **Visual novel catalog** — Community submissions and review backed by the shared Catalog registry, with VNDB references, multilingual metadata, ratings, tags, engines, companies, and release information
+- **Resource sharing** — Game patches, translations, voice packs, and other resources with provider tracking plus platform and language filters
+- **Discussion forum** — Topics, replies, nested comments, polls, reactions, upvotes, favorites, drafts, and moderation workflows
+- **Collaborative editing** — Git-style proposals, review, revision history, reverts, and contributor credits through the Catalog editing engine
+- **Private messaging and chat** — Direct messages, contacts, read state, reactions, and recall support
+- **Moemoepoint** — An ecosystem-wide contribution score whose authoritative balance and ledger are owned by OAuth
+- **Rich content editing** — The shared KUN editor, built on Milkdown and CodeMirror, with KaTeX, syntax highlighting, mentions, and image uploads
+- **Personalized appearance** — Light and dark modes, configurable transparency, fonts, background images, and content-rating preferences
+- **Search and discovery** — Meilisearch-backed search, rankings, activity feeds, release calendars, collections, and recommendations
+- **SEO and feeds** — Nuxt SSR, Schema.org metadata, chunked sitemaps, canonical redirects, and RSS feeds for topics and visual novels
 
 ## Architecture
 
-This is a **pnpm workspace monorepo** with a Go backend and a Nuxt frontend. It is a downstream app in the **`kun-galgame-infra`** ecosystem, which owns the shared PostgreSQL / Redis / Meilisearch and the OAuth, image, and Galgame-wiki services.
+This repository is a **pnpm workspace monorepo** containing a Go API and a Nuxt frontend. It is a downstream application of [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra), the identity and shared-service hub for the KUN ecosystem.
 
-| Package | Role |
-|---------|------|
-| `apps/api` | **Go (Fiber + GORM) REST API** — auth, forum, Galgame DB, resources, search, messaging, scheduled jobs |
-| `apps/web` | **Nuxt 4 SSR frontend** — Vue 3, calls the Go API; the Nitro server only serves RSS feeds |
+| Package    | Responsibility                                                                                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api` | **Go Fiber v3 BFF and REST API** — owns forum data and interactions, enriches responses, talks to shared services, and runs scheduled synchronization jobs                             |
+| `apps/web` | **Nuxt 4 SSR frontend** — Vue pages, components, Pinia state, validation, SEO, and browser interaction; Nitro serves feeds, sitemap data, content-image handling, and legacy redirects |
+
+The forum owns topics, replies, messages, resources, ratings, quizzes, collections, toolsets, local counters, and its PostgreSQL schema. Shared capabilities remain single-sourced in infra:
+
+| Capability                                      | Source of truth                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Identity and user profile                       | OAuth; numeric user IDs stay identical across services                                        |
+| Browser authentication                          | An opaque `kungal_session` cookie backed by Redis; OAuth tokens never live in browser storage |
+| Moemoepoint balance and ledger                  | OAuth; the forum keeps only a cached local view where required                                |
+| Visual novel metadata, claims, and edit history | Catalog; newly submitted works adopt the registry-issued work ID as their forum gid           |
+| Avatars and content images                      | The content-addressed `image_service`                                                         |
+| Galgame and resource comment threads            | The shared Community service                                                                  |
+| Reports and enforcement                         | The shared Trust service                                                                      |
+| Toolset archives                                | The shared Artifact service                                                                   |
+
+The retired Galgame Wiki family is not a contract for new work. Some compatibility reads and notification surfaces remain temporarily while the catalog cutover finishes, but new submission, claim, review, and editing flows target Catalog.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | [Nuxt 4](https://nuxt.com/) (Vue 3 SSR, Nitro node-server) |
-| UI Layer | `@kungal/ui-nuxt` — shared Nuxt layer |
-| Styling | [Tailwind CSS 4](https://tailwindcss.com/) |
-| State Management | [Pinia](https://pinia.vuejs.org/) with persisted state |
-| Editor | [Milkdown](https://milkdown.dev/) + [CodeMirror](https://codemirror.net/) |
-| Backend API | [Go 1.26](https://go.dev/) + [Fiber v2](https://gofiber.io/) |
-| Database | PostgreSQL via [GORM](https://gorm.io/) — raw-SQL migrations (no Prisma) |
-| Cache | Redis |
-| Search | [Meilisearch](https://www.meilisearch.com/) |
-| Authentication | JWT (dual token — access + refresh) + OAuth (`kun-galgame-infra`) |
-| Object Storage | Images via `image_service` (kun-galgame-infra); Backblaze B2 (S3-compatible) for toolset archive uploads |
-| Scheduler | [robfig/cron](https://github.com/robfig/cron) (daily resets, stats) |
-| Validation | [Zod](https://zod.dev/) (web) |
-| Deployment | Docker → GHCR → [Dokploy](https://dokploy.com/) (or PM2 via `scripts/`) |
-| Analytics | [Umami](https://umami.is/) |
+| Layer                | Technology                                                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Frontend             | [Nuxt 4](https://nuxt.com/) + Vue 3 SSR (Nitro node-server)                                                            |
+| UI                   | `@kungal/ui-nuxt` and `@kungal/ui-vue`                                                                                 |
+| Editor               | `@kungal/editor-nuxt`, Milkdown, and CodeMirror                                                                        |
+| Styling              | [Tailwind CSS 4](https://tailwindcss.com/)                                                                             |
+| State management     | [Pinia](https://pinia.vuejs.org/) with persisted state                                                                 |
+| Backend API          | [Go 1.26](https://go.dev/) + [Fiber v3](https://gofiber.io/)                                                           |
+| Database             | PostgreSQL through [GORM](https://gorm.io/), with explicit raw-SQL migrations and no AutoMigrate                       |
+| Cache and sessions   | Redis                                                                                                                  |
+| Search               | [Meilisearch](https://www.meilisearch.com/)                                                                            |
+| Authentication       | OAuth-backed BFF session with a 90-day sliding lifetime                                                                |
+| Shared services      | Catalog, Community, Trust, Image, Artifact, and OAuth clients                                                          |
+| Scheduler            | [robfig/cron](https://github.com/robfig/cron) for daily maintenance and Catalog event synchronization                  |
+| Validation and tests | Zod, Vitest, Vue Test Utils, and Go tests                                                                              |
+| Deployment           | Docker images published to GHCR and deployed with [Dokploy](https://dokploy.com/); legacy PM2 scripts remain available |
+| Analytics            | [Umami](https://umami.is/)                                                                                             |
 
 ## Project Structure
 
-```
+```text
 ├── apps/
-│   ├── api/                 # Go Fiber backend (REST API)
-│   │   ├── cmd/             # server, migrate, + one-off backfill/sync tools
-│   │   ├── internal/        # domain modules (user, topic, galgame, moemoepoint, message, search, …)
-│   │   ├── migrations/      # raw SQL migrations (.up.sql / .down.sql)
-│   │   └── pkg/             # cross-cutting (config, logger, health, …)
+│   ├── api/                 # Go Fiber v3 BFF / REST API
+│   │   ├── cmd/             # server, migrate, and one-off maintenance tools
+│   │   ├── internal/        # domain handlers, services, repositories, and models
+│   │   ├── migrations/      # explicit .up.sql / .down.sql migrations
+│   │   └── pkg/             # shared clients, config, errors, permissions, and utilities
 │   └── web/                 # Nuxt 4 SSR frontend
-│       ├── app/             # pages, components, composables, store (Pinia), validations
-│       ├── server/          # Nitro routes (RSS feeds only)
-│       └── shared/          # shared TypeScript types & utils
-├── docker/                  # Dockerfiles + env examples + Docker README
-├── docker-compose*.yml      # base (joins infra) + prod
-├── scripts/                 # PM2 deploy scripts (deploy / start / stop / restart)
-└── docs/                    # documentation
+│       ├── app/             # pages, components, composables, Pinia stores, and styles
+│       ├── server/          # Nitro feeds, sitemap source, middleware, and redirects
+│       └── shared/          # shared TypeScript types and utilities
+├── docker/                  # Dockerfiles, environment examples, and deployment notes
+├── docker-compose*.yml      # local integration and production stacks
+├── scripts/                 # legacy PM2 lifecycle scripts
+└── docs/                    # project docs and generated read-only contract mirrors
 ```
 
 ## Getting Started
 
-**Prerequisites:** Node.js 22+ (with Corepack/pnpm), Go 1.26+, PostgreSQL, Redis, and (optionally) Meilisearch. Full functionality also needs the `kun-galgame-infra` services (OAuth, image, Galgame-wiki).
+**Prerequisites:** Node.js 24+ with Corepack, Go 1.26+, PostgreSQL, Redis, and Meilisearch. Full local functionality also requires the OAuth, Catalog, Image, Artifact, Community, and Trust services from `kun-galgame-infra`.
 
-> **Local platform in one command.** The whole nextmoe platform (OAuth / image /
-> galgame-wiki / catalog / community / trust + MinIO / Mailpit / Meili / Redis)
-> comes up from `kun-galgame-infra`, so onboarding is three steps:
->
-> 1. `cd ../kun-galgame-infra && docker compose -f docker-compose.dev.yml up -d`
-> 2. (optional) `./scripts/refresh-dev-db.sh` — real-shaped, desensitised data
-> 3. back here: `cp apps/api/.env.example apps/api/.env` (+ the web one), `pnpm dev`
->
-> The checked-in `.env.example` files are already wired to that stack (127.0.0.1
-> at the prod ports, public dev OAuth credentials). See
-> [`kun-galgame-infra/docs/dev-environment.md`](../kun-galgame-infra/docs/dev-environment.md).
+Start the local shared platform first:
 
 ```bash
-# Install workspace dependencies
+cd /path/to/kun-galgame-infra
+docker compose -f docker-compose.dev.yml up -d
+# Optional: refresh the local databases with real-shaped, desensitized data.
+./scripts/refresh-dev-db.sh
+```
+
+Then configure and start the forum:
+
+```bash
+corepack enable
 pnpm install
 
-# Configure environment (per app)
-cp apps/api/.env.example apps/api/.env   # Go API: DB, Redis, OAuth, S3, mail, search, …
-cp apps/web/.env.example apps/web/.env   # Nuxt: API base URL, OAuth client, image/wiki URLs
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 
-# Run database migrations (see docs/ for the cross-repo migration order)
+# Applies this repository's routine local migrations.
 pnpm migrate
 
-# Start both apps in parallel — API on :2334, Web on :2333
+# API: http://127.0.0.1:2334, Web: http://127.0.0.1:2333
 pnpm dev
-#   pnpm dev:api   # Go API only (air hot-reload) → http://127.0.0.1:2334
-#   pnpm dev:web   # Nuxt only                     → http://127.0.0.1:2333
 ```
 
-Or run the whole stack in containers (see [`docker/README.md`](/docker/README.md)):
+The checked-in environment examples target the local infra stack. See the [infra development-environment guide](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md) for service profiles, database refreshes, and local credentials. Cross-repository identity migrations have additional ordering requirements documented in [docs/migration/user/README.md](docs/migration/user/README.md).
+
+To run the forum in containers after the infra network is available:
 
 ```bash
-docker compose up -d api web        # kun-galgame-infra must be running first
+docker compose run --rm migrate
+docker compose up -d kungal-api web
 ```
+
+See [docker/README.md](docker/README.md) for the complete container and deployment runbook.
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Run API + Web together (parallel) |
-| `pnpm dev:web` / `pnpm dev:api` | Run a single app |
-| `pnpm build` | Production build — Go API then Nuxt web |
-| `pnpm lint` / `pnpm lint:fix` | ESLint (web) |
-| `pnpm typecheck` | `vue-tsc` type checking (web) |
-| `pnpm format` | Prettier / gofmt across apps |
-| `pnpm vet` | `go vet` (api) |
-| `pnpm test:api` | `go test` (api) |
-| `pnpm migrate` / `pnpm migrate:down` | Run / roll back DB migrations (api) |
-| `pnpm sitemap` | Generate the sitemap |
-| `pnpm prod:deploy` / `prod:start` / `prod:stop` / `prod:restart` | PM2 deployment scripts |
+| Command                                                          | Description                                              |
+| ---------------------------------------------------------------- | -------------------------------------------------------- |
+| `pnpm dev`                                                       | Run API and Web together                                 |
+| `pnpm dev:web` / `pnpm dev:api`                                  | Run one application                                      |
+| `pnpm build`                                                     | Build the Go API, then the Nuxt frontend                 |
+| `pnpm lint` / `pnpm lint:fix`                                    | Check or fix frontend ESLint issues                      |
+| `pnpm typecheck`                                                 | Run the frontend `vue-tsc` check                         |
+| `pnpm -F web test`                                               | Run frontend Vitest tests                                |
+| `pnpm test:api`                                                  | Run Go tests                                             |
+| `pnpm vet`                                                       | Run `go vet`                                             |
+| `pnpm format`                                                    | Format both applications with Prettier and gofmt         |
+| `pnpm migrate` / `pnpm migrate:down`                             | Apply or roll back this repository's database migrations |
+| `pnpm prod:deploy` / `prod:start` / `prod:stop` / `prod:restart` | Run the legacy PM2 lifecycle scripts                     |
+| `pnpm prod:logs`                                                 | Follow legacy PM2 logs                                   |
+
+## Development Boundaries
+
+- Contract mirrors under `docs/oauth/`, `docs/image_service/`, and `docs/artifact/` are generated and read-only. Change their sources in `kun-galgame-infra`, then synchronize them through `kungal-docs`.
+- Database schema changes require a numbered migration in `apps/api/migrations/`; the API never runs GORM AutoMigrate at startup.
+- Frontend work should use KunUI components before introducing local replacements. KunUI itself is an upstream package and is not modified in this repository.
+- Keep frontend and backend response shapes aligned. The Go API returns a stable `{ code, message, data }` envelope.
 
 ## Join / Contact Us
 
@@ -151,4 +174,4 @@ docker compose up -d api web        # kun-galgame-infra must be running first
 
 ## License
 
-This project follows the `AGPL-3.0` open-source license.
+This project is licensed under the `AGPL-3.0` license.
