@@ -483,6 +483,25 @@ func (c *GalgameClient) GetAdminStats(ctx context.Context, days int, token strin
 // frontend reads it (or the rewriteBanners-injected
 // effective_banner_url) to render head images. banner_image_hash was
 // retired in galgame PR5 (K-PR6) — no top-level field any more.
+// BriefName resolves a brief's display title with the kungal fallback chain
+// zh-CN → zh-TW → ja-JP → en-US, mirroring the frontend's
+// getPreferredLanguageText zh-cn default. en-US is LAST on purpose: it is
+// usually the VNDB romaji title, which must never win over a real Chinese or
+// Japanese name. One chain lives here because both the edit face (proposal
+// notices) and the interaction lane (like/favorite notices) name the same
+// entries, and two copies of a preference order drift into two products.
+func BriefName(b *GalgameBrief) string {
+	if b == nil {
+		return ""
+	}
+	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
+		if n != "" {
+			return n
+		}
+	}
+	return ""
+}
+
 type GalgameBrief struct {
 	ID                 int    `json:"id"`
 	VndbID             string `json:"vndb_id"`

@@ -50,8 +50,10 @@ func groupResourceMeta(rows []model.GalgameResourceMeta) (platforms, languages m
 // purpose: 已注销用户 is what a lookup of user 0 produces, and "nobody knows who
 // submitted this" must never be shown as "a deleted account submitted this".
 //
-// NOT to be confused with the ownership lane: permission / notification code
-// reads the surviving /internal meta op (GalgameMetaRow.UserID), not this.
+// The ownership lane reads the SAME column now (GalgameService.ownerOf): the
+// wiki's /internal meta op retired with wave-161 P5, and converging on one
+// column is the better end state anyway — an owner-review gate that disagreed
+// with the author chip on screen would be impossible to explain.
 func frozenCreatorBrief(row repository.GalgameLocalRow, userMap map[int]userclient.User) dto.UserBrief {
 	id := userclient.DerefID(row.CreatorUserID)
 	if id <= 0 {

@@ -268,7 +268,7 @@ func (h *EditHandler) entryOf(ctx context.Context, workID int64) editEntry {
 		if rows, appErr := h.galgameClient.CatalogRowsByGIDs(ctx, []int{gid}, "names", "all"); appErr == nil {
 			if row, ok := rows[gid]; ok {
 				brief := client.CatalogItemToBrief(&row)
-				entry.Name = briefName(&brief)
+				entry.Name = client.BriefName(&brief)
 			}
 		}
 	}
@@ -287,18 +287,6 @@ func (h *EditHandler) gidOf(ctx context.Context, workID int64) int {
 		return 0
 	}
 	return gids[workID]
-}
-
-func briefName(b *client.GalgameBrief) string {
-	if b == nil {
-		return ""
-	}
-	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
-		if n != "" {
-			return n
-		}
-	}
-	return ""
 }
 
 // notifyDecision sends the proposer a forum in-site message about a merge /

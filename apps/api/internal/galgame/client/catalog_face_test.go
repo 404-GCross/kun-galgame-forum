@@ -448,18 +448,6 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 		}
 	})
 
-	t.Run("ownership meta stays on the surviving /internal face", func(t *testing.T) {
-		if _, err := c.GalgameMeta(ctx, []int{1, 2}); err != nil {
-			t.Fatalf("GalgameMeta: %v", err)
-		}
-		if rec.path != "/internal/galgame/meta" {
-			t.Errorf("path = %q, want /internal/galgame/meta", rec.path)
-		}
-		if rec.apiKey != "nm_test_key" {
-			t.Errorf("X-API-Key = %q, want nm_test_key on the internal face", rec.apiKey)
-		}
-	})
-
 	t.Run("taxonomy picker → surviving /internal face, dual credential", func(t *testing.T) {
 		// A2-1g: the picker's door is the CONTRIBUTOR one. Pointing it at the
 		// staff /api door instead is not a cosmetic difference — that door is

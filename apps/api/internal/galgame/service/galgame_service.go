@@ -122,15 +122,48 @@ func (s *GalgameService) GetMyInteractions(userID int) dto.MyGalgameInteractions
 // is LAST on purpose: a JP/CN-titled game must never surface its VNDB English
 // name when a Chinese or Japanese name exists.
 func (s *GalgameService) fetchOwnerAndName(ctx context.Context, galgameID int) (int, string) {
-	rows, appErr := s.galgameClient.GalgameMeta(ctx, []int{galgameID})
+	return s.ownerOf(galgameID), truncate(s.entryName(ctx, galgameID), constants.TextPreviewLength)
+}
+
+// ownerOf reads the submitter from the forum's OWN frozen snapshot
+// (galgame.creator_user_id, migration 066) — the same column the author chip
+// renders and the edit face's owner-review gate reads.
+//
+// The registry deliberately carries no submitter (doc 106 R2 ①): a registry row
+// outlives any account, so owning it is not a fact about it. This used to come
+// from the wiki's /internal/galgame/meta op, which retired with the wiki in
+// wave-161 P5 — the column outlives the face precisely because it is the
+// forum's own answer, not a borrowed one.
+//
+// 0 = unknown, which fails every owner check closed.
+func (s *GalgameService) ownerOf(galgameID int) int {
+	if s.galgameRepo == nil || galgameID <= 0 {
+		return 0
+	}
+	row := s.galgameRepo.FindLocal(galgameID)
+	if row.CreatorUserID == nil {
+		return 0
+	}
+	return *row.CreatorUserID
+}
+
+// entryName resolves a display title for notification previews (best-effort;
+// "" on any failure, which the message system renders as a blank line rather
+// than a wrong name).
+func (s *GalgameService) entryName(ctx context.Context, galgameID int) string {
+	if s.galgameClient == nil {
+		return ""
+	}
+	rows, appErr := s.galgameClient.CatalogRowsByGIDs(ctx, []int{galgameID}, "names", "all")
 	if appErr != nil {
-		return 0, ""
+		return ""
 	}
 	row, ok := rows[galgameID]
 	if !ok {
-		return 0, ""
+		return ""
 	}
-	return row.UserID, truncate(row.Name(), constants.TextPreviewLength)
+	brief := client.CatalogItemToBrief(&row)
+	return client.BriefName(&brief)
 }
 
 // firstNonEmpty returns the first non-blank argument, or "".
@@ -193,13 +226,11 @@ func (s *GalgameService) GetDetail(
 
 	ratings := s.buildDetailRatings(ctx, galgameID, currentUserID, g)
 
-	// The catalog carries no submitter (doc 106 R2), so the author comes from
-	// the surviving /internal ownership meta op — the same lane the edit
-	// permission check uses, and status-blind like it.
-	if meta, mErr := s.galgameClient.GalgameMeta(ctx, []int{galgameID}); mErr == nil {
-		if row, ok := meta[galgameID]; ok {
-			g.UserID = row.UserID
-		}
+	// The catalog carries no submitter (doc 106 R2), so the author comes from the
+	// forum's own frozen snapshot — the same lane the edit permission check uses,
+	// and status-blind like it.
+	if owner := s.ownerOf(galgameID); owner > 0 {
+		g.UserID = owner
 	}
 	users := s.hydrateDetailUsers(ctx, g)
 	detail := galgameDetailFromNextMoe(g, users)
