@@ -37,6 +37,7 @@ type DraftFilters struct {
 	LabelID  int
 	TagID    int
 	EngineID int
+	SeriesID int
 	// OriginalLanguages is a CSV of catalog original-language tags; empty =
 	// the face's own default (ja + the zh family).
 	OriginalLanguages string
@@ -66,6 +67,9 @@ func (s *DraftsService) GetDrafts(
 	}
 	if f.EngineID > 0 {
 		q.Set("engine_id", strconv.Itoa(f.EngineID))
+	}
+	if f.SeriesID > 0 {
+		q.Set("series_id", strconv.Itoa(f.SeriesID))
 	}
 	if f.OriginalLanguages != "" {
 		q.Set("olang", f.OriginalLanguages)

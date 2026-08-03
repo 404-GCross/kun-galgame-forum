@@ -204,6 +204,7 @@ const hasContributorCard = computed(
         <GalgameInfo
           :official="galgame.official"
           :engine="galgame.engine"
+          :series="galgame.series"
           :age-limit="galgame.age_limit"
           :original-language="galgame.original_language"
           :release-date="galgame.release_date"

@@ -126,6 +126,25 @@ type EngineDetail struct {
 }
 
 // ──────────────────────────────────────────
+// Series
+// ──────────────────────────────────────────
+
+// SeriesDetail is the series entity page: the series' identity plus the
+// forum-local, filterable subset of its member works — the same shape the
+// tag / official / engine pages carry, so the four render through one set of
+// components.
+type SeriesDetail struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	// Description is ONE intro, not the whole set: the catalog keeps every
+	// source's text for a series, and stacking them under the title reads as a
+	// bug. See seriesIntro for the preference order.
+	Description  string        `json:"description"`
+	Galgame      []GalgameCard `json:"galgame"`
+	GalgameCount int64         `json:"galgame_count"`
+}
+
+// ──────────────────────────────────────────
 // Tag
 // ──────────────────────────────────────────
 

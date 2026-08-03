@@ -148,6 +148,13 @@ type GalgameDetailOfficial struct {
 	GalgameCount int      `json:"galgame_count"`
 }
 
+// GalgameDetailSeries is one series the game belongs to. Identity only — the
+// series page owns the member count.
+type GalgameDetailSeries struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 // GalgameDetailEngine is an engine entry on the detail page.
 type GalgameDetailEngine struct {
 	ID           int      `json:"id"`
@@ -253,6 +260,7 @@ type GalgameDetail struct {
 	Alias                 []string                `json:"alias"`
 	Engine                []GalgameDetailEngine   `json:"engine"`
 	Official              []GalgameDetailOfficial `json:"official"`
+	Series                []GalgameDetailSeries   `json:"series"`
 	Tag                   []GalgameDetailTag      `json:"tag"`
 	Ratings               []GalgameDetailRating   `json:"ratings"`
 	Created               string                  `json:"created"`

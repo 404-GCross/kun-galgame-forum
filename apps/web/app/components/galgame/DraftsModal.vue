@@ -12,7 +12,7 @@
 //
 // Pagination is a "加载更多" accumulator (the draft pool can be large), the same
 // in-modal pattern as the 萌萌点明细 ledger (MoemoepointLog.vue).
-type EntityType = 'official' | 'tag' | 'engine'
+type EntityType = 'official' | 'tag' | 'engine' | 'series'
 
 const props = defineProps<{
   entityType: EntityType
@@ -24,12 +24,13 @@ const open = defineModel<boolean>({ required: true })
 
 const LIMIT = 24
 
-// Single source of truth mapping the entity kind to the wiki's scoping query
-// param (official_id / tag_id / engine_id) and to its Chinese label.
+// Single source of truth mapping the entity kind to its scoping query param
+// (official_id / tag_id / engine_id / series_id) and to its Chinese label.
 const ENTITY_LABEL: Record<EntityType, string> = {
   official: '会社',
   tag: '标签',
-  engine: '引擎'
+  engine: '引擎',
+  series: '系列'
 }
 const entityLabel = computed(() => ENTITY_LABEL[props.entityType])
 const scopeParam = computed(() => `${props.entityType}_id`)

@@ -482,6 +482,21 @@ type catWorkDetail struct {
 	Labels  []catWorkLabel  `json:"labels"`
 	Engines []catWorkEngine `json:"engines"`
 	Links   []catWorkLink   `json:"links"`
+	// Series is first-class catalog_series membership — the grouping entity
+	// works?series_id= filters on, and the address of the series page. NOT
+	// series_siblings, which is vndb's pairwise same_series closure projected to
+	// briefs: that one has no entity behind it and nothing to link to.
+	Series []catWorkSeries `json:"series"`
+}
+
+// catWorkSeries is one series membership on a work record. member_count is the
+// series' whole membership upstream, published on this product or not, so it is
+// deliberately NOT projected: the page behind the link renders its own,
+// forum-local count, and two different numbers for one link is the bug the
+// taxonomy chips already learned to avoid.
+type catWorkSeries struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // CatalogWorkDetail fetches one work's full aggregate by kungal gid. found is

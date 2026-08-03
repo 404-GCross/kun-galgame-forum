@@ -93,6 +93,22 @@ type CatalogEngineDetail struct {
 	WorkCount   int      `json:"work_count"`
 }
 
+// CatalogSeriesDetail is one series record (/v1/catalog/series/{id}).
+//
+// The name is display_name, not name: a series carries the source's series name
+// verbatim, falling back to its external id when the source published none.
+// Intros are NOT merged to one row per language upstream, so the first row of
+// the preferred language is the one to render.
+type CatalogSeriesDetail struct {
+	ID          int64 `json:"id"`
+	DisplayName string `json:"display_name"`
+	Intros      []struct {
+		Lang   string `json:"lang"`
+		Intro  string `json:"intro"`
+		Source string `json:"source"`
+	} `json:"intros"`
+}
+
 // CatalogTaxonomyList pages one browse lane. entity is "labels" | "tags" |
 // "engines".
 func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, q url.Values) (*CatalogTaxonomyPage, *errors.AppError) {
@@ -183,6 +199,17 @@ func (c *GalgameClient) CatalogTag(ctx context.Context, id string) (*CatalogTagD
 func (c *GalgameClient) CatalogEngine(ctx context.Context, id string) (*CatalogEngineDetail, bool, *errors.AppError) {
 	var rec CatalogEngineDetail
 	found, _, appErr := c.catalogTaxonomyDetail(ctx, "engines", id, &rec)
+	return &rec, found, appErr
+}
+
+// CatalogSeries fetches one series record. It rides the same shared detail
+// helper as the other three families even though series sit on their own face:
+// the envelope, the open population and the 404-is-not-an-error posture are
+// identical, and series are not merge-capable upstream (no catalog_redirect
+// entity type at all), so the movedTo leg is structurally dead here.
+func (c *GalgameClient) CatalogSeries(ctx context.Context, id string) (*CatalogSeriesDetail, bool, *errors.AppError) {
+	var rec CatalogSeriesDetail
+	found, _, appErr := c.catalogTaxonomyDetail(ctx, "series", id, &rec)
 	return &rec, found, appErr
 }
 

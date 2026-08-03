@@ -117,6 +117,9 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 			GalgameCount: l.WorkCount,
 		}})
 	}
+	for _, sr := range d.Series {
+		f.Series = append(f.Series, dto.NextMoeSeriesRef{ID: int(sr.ID), Name: sr.Name})
+	}
 	for _, e := range d.Engines {
 		var ew dto.NextMoeEngineWithAlias
 		ew.Engine.ID = int(e.ID)

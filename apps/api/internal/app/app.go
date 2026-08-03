@@ -485,6 +485,7 @@ func New(cfg *config.Config) *App {
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
+	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
@@ -662,7 +663,7 @@ func New(cfg *config.Config) *App {
 		GalgameQuizHandler:             galgameHandler.NewQuizHandler(galgameQuizSvc),
 		CreatorHandler:                 galgameHandler.NewCreatorHandler(creatorSvc),
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
-			galgameOfficialSvc, galgameEngineSvc, galgameTagSvc,
+			galgameOfficialSvc, galgameEngineSvc, galgameSeriesSvc, galgameTagSvc,
 		),
 		GalgameCalendarHandler:      galgameHandler.NewCalendarHandler(galgameCalendarSvc),
 		GalgameDraftsHandler:        galgameHandler.NewDraftsHandler(galgameDraftsSvc),

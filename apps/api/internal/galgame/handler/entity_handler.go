@@ -21,23 +21,30 @@ import (
 // URL space, and the legacy wiki-id URLs are redirect shells that never reach
 // this handler.
 //
-// The SERIES family is gone — the wiki's 146-entry series vocabulary had no
-// migration path (only 6 of them correspond to a catalog series), so P3 retired
-// the public series pages rather than half-migrating them.
+// SERIES came back on a different population. P3 retired the public series
+// pages because the WIKI's 146-entry vocabulary had no migration path (only 6
+// of them corresponded to a catalog series) — half-migrating it would have been
+// worse than dropping it. The catalog's own series facet is not that
+// vocabulary: ~600 source-mirrored groupings that already back works?series_id=
+// and the series block on every work record. Rendering those is a complete
+// facet, not the half-migration that was refused.
 type EntityHandler struct {
 	officialService *service.OfficialService
 	engineService   *service.EngineService
+	seriesService   *service.SeriesService
 	tagService      *service.TagService
 }
 
 func NewEntityHandler(
 	official *service.OfficialService,
 	engine *service.EngineService,
+	series *service.SeriesService,
 	tag *service.TagService,
 ) *EntityHandler {
 	return &EntityHandler{
 		officialService: official,
 		engineService:   engine,
+		seriesService:   series,
 		tagService:      tag,
 	}
 }
@@ -94,6 +101,24 @@ func (h *EntityHandler) GetEngineList(c fiber.Ctx) error {
 // GetEngineDetail — GET /galgame-engine/:id (catalog engine id)
 func (h *EntityHandler) GetEngineDetail(c fiber.Ctx) error {
 	detail, appErr := h.engineService.GetDetail(
+		c.Context(),
+		c.Params("id"),
+		collectQuery(c),
+		utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, detail)
+}
+
+// ──────────────────────────────────────────
+// Series
+// ──────────────────────────────────────────
+
+// GetSeriesDetail — GET /galgame-series/:id (catalog series id)
+func (h *EntityHandler) GetSeriesDetail(c fiber.Ctx) error {
+	detail, appErr := h.seriesService.GetDetail(
 		c.Context(),
 		c.Params("id"),
 		collectQuery(c),

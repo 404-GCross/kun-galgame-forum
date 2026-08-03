@@ -5,6 +5,7 @@ import type {
 } from '~/constants/galgame'
 import type { GalgameEngineItem } from './galgame-engine'
 import type { GalgameOfficialItem } from './galgame-official'
+import type { GalgameDetailSeriesRef } from './galgame-series'
 import type { GalgameTagItem } from './galgame-tag'
 import type { GalgameRatingCardOnGalgamePage } from './galgame-rating'
 
@@ -98,6 +99,7 @@ export interface GalgameDetail {
   alias: string[]
   engine: GalgameEngineItem[]
   official: GalgameOfficialItem[]
+  series: GalgameDetailSeriesRef[]
   tag: GalgameDetailTag[]
   ratings: GalgameRatingCardOnGalgamePage[]
   created: Date | string

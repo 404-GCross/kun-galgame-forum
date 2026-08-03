@@ -7,6 +7,7 @@ import {
 defineProps<{
   official: GalgameOfficialItem[]
   engine: GalgameEngineItem[]
+  series: GalgameDetailSeriesRef[]
   originalLanguage: string
   ageLimit: 'all' | 'r18'
   // U1: nil/'' = unknown release; TBA flag is independent. Rendering
@@ -32,6 +33,29 @@ const getLanguageName = getGalgameOriginalLanguageName
   >
     <dl class="space-y-5">
       <GalgameDetailOfficial :official="official" />
+
+      <!-- 系列: the grouping entity, linked because the question it answers
+           ("还有哪几部") lives on the series page, not here. Identity only —
+           the member count belongs to that page, and a second number here
+           would eventually disagree with it. -->
+      <div v-if="series && series.length > 0">
+        <dt class="text-default-500 dark:text-default-400 text-sm font-medium">
+          所属系列
+        </dt>
+        <dd
+          class="text-default-900 mt-1.5 flex flex-wrap items-center gap-x-3 text-base font-medium dark:text-white"
+        >
+          <KunLink
+            v-for="item in series"
+            :key="item.id"
+            :to="`/galgame/series/${item.id}`"
+            underline="none"
+            class-name="text-foreground hover:text-primary text-base font-semibold"
+          >
+            {{ item.name }}
+          </KunLink>
+        </dd>
+      </div>
 
       <div
         v-if="engine && engine.length > 0"

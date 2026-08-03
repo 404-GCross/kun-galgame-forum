@@ -207,6 +207,14 @@ func enginesFromNextMoe(engines []dto.NextMoeEngineWithAlias) []dto.GalgameDetai
 	return out
 }
 
+func seriesFromNextMoe(refs []dto.NextMoeSeriesRef) []dto.GalgameDetailSeries {
+	out := make([]dto.GalgameDetailSeries, len(refs))
+	for i, r := range refs {
+		out[i] = dto.GalgameDetailSeries{ID: r.ID, Name: r.Name}
+	}
+	return out
+}
+
 func officialsFromNextMoe(rels []dto.NextMoeOfficialRel) []dto.GalgameDetailOfficial {
 	out := make([]dto.GalgameDetailOfficial, len(rels))
 	for i, rel := range rels {

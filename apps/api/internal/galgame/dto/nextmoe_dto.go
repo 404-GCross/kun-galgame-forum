@@ -255,6 +255,7 @@ type NextMoeGalgameDetailFull struct {
 	Alias                    []NextMoeAlias             `json:"alias"`
 	Official                 []NextMoeOfficialRel       `json:"official"`
 	Engine                   []NextMoeEngineWithAlias   `json:"engine"`
+	Series                   []NextMoeSeriesRef         `json:"series"`
 	Tag                      []NextMoeTagWithSpoiler    `json:"tag"`
 	Contributor              []NextMoeContributor       `json:"contributor"`
 	Created                  string                     `json:"created"`
@@ -263,6 +264,14 @@ type NextMoeGalgameDetailFull struct {
 	// ("dlsite" → the DLsite workno). Carried through so the service can build the
 	// 正版购买 link for the galgame header.
 	Refs map[string]string `json:"refs,omitempty"`
+}
+
+// NextMoeSeriesRef is one series a work belongs to: identity only, because the
+// series page renders its own forum-local count and a second number attached to
+// the link would disagree with it.
+type NextMoeSeriesRef struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // NextMoeEngineWithAlias matches the engine-embedded-in-galgame shape (alias is []string).
