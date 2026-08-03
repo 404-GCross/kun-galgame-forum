@@ -35,6 +35,7 @@ export type EditControl =
   | 'number-list'
   | 'object-list'
   | 'entity-picker'
+  | 'entity-kind-picker'
   | 'image'
   | 'image-list'
   | 'readonly'
@@ -108,6 +109,16 @@ export interface EditFieldConfig {
   /** entity-picker: host-supplied async search for a keyword → {value:id,
    * label:name} options (e.g. the site's taxonomy search endpoint). */
   searchEntities?: (keyword: string) => Promise<EditSelectOption[]>
+  /** entity-kind-picker: the object key holding the entity id (e.g.
+   * "label_id"). The control's value IS the field's wire shape, so there is no
+   * translation layer between what it edits and what gets patched. */
+  entityIdKey?: string
+  /** entity-kind-picker: the kind vocabulary, in offer order. The same entity
+   * may be attached once per kind — that is what separates this control from
+   * entity-picker. */
+  entityKinds?: { value: number; label: string }[]
+  /** entity-kind-picker: the kind a freshly picked entity is attached under. */
+  entityDefaultKind?: number
   /** entity-picker: host-supplied batch resolve of the current id value(s) to
    * {value:id, label:name} so pre-existing picks render as names on load. An
    * id it cannot resolve is simply shown as its id. */

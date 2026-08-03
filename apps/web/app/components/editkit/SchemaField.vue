@@ -331,6 +331,32 @@ const pinImageItem = (index: number) => {
       </p>
     </template>
 
+    <!-- Entity+kind picker: one row per (entity, kind) edge, so the same
+         entity can be attached twice under different kinds. -->
+    <template
+      v-else-if="
+        control === 'entity-kind-picker' &&
+        config?.searchEntities &&
+        config?.entityIdKey &&
+        config?.entityKinds
+      "
+    >
+      <EditkitEntityKindPicker
+        :model-value="modelValue"
+        :disabled="!editable"
+        :placeholder="config?.placeholder"
+        :id-key="config.entityIdKey"
+        :kind-options="config.entityKinds"
+        :default-kind="config?.entityDefaultKind ?? config.entityKinds[0]!.value"
+        :search="config.searchEntities"
+        :resolve="config?.resolveEntities"
+        @update:model-value="(value) => emit('update:modelValue', value)"
+      />
+      <p v-if="config?.description" class="text-default-400 text-xs">
+        {{ config.description }}
+      </p>
+    </template>
+
     <!-- Entity picker: search + pick by NAME, store id(s). Renders read-only
          too (names still resolve) via :disabled. -->
     <template v-else-if="control === 'entity-picker' && config?.searchEntities">

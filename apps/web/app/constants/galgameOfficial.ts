@@ -44,3 +44,21 @@ export const KUN_GALGAME_OFFICIAL_LANGUAGE_MAP: Record<string, string> = {
   ru: '俄语',
   es: '西班牙语'
 }
+
+// The EDIT face's label-kind vocabulary. Numeric, unlike the READ face's
+// strings (catalog_work_label.kind is an int16 and the edit field carries it
+// verbatim) — so the two axes of the same fact are spelled differently on the
+// two faces, and this is the only place that has to know it.
+export const KUN_GALGAME_OFFICIAL_KIND_CIRCLE = 0
+export const KUN_GALGAME_OFFICIAL_KIND_PUBLISHER = 1
+export const KUN_GALGAME_OFFICIAL_KIND_DEVELOPER = 2
+export const KUN_GALGAME_OFFICIAL_KIND_BRAND = 3
+
+// Offer order is by how often an editor reaches for it, not by the enum's
+// numbering: most entries name who made the game and who put it out.
+export const KUN_GALGAME_OFFICIAL_KIND_OPTIONS = [
+  { value: KUN_GALGAME_OFFICIAL_KIND_DEVELOPER, label: '开发商' },
+  { value: KUN_GALGAME_OFFICIAL_KIND_PUBLISHER, label: '发行商' },
+  { value: KUN_GALGAME_OFFICIAL_KIND_CIRCLE, label: '社团' },
+  { value: KUN_GALGAME_OFFICIAL_KIND_BRAND, label: '品牌' }
+]

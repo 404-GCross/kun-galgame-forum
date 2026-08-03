@@ -37,7 +37,8 @@ const editNames = computed<GalgameEditNames>(() => {
   return {
     tag: toMap(d?.tag),
     official: toMap(d?.official),
-    engine: toMap(d?.engine)
+    engine: toMap(d?.engine),
+    series: toMap(d?.series)
   }
 })
 const editConfig = computed(() => createGalgameEditConfig(editNames.value))

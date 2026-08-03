@@ -28,6 +28,10 @@ import type {
   EditSelectOption
 } from '~/components/editkit/types'
 import GalgameEditIntroEditor from '~/components/galgame/edit/IntroEditor.vue'
+import {
+  KUN_GALGAME_OFFICIAL_KIND_OPTIONS,
+  KUN_GALGAME_OFFICIAL_KIND_DEVELOPER
+} from '~/constants/galgameOfficial'
 
 export const GALGAME_EDIT_ENTITY_TYPE = 'catalog.work'
 
@@ -359,11 +363,18 @@ export const createGalgameEditConfig = (
   [K('labels')]: {
     label: '会社',
     group: GROUP_RELATIONS,
-    control: 'entity-picker',
-    multiple: true,
+    // NOT entity-picker: this field's wire shape is one object per ATTRIBUTION
+    // EDGE ([{label_id, kind}]), because a 会社 can be both the developer and
+    // the publisher of the same game and the detail page renders that. An id
+    // array cannot say it, which is why the field was unsubmittable while it
+    // was configured as a plain picker.
+    control: 'entity-kind-picker',
+    entityIdKey: 'label_id',
+    entityKinds: KUN_GALGAME_OFFICIAL_KIND_OPTIONS,
+    entityDefaultKind: KUN_GALGAME_OFFICIAL_KIND_DEVELOPER,
     searchEntities: searchOfficials,
     resolveEntities: resolveFrom(names.official),
-    description: '搜索会社名称添加'
+    description: '搜索会社名称添加, 并选择它在本作中的身份 (开发商 / 发行商 …)'
   },
   [K('engine_ids')]: {
     label: '引擎',
