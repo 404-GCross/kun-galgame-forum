@@ -220,6 +220,7 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
+	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
 	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
 	// The /galgame-series family retired with the wiki series vocabulary (P3):
 	// 146 wiki series, only 6 of which correspond to anything in the catalog.

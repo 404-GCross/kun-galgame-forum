@@ -34,12 +34,10 @@ export const GALGAME_EDIT_ENTITY_TYPE = 'catalog.work'
 const K = (name: string) => `catalog.work.${name}`
 
 // ---- taxonomy name pickers (entity-picker control) -------------------------
-// The relation fields store ids but the user searches + sees NAMES. Search
-// runs against the forum's taxonomy endpoints; the CURRENT ids are resolved
+// The relation fields store ids but the user searches + sees NAMES. Search runs
+// against the forum's own catalog-backed endpoints; the CURRENT ids are resolved
 // from the id→name maps the edit page builds off GET /galgame/:gid (which
-// already ships tag/official/engine/series resolved). All four families answer
-// the same `/galgame-taxonomy/{family}/search` picker endpoint below, so none
-// of them is filtered client-side over a full list.
+// already ships tag/official/engine/series resolved).
 
 /** id→name map (Map<number, string>) per taxonomy, built from the galgame
  * detail on the edit page and passed into the config factory. */
@@ -60,6 +58,21 @@ interface TaxonomyHit {
   name: unknown
 }
 
+// These pickers feed catalog.work.{tag_ids,labels,engine_ids,series_ids}, which
+// the editing engine applies to the REGISTRY work — so they must return REGISTRY
+// ids. They used to answer /galgame-taxonomy/{family}/search, which served the
+// WIKI id space and retired with the wiki in wave-161 P5: since then the pickers
+// returned nothing at all, so no tag, 会社, engine or series could be added to
+// any entry.
+//
+// Each now reads the same catalog lane its own browse page reads, which is what
+// makes the id spaces agree by construction rather than by comment:
+//
+//   tag / official → the entity SEARCH lane. Both facets are far too large to
+//     enumerate (3,037 tags, 39,652 labels), and both are Meilisearch-backed.
+//   engine / series → the BROWSE lane, walked whole (189 and ~600 rows) and
+//     filtered in the picker. Neither has a search index of its own, and at this
+//     size building one would cost more than it saves.
 const searchTaxonomy =
   (path: string) =>
   async (keyword: string): Promise<EditSelectOption[]> => {
@@ -70,27 +83,23 @@ const searchTaxonomy =
     return (data ?? []).map((o) => ({ value: o.id, label: taxName(o.name) }))
   }
 
-// These four pickers feed catalog.work.{tag_ids,labels,engine_ids,series_ids},
-// which the editing engine applies to the REGISTRY work — so they must return
-// REGISTRY ids. The picker endpoint follows the write target: feeding an id
-// from the other space into a proposal attaches the wrong tags rather than
-// failing, which is why the picker and the payload can never be switched
-// separately.
-//
-// The picker is gated on being signed in, which is the same bar the submission
-// form itself sets — so a contributor who can write the field can also fill it.
-//
-// Blank-query behaviour is the family's, not ours: tag / official return
-// nothing until you type (3,037 and 24,334 rows), engine / series enumerate
-// their whole curated set (189 and 146) — no page limit on that path upstream,
-// only a 1,000-row safety fuse. Typing turns it back into a capped search.
-const taxonomyPicker = (family: string) =>
-  searchTaxonomy(`/galgame-taxonomy/${family}/search`)
+// A whole-facet walk, filtered here. The list endpoint takes no keyword, so an
+// empty query legitimately shows everything — which is the useful behaviour for
+// a few-hundred-row curated vocabulary anyway.
+const browseTaxonomy =
+  (path: string) =>
+  async (keyword: string): Promise<EditSelectOption[]> => {
+    const data = await kunFetch<TaxonomyHit[]>(path, { method: 'GET' })
+    const q = keyword.trim().toLowerCase()
+    return (data ?? [])
+      .map((o) => ({ value: o.id, label: taxName(o.name) }))
+      .filter((o) => !q || o.label.toLowerCase().includes(q))
+  }
 
-const searchTags = taxonomyPicker('tag')
-const searchOfficials = taxonomyPicker('official')
-const searchEngines = taxonomyPicker('engine')
-const searchSeries = taxonomyPicker('series')
+const searchTags = searchTaxonomy('/galgame-tag/search')
+const searchOfficials = searchTaxonomy('/galgame-official/search')
+const searchEngines = browseTaxonomy('/galgame-engine')
+const searchSeries = browseTaxonomy('/galgame-series')
 
 /** Resolve current ids to {value,label} from a prebuilt map; ids absent from
  * the map are dropped (the picker then shows them as `#id`). */

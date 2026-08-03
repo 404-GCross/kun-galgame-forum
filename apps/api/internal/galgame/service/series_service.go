@@ -28,6 +28,44 @@ func NewSeriesService(galgameClient *client.GalgameClient, galgameSvc *GalgameSe
 	return &SeriesService{galgameClient: galgameClient, galgameSvc: galgameSvc}
 }
 
+// seriesIndexPageCap bounds the index walk. ~600 rows today, so six upstream
+// pages cover it; the cap is a backstop, not a working limit.
+const seriesIndexPageCap = 20
+
+// GetList — GET /galgame-series
+//
+// Walks the catalog series browse lane to exhaustion, like the engine index:
+// the facet has no search of its own (no Meilisearch index — see the lane's own
+// doc), so the consumer that needs to find a series BY NAME filters the full
+// set client-side. That is affordable at this size and stops being so long
+// before the cap.
+func (s *SeriesService) GetList(ctx context.Context) ([]dto.SeriesListItem, *errors.AppError) {
+	items := []dto.SeriesListItem{}
+	cursor := ""
+	for page := 0; page < seriesIndexPageCap; page++ {
+		q := client.OpenPopulation(url.Values{"limit": {"100"}})
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		res, appErr := s.galgameClient.CatalogTaxonomyList(ctx, "series", q)
+		if appErr != nil {
+			return nil, appErr
+		}
+		for _, e := range res.Items {
+			items = append(items, dto.SeriesListItem{
+				ID:           int(e.ID),
+				Name:         e.Label(),
+				GalgameCount: e.WorkCount,
+			})
+		}
+		if res.NextCursor == nil || *res.NextCursor == "" {
+			break
+		}
+		cursor = *res.NextCursor
+	}
+	return items, nil
+}
+
 // GetDetail — GET /galgame-series/:id (id = a catalog SERIES id)
 func (s *SeriesService) GetDetail(
 	ctx context.Context,

@@ -116,6 +116,15 @@ func (h *EntityHandler) GetEngineDetail(c fiber.Ctx) error {
 // Series
 // ──────────────────────────────────────────
 
+// GetSeriesList — GET /galgame-series
+func (h *EntityHandler) GetSeriesList(c fiber.Ctx) error {
+	items, appErr := h.seriesService.GetList(c.Context())
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, items)
+}
+
 // GetSeriesDetail — GET /galgame-series/:id (catalog series id)
 func (h *EntityHandler) GetSeriesDetail(c fiber.Ctx) error {
 	detail, appErr := h.seriesService.GetDetail(

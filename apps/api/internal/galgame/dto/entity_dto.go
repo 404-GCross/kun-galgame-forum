@@ -129,6 +129,15 @@ type EngineDetail struct {
 // Series
 // ──────────────────────────────────────────
 
+// SeriesListItem is one row of the series index — identity plus the upstream
+// member count, which is what a picker needs to disambiguate two similarly
+// named series.
+type SeriesListItem struct {
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	GalgameCount int    `json:"galgame_count"`
+}
+
 // SeriesDetail is the series entity page: the series' identity plus the
 // forum-local, filterable subset of its member works — the same shape the
 // tag / official / engine pages carry, so the four render through one set of
