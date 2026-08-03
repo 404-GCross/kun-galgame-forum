@@ -14,6 +14,14 @@ export interface GalgameOfficialItem {
   name: string
   link: string
   category: KunGalgameOfficialCategory
+  /** What this label DID on the work it is attached to. Distinct from
+   * `category`, which is what kind of organisation it is — one brand can be
+   * both developer and publisher of the same title.
+   *
+   * Optional because this shape is shared with the browse lanes, where a label
+   * is not attached to any work and the endpoint sends no roles at all. Present
+   * on the galgame detail payload. */
+  roles?: string[]
   lang: string
   alias: string[]
   galgame_count: number

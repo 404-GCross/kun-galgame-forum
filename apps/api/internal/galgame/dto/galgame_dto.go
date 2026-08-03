@@ -136,10 +136,13 @@ type DraftsPage struct {
 
 // GalgameDetailOfficial is an official entry on the detail page.
 type GalgameDetailOfficial struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Link         string   `json:"link"`
-	Category     string   `json:"category"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Link     string `json:"link"`
+	Category string `json:"category"`
+	// Roles: this label's part in THIS work (developer / publisher / …), as
+	// opposed to Category, which is what kind of organisation it is.
+	Roles        []string `json:"roles"`
 	Lang         string   `json:"lang"`
 	Alias        []string `json:"alias"`
 	GalgameCount int      `json:"galgame_count"`

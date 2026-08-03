@@ -215,6 +215,7 @@ func officialsFromNextMoe(rels []dto.NextMoeOfficialRel) []dto.GalgameDetailOffi
 			Name:         rel.Official.Name,
 			Link:         rel.Official.Link,
 			Category:     rel.Official.Category,
+			Roles:        emptyStrSliceIfNil(rel.Official.Roles),
 			Lang:         rel.Official.Lang,
 			Alias:        nextMoeAliasesToNames(rel.Official.Alias),
 			GalgameCount: rel.Official.GalgameCount,

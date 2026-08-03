@@ -23,6 +23,17 @@ export const KUN_GALGAME_OFFICIAL_CATEGORY_MAP: Record<string, string> = {
   other: '其它'
 }
 
+// The label's ROLE on a given work — a different axis from the category map
+// above (what kind of organisation it is). A2-R2 dropped the role from the
+// detail chip precisely because this table did not exist and the raw English
+// "developer" leaked through; it exists now, so the role renders again.
+export const KUN_GALGAME_OFFICIAL_ROLE_MAP: Record<string, string> = {
+  developer: '开发商',
+  publisher: '发行商',
+  circle: '社团',
+  brand: '品牌'
+}
+
 // /migrate/getAllOfficialLanguage.js
 export const KUN_GALGAME_OFFICIAL_LANGUAGE_MAP: Record<string, string> = {
   ja: '日语',

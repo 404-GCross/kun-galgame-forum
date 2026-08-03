@@ -101,10 +101,16 @@ type NextMoeGalgameScreenshot struct {
 // answer for an official that exists but currently has zero published
 // galgames).
 type NextMoeOfficial struct {
-	ID           int            `json:"id"`
-	Name         string         `json:"name"`
-	Link         string         `json:"link"`
-	Category     string         `json:"category"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Link     string `json:"link"`
+	Category string `json:"category"`
+	// Roles is what this label DID on the work it is attached to
+	// (developer / publisher / circle / brand), in the registry's own
+	// vocabulary. Category answers a different question — what KIND of
+	// organisation it is — and the two must not be collapsed: a brand that
+	// both developed and published a title carries two roles and one category.
+	Roles        []string       `json:"roles"`
 	Lang         string         `json:"lang"`
 	Alias        []NextMoeAlias `json:"alias"`
 	GalgameCount int            `json:"galgame_count"`

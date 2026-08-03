@@ -88,23 +88,30 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	}
 
 	// labels[] is one row per attribution EDGE, so a brand that both developed
-	// and published a work arrives two or three times — and the 制作方 strip
-	// rendered it two or three times. Fold to one row per label id, first
-	// occurrence winning: the face orders the edges by kind, so the survivor is
-	// the same one on every request.
-	seenLabel := make(map[int64]bool, len(d.Labels))
+	// and published a work arrives two or three times. Fold to one row per label
+	// id and COLLECT the roles onto it, rather than dropping every edge after
+	// the first: "开发商 · 发行商" is the fact a reader wants, and it is the whole
+	// reason the registry models the edge kind separately from the label's own
+	// kind. Rendering the name three times was the thing to avoid; losing two
+	// thirds of the attribution was too high a price for it.
+	//
+	// The face orders edges by kind, so a given label's role list is in the same
+	// order on every request.
+	labelAt := make(map[int64]int, len(d.Labels))
 	for _, l := range d.Labels {
-		if seenLabel[l.ID] {
+		if i, seen := labelAt[l.ID]; seen {
+			f.Official[i].Official.Roles = appendUniqueStr(f.Official[i].Official.Roles, l.Kind)
 			continue
 		}
-		seenLabel[l.ID] = true
+		labelAt[l.ID] = len(f.Official)
 		f.Official = append(f.Official, dto.NextMoeOfficialRel{Official: dto.NextMoeOfficial{
 			ID: int(l.ID), Name: l.DisplayName,
-			// The chip labels the label's OWN kind (game_brand / doujin_circle
-			// / …) rather than its per-edge role: a deduped row has no single
-			// role left, and this is the vocabulary the 会社 index already
-			// renders — one map, one wording, both surfaces.
+			// Category is the label's OWN kind (game_brand / doujin_circle / …),
+			// the vocabulary the 会社 index renders. Roles is what it DID on this
+			// work. Two different questions, so two fields — collapsing them is
+			// what made the role unrenderable in the first place.
 			Category:     l.LabelKind,
+			Roles:        appendUniqueStr(nil, l.Kind),
 			Lang:         l.Lang,
 			Alias:        []dto.NextMoeAlias{},
 			GalgameCount: l.WorkCount,
@@ -284,4 +291,19 @@ func linkDisplayName(l catWorkLink) string {
 		return trimmed[:i]
 	}
 	return trimmed
+}
+
+// appendUniqueStr appends val unless the slice already carries it, and drops
+// the empty string. A label edge with no kind contributes no role rather than a
+// blank chip.
+func appendUniqueStr(slice []string, val string) []string {
+	if val == "" {
+		return slice
+	}
+	for _, s := range slice {
+		if s == val {
+			return slice
+		}
+	}
+	return append(slice, val)
 }

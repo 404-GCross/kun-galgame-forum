@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import {
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
-  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
+  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP,
+  KUN_GALGAME_OFFICIAL_ROLE_MAP
 } from '~/constants/galgameOfficial'
 
 defineProps<{
   official: GalgameOfficialItem[]
 }>()
 
-// The detail chip now speaks the label's OWN kind (游戏品牌 / 同人社团 / …),
-// which is the same vocabulary the /galgame/official index renders — one map,
-// one wording. Before A2-R2 it printed the per-edge ROLE, which had no Chinese
-// entry anywhere and fell through to the raw English "developer".
+// Two axes, two chips. The ROLE (开发商 / 发行商 / …) is what this label did on
+// THIS work; the CATEGORY (游戏品牌 / 同人社团 / …) is what kind of organisation
+// it is, the same vocabulary the /galgame/official index renders. A2-R2 dropped
+// the role because no Chinese table existed for it and the raw English
+// "developer" leaked through — KUN_GALGAME_OFFICIAL_ROLE_MAP is that table.
 const getCategoryText = (category: string) =>
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
+
+// An unmapped role falls through to its raw key rather than vanishing: a new
+// attribution kind upstream should look untranslated, not un-attributed.
+const getRoleText = (role: string) =>
+  KUN_GALGAME_OFFICIAL_ROLE_MAP[role] || role
 </script>
 
 <template>
@@ -41,7 +48,21 @@ const getCategoryText = (category: string) =>
         </KunLink>
 
         <div class="mt-1 flex items-center justify-between">
-          <div class="flex items-center gap-x-2">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <!-- The ROLE chips come first: on a detail page "开发商 / 发行商" is
+                 what the reader came for, while the organisation kind is
+                 background. A brand that both developed and published carries
+                 both — the registry models one edge per role, so this renders
+                 as many chips as there are roles rather than folding them. -->
+            <KunChip
+              v-for="role in item.roles ?? []"
+              :key="role"
+              size="xs"
+              class-name="rounded-md"
+              color="primary"
+            >
+              {{ getRoleText(role) }}
+            </KunChip>
             <KunChip size="xs" class-name="rounded-md" color="default">
               {{ getCategoryText(item.category) }}
             </KunChip>
