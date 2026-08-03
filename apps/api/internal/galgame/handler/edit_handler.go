@@ -55,11 +55,10 @@ import (
 // PR chain, all best-effort (a failure logs a warning, never rolls back the
 // decision).
 type EditHandler struct {
-	catalog       *catalogclient.Client             // S2S actor-assertion edit face (staff/owner writes + all review)
-	platform      *catalogclient.PlatformEditClient // devapi dogfood propose face (plain proposals; see P6 split)
-	galgameClient *client.GalgameClient             // best-effort brief enrichment + owner lookup
-	users         *userclient.Client                // best-effort attribution enrichment
-	notifier      msgService.Notifier               // best-effort decision notifications
+	catalog       *catalogclient.Client // S2S actor-assertion edit face — the ONE channel this BFF speaks
+	galgameClient *client.GalgameClient // best-effort brief enrichment + owner lookup
+	users         *userclient.Client    // best-effort attribution enrichment
+	notifier      msgService.Notifier   // best-effort decision notifications
 	repo          *repository.GalgameRepository
 	// owners answers "who submitted this entry", by gid. It is an interface
 	// rather than a direct repo read because it is the ONE fact the edit face
@@ -94,12 +93,12 @@ func (r repoOwners) OwnerOf(gid int) int {
 }
 
 func NewEditHandler(
-	catalog *catalogclient.Client, platform *catalogclient.PlatformEditClient,
+	catalog *catalogclient.Client,
 	galgameClient *client.GalgameClient, users *userclient.Client,
 	notifier msgService.Notifier, repo *repository.GalgameRepository,
 ) *EditHandler {
 	return &EditHandler{
-		catalog: catalog, platform: platform, galgameClient: galgameClient,
+		catalog: catalog, galgameClient: galgameClient,
 		users: users, notifier: notifier, repo: repo, owners: repoOwners{repo: repo},
 	}
 }
@@ -191,22 +190,6 @@ func editActor(c fiber.Ctx) (catalogclient.EditActor, *errors.AppError) {
 		tier = 3 // staff (mirrors the community starter-boost staff floor)
 	}
 	return catalogclient.EditActor{UserID: int64(user.ID), Roles: user.Roles, TrustTier: tier}, nil
-}
-
-// isPlainActor is the P6 routing predicate for the strategy-SENSITIVE operations
-// (submit / schema): a plain proposer is neither staff (role.CanModerate — the
-// trust=3 mapping) nor the entity owner, so their edit can only ever land as an
-// open proposal that never automerges — semantically identical whether it rides
-// the S2S plain-actor assertion or the platform propose face. Everyone else
-// (staff via the review perm, owner via OwnerReview) stays on S2S so their
-// direct-edit automerge and the WouldAutomerge schema projection never silently
-// degrade (06b W0 hazard 3). actor.IsEntityOwner MUST already be stamped by the
-// caller (Bootstrap / Submit both do). A fail-closed owner lookup yields false →
-// plain → platform, which is byte-equivalent to the S2S plain-actor path the old
-// code would have taken with IsEntityOwner=false (no automerge to lose either
-// way), so the fence never introduces a NEW degradation.
-func isPlainActor(actor catalogclient.EditActor) bool {
-	return !role.CanModerate(actor.Roles) && !actor.IsEntityOwner
 }
 
 // ownerOf answers "who created this entry", by gid.
@@ -416,21 +399,13 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	// default keys — the capability rides the schema projection, the UI
 	// holds zero policy logic.
 	actor.IsEntityOwner = h.isGameOwner(ctx, workID, actor.UserID)
-	// Snapshot is policy-irrelevant → the platform propose face for everyone (P6).
-	token := middleware.GetAccessToken(c)
-	values, err := h.platform.Snapshot(ctx, token, entityTypeGame, workID)
+	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, workID)
 	if err != nil {
 		return editError(c, err)
 	}
-	// Schema is policy-SENSITIVE (it projects can_review / would_automerge from
-	// the asserted overlay): a plain actor reads the platform's plain projection;
-	// staff/owner keep the S2S asserted projection so their capabilities show (P6).
-	var schema *catalogclient.EditSchema
-	if isPlainActor(actor) {
-		schema, err = h.platform.GetSchema(ctx, token, entityTypeGame, workID)
-	} else {
-		schema, err = h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
-	}
+	// The schema projects can_review / would_automerge from the asserted
+	// overlay, so it must carry THIS actor's assertion.
+	schema, err := h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -497,25 +472,10 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	actor.IsEntityOwner = h.isGameOwner(c.Context(), workID, actor.UserID)
-	// P6 split: a plain proposer files through the platform propose face (no actor
-	// asserted — the platform derives it from the Bearer, tenant from the key
-	// binding); staff/owner stay on the S2S actor-assertion channel so their
-	// direct-edit automerge is preserved. Both return the same EditCreateResult
-	// shape, so the side-effects + response below are route-agnostic.
-	var (
-		result *catalogclient.EditCreateResult
-		err    error
-	)
-	if isPlainActor(actor) {
-		result, err = h.platform.CreateProposal(c.Context(), middleware.GetAccessToken(c), catalogclient.PlatformCreateRequest{
-			EntityType: entityTypeGame, EntityID: workID, Patch: req.Patch, Note: req.Note,
-		})
-	} else {
-		result, err = h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
-			EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
-			Patch: req.Patch, Note: req.Note, Actor: actor,
-		})
-	}
+	result, err := h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
+		EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
+		Patch: req.Patch, Note: req.Note, Actor: actor,
+	})
 	if err != nil {
 		return editError(c, err)
 	}
@@ -766,11 +726,8 @@ func (h *EditHandler) Queue(c fiber.Ctx) error {
 // states, newest-first; ?gid narrows to one galgame (the editor page's
 // "my pending proposal" strip).
 func (h *EditHandler) Mine(c fiber.Ctx) error {
-	// P6: "my proposals" is engine-policy-irrelevant → the platform propose face
-	// for everyone. The platform FORCES proposer = the JWT actor and tenant = the
-	// key binding server-side, so this BFF sends neither proposer_uid nor site —
-	// the auth guard still runs (the route is authed) to 401 cleanly if absent.
-	if _, appErr := editActor(c); appErr != nil {
+	actor, appErr := editActor(c)
+	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 	// ?gid narrows to one entry — a kungal id, so it crosses the bridge before
@@ -783,8 +740,9 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 		}
 		entityID = workID
 	}
-	items, err := h.platform.MineProposals(c.Context(), middleware.GetAccessToken(c), catalogclient.PlatformMineFilter{
-		EntityType: entityTypeGame, EntityID: entityID,
+	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
+		EntityType: entityTypeGame, Site: catalogSite,
+		EntityID: entityID, ProposerUID: actor.UserID,
 		Status: c.Query("status"), Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
@@ -910,11 +868,7 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	// Snapshot is policy-irrelevant → the platform propose face for everyone (P6),
-	// including this review-workbench read. The get + schema below stay S2S: get is
-	// a review context (reviewer views another's proposal, not "get-own"), and the
-	// schema must carry the reviewer's asserted overlay to project can_review.
-	values, err := h.platform.Snapshot(ctx, middleware.GetAccessToken(c), entityTypeGame, prop.EntityID)
+	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, prop.EntityID)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -1085,20 +1039,25 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 	return response.OK(c, prop)
 }
 
-// Withdraw — POST /galgame-edit/proposals/:id/withdraw (auth). P6: withdraw is
-// engine-policy-irrelevant → the platform propose face for everyone. The platform
-// fences family + tenant (404, anti-enumeration) and enforces the proposer-only
-// rule (403, the engine's native ErrNotProposer) itself, so the old S2S pre-flight
-// read is subsumed — this BFF makes ONE call, sending no actor/site.
+// Withdraw — POST /galgame-edit/proposals/:id/withdraw (auth). The engine
+// enforces proposer-only (ErrNotProposer); no moderator gate here. The tenant
+// pre-flight is this BFF's own job on the S2S channel: the asserted-actor face
+// will not fence family/tenant for us, so a bare id from another tenant must be
+// turned into a 404 here rather than reaching the engine.
 func (h *EditHandler) Withdraw(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if _, appErr := editActor(c); appErr != nil {
+	actor, appErr := editActor(c)
+	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	prop, err := h.platform.WithdrawProposal(c.Context(), middleware.GetAccessToken(c), id)
+	ctx := c.Context()
+	if _, err := h.proposalForReview(ctx, id); err != nil {
+		return editError(c, err)
+	}
+	prop, err := h.catalog.WithdrawEditProposal(ctx, id, actor)
 	if err != nil {
 		return editError(c, err)
 	}

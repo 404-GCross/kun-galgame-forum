@@ -95,16 +95,16 @@ type recordedRequest struct {
 	Path   string
 	Query  string
 	Body   map[string]any
-	// Face is "platform" for the /internal/edit/* devapi face, "s2s" for the
-	// Basic-authed /api/v1/catalog/edit/* face — the axis the P6 split tests pin.
-	Face   string
-	APIKey string // X-API-Key header (set only on the platform dual-credential face)
-	Auth   string // Authorization header (Basic on S2S, Bearer on platform)
+	// Face is "s2s" for the Basic-authed /api/v1/catalog/edit/* face and "other"
+	// for anything else. The BFF speaks exactly one edit channel, so "other" in a
+	// recorded request is itself the failure this axis exists to catch.
+	Face string
+	Auth string // Authorization header (Basic on the S2S face)
 }
 
-// platformFace reports whether a path targets the /internal/edit/* platform
-// propose face (vs. the S2S /api/v1/catalog/edit/* face).
-func platformFace(path string) bool { return strings.HasPrefix(path, "/internal/edit/") }
+// s2sFace reports whether a path targets the S2S /api/v1/catalog/edit/* face —
+// the only edit channel this BFF has.
+func s2sFace(path string) bool { return strings.HasPrefix(path, "/api/v1/catalog/edit/") }
 
 func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -114,41 +114,23 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 		if len(raw) > 0 {
 			_ = json.Unmarshal(raw, &body)
 		}
-		face := "s2s"
-		if platformFace(r.URL.Path) {
-			face = "platform"
+		face := "other"
+		if s2sFace(r.URL.Path) {
+			face = "s2s"
 		}
 		f.mu.Lock()
 		f.requests = append(f.requests, recordedRequest{
 			Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Body: body,
-			Face: face, APIKey: r.Header.Get("X-API-Key"), Auth: r.Header.Get("Authorization"),
+			Face: face, Auth: r.Header.Get("Authorization"),
 		})
 		f.mu.Unlock()
-		// The platform face is dual-credential (X-API-Key + Bearer): reject a call
-		// missing either, mirroring the real devapi chain (ResolveCredential → 401,
-		// jwtAuth → 401). The S2S face just needs its Basic header.
-		if face == "platform" {
-			if r.Header.Get("X-API-Key") == "" || !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-		} else if r.Header.Get("Authorization") == "" {
+		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		switch {
-		// ── Platform propose face (/internal/edit/*) — byte-identical envelopes,
-		// minus Huma's "$schema" decoration (invisible to the BFF's decode). ──
-		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
-		case r.Method == "GET" && r.URL.Path == "/internal/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[]}}`))
-		case r.Method == "POST" && r.URL.Path == "/internal/edit/proposals/7/withdraw":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/internal/edit/snapshot":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/internal/edit/schema/catalog.work":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/withdraw":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/7":
@@ -196,17 +178,13 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
-	// The platform propose client shares the fake's base (it appends /internal/edit
-	// itself) and carries the internal-tier X-API-Key. An empty catalogURL leaves
-	// it unconfigured too, so the degradation test 503s on the platform paths.
-	pc := catalogclient.NewPlatform(catalogclient.PlatformConfig{BaseURL: catalogURL, APIKey: "nm_test"})
 	var galgameClient *client.GalgameClient
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")
 	}
 	// nil user client / repo = best-effort enrichment off. The submitter lookup
 	// is a narrow port so the owner-review gates are testable without a database.
-	h := NewEditHandler(cc, pc, galgameClient, nil, notifier, nil).
+	h := NewEditHandler(cc, galgameClient, nil, notifier, nil).
 		WithOwners(fakeOwners{1: 7})
 
 	app := fiber.New()
@@ -215,8 +193,8 @@ func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middlewa
 			return c.Status(401).JSON(fiber.Map{"code": 205, "message": "用户登录失效"})
 		}
 		c.Locals(string(middleware.UserInfoKey), user)
-		// Mirror middleware.Auth: expose the session's OAuth access token so the
-		// platform propose calls forward a Bearer (the dual-credential transport).
+		// Mirror middleware.Auth: the session's OAuth access token is exposed for
+		// the handlers that forward it (the edit chain does not — it is S2S).
 		c.Locals(string(middleware.OAuthAccessTokenKey), "user-jwt")
 		return c.Next()
 	}
@@ -278,11 +256,10 @@ func TestEditDegradesWhenUnconfigured(t *testing.T) {
 	}
 }
 
-// TestEditActorAssertionShape pins the S2S actor for the STAFF submit path (P6:
-// staff/owner stay on the actor-assertion channel): a moderator's roles pass
-// through verbatim with the staff trust tier, site is kungal, and the
-// dirty-field patch reaches the face untouched. (The plain-actor submit no longer
-// asserts an actor — it routes to the platform; see TestEditSubmitSplit.)
+// TestEditActorAssertionShape pins the S2S actor assertion on submit: the
+// proposer's roles pass through verbatim with their trust tier, site is kungal,
+// and the dirty-field patch reaches the face untouched. Every proposer — plain
+// or staff — rides this one channel.
 func TestEditActorAssertionShape(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, moderatorUser)

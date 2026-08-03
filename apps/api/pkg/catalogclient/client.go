@@ -1,7 +1,7 @@
 // Package catalogclient is a thin S2S SDK for the infra Catalog service
-// (kun-galgame-infra cmd/catalog). Its live surface is the editing engine: the
-// actor-assertion edit face (edit.go) and the platform propose face
-// (edit_platform.go). Auth is HTTP Basic with an OAuth client_id/secret — the
+// (kun-galgame-infra cmd/catalog). Its live surface is the editing engine's
+// actor-assertion edit face (edit.go) — the one channel a first-party BFF
+// speaks (doc 23 §5). Auth is HTTP Basic with an OAuth client_id/secret — the
 // same first-party credential pair kungal already uses for the other infra S2S
 // faces (image / artifact / trust). There is no generated client, so the calls
 // are hand-written against the committed contract
