@@ -39,6 +39,19 @@ func NewClaimReviewService(
 // pendingQueueLimit is the queue page size.
 const pendingQueueLimit = 30
 
+// PendingQueuePage is the wire envelope of the review queue.
+//
+// It exists because client.CatalogWorksPage carries NO json tags — it is an
+// internal projection of the catalog face, never meant to be a response body,
+// and marshalling it directly ships PascalCase keys ("Items"/"NextCursor").
+// The page reads data.items, so that shape was a TypeError on every load.
+// Every other consumer of that struct already maps it (see the calendar
+// service); this face is the one that did not.
+type PendingQueuePage struct {
+	Items      []client.CatalogWorkListItem `json:"items"`
+	NextCursor string                       `json:"next_cursor"`
+}
+
 // PendingQueue lists kungal's submissions awaiting review, newest first.
 //
 // It reads the LIVE works list rather than the search face on purpose: the
@@ -50,7 +63,7 @@ const pendingQueueLimit = 30
 func (s *ClaimReviewService) PendingQueue(
 	ctx context.Context,
 	query url.Values,
-) (*client.CatalogWorksPage, *errors.AppError) {
+) (*PendingQueuePage, *errors.AppError) {
 	q := url.Values{
 		"claimed":     {"true"},
 		"claim_state": {catalogclient.ClaimStatePending},
@@ -65,7 +78,17 @@ func (s *ClaimReviewService) PendingQueue(
 	// The age gate is open: a moderation queue that cannot see r18 submissions
 	// cannot moderate 94% of them.
 	client.OpenPopulation(q)
-	return s.galgameClient.CatalogWorksList(ctx, q)
+	page, appErr := s.galgameClient.CatalogWorksList(ctx, q)
+	if appErr != nil {
+		return nil, appErr
+	}
+	// Items is nil on an empty queue; serialize [] so the page's
+	// `data.items.length` reads 0 rather than tripping over null.
+	items := page.Items
+	if items == nil {
+		items = []client.CatalogWorkListItem{}
+	}
+	return &PendingQueuePage{Items: items, NextCursor: page.NextCursor}, nil
 }
 
 // reviewActions is the closed verdict vocabulary this face proxies. `unban` is
