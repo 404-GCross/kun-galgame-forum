@@ -19,6 +19,17 @@ const engine_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
+// A junk segment (/galgame/engine/null, crawler-made) becomes NaN and used to
+// ride all the way upstream, where the catalog answered 400 — pointless round
+// trips for a URL that can only ever be a 404. Answer it here.
+if (!Number.isInteger(engine_id.value) || engine_id.value <= 0) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: '未找到 Galgame 引擎',
+    fatal: true
+  })
+}
+
 // Shared browse filter Nav with the tag + official detail pages:
 // the entity detail lists the forum-LOCAL subset of the engine's catalogue, so
 // the same 类型/语言/平台/作品类型 filters + sorts as /galgame apply (backend runs

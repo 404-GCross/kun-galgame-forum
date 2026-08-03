@@ -21,6 +21,17 @@ const official_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
+// A junk segment (/galgame/official/null, crawler-made) becomes NaN and used to
+// ride all the way upstream, where the catalog answered 400 — pointless round
+// trips for a URL that can only ever be a 404. Answer it here.
+if (!Number.isInteger(official_id.value) || official_id.value <= 0) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: '未找到 Galgame 会社',
+    fatal: true
+  })
+}
+
 const {
   page,
   limit,

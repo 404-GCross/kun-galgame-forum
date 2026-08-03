@@ -13,7 +13,17 @@ import {
 } from '~/components/ranking/pageData'
 import type { KunSelectOption } from '@kungal/ui-vue'
 
-const activeTab = computed(() => useRoute().fullPath.split('/').pop() ?? 'user')
+// The tab is the last path segment, but only when it NAMES a tab. Bare
+// /ranking yields "ranking", which is not a key of rankingPageMetaData — the
+// `?? 'user'` below never fired for it (the segment is present, just wrong) and
+// the header read .title off undefined, crashing SSR with a 500. Match against
+// the tab list so any non-tab segment lands on the default instead.
+const rankingTabs = new Set(rankingPageTabs.map((tab) => tab.value))
+
+const activeTab = computed(() => {
+  const segment = useRoute().path.split('/').filter(Boolean).pop()
+  return segment && rankingTabs.has(segment) ? segment : 'user'
+})
 
 const currentSortItems = computed(() => {
   switch (activeTab.value) {
