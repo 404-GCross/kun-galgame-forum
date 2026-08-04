@@ -87,38 +87,14 @@ func cachedBatch[T any](
 
 // GalgameClient calls the NextMoe catalog service (galgame surface) via HTTP.
 //
-// The service exposes two faces derived from one host base
-// (KUN_NEXTMOE_API_BASE):
-//   - internalBase = {base}/internal — the internal-tier rich READ face, the
-//     two service-to-service cron feeds (/galgame/messages/feed,
-//     /galgame/revisions/recent), AND (since Phase-2 06a) the user write set:
-//     galgame-content mutations under /galgame (create / update / image /
-//     links / aliases / contributors-del / submit / claim / draft
-//     patch+delete). Every internal-face call carries an X-API-Key.
-//   - legacyBase   = {base}/api      — the legacy staff face; taxonomy writes
-//     (/tag /official /engine /series create/modal/update/delete/revert) and
-//     admin (/admin/*) reads+writes stay here (the staff set — 06a keeps it).
-//
-// Face selection is by ROUTE membership, not HTTP method (see readTarget for
-// reads, writeTarget for writes). The internal face hard-depends on apiKey —
-// there is no keyless-fallback valve; a deployment configured with a base but
-// no key fail-fasts at config load.
-//
-// Holds the user's per-request Bearer token (forwarded from the kungal
-// session) for user-identity endpoints like submit / claim / patch-draft and
-// for personalized reads: the internal face accepts that JWT in Authorization
-// alongside the service key in X-API-Key (dual-credential transport).
+// One face is left of what used to be three: the /internal and /api legacy
+// bases retired with the wiki (wave-161 P5 deleted every route behind them;
+// their last client-side callers left in wave 169). Everything this client
+// still does rides the frozen public /v1 contract below.
 type GalgameClient struct {
-	internalBase string
-	// v1Base = {base}/v1 — the frozen public data contract. The A-bucket galgame
-	// reads (batch / search / calendar / taxonomy list+detail / galgame-ids /
-	// scores / stats / links) migrated here in Phase-2 07 W4; the internal bridge
-	// (internalBase) keeps only the B-bucket platform-workflow reads, the two cron
-	// feeds, the user write set, and the four reads whose FE-consumed fields have
-	// no /v1 source (galgame detail, rating-galgame summary, series detail,
-	// batch view=detail) pending an infra enrichment.
+	// v1Base = {base}/v1 — the frozen public data contract; every call
+	// carries the service X-API-Key.
 	v1Base     string
-	legacyBase string
 	apiKey     string
 	httpClient *http.Client
 	// imageCDNBase resolves image hashes → CDN URLs inside doRequest (see
@@ -177,10 +153,8 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	transport.MaxIdleConnsPerHost = 64
 
 	return &GalgameClient{
-		internalBase: base + "/internal",
-		v1Base:       base + "/v1",
-		legacyBase:   base + "/api",
-		apiKey:       apiKey,
+		v1Base: base + "/v1",
+		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
@@ -201,50 +175,6 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 
 		labelLinkCache: map[batchCacheKey]batchCacheEntry[string]{},
 	}
-}
-
-// readTarget picks the base URL + X-API-Key for a read GET by ROUTE
-// membership (not HTTP method):
-//   - /admin/* reads stay on the legacy /api face with no key (GetAdminStats,
-//     AdminMessages) — wave 06 territory;
-//   - every other read goes to the internal face with X-API-Key attached.
-//
-// The read face hard-depends on apiKey (no keyless-fallback valve): a keyless
-// deployment fail-fasts at config load, so c.apiKey is non-empty here in any
-// running service.
-func (c *GalgameClient) readTarget(path string) (base, apiKey string) {
-	if strings.HasPrefix(path, "/admin/") {
-		return c.legacyBase, ""
-	}
-	return c.internalBase, c.apiKey
-}
-
-// writeTarget picks the base URL + X-API-Key for a mutating request
-// (POST/PUT/PATCH/DELETE) by ROUTE membership (not HTTP method), the write-side
-// mirror of readTarget (Phase-2 06a write-face platformization):
-//   - the user write set — galgame-content mutations under /galgame (create,
-//     image upload, links/aliases, contributors-del, submit, claim, draft
-//     patch+delete) — goes to the internal face with X-API-Key attached; the
-//     user's Bearer rides Authorization in parallel (dual-credential transport);
-//   - taxonomy writes (/tag, /official, /engine, /series family: create / modal
-//     / update / delete / revert) and /admin/* writes are the STAFF set and
-//     stay on the legacy /api face with no key (06a keeps them; W3 does not
-//     retire them).
-//
-// The user write set is exactly the paths under "/galgame" (create is the bare
-// "/galgame", the rest are "/galgame/..."). Taxonomy paths map to
-// /tag|/official|/engine|/series and admin paths to /admin/* — none begin with
-// /galgame — so they fall through to legacy. The internal write face
-// hard-depends on apiKey (no keyless-fallback valve): a keyless deployment
-// fail-fasts at config load, so c.apiKey is non-empty here in any running
-// service.
-func (c *GalgameClient) writeTarget(path string) (base, apiKey string) {
-	if path == "/galgame" ||
-		strings.HasPrefix(path, "/galgame/") ||
-		strings.HasPrefix(path, "/galgame?") {
-		return c.internalBase, c.apiKey
-	}
-	return c.legacyBase, ""
 }
 
 // getFace performs a GET against the given base, attaching a Bearer user token
@@ -297,26 +227,6 @@ type apiResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Data    json.RawMessage `json:"data"`
-}
-
-// Get performs a GET request to the galgame service.
-func (c *GalgameClient) Get(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
-	return c.GetWithToken(ctx, path, "", query)
-}
-
-// GetWithToken is like Get but attaches a Bearer token. Used by endpoints
-// whose response shape depends on the caller's identity:
-//   - /galgame/batch with Bearer returns the caller's own pending drafts
-//   - /galgame/search?include_pending=true returns the caller's pending hits
-//   - /galgame/mine and /galgame/messages/mine are inherently user-scoped
-//
-// token "" reduces to an anonymous GET (same as Get).
-//
-// Reads route to the internal face + X-API-Key; /admin/* reads stay on the
-// legacy face. See readTarget.
-func (c *GalgameClient) GetWithToken(ctx context.Context, path, token string, query url.Values) (json.RawMessage, *errors.AppError) {
-	base, apiKey := c.readTarget(path)
-	return c.getFace(ctx, base, path, token, query, apiKey)
 }
 
 // GetV1 performs an anonymous GET against the /v1 public data face with the
@@ -379,106 +289,10 @@ func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query ur
 	return resp.StatusCode, &result, nil
 }
 
-// PostWithToken performs a POST with Bearer token.
-//
-// contentType controls how body is forwarded:
-//   - "" (empty)        → defaults to "application/json"; struct/map bodies
-//     are JSON-marshaled
-//   - "application/json" → same as empty
-//   - any multipart/* / form-encoded / etc. → body MUST be passed as
-//     []byte / json.RawMessage,
-//     forwarded byte-for-byte
-//     with the boundary preserved
-func (c *GalgameClient) PostWithToken(ctx context.Context, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
-	return c.mutateWithToken(ctx, "POST", path, token, body, contentType)
-}
-
-// PutWithToken performs a PUT with Bearer token. See PostWithToken for
-// contentType semantics.
-func (c *GalgameClient) PutWithToken(ctx context.Context, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
-	return c.mutateWithToken(ctx, "PUT", path, token, body, contentType)
-}
-
-// DeleteWithToken performs a DELETE with Bearer token. See PostWithToken
-// for contentType semantics.
-func (c *GalgameClient) DeleteWithToken(ctx context.Context, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
-	return c.mutateWithToken(ctx, "DELETE", path, token, body, contentType)
-}
-
-func (c *GalgameClient) mutateWithToken(ctx context.Context, method, path, token string, body any, contentType string) (json.RawMessage, *errors.AppError) {
-	if contentType == "" {
-		contentType = "application/json"
-	}
-
-	var bodyReader io.Reader
-	if body != nil {
-		// Pass-through for already-encoded bodies (multipart, form-urlencoded,
-		// etc.). Without this, json.Marshal would wrap raw bytes in quotes
-		// and lose the multipart boundary.
-		switch v := body.(type) {
-		case []byte:
-			bodyReader = bytes.NewReader(v)
-		case json.RawMessage:
-			bodyReader = bytes.NewReader([]byte(v))
-		default:
-			b, err := json.Marshal(body)
-			if err != nil {
-				return nil, errors.ErrInternal("序列化请求失败")
-			}
-			bodyReader = bytes.NewReader(b)
-		}
-	}
-
-	// Face by ROUTE membership (writeTarget): the user write set goes to the
-	// internal face + X-API-Key (Phase-2 06a); taxonomy / admin writes stay on
-	// the legacy /api face with no key. The user's Bearer rides Authorization
-	// on both (dual-credential transport on the internal face).
-	base, apiKey := c.writeTarget(path)
-	req, err := http.NewRequestWithContext(ctx, method, base+path, bodyReader)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
-	}
-	req.Header.Set("Content-Type", contentType)
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
-	}
-
-	return c.doRequest(req)
-}
-
 // NextMoeUserGalgames is the paginated published-galgame list for a user.
 type NextMoeUserGalgames struct {
 	Galgames []GalgameBrief `json:"galgames"`
 	Total    int64          `json:"total"`
-}
-
-// NextMoeAdminStats is the admin stats response from galgame service.
-type NextMoeAdminStats struct {
-	Totals map[string]int64 `json:"totals"`
-	Daily  []map[string]any `json:"daily"`
-}
-
-// GetAdminStats fetches galgame-side admin stats for the last N days. The galgame's
-// /admin/stats is an authenticated admin endpoint (401s anonymously), so the
-// caller MUST forward the requesting admin's OAuth Bearer — sourced from the
-// kungal session via middleware.GetAccessToken, exactly like the submission-
-// review (/admin/galgame*) calls. An empty token degrades to an anonymous call
-// the galgame rejects, which the overview merges as zeroes (non-blocking).
-func (c *GalgameClient) GetAdminStats(ctx context.Context, days int, token string) (*NextMoeAdminStats, error) {
-	query := url.Values{"days": {fmt.Sprintf("%d", days)}}
-	data, appErr := c.GetWithToken(ctx, "/admin/stats", token, query)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	var stats NextMoeAdminStats
-	if err := json.Unmarshal(data, &stats); err != nil {
-		return nil, err
-	}
-	return &stats, nil
 }
 
 // GalgameBrief is the lightweight metadata returned by /galgame/batch.

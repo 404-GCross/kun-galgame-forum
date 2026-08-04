@@ -70,7 +70,7 @@ func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	defer f.Close()
 
 	res, sErr := h.imageService.UploadGalgameImage(
-		c.Context(), user.ID, middleware.GetAccessToken(c), f, file.Filename, preset,
+		c.Context(), user.ID, f, file.Filename, preset,
 	)
 	if sErr != nil {
 		return response.Error(c, sErr)

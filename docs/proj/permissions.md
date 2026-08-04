@@ -15,7 +15,7 @@
 | # | 操作 | 论坛本地门（router） | 镜像 infra key | 阈值 |
 |---|---|---|---|---|
 | 1 | 直发建条目 | `POST /galgame` · `RequireModerator` | `galgame.create` | 版主+ |
-| 2 | 提交审核队列 | `GET /admin/galgame/messages` · `PUT /admin/galgame/:gid/status` · `RequireModerator` | `galgame.review_submission` / `edit.galgame.game.status` | 版主+ |
+| 2 | 提交审核队列 | ~~`GET /admin/galgame/messages`~~(wave 169 退役)· `PUT /admin/galgame/:gid/status` · `RequireModerator` | `galgame.review_submission` / `edit.galgame.game.status` | 版主+ |
 | 3 | 提案查看 / 队列 | `GET /galgame-edit/queue` · `RequireModerator`；提案详情 `reviewEntry` | `galgame.review` | 版主+ 或条目创建者 |
 | 4 | 提案裁决（amend/merge/decline） | `decideEntry` | `edit.galgame.game.review` | 管理员+ 或条目创建者 |
 | 5 | 修订回滚 | `POST /galgame/:gid/edit/revert` | `edit.galgame.game.review` / `galgame.owner_override` | 管理员+ 或条目创建者 |
@@ -24,7 +24,7 @@
 | 8 | Wiki 条目回滚 | `POST …/:id/revert` · `RequireAdmin` | `galgame.taxonomy.review` | **管理员+** |
 | 9 | Trust 举报收件箱 | `/admin/trust/review-items*` · `RequireModerator` | `trust.queue_access` | 版主+ |
 
-**taxonomy 比 infra 更严，且不许「改回去」。** infra 把 taxonomy 编辑/删除/回滚开给版主+，kungal 刻意用 `RequireAdmin` 收紧到 **admin ⊂ ren**（站长拍板，commit `f819503c`：公开创建、admin-only 编辑/删除/回滚）。CREATE（`POST /galgame-tag` 等）仍对任意登录用户开放。这是有意的策略差异，不是 bug，别在「对齐 infra」时把它松回版主。
+**(已退役 wave 169:词表写路径与 staff lane 随 wiki 退役整体撤除,以下为历史记录。)** **taxonomy 比 infra 更严，且不许「改回去」。** infra 把 taxonomy 编辑/删除/回滚开给版主+，kungal 刻意用 `RequireAdmin` 收紧到 **admin ⊂ ren**（站长拍板，commit `f819503c`：公开创建、admin-only 编辑/删除/回滚）。CREATE（`POST /galgame-tag` 等）仍对任意登录用户开放。这是有意的策略差异，不是 bug，别在「对齐 infra」时把它松回版主。
 
 > 代码里有两处 9-op 清单：`pkg/perm` 的包注释（权威）与前端 `KUN_PROXY_PERMISSIONS` 只读展示表——后者逐字镜像前者的命名，不得分叉。`edit.galgame.game.status` 不是第十项：它是「提交审核队列」这一项在状态流转上的又一处镜像门（见表中第 2 行）。
 

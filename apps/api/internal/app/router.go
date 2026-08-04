@@ -426,14 +426,14 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame/:gid/resubmit", a.GalgameSubmissionHandler.Resubmit)
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
 
-	// Galgame message stream — user notifications + per-user read marker.
-	authed.Get("/galgame/messages/mine", a.GalgameMessageHandler.MessagesMine)
-	authed.Get("/galgame/messages/read-state", a.GalgameMessageHandler.GetReadState)
-	authed.Put("/galgame/messages/read-state", a.GalgameMessageHandler.SetReadState)
+	// The wiki message stream (/galgame/messages/mine + the read-state marker)
+	// retired in wave 169: the upstream feed 404s since wave-161 P5, and the
+	// claim_event feed + forum-local messages replaced it (N waves). The
+	// read-state table stays in the DB as history; nothing reads it.
 
 	// Galgame interactions (authenticated, local). The static
-	// /galgame/interactions/mine is declared before the :gid routes (and like
-	// /galgame/messages/mine, static segments win over :gid).
+	// /galgame/interactions/mine is declared before the :gid routes
+	// (static segments win over :gid).
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
 	authed.Put("/galgame/:gid/like", a.GalgameHandler.ToggleLike)
 	// Galgame collections (收藏夹). Favorite is now membership in one or more
@@ -487,17 +487,12 @@ func (a *App) setupRoutes() {
 
 	// Galgame galgame writes (authenticated + token forwarding).
 	//
-	// Note on PR submission (POST /galgame/:gid/prs): the integration guide
-	// (docs/galgame_wiki/integration-guide.md §6) suggests letting the
-	// frontend call galgame directly to skip this hop, but our kun_session
-	// architecture makes the OAuth access token opaque to the browser
-	// (it lives in Redis, the browser only has the session cookie). So
-	// every galgame write must traverse kungal so the middleware can attach
-	// the session-stored bearer token; ProxyWriteWithToken is the thin
-	// shim that does that. Endpoints with kungal-local side effects
-	// (Create, which seeds the kungal-local stub) go through GalgameHandler
-	// instead; the old-wire PR writes retired in E3b (the editing-engine BFF
-	// carries their side effects now).
+	// Note on write traversal: the kun_session architecture keeps the OAuth
+	// access token opaque to the browser (it lives in Redis; the browser only
+	// has the session cookie), so every upstream write must traverse kungal
+	// for the middleware to attach the session-stored bearer. The editing
+	// engine's BFF (edit_handler) is the one write channel left; the old-wire
+	// PR writes retired in E3b and the generic write proxy in wave 169.
 	// POST /galgame — the wiki's "admin direct publish" bypass — is gone. It
 	// existed because publishing and submitting were two different writes; they
 	// are now one lifecycle, so a moderator files a submission through the same
@@ -529,56 +524,15 @@ func (a *App) setupRoutes() {
 	// The old-wire editor write proxies (PUT /galgame/:gid, PR
 	// submit/merge/decline, revert, links/aliases, contributors) retired in
 	// E3b — every kungal edit write flows through the editing engine above.
-	// The galgame face still serves them for apps/wiki until 07 retires it.
-	// Taxonomy CREATE (POST) is open to any logged-in user — the "add a missing
-	// tag / official / engine for a doujin work" contribution flow and the public
-	// series creation on /galgame-series. EDIT (PUT) / DELETE / REVERT of existing
-	// taxonomy is a site-administration capability, gated to admin ⊂ ren via
-	// RequireAdmin. Both proxy to the galgame with the caller's token (which the galgame
-	// re-checks, never widened/narrowed here — 00-handbook §15.2); ToGalgamePath maps
-	// /galgame-tag → /tag etc.
-	authed.Post("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-engine", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	// INFRA-PROXY (taxonomy.edit / taxonomy.delete / taxonomy.revert): these
-	// mirror infra keys `galgame.taxonomy.edit_any` / `galgame.taxonomy.review`,
-	// which infra grants to moderator+. kungal deliberately keeps RequireAdmin
-	// (admin ⊂ ren, STRICTER than infra) per the user's ruling (commit
-	// f819503c: public create, admin-only edit/delete/revert). Not a pkg/perm
-	// key — the galgame re-checks every write; this gate is the local mirror.
-	// Taxonomy picker: name → WIKI id, for any signed-in user. Both the admin
-	// console's edit tabs and the galgame submission form need it, and both
-	// need the wiki id space — the public browse lanes moved to catalog ids, so
-	// a picker fed from those would put a catalog id into a wiki-id write
-	// payload (doc 106 R11). Editing authority is enforced on the write ops,
-	// not on being able to look a name up.
-	authed.Get("/galgame-taxonomy/:family/search", a.GalgameStaffTaxonomyHandler.Search)
-
-	taxonomyWrite := authed.Group("", middleware.RequireAdmin())
-	// The full editable record stays admin-only: unlike the picker row, it is
-	// the thing the edit form replaces wholesale.
-	taxonomyWrite.Get("/galgame-taxonomy/:family/:id", a.GalgameStaffTaxonomyHandler.Detail)
-	taxonomyWrite.Put("/galgame-tag", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Put("/galgame-official", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Put("/galgame-engine", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Delete("/galgame-tag/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
-	taxonomyWrite.Delete("/galgame-official/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
-	taxonomyWrite.Delete("/galgame-engine/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
-
-	// The taxonomy revision history / single-snapshot / revert proxies (three
-	// routes per entity) were retired in wave 156 (N3): a census of the whole
-	// frontend found no consumer — the composable and its two components were
-	// mounted nowhere — and 03 定案 §4 retires the taxonomy console outright
-	// rather than re-targeting it, so nothing will grow one back. Taxonomy
-	// history now lives only where the editing engine keeps it.
 	//
-	// Series create (POST) + the modal's id→name resolver stay open — the public
-	// /galgame-series page lets any logged-in user create a series; edit / delete
-	// are admin-only.
-	authed.Post("/galgame-series", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	authed.Post("/galgame-series/modal", a.GalgameProxyHandler.ProxyWriteWithToken("POST"))
-	taxonomyWrite.Put("/galgame-series/:id", a.GalgameProxyHandler.ProxyWriteWithToken("PUT"))
-	taxonomyWrite.Delete("/galgame-series/:id", a.GalgameProxyHandler.ProxyWriteWithToken("DELETE"))
+	// The wiki taxonomy staff lane — the /galgame-taxonomy/{family} picker +
+	// read-back pair and the /galgame-tag|official|engine|series write proxies
+	// (public create, admin edit/delete) — retired in wave 169: every upstream
+	// face behind it 404s since wave-161 P5 and 03 定案 §4 retires the taxonomy
+	// console outright rather than re-targeting it. Taxonomy is a curated
+	// registry now; the read lanes above (/galgame-tag etc.) stay, served from
+	// the catalog. Relation edits on a game go through the editing engine's
+	// pickers, which read the same catalog lanes.
 
 	// Toolset (authenticated)
 	authed.Post("/toolset", a.ToolsetHandler.Create)

@@ -136,9 +136,7 @@ type App struct {
 	GalgameCalendarHandler         *galgameHandler.CalendarHandler
 	GalgameDraftsHandler           *galgameHandler.DraftsHandler
 	GalgameProxyHandler            *galgameHandler.GalgameProxyHandler
-	GalgameStaffTaxonomyHandler    *galgameHandler.StaffTaxonomyHandler
 	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
-	GalgameMessageHandler          *galgameHandler.GalgameMessageHandler
 	GalgameClaimReviewHandler      *galgameHandler.ClaimReviewHandler
 	GalgameEditHandler             *galgameHandler.EditHandler
 	ActivityHandler                *activityHandler.ActivityHandler
@@ -177,11 +175,9 @@ func New(cfg *config.Config) *App {
 	messageRepository := msgRepo.NewMessageRepository(db)
 	chatRepository := msgRepo.NewChatRepository(db)
 
-	// Galgame catalog client (shared — user service needs it too). Reads go to
-	// the internal face with the internal-tier X-API-Key; the two sync-cron
-	// feeds (/galgame/messages/feed, /galgame/revisions/recent) ride the same
-	// internal face + key (service identity). Bearer-required endpoints still
-	// use a per-request token forwarded from the user session.
+	// Galgame catalog client (shared — user service needs it too). Single
+	// /v1 face with the service X-API-Key since wave 169 (the wiki's
+	// internal/legacy bases retired with it).
 	gc := client.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
@@ -493,12 +489,6 @@ func New(cfg *config.Config) *App {
 	// Submission flow: submit / claim / patch-draft / delete-draft proxies
 	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
 	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, catalogCli, galgameLocalRepo)
-
-	// Galgame message stream: user notifications + admin queue + per-user
-	// "read up to" cursor. The cron-driven ingestion lives in
-	// galgameClaimSync below.
-	galgameMessageRepo := galgameRepo.NewGalgameMessageRepository(db)
-	galgameMessageSvc := galgameService.NewGalgameMessageService(gc, galgameMessageRepo)
 	// Submission moderation: the pending-claim queue + the four verdicts.
 	galgameClaimReviewSvc := galgameService.NewClaimReviewService(gc, catalogCli)
 	// Cron-driven ingestion of claim-state transitions: local stub lifecycle
@@ -523,7 +513,7 @@ func New(cfg *config.Config) *App {
 
 	// Admin
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
-	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo, gc)
+	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo)
 	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
 	// Runtime permission overrides (permission-first authz, Phase 2 role layer +
 	// Phase 3 user layer). PermissionOverrideSync owns the SINGLE Load path that
@@ -668,13 +658,11 @@ func New(cfg *config.Config) *App {
 		GalgameCalendarHandler:      galgameHandler.NewCalendarHandler(galgameCalendarSvc),
 		GalgameDraftsHandler:        galgameHandler.NewDraftsHandler(galgameDraftsSvc),
 		GalgameProxyHandler:         galgameHandler.NewGalgameProxyHandler(galgameProxySvc),
-		GalgameStaffTaxonomyHandler: galgameHandler.NewStaffTaxonomyHandler(gc),
 		GalgameSubmissionHandler:    galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
-		GalgameMessageHandler:       galgameHandler.NewGalgameMessageHandler(galgameMessageSvc),
 		GalgameClaimReviewHandler:   galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
 		GalgameEditHandler:          galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
 		ActivityHandler:             activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
-		ImageHandler:                imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, gc)),
+		ImageHandler:                imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
 		SearchHandler:               searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),
 		ToolsetHandler:              toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
 		ToolsetPracticalityHandler:  toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),

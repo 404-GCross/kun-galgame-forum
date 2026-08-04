@@ -48,7 +48,7 @@
 | 方法 | 路径 | 状态 | 备注 |
 |---|---|---|---|
 | POST | `/image/topic` | 无问题 | multipart,key `image` |
-| POST | `/image/galgame` | 无问题 | multipart,preset `galgame_banner` |
+| POST | `/image/galgame` | 无问题 | multipart,preset `galgame_banner`;wave 169 起转发 catalog 编辑面上传腿(字节落 site=catalog) |
 
 ## 举报
 
@@ -134,7 +134,7 @@
 | POST | `/galgame/submit` | 已跳过 | raw-body 透传到 wiki;`tag_ids/official_ids/engine_ids/series_id` FE 故意省略(`Galgame.vue:201-203` 跟 `07-submission.md` 明示审核后再用 PR 补) |
 | POST | `/galgame/:gid/claim` | 无问题 | |
 | DELETE | `/galgame/:gid` | 无问题 | |
-| PUT | `/galgame/messages/read-state` | 无问题 | |
+| PUT | ~~`/galgame/messages/read-state`~~ | 已退役 | wave 169 撤除 |
 | POST | `/galgame` (proxy) | 无问题 | wiki 写 |
 | PUT | `/galgame/:gid` (proxy) | 无问题 | wiki 写 |
 | PUT | `/galgame/:gid/prs/:id/merge` | 无问题 | |
@@ -146,20 +146,20 @@
 | POST | `/galgame/:gid/aliases` | 无问题 | |
 | DELETE | `/galgame/:gid/aliases` | 无问题 | |
 | DELETE | `/galgame/:gid/contributors/:id` | 无问题 | |
-| POST | `/galgame-tag` | 无问题 | |
-| PUT | `/galgame-tag` | 已修复 | BE proxy 翻译 `tagId`→`tag_id` |
-| DELETE | `/galgame-tag/:id` | 无问题 | |
-| POST | `/galgame-official` | 无问题 | |
-| PUT | `/galgame-official` | 已修复 | BE proxy 翻译 `officialId`→`official_id` |
-| DELETE | `/galgame-official/:id` | 无问题 | |
-| POST | `/galgame-engine` | 无问题 | |
-| PUT | `/galgame-engine` | 已修复 | BE proxy 翻译 `engineId`→`engine_id` |
-| DELETE | `/galgame-engine/:id` | 无问题 | |
+| POST | ~~`/galgame-tag`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| PUT | ~~`/galgame-tag`~~ | 已修复 | BE proxy 翻译 `tagId`→`tag_id` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| DELETE | ~~`/galgame-tag/:id`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| POST | ~~`/galgame-official`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| PUT | ~~`/galgame-official`~~ | 已修复 | BE proxy 翻译 `officialId`→`official_id` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| DELETE | ~~`/galgame-official/:id`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| POST | ~~`/galgame-engine`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| PUT | ~~`/galgame-engine`~~ | 已修复 | BE proxy 翻译 `engineId`→`engine_id` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| DELETE | ~~`/galgame-engine/:id`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
 | POST | `/galgame-{tag,official,engine,series}/:id/revert` | 无问题 | revert 系列 |
-| POST | `/galgame-series` | 无问题 | FE Container.vue 手工转 `galgame_ids` |
-| POST | `/galgame-series/modal` | 无问题 | |
-| PUT | `/galgame-series/:id` | 无问题 | FE Detail.vue 手工转 `galgame_ids` |
-| DELETE | `/galgame-series/:id` | 无问题 | |
+| POST | ~~`/galgame-series`~~ | 无问题 | FE Container.vue 手工转 `galgame_ids` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| POST | ~~`/galgame-series/modal`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| PUT | ~~`/galgame-series/:id`~~ | 无问题 | FE Detail.vue 手工转 `galgame_ids` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| DELETE | ~~`/galgame-series/:id`~~ | 无问题 | | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
 
 ## 工具集 (Toolset)
 

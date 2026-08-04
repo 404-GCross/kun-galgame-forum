@@ -7,22 +7,22 @@ import (
 
 	"kun-galgame-api/internal/admin/dto"
 	"kun-galgame-api/internal/admin/repository"
-	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/pkg/errors"
 )
 
-// OverviewService produces admin overview/stats responses by combining local
-// DB counts with remote galgame-service stats.
+// OverviewService produces admin overview/stats responses from local DB
+// counts. The remote galgame-service merge (7 wiki-table metrics) retired in
+// wave 169: its /admin/stats source 404s since wave-161 P5 and the tables it
+// counted are dropped — the catalog keeps its own telemetry in its own
+// console, and this overview does not re-plot it.
 type OverviewService struct {
-	overviewRepo  *repository.OverviewRepository
-	galgameClient *client.GalgameClient
+	overviewRepo *repository.OverviewRepository
 }
 
 func NewOverviewService(
 	overviewRepo *repository.OverviewRepository,
-	galgameClient *client.GalgameClient,
 ) *OverviewService {
-	return &OverviewService{overviewRepo: overviewRepo, galgameClient: galgameClient}
+	return &OverviewService{overviewRepo: overviewRepo}
 }
 
 // ──────────────────────────────────────────
@@ -58,31 +58,14 @@ func localModels() []localModel {
 	}
 }
 
-type galgameModel struct {
-	Key, Label string
-}
-
-func galgameModels() []galgameModel {
-	return []galgameModel{
-		{"galgame_tag", "Galgame 标签"},
-		{"galgame_official", "Galgame 会社"},
-		{"galgame_engine", "Galgame 引擎"},
-		{"galgame_series", "Galgame 系列"},
-		{"galgame_link", "Galgame 链接"},
-		{"galgame_pr", "Galgame PR"},
-		{"galgame_revision", "Galgame 编辑历史"},
-	}
-}
-
 // ──────────────────────────────────────────
 // GetOverview — GET /admin/overview/all
 // ──────────────────────────────────────────
 
-func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.OverviewItem, *errors.AppError) {
+func (s *OverviewService) GetOverview(ctx context.Context) ([]dto.OverviewItem, *errors.AppError) {
 	locals := localModels()
-	galgames := galgameModels()
 
-	items := make([]dto.OverviewItem, 0, len(locals)+len(galgames))
+	items := make([]dto.OverviewItem, 0, len(locals))
 	for _, m := range locals {
 		var (
 			count int64
@@ -103,19 +86,6 @@ func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.
 		})
 	}
 
-	// Merge galgame totals (non-blocking — on error we still emit zero rows).
-	var totals map[string]int64
-	if galgameStats, err := s.galgameClient.GetAdminStats(ctx, 1, token); err == nil && galgameStats != nil {
-		totals = galgameStats.Totals
-	}
-	for _, m := range galgames {
-		items = append(items, dto.OverviewItem{
-			Name:  m.Key,
-			Label: m.Label,
-			Count: totals[m.Key],
-		})
-	}
-
 	return items, nil
 }
 
@@ -123,7 +93,7 @@ func (s *OverviewService) GetOverview(ctx context.Context, token string) ([]dto.
 // GetStats — GET /admin/overview/stats
 // ──────────────────────────────────────────
 
-func (s *OverviewService) GetStats(ctx context.Context, days int, token string) ([]dto.DailyStatRow, *errors.AppError) {
+func (s *OverviewService) GetStats(ctx context.Context, days int) ([]dto.DailyStatRow, *errors.AppError) {
 	if days == 0 {
 		days = 30
 	}
@@ -138,7 +108,6 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 	since = time.Date(since.Year(), since.Month(), since.Day(), 0, 0, 0, 0, since.Location())
 
 	locals := localModels()
-	galgames := galgameModels()
 
 	// date -> key -> count
 	dateMap := make(map[string]map[string]int64)
@@ -164,38 +133,10 @@ func (s *OverviewService) GetStats(ctx context.Context, days int, token string) 
 		}
 	}
 
-	// Merge galgame daily stats (non-blocking).
-	if galgameStats, err := s.galgameClient.GetAdminStats(ctx, days, token); err == nil && galgameStats != nil {
-		for _, day := range galgameStats.Daily {
-			date, _ := day["date"].(string)
-			if date == "" {
-				continue
-			}
-			if dateMap[date] == nil {
-				dateMap[date] = make(map[string]int64)
-			}
-			for _, w := range galgames {
-				v, ok := day[w.Key]
-				if !ok {
-					continue
-				}
-				switch n := v.(type) {
-				case float64:
-					dateMap[date][w.Key] = int64(n)
-				case int64:
-					dateMap[date][w.Key] = n
-				}
-			}
-		}
-	}
-
 	// Build sorted flat array: [{date, user, topic, …}, …]
-	allKeys := make([]string, 0, len(locals)+len(galgames))
+	allKeys := make([]string, 0, len(locals))
 	for _, t := range locals {
 		allKeys = append(allKeys, t.Name)
-	}
-	for _, w := range galgames {
-		allKeys = append(allKeys, w.Key)
 	}
 
 	dates := make([]string, 0, len(dateMap))

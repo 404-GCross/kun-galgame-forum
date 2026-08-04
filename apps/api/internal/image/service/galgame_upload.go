@@ -1,13 +1,12 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"io"
-	"mime/multipart"
 
-	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/catalogclient"
+	kunErrors "kun-galgame-api/pkg/errors"
 )
 
 // galgame_upload.go — U2 cover/screenshot upload path.
@@ -15,18 +14,22 @@ import (
 // Distinct from UploadTopicImage (returns a `/image/<hash>` inline token):
 // galgame covers/screenshots reference image_service by `image_hash`,
 // which means we MUST upload through image_service first to obtain the
-// hash before the user can submit a PUT/PR carrying that hash.
+// hash before the user can submit an edit carrying that hash.
+//
+// The bytes go through the CATALOG's edit-face upload leg (wave 169) rather
+// than forum's own image client: uploads land under the catalog image-service
+// identity (site "catalog"), the scope the catalog's daily refping keeps
+// alive — forum's site=kungal could not keep a catalog-referenced image from
+// the GC. The wiki-era proxy this replaces (POST /galgame/image) retired with
+// the wiki in wave-161 P5.
 //
 // Allowed presets are constrained at the handler boundary; this layer
-// trusts its caller. image_service itself also gates presets against
-// the calling site's `image_allowed_presets`, so a wrong preset returns
-// a 4xx from upstream rather than silently mis-storing.
-//
-// Quota / size / format validation lives in image_service (see
-// docs/image_service/03-api-design.md §1). We only forward + classify.
+// trusts its caller. The catalog constrains them again (closed set), and
+// image_service gates them per client a third time, so a wrong preset is a
+// 4xx from upstream rather than a silent mis-store.
 
 // UploadGalgameResult is the slim response surface the FE consumes for a
-// new cover/screenshot row: the hash to attach to the galgame wire +
+// new cover/screenshot row: the hash to attach to the edit payload +
 // the CDN URL it can render immediately (saves a hash→URL round-trip).
 type UploadGalgameResult struct {
 	Hash         string            `json:"hash"`
@@ -38,75 +41,36 @@ type UploadGalgameResult struct {
 	Deduplicated bool              `json:"deduplicated"`
 }
 
-// UploadGalgameImage proxies a galgame cover/screenshot to the GALGAME's canonical
-// upload endpoint (POST /galgame/image), forwarding the user's Bearer token.
-// The galgame uploads under its own image client (site=galgame_wiki) and returns
-// the hash, so every galgame image is OWNED by the galgame — forum no longer
-// uploads galgame images under its own site=kungal (which the site-scoped
-// galgame reference-ping can't keep alive). Topic/message inline images still
-// go through forum's local image_service client (those are forum's own content).
-//
-// userID is kept for logging / future per-user accounting; the file is
-// re-encoded as multipart {file, preset} and forwarded byte-for-byte.
+// UploadGalgameImage forwards a galgame cover/screenshot to the catalog's
+// edit-face upload leg and adapts the result. userID is the asserted end
+// user, stamped into the image audit trail upstream.
 func (s *ImageService) UploadGalgameImage(
 	ctx context.Context,
 	userID int,
-	token string,
 	r io.Reader,
 	filename, preset string,
-) (*UploadGalgameResult, *errors.AppError) {
-	if s.galgameClient == nil {
-		return nil, errors.ErrInternal("Galgame 客户端未配置")
+) (*UploadGalgameResult, *kunErrors.AppError) {
+	if s.catalogClient == nil || !s.catalogClient.Configured() {
+		return nil, kunErrors.ErrInternal("Catalog 客户端未配置")
 	}
 
-	// Re-encode the upload as multipart {file, preset}.
-	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-	if err := mw.WriteField("preset", preset); err != nil {
-		return nil, errors.ErrInternal("构建上传请求失败")
-	}
-	fw, err := mw.CreateFormFile("file", filename)
+	res, err := s.catalogClient.UploadEditImage(ctx, r, filename, preset, userID)
 	if err != nil {
-		return nil, errors.ErrInternal("构建上传请求失败")
-	}
-	if _, err := io.Copy(fw, r); err != nil {
-		return nil, errors.ErrInternal("读取上传文件失败")
-	}
-	if err := mw.Close(); err != nil {
-		return nil, errors.ErrInternal("构建上传请求失败")
-	}
-
-	// PostWithToken forwards the multipart body verbatim (boundary preserved)
-	// + the user's Bearer, and returns the galgame's `data` (or its error
-	// code/status, surfaced to the caller unchanged).
-	data, appErr := s.galgameClient.PostWithToken(
-		ctx, "/galgame/image", token, buf.Bytes(), mw.FormDataContentType(),
-	)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	// Galgame returns image_service's UploadResult (snake_case wire tags); adapt
-	// it to the FE-facing UploadGalgameResult.
-	var uploaded struct {
-		Hash         string            `json:"hash"`
-		URL          string            `json:"url"`
-		VariantURLs  map[string]string `json:"variant_urls"`
-		Width        int               `json:"width"`
-		Height       int               `json:"height"`
-		SizeBytes    int64             `json:"size_bytes"`
-		Deduplicated bool              `json:"deduplicated"`
-	}
-	if err := json.Unmarshal(data, &uploaded); err != nil {
-		return nil, errors.ErrInternal("解析 Galgame 上传响应失败")
+		// A readable upstream envelope (quota, moderation, bad preset) is
+		// worth relaying; transport-level failures stay generic.
+		var apiErr *catalogclient.EditAPIError
+		if errors.As(err, &apiErr) && apiErr.Message != "" {
+			return nil, kunErrors.ErrBadRequest(apiErr.Message)
+		}
+		return nil, kunErrors.ErrInternal("上传 Galgame 图片失败")
 	}
 	return &UploadGalgameResult{
-		Hash:         uploaded.Hash,
-		URL:          uploaded.URL,
-		Width:        uploaded.Width,
-		Height:       uploaded.Height,
-		SizeBytes:    uploaded.SizeBytes,
-		VariantURLs:  uploaded.VariantURLs,
-		Deduplicated: uploaded.Deduplicated,
+		Hash:         res.Hash,
+		URL:          res.URL,
+		Width:        res.Width,
+		Height:       res.Height,
+		SizeBytes:    res.SizeBytes,
+		VariantURLs:  res.VariantURLs,
+		Deduplicated: res.Deduplicated,
 	}, nil
 }

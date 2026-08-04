@@ -393,10 +393,33 @@ func TestCatalogBridge_LookupIsMemoized(t *testing.T) {
 	}
 }
 
+// faceRecorder captures the last request a fake service received (single-shot
+// sibling of catalogRecorder, kept for the path/credential pins below).
+type faceRecorder struct {
+	mu     sync.Mutex
+	path   string
+	apiKey string
+	auth   string
+}
+
+func (r *faceRecorder) server(t *testing.T) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		r.mu.Lock()
+		r.path = req.URL.Path
+		r.apiKey = req.Header.Get("X-API-Key")
+		r.auth = req.Header.Get("Authorization")
+		r.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
 // TestCatalogFace_PathsAndCredentials pins that every re-anchored lane talks to
-// the catalog face under /v1 with the service key, and that the two SURVIVING
-// wiki faces keep their own bases — the /internal ownership op and the /api
-// staff read-back are not part of the deprecated face and must not move.
+// the catalog face under /v1 with the service key. (The wiki bases these lanes
+// once shared retired with the wiki; the client is single-faced since wave 169.)
 func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	rec := &faceRecorder{}
 	srv := rec.server(t)
@@ -448,42 +471,6 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 		}
 	})
 
-	t.Run("taxonomy picker → surviving /internal face, dual credential", func(t *testing.T) {
-		// A2-1g: the picker's door is the CONTRIBUTOR one. Pointing it at the
-		// staff /api door instead is not a cosmetic difference — that door is
-		// gated on taxonomy.edit_any, so an ordinary contributor filling in the
-		// submission form would get a 403 from the only lane that can turn a
-		// tag name into the wiki id their write payload must carry.
-		if _, err := c.TaxonomyPickerSearch(ctx, "tag", "恋爱", "user-jwt"); err != nil {
-			t.Fatalf("TaxonomyPickerSearch: %v", err)
-		}
-		if rec.path != "/internal/galgame/taxonomy/tag/search" {
-			t.Errorf("path = %q, want /internal/galgame/taxonomy/tag/search", rec.path)
-		}
-		// Both credentials: the service key admits the call to the internal
-		// face, the Bearer is what the signed-in gate reads.
-		if rec.apiKey != "nm_test_key" {
-			t.Errorf("X-API-Key = %q, want nm_test_key", rec.apiKey)
-		}
-		if rec.auth != "Bearer user-jwt" {
-			t.Errorf("Authorization = %q, want the caller's Bearer", rec.auth)
-		}
-	})
-
-	t.Run("staff read-back stays on the surviving /api face, no key", func(t *testing.T) {
-		if _, err := c.StaffTaxonomyDetail(ctx, "official", "12", "staff-jwt"); err != nil {
-			t.Fatalf("StaffTaxonomyDetail: %v", err)
-		}
-		if rec.path != "/api/official/12" {
-			t.Errorf("path = %q, want /api/official/12", rec.path)
-		}
-		if rec.apiKey != "" {
-			t.Errorf("X-API-Key = %q, want empty on the legacy staff face", rec.apiKey)
-		}
-		if rec.auth != "Bearer staff-jwt" {
-			t.Errorf("Authorization = %q, want the staff Bearer", rec.auth)
-		}
-	})
 }
 
 // TestCatalogMemberGIDs_PublishedMembersOnly pins the entity-page member walk's

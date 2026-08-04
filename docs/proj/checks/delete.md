@@ -65,10 +65,10 @@
 | `/galgame/:gid/links` | 无问题 | wiki 端 body 含 `link_id`,FE 已对齐 snake_case |
 | `/galgame/:gid/aliases` | 无问题 | wiki 端 body 含 `alias`,FE 已对齐 |
 | `/galgame/:gid/contributors/:id` | 无问题 | 路径删除,无 body |
-| `/galgame-tag/:id` | 无问题 | 路径删除,支持 `?force=true` 二阶段(query 透传给 wiki) |
-| `/galgame-official/:id` | 无问题 | 同上 |
-| `/galgame-engine/:id` | 无问题 | 同上 |
-| `/galgame-series/:id` | 无问题 | 路径删除,无 body |
+| ~~`/galgame-tag/:id`~~ | 无问题 | 路径删除,支持 `?force=true` 二阶段(query 透传给 wiki) | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-official/:id`~~ | 无问题 | 同上 | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-engine/:id`~~ | 无问题 | 同上 | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-series/:id`~~ | 无问题 | 路径删除,无 body | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
 
 ## 工具集(3)
 

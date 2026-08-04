@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/image/repository"
+	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
 )
@@ -19,22 +19,24 @@ type ImageService struct {
 	repo *repository.ImageRepository
 	// imgCli is the image_service client for forum's OWN content images —
 	// topic + message inline images (site=kungal). Galgame covers/screenshots
-	// no longer go through it: they proxy to the galgame (see galgameClient) so the
-	// galgame owns all galgame image bytes. Nil-able: when the credentials are
-	// unset, topic/message uploads return a clear "未配置" error.
+	// no longer go through it: they ride the catalog edit face (see
+	// catalogClient) so the catalog owns all galgame image bytes. Nil-able:
+	// when the credentials are unset, topic/message uploads return a clear
+	// "未配置" error.
 	imgCli *imageclient.Client
-	// galgameClient proxies galgame cover/screenshot uploads to the galgame's
-	// canonical POST /galgame/image (uploaded under site=galgame_wiki), so
-	// every galgame image is owned by the galgame — not forum's site=kungal.
-	galgameClient *client.GalgameClient
+	// catalogClient carries galgame cover/screenshot uploads to the catalog
+	// edit face (wave 169), which uploads under the catalog image identity —
+	// so every galgame image byte is owned by the catalog scope its refping
+	// keeps alive, not forum's site=kungal.
+	catalogClient *catalogclient.Client
 }
 
 func NewImageService(
 	repo *repository.ImageRepository,
 	imgCli *imageclient.Client,
-	galgameClient *client.GalgameClient,
+	catalogClient *catalogclient.Client,
 ) *ImageService {
-	return &ImageService{repo: repo, imgCli: imgCli, galgameClient: galgameClient}
+	return &ImageService{repo: repo, imgCli: imgCli, catalogClient: catalogClient}
 }
 
 // UploadCoverResult is the image_service result returned to cover/banner/icon

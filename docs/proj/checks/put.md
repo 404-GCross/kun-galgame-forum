@@ -66,7 +66,7 @@
 
 | 路径 | 状态 | 备注 |
 |---|---|---|
-| `/galgame/messages/read-state` | 无问题 | wiki 消息读取游标 |
+| ~~`/galgame/messages/read-state`~~ | 已退役 | wiki 消息读取游标 — wave 169 撤除(上游 feed 随 wiki 退役) |
 | `/galgame/:gid/like` | 已修复 | 清死 body(BE 只用 path) |
 | `/galgame/:gid/favorite` | 已修复 | 清死 body |
 | `/galgame/:gid/comment` | 无问题 | `commentId+content` 对齐,content max=5000 |
@@ -91,10 +91,10 @@
 | `/galgame/:gid` | 无问题 | wiki 写代理(PATCH draft 也走这里) |
 | `/galgame/:gid/prs/:id/merge` | 无问题 | PR 合并,wiki 端鉴权 |
 | `/galgame/:gid/prs/:id/decline` | 无问题 | PR 拒绝 |
-| `/galgame-tag` | 已修复 | BE proxy 自动翻译 `tagId → tag_id` 给 wiki(见 `wiki_service.go renameTaxonomyIDField`) |
-| `/galgame-official` | 已修复 | BE proxy 翻译 `officialId → official_id` |
-| `/galgame-engine` | 已修复 | BE proxy 翻译 `engineId → engine_id` |
-| `/galgame-series/:id` | 无问题 | FE `Detail.vue:38` 手工把 `galgameIds → galgame_ids` |
+| ~~`/galgame-tag`~~ | 已修复 | BE proxy 自动翻译 `tagId → tag_id` 给 wiki(见 `wiki_service.go renameTaxonomyIDField`) | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-official`~~ | 已修复 | BE proxy 翻译 `officialId → official_id` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-engine`~~ | 已修复 | BE proxy 翻译 `engineId → engine_id` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| ~~`/galgame-series/:id`~~ | 无问题 | FE `Detail.vue:38` 手工把 `galgameIds → galgame_ids` | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
 
 ## 工具集(4)
 
@@ -151,9 +151,9 @@
 | 8 | `/galgame/:gid/like` | 清死 body |
 | 9 | `/galgame/:gid/favorite` | 清死 body |
 | 10 | `/galgame/:gid/comment/like` | 字段名 `galgameCommentId → commentId` |
-| 11 | `/galgame-tag` | BE proxy 自动 camel→snake |
-| 12 | `/galgame-official` | 同上 |
-| 13 | `/galgame-engine` | 同上 |
+| 11 | ~~`/galgame-tag`~~ | BE proxy 自动 camel→snake | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| 12 | ~~`/galgame-official`~~ | 同上 | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
+| 13 | ~~`/galgame-engine`~~ | 同上 | ← 已退役 wave 169(词表写路径/staff lane 随 wiki 退役撤除)
 | 14 | `/toolset/:id/practicality` | 删多余 `toolsetId` 字段 |
 | 15 | `/toolset/:id/resource` | 返回 resource 而非 OKMessage;schema 加 type superRefine |
 | 16 | `/doc/article` | model + DTO JSON tag camelCase 统一 |

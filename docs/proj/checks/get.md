@@ -193,9 +193,9 @@
 
 | 路径 | 鉴权 | Handler 类型 | 状态 | 备注 |
 |---|---|---|---|---|
-| `GET /galgame/messages/mine` | 登录 (`authed`) | proxy (with Bearer) | 无问题 | "我收到的 wiki 通知" (approved/declined/banned/unbanned 等) |
-| `GET /galgame/messages/read-state` | 登录 (`authed`) | kungal-native | 无问题 | per-user HWM cursor (wiki_message_read_state) |
-| `GET /admin/galgame/messages` | 版主 (`galgameAdmin`) | proxy (with Bearer) | 无问题 | admin 审核队列 |
+| ~~`GET /galgame/messages/mine`~~ | — | — | 已退役 | wiki 通知页 wave 169 撤除(claim_event feed + 本地消息取代) |
+| ~~`GET /galgame/messages/read-state`~~ | — | — | 已退役 | wave 169 撤除;wiki_message_read_state 表留作历史 |
+| ~~`GET /admin/galgame/messages`~~ | — | — | 已退役 | wave 169 撤除(上游 404;claim.review 面取代) |
 
 ## 11. 网站 (website)
 
@@ -267,7 +267,7 @@
 |---|---|---|---|---|
 | `GET /admin/overview/all` | 管理 (`admin`, role >= 3) | kungal-native | 无问题 | 后台数据总览 (user/topic/galgame/comment 增长) |
 | `GET /admin/overview/stats` | 管理 (`admin`, role >= 3) | kungal-native | 无问题 | 后台统计数字快照 |
-| `GET /admin/galgame/messages` | 版主 (`galgameAdmin`, role >= 2) | proxy | 无问题 | (重复列出，与 §10 一致) admin galgame 消息队列 |
+| ~~`GET /admin/galgame/messages`~~ | — | — | 已退役 | (重复列出,与 §10 一致)wave 169 撤除 |
 | `GET /admin/setting/register` | 公开 | kungal-native | 无问题 | (重复列出，与 §1 一致) 公开读注册策略 |
 
 ---
