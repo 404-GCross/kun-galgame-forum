@@ -38,10 +38,14 @@ const displayTags = computed(() => {
   return data.value!.tags
 })
 
-// True when we're showing the FULL paginated tag list (the BE returns the
-// SFW-filtered `total`, so the pager is correct): single mode with no active
-// search, or multi mode with no tags selected. A single-mode search shows the
-// unpaginated /search results instead, so no pager there.
+// True when we're showing the FULL paginated tag list: single mode with no
+// active search, or multi mode with no tags selected. A single-mode search
+// shows the unpaginated /search results instead, so no pager there.
+//
+// The pager and the 共 N 个标签 count are both honest here — the BE pages out of
+// a precomputed index, so `total` counts the terms THIS visitor can reach
+// (adult vocabulary and junk terms already removed) rather than the whole
+// upstream vocabulary, and every page but the last comes back full.
 const isBrowsingList = computed(() =>
   searchMode.value === 'single'
     ? !searchQuery.value.trim()

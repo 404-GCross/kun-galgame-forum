@@ -52,75 +52,9 @@ type indexedSeries struct {
 	hasNSFW *bool
 }
 
-// seriesIndexCache holds the last successful build.
-type seriesIndexCache struct {
-	mu        sync.Mutex
-	rows      []indexedSeries
-	built     time.Time
-	buildingC chan struct{} // non-nil while a rebuild is in flight
-}
-
 // indexRows returns the cached index, rebuilding when it is missing or stale.
-//
-// A stale index is returned immediately and refreshed in the background; only
-// the very first caller (or one whose build failed) waits.
 func (s *SeriesService) indexRows(ctx context.Context) ([]indexedSeries, *errors.AppError) {
-	c := &s.index
-	c.mu.Lock()
-	rows, age, building := c.rows, time.Since(c.built), c.buildingC
-	if rows != nil && age < seriesIndexTTL {
-		c.mu.Unlock()
-		return rows, nil
-	}
-	if building != nil {
-		// Someone is already on it: serve what we have rather than queue up a
-		// second identical fan-out behind the first.
-		c.mu.Unlock()
-		if rows != nil {
-			return rows, nil
-		}
-		<-building
-		c.mu.Lock()
-		rows = c.rows
-		c.mu.Unlock()
-		if rows == nil {
-			return nil, errors.ErrInternal("获取 Galgame 系列列表失败")
-		}
-		return rows, nil
-	}
-	done := make(chan struct{})
-	c.buildingC = done
-	c.mu.Unlock()
-
-	if rows != nil {
-		// Stale but usable: refresh out of band, on a context that outlives
-		// this request — the caller's is cancelled the moment it responds.
-		go func() {
-			built, _ := s.buildIndex(context.WithoutCancel(ctx))
-			c.finish(built, done)
-		}()
-		return rows, nil
-	}
-
-	built, appErr := s.buildIndex(ctx)
-	c.finish(built, done)
-	if appErr != nil {
-		return nil, appErr
-	}
-	return built, nil
-}
-
-// finish publishes a rebuild's result and releases the in-flight marker. A
-// failed build (nil) keeps the previous rows and the previous timestamp, so the
-// next caller retries instead of caching an outage.
-func (c *seriesIndexCache) finish(rows []indexedSeries, done chan struct{}) {
-	c.mu.Lock()
-	if rows != nil {
-		c.rows, c.built = rows, time.Now()
-	}
-	c.buildingC = nil
-	c.mu.Unlock()
-	close(done)
+	return s.index.get(ctx, seriesIndexTTL, s.buildIndex)
 }
 
 // buildIndex walks the facet and builds every card that has something to show.

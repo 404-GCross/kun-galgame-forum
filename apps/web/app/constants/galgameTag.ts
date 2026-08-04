@@ -9,7 +9,9 @@ export type KunGalgameTagCategory = (typeof KUN_GALGAME_TAG_TYPE)[number]
 
 // Public tag categories after the catalog re-anchoring. `content` / `meta` are
 // the canonical vocabulary's own kinds; `sexual` is reconstructed from the
-// hidden tier, because that is the one distinction the SFW view acts on.
+// tag's own adult flag, the one distinction the SFW view acts on. It is NOT the
+// hidden tier — that is an unrelated do-not-display axis (junk terms), and the
+// backend read the two apart in the same wave the flag was populated.
 export const KUN_GALGAME_TAG_CATEGORY_MAP: Record<string, string> = {
   content: '游戏内容',
   meta: '作品属性',

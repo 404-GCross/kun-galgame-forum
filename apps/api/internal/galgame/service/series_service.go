@@ -25,7 +25,7 @@ type SeriesService struct {
 	// resource data). Same arrangement as EngineService.
 	galgameSvc *GalgameService
 	// index caches the built browse cards — see series_index.go.
-	index seriesIndexCache
+	index staleCache[indexedSeries]
 }
 
 func NewSeriesService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *SeriesService {

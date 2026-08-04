@@ -33,6 +33,8 @@ type TagService struct {
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
 	// over a tag's member ids for the detail page. See GetDetail.
 	galgameSvc *GalgameService
+	// index caches the browse vocabulary — see tag_index.go.
+	index staleCache[indexedTag]
 }
 
 func NewTagService(galgameClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *TagService {
@@ -112,8 +114,11 @@ func (s *TagService) Search(
 		return nil, appErr
 	}
 
-	// Tier rides the hit; `sexual` does not, so it takes the memoized detail
-	// lookup — and only when there is a gate to apply.
+	// Tier rides the hit; `sexual` does not, so it is resolved separately — and
+	// only when there is a gate to apply. The browse index already holds the
+	// answer for every tag that has works, which is nearly every tag anyone
+	// searches for; only the empty terms it does not cover fall back to the
+	// memoized per-tag detail lookup.
 	kept := make([]client.CatalogEntityHit, 0, len(hits))
 	ids := make([]int, 0, len(hits))
 	for _, h := range hits {
@@ -125,7 +130,11 @@ func (s *TagService) Search(
 	}
 	sexual := map[int]bool{}
 	if isSFW && len(ids) > 0 {
-		sexual = s.galgameClient.CatalogSexualTagIDs(ctx, ids)
+		indexed, missing := s.sexualByID(ctx, ids)
+		sexual = indexed
+		for id, isSexual := range s.galgameClient.CatalogSexualTagIDs(ctx, missing) {
+			sexual[id] = isSexual
+		}
 	}
 
 	items := make([]dto.TaxonomySearchItem, 0, len(kept))
@@ -201,47 +210,44 @@ func (s *TagService) GetByMultiTag(
 
 // GetList — GET /galgame-tag
 //
-// Server-side paged over the catalog tag browse lane. `total` is the whole
-// filtered vocabulary (an identity count, so it does not move with the NSFW
-// cookie); each row's work_count IS nsfw-aware, so a count never disagrees with
-// the member list the same caller can page.
+// Paged out of the precomputed vocabulary index (tag_index.go), most-used
+// first. Both of this list's rules — drop the hidden tier, drop adult terms
+// from a SFW reader — are unaskable upstream, so cutting the page AFTER them is
+// what makes `total` mean "rows you can reach" and every page come back full.
 //
-// has_works=1 drops the empty vocabulary — 114 of the 1,744 canonical tags have
-// no works at all, and a browse page of "+ 0" chips is a list of dead ends. The
-// filter is the same predicate upstream counts with, so "count > 0" and "row
-// present" cannot drift, and `total` converges with the rows rather than
-// promising pages that filter away to nothing.
+// `total` therefore MOVES with the NSFW cookie. It is the count of what this
+// caller can page, which is the only number a pager can be built on; the size
+// of the vocabulary as an identity set is not a thing this list ever showed.
 func (s *TagService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagListPage, *errors.AppError) {
-	base := client.OpenPopulation(url.Values{"has_works": {"1"}})
-	rows, total, appErr := s.galgameClient.CatalogTaxonomyPageAt(ctx, "tags", base,
-		atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 100))
+	index, appErr := s.indexRows(ctx)
 	if appErr != nil {
 		return nil, appErr
 	}
-	tags := make([]dto.TagListItem, 0, len(rows))
-	for _, t := range rows {
-		// Hidden-tier tags leave the browse vocabulary entirely — upstream is
-		// making that tier its junk/do-not-display marker, and a page of junk
-		// terms is worse than a short page. Like the SFW drop below this runs
-		// AFTER pagination (the lane filters on tier equality, not exclusion),
-		// so a page can come back under-filled while `total` stays the whole
-		// vocabulary. That asymmetry is the list's long-standing contract —
-		// consumers page by `total`, never by "was this page full".
-		if t.Tier == client.TagTierHidden {
+
+	tags := make([]dto.TagListItem, 0, len(index))
+	for _, t := range index {
+		if isSFW && t.sexual {
 			continue
 		}
-		category := tagCategory(t.Kind, t.Sexual)
-		if isSFW && category == "sexual" {
-			continue
-		}
-		tags = append(tags, dto.TagListItem{
-			ID: int(t.ID), Name: t.Label(), Category: category,
-			GalgameCount: t.WorkCount,
-		})
+		tags = append(tags, t.item)
+	}
+	total := int64(len(tags))
+
+	page, limit := atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 100)
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 100
+	}
+	if start := (page - 1) * limit; start >= len(tags) {
+		tags = nil
+	} else {
+		tags = tags[start:min(start+limit, len(tags))]
 	}
 	return &dto.TagListPage{Tags: tags, Total: total}, nil
 }
