@@ -40,6 +40,15 @@ type CatalogTaxonomyItem struct {
 	// vocabulary carries NO such axis (a tag minted purely from Bangumi /
 	// DLsite folksonomy), NOT an assertion that the tag is safe.
 	Sexual bool `json:"sexual"`
+	// HasNSFW says whether the SERIES contains any adult member — the one
+	// question a grouping raises that a per-work gate cannot answer, since
+	// filtering the members of a mixed series leaves a fragment rather than a
+	// series. Series lane only.
+	//
+	// A POINTER because absent ≠ false: a catalog that predates the field
+	// would otherwise report every series as clean and put r18 covers in front
+	// of SFW readers. nil = unanswered, and the caller probes instead.
+	HasNSFW *bool `json:"has_nsfw"`
 }
 
 // TagTierHidden is the canonical vocabulary's "do not display" tier. Upstream
@@ -118,7 +127,9 @@ type CatalogEngineDetail struct {
 // Intros are NOT merged to one row per language upstream, so the first row of
 // the preferred language is the one to render.
 type CatalogSeriesDetail struct {
-	ID          int64  `json:"id"`
+	ID int64 `json:"id"`
+	// HasNSFW — see CatalogTaxonomyItem.HasNSFW. Pointer for the same reason.
+	HasNSFW     *bool  `json:"has_nsfw"`
 	DisplayName string `json:"display_name"`
 	Intros      []struct {
 		Lang   string `json:"lang"`

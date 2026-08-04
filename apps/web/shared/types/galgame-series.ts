@@ -11,9 +11,9 @@
 
 import type { GalgameCard } from './galgame'
 
-/** One row of the series index. The facet has no search of its own (no
- * Meilisearch index behind it), so the whole set arrives at once and the
- * name filter runs in the browser — see SeriesService.GetList. */
+/** One row of the bare `/galgame-series` lane: the whole facet at once, no
+ * samples. The editor's series picker reads this one — it has no search index
+ * behind it, so the picker walks the list and filters in the browser. */
 export interface GalgameSeriesItem {
   id: number
   name: string
@@ -21,6 +21,28 @@ export interface GalgameSeriesItem {
    * subset the page behind the link renders. The other three indexes carry the
    * same number with the same caveat. */
   galgame_count: number
+}
+
+/** One member work behind a series card: what the cover montage fans out and
+ * what the "包含 …" line names. Not a GalgameCard — the montage needs no
+ * views, likes or local enrichment. */
+export interface GalgameSeriesSample {
+  name: KunLanguage
+  effective_banner_hash?: string
+  effective_banner_url?: string
+  effective_banner_thumbhash?: string
+}
+
+/** The rich card, on the series index and on a game's detail page. */
+export interface GalgameSeriesCard {
+  id: number
+  name: string
+  /** Read off the SAMPLE, not off the series — the catalog has no series-level
+   * content verdict, so this means "at least one of the works shown here is
+   * r18", which is what the chip sits next to. */
+  is_nsfw: boolean
+  galgame_count: number
+  sample_galgame: GalgameSeriesSample[]
 }
 
 /** A catalog series entity page: identity + the forum-local, filterable subset

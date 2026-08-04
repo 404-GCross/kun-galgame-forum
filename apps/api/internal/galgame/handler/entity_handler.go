@@ -3,6 +3,7 @@ package handler
 import (
 	"net/url"
 	"strconv"
+	"strings"
 
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/pkg/errors"
@@ -123,6 +124,31 @@ func (h *EntityHandler) GetSeriesList(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	return response.OK(c, items)
+}
+
+// GetSeriesCards — GET /galgame-series/cards
+//
+// The index's rich cards, and the same cards on a game's detail page when
+// `ids` names them. Must be registered BEFORE /galgame-series/:id, which would
+// otherwise swallow "cards" as an id.
+func (h *EntityHandler) GetSeriesCards(c fiber.Ctx) error {
+	ids := []int{}
+	for raw := range strings.SplitSeq(fiber.Query(c, "ids", ""), ",") {
+		if id, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil && id > 0 {
+			ids = append(ids, id)
+		}
+	}
+	page, appErr := h.seriesService.GetCards(
+		c.Context(),
+		ids,
+		fiber.Query(c, "page", 1),
+		fiber.Query(c, "limit", 12),
+		utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, page)
 }
 
 // GetSeriesDetail — GET /galgame-series/:id (catalog series id)

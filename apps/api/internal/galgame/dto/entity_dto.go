@@ -167,6 +167,39 @@ type SeriesListItem struct {
 	GalgameCount int    `json:"galgame_count"`
 }
 
+// SeriesSample is one member work as it appears in a series card's cover
+// montage: the name to list and the head image to fan out, nothing else. The
+// card shows at most five, so this is deliberately not a GalgameCard — the
+// montage needs no views, no likes and no local enrichment.
+type SeriesSample struct {
+	Name                     KunLanguage `json:"name"`
+	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
+	EffectiveBannerThumbhash string      `json:"effective_banner_thumbhash,omitempty"`
+}
+
+// SeriesCard is the rich index/panel card: identity, member count, and a
+// five-work sample to render the montage and the "包含 …" line.
+type SeriesCard struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	// IsNSFW is read off the SAMPLE, not off the series: the catalog has no
+	// series-level content verdict, so this says "at least one of the works
+	// shown here is r18" — which is exactly what the chip sits next to.
+	IsNSFW bool `json:"is_nsfw"`
+	// GalgameCount is upstream's member count (the whole catalogue), while the
+	// page behind the card lists the forum-local subset. Same caveat the other
+	// three indexes carry.
+	GalgameCount  int            `json:"galgame_count"`
+	SampleGalgame []SeriesSample `json:"sample_galgame"`
+}
+
+// SeriesCardPage is the paged index of series cards.
+type SeriesCardPage struct {
+	Series []SeriesCard `json:"series"`
+	Total  int64        `json:"total"`
+}
+
 // SeriesDetail is the series entity page: the series' identity plus the
 // forum-local, filterable subset of its member works — the same shape the
 // tag / official / engine pages carry, so the four render through one set of

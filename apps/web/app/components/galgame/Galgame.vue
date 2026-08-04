@@ -163,6 +163,11 @@ const hasContributorCard = computed(
               </div>
 
               <GalgameGallery :screenshots="galgame.screenshots" />
+
+              <GalgameSeriesPanel
+                v-if="galgame.series?.length"
+                :series="galgame.series"
+              />
             </KunTabPanel>
 
             <KunTabPanel value="resource" :loading="resourceLoading">
