@@ -122,6 +122,12 @@ export const kunLayoutItem: KunLayoutItem[] = [
         icon: 'carbon:ibm-engineering-lifecycle-mgmt',
         router: '/galgame/engine',
         label: 'Galgame 引擎'
+      },
+      {
+        name: 'galgame-series',
+        icon: 'lucide:layers',
+        router: '/galgame/series',
+        label: 'Galgame 系列'
       }
     ]
   },
@@ -431,6 +437,11 @@ export const kunSidebarRail: KunRailGroup[] = [
             label: 'Galgame 引擎',
             router: '/galgame/engine',
             icon: 'carbon:ibm-engineering-lifecycle-mgmt'
+          },
+          {
+            label: 'Galgame 系列',
+            router: '/galgame/series',
+            icon: 'lucide:layers'
           }
         ]
       }

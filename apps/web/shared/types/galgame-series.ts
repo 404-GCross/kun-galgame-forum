@@ -11,6 +11,18 @@
 
 import type { GalgameCard } from './galgame'
 
+/** One row of the series index. The facet has no search of its own (no
+ * Meilisearch index behind it), so the whole set arrives at once and the
+ * name filter runs in the browser — see SeriesService.GetList. */
+export interface GalgameSeriesItem {
+  id: number
+  name: string
+  /** Upstream's member count: the series' whole catalogue, NOT the forum-local
+   * subset the page behind the link renders. The other three indexes carry the
+   * same number with the same caveat. */
+  galgame_count: number
+}
+
 /** A catalog series entity page: identity + the forum-local, filterable subset
  * of its member works — the same shape the tag / official / engine pages carry,
  * so the four render through one set of components. */
