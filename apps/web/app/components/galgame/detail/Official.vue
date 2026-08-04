@@ -2,6 +2,7 @@
 import {
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
   KUN_GALGAME_OFFICIAL_LANGUAGE_MAP,
+  KUN_GALGAME_OFFICIAL_ROLE_CATEGORY_SYNONYM,
   KUN_GALGAME_OFFICIAL_ROLE_MAP
 } from '~/constants/galgameOfficial'
 
@@ -21,6 +22,15 @@ const getCategoryText = (category: string) =>
 // attribution kind upstream should look untranslated, not un-attributed.
 const getRoleText = (role: string) =>
   KUN_GALGAME_OFFICIAL_ROLE_MAP[role] || role
+
+// The category chip is dropped when a role already states the same fact — 发行商
+// next to 发行商 reads as a rendering bug, not as two axes. Only the three
+// synonym pairs collapse; a 会社 that both developed and published a game keeps
+// both role chips, because that IS two facts.
+const showCategory = (item: GalgameOfficialItem) =>
+  !(item.roles ?? []).some(
+    (role) => KUN_GALGAME_OFFICIAL_ROLE_CATEGORY_SYNONYM[role] === item.category
+  )
 </script>
 
 <template>
@@ -63,7 +73,12 @@ const getRoleText = (role: string) =>
             >
               {{ getRoleText(role) }}
             </KunChip>
-            <KunChip size="xs" class-name="rounded-md" color="default">
+            <KunChip
+              v-if="showCategory(item)"
+              size="xs"
+              class-name="rounded-md"
+              color="default"
+            >
               {{ getCategoryText(item.category) }}
             </KunChip>
             <span class="text-default-500 dark:text-default-400 text-xs">

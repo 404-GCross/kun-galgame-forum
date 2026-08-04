@@ -34,6 +34,25 @@ export const KUN_GALGAME_OFFICIAL_ROLE_MAP: Record<string, string> = {
   brand: '品牌'
 }
 
+// The two chips answer different questions — the ROLE is what this label did on
+// THIS work, the CATEGORY is what kind of organisation it is — and both are
+// worth showing. But the catalog's two vocabularies overlap, and on exactly
+// three pairs the chips end up stating the SAME fact twice: 发行商/发行商,
+// 社团/同人社团, 品牌/游戏品牌. Those collapse to one chip.
+//
+// The pairing is deliberately by KEY, not by rendered text: an upstream census
+// found 60,209 rows of developer·publisher + game_brand, which reads as two
+// near-synonyms but is genuinely two different facts (who made it vs what kind
+// of house it is), and a text-similarity rule would have eaten it.
+export const KUN_GALGAME_OFFICIAL_ROLE_CATEGORY_SYNONYM: Record<
+  string,
+  string
+> = {
+  circle: 'doujin_circle',
+  publisher: 'publisher',
+  brand: 'game_brand'
+}
+
 // /migrate/getAllOfficialLanguage.js
 export const KUN_GALGAME_OFFICIAL_LANGUAGE_MAP: Record<string, string> = {
   ja: '日语',
