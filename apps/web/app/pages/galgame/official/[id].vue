@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { KUN_GALGAME_OFFICIAL_CATEGORY_MAP } from '~/constants/galgameOfficial'
+import {
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
+  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP,
+  KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP
+} from '~/constants/galgameOfficial'
 
 // `id` is a CATALOG LABEL id (A2-3 / doc 106 R1) — a 会社 is a label in the
 // registry's vocabulary — carried bare, with no discriminator segment.
@@ -52,6 +56,14 @@ const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 // "未发布的游戏": catalog works by this maker that no product has an entry for
 // yet. Public claim funnel — open to everyone, not just moderators.
 const showDraftsModal = ref(false)
+
+// An unmapped kind falls through to its raw key: a vocabulary that grew
+// upstream should look untranslated, not blank (the map used to be indexed
+// bare, so a catalog kind with no Chinese entry rendered an empty chip).
+const categoryText = (category: string) =>
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
+const linkText = (source: string) =>
+  KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP[source] || source
 
 const { data, status } = await useKunFetch<GalgameOfficialDetail>(
   `/galgame-official/${official_id.value}`,
@@ -132,19 +144,22 @@ if (!moved) {
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
-          <div class="text-default-500">
+          <!-- The 会社's own facts, all of which the payload has always carried
+               and none of which this page used to show: its type, the language
+               its name is written in, and how many of its games are here. -->
+          <div class="text-default-500 flex flex-wrap items-center gap-2">
             会社类别
-            <KunChip
-              :color="
-                data.category === 'company'
-                  ? 'primary'
-                  : data.category === 'individual'
-                    ? 'secondary'
-                    : 'success'
-              "
-            >
-              {{ KUN_GALGAME_OFFICIAL_CATEGORY_MAP[data.category] }}
-            </KunChip>
+            <KunChip color="primary">{{ categoryText(data.category) }}</KunChip>
+            <template v-if="data.lang">
+              名称语言
+              <KunChip color="secondary">
+                {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[data.lang] || data.lang }}
+              </KunChip>
+            </template>
+            <template v-if="data.galgame_count">
+              本站收录
+              <KunChip color="success">{{ data.galgame_count }} 部</KunChip>
+            </template>
           </div>
           <div
             v-if="data.alias.length"
@@ -158,6 +173,27 @@ if (!moved) {
             >
               {{ a }}
             </KunChip>
+          </div>
+          <!-- The web presences. Each is named by its own source, so an X
+               account is never dressed up as 官方网站 — and a 会社 reachable
+               only on X still gets a way to be reached. -->
+          <div
+            v-if="data.links.length"
+            class="text-default-500 flex flex-wrap items-center gap-2"
+          >
+            会社主页
+            <KunLink
+              v-for="link in data.links"
+              :key="link.url"
+              :is-show-anchor-icon="true"
+              target="_blank"
+              rel="noopener noreferrer"
+              underline="hover"
+              size="sm"
+              :to="link.url"
+            >
+              {{ linkText(link.source) }}
+            </KunLink>
           </div>
           <div class="flex flex-wrap justify-end gap-2">
             <KunButton

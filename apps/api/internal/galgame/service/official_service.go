@@ -130,6 +130,7 @@ func (s *OfficialService) GetDetail(
 		// counterpart; the label's own name IS the original in the common case
 		// (a Japanese brand is stored under its Japanese name), and the
 		// alternate spellings are in alias[].
+		Links:       officialLinks(o.Links),
 		Link:        client.PrimaryLabelLink(o),
 		Category:    o.Kind,
 		Lang:        o.Lang,
@@ -143,6 +144,17 @@ func (s *OfficialService) GetDetail(
 		// page cannot list.
 		GalgameCount: page.Total,
 	}, nil
+}
+
+// officialLinks passes the label's web presences through with their source
+// keys, so the page can name each one instead of labelling an X account
+// "官方网站". Always a slice, never null — the FE iterates it unguarded.
+func officialLinks(links []client.CatalogLabelLink) []dto.OfficialLink {
+	out := make([]dto.OfficialLink, 0, len(links))
+	for _, l := range links {
+		out = append(out, dto.OfficialLink{Source: l.Source, URL: l.URL})
+	}
+	return out
 }
 
 // ResolveLegacyID maps a legacy wiki 会社 id onto its catalog label id.

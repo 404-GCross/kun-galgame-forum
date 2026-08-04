@@ -82,20 +82,32 @@ type OfficialListPage struct {
 	Total     int64              `json:"total"`
 }
 
+// OfficialLink is one of a 会社's web presences, with the source key the FE
+// names it by (official_site / twitter / cien).
+type OfficialLink struct {
+	Source string `json:"source"`
+	URL    string `json:"url"`
+}
+
 type OfficialDetail struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 	// Original-language name (galgame PR4 sub-change, K-PR6). Passed through
 	// from galgame so the FE edit modal can pre-fill the current value;
 	// without it the modal opens with an empty input every time.
-	Original     string        `json:"original"`
-	Link         string        `json:"link"`
-	Category     string        `json:"category"`
-	Lang         string        `json:"lang"`
-	Description  string        `json:"description"`
-	Alias        []string      `json:"alias"`
-	Galgame      []GalgameCard `json:"galgame"`
-	GalgameCount int64         `json:"galgame_count"`
+	Original string `json:"original"`
+	// Link is the official site alone. Links is every web presence the catalog
+	// carries, each with the source key that names it — a 会社 whose only
+	// presence is an X account has an empty Link and one entry here, which is
+	// the honest reading of "no official site, but you can still find them".
+	Links        []OfficialLink `json:"links"`
+	Link         string         `json:"link"`
+	Category     string         `json:"category"`
+	Lang         string         `json:"lang"`
+	Description  string         `json:"description"`
+	Alias        []string       `json:"alias"`
+	Galgame      []GalgameCard  `json:"galgame"`
+	GalgameCount int64          `json:"galgame_count"`
 	// MovedTo is the ONLY field set when this label id was merged away
 	// upstream: the identity now lives on that catalog label id and the page
 	// must 301 to it in a single hop. Everything else stays zero on purpose —

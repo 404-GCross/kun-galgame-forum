@@ -27,6 +27,14 @@ export interface GalgameOfficialItem {
   galgame_count: number
 }
 
+// One of a 会社's web presences. `source` is the catalog's own key
+// (official_site / twitter / cien) — it NAMES the link, so an X account is
+// never rendered as "官方网站".
+export interface GalgameOfficialLink {
+  source: string
+  url: string
+}
+
 export interface GalgameOfficialDetail {
   id: number
   name: string
@@ -35,6 +43,9 @@ export interface GalgameOfficialDetail {
   // from this so admins can see the existing value instead of starting
   // from empty.
   original: string
+  // `link` is the official site alone (empty when the 会社 has none); `links`
+  // is every presence the catalog carries, each labelled by its source.
+  links: GalgameOfficialLink[]
   link: string
   category: KunGalgameOfficialCategory
   lang: string

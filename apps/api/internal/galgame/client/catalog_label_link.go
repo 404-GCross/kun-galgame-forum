@@ -21,17 +21,28 @@ import (
 // answers are memoized, so a page pays one upstream call per distinct maker
 // per TTL window and usually none.
 
-// PrimaryLabelLink picks a maker's primary web presence: the official site if
-// the catalog marks one, otherwise the first link it carries (identity anchors
-// live in refs[], never in links[], so anything here is a real page).
+// Label link sources. The catalog renders exactly three related-link kinds for
+// a label and skips any source it has no URL template for, so this list is the
+// whole vocabulary — not a prefix of one.
+const (
+	LabelLinkOfficialSite = "official_site"
+	LabelLinkTwitter      = "twitter"
+	LabelLinkCien         = "cien"
+)
+
+// PrimaryLabelLink picks the maker's OFFICIAL SITE, and only that.
+//
+// The older rule looked for sources named "official" or "homepage" and fell
+// back to whatever link came first. No such source keys exist — the catalog's
+// are official_site / twitter / cien — so the preference never fired and the
+// fallback decided every case: a maker with only an X account had that account
+// rendered under a 官方网站 label. A 会社 with no site now says so, and its
+// other web presences are shown, correctly named, on its own page.
 func PrimaryLabelLink(l *CatalogLabelDetail) string {
 	for _, link := range l.Links {
-		if link.Source == "official" || link.Source == "homepage" {
+		if link.Source == LabelLinkOfficialSite {
 			return link.URL
 		}
-	}
-	if len(l.Links) > 0 {
-		return l.Links[0].URL
 	}
 	return ""
 }

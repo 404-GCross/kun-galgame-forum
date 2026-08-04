@@ -53,6 +53,16 @@ export const KUN_GALGAME_OFFICIAL_ROLE_CATEGORY_SYNONYM: Record<
   brand: 'game_brand'
 }
 
+// A 会社's web presences, named by the catalog's source key. The catalog renders
+// exactly these three and skips any source it has no URL template for, so an
+// unmapped key here means the vocabulary grew upstream — fall back to the key
+// rather than dropping the link.
+export const KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP: Record<string, string> = {
+  official_site: '官方网站',
+  twitter: 'X',
+  cien: 'Ci-en'
+}
+
 // /migrate/getAllOfficialLanguage.js
 export const KUN_GALGAME_OFFICIAL_LANGUAGE_MAP: Record<string, string> = {
   ja: '日语',

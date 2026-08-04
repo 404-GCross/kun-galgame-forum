@@ -61,17 +61,22 @@ type CatalogIntro struct {
 
 // CatalogLabelDetail is the full label record.
 type CatalogLabelDetail struct {
-	ID          int64          `json:"id"`
-	DisplayName string         `json:"display_name"`
-	Kind        string         `json:"kind"`
-	Lang        string         `json:"lang"`
-	Aliases     []string       `json:"aliases"`
-	WorkCount   int            `json:"work_count"`
-	Intros      []CatalogIntro `json:"intros"`
-	Links       []struct {
-		Source string `json:"source"`
-		URL    string `json:"url"`
-	} `json:"links"`
+	ID          int64              `json:"id"`
+	DisplayName string             `json:"display_name"`
+	Kind        string             `json:"kind"`
+	Lang        string             `json:"lang"`
+	Aliases     []string           `json:"aliases"`
+	WorkCount   int                `json:"work_count"`
+	Intros      []CatalogIntro     `json:"intros"`
+	Links       []CatalogLabelLink `json:"links"`
+}
+
+// CatalogLabelLink is one of a label's web presences. Source is the catalog's
+// own key (official_site / twitter / cien — see PrimaryLabelLink), which is
+// what a consumer needs to NAME the link rather than guess at it.
+type CatalogLabelLink struct {
+	Source string `json:"source"`
+	URL    string `json:"url"`
 }
 
 // CatalogTagDetail is the full canonical-tag record.
@@ -100,7 +105,7 @@ type CatalogEngineDetail struct {
 // Intros are NOT merged to one row per language upstream, so the first row of
 // the preferred language is the one to render.
 type CatalogSeriesDetail struct {
-	ID          int64 `json:"id"`
+	ID          int64  `json:"id"`
 	DisplayName string `json:"display_name"`
 	Intros      []struct {
 		Lang   string `json:"lang"`

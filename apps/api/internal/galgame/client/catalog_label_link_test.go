@@ -15,9 +15,12 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-// labelCatalog plays a catalog with three labels: one with an explicit official
-// site among several links, one carrying only a store page, one with no links
-// at all. It counts the requests per path, which is how the memo is asserted.
+// labelCatalog plays a catalog with three labels: one with an official site
+// listed after another presence, one reachable only on X, one with no links at
+// all. The source keys are the catalog's real vocabulary (official_site /
+// twitter / cien) — the bug this file guards was a preference written against
+// key names that do not exist, which silently made "the first link" the rule.
+// It counts the requests per path, which is how the memo is asserted.
 func labelCatalog(t *testing.T) (*GalgameClient, func(string) int) {
 	t.Helper()
 	var mu sync.Mutex
@@ -32,11 +35,12 @@ func labelCatalog(t *testing.T) (*GalgameClient, func(string) int) {
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":107,` +
 				`"display_name":"Purple SOFTWARE","links":[` +
 				`{"source":"twitter","url":"https://x.com/purplesoftware"},` +
-				`{"source":"official","url":"https://www.purplesoftware.jp"}]}}`))
+				`{"source":"official_site","url":"https://www.purplesoftware.jp"}]}}`))
 		case "/v1/catalog/labels/208":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":208,` +
 				`"display_name":"同人サークル","links":[` +
-				`{"source":"dlsite","url":"https://www.dlsite.com/maniax/circle/profile/=/maker_id/RG12345.html"}]}}`))
+				`{"source":"twitter","url":"https://x.com/doujin_circle"},` +
+				`{"source":"cien","url":"https://ci-en.dlsite.com/creator/12345"}]}}`))
 		case "/v1/catalog/labels/309":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":309,"display_name":"无官网社","links":[]}}`))
 		default:
@@ -69,10 +73,10 @@ func TestHydrateOfficialLinksPrefersTheOfficialSite(t *testing.T) {
 	c.HydrateOfficialLinks(context.Background(), &g)
 
 	want := []string{
-		"https://www.purplesoftware.jp",                                        // source=official wins over the earlier twitter row
-		"https://www.dlsite.com/maniax/circle/profile/=/maker_id/RG12345.html", // no official → first link
-		"", // no links at all
-		"", // unknown id: a 404 must cost the link, not the page
+		"https://www.purplesoftware.jp", // official_site wins over the earlier twitter row
+		"",                              // X + Ci-en but no site: 暂无官网 is the honest answer, not the X account
+		"",                              // no links at all
+		"",                              // unknown id: a 404 must cost the link, not the page
 	}
 	for i, w := range want {
 		if got := g.Official[i].Official.Link; got != w {
