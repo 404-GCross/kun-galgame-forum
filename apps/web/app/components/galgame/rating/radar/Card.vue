@@ -34,9 +34,13 @@ defineProps<{
         class-name="max-w-80"
       >
         <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <KunUserChip :disable-floating="true" :user="rating.user" />
-            <span class="text-default-500 text-sm">
+          <div class="flex min-w-0 items-center gap-3">
+            <KunUserChip
+              :disable-floating="true"
+              :user="rating.user"
+              className="min-w-0 flex-1"
+            />
+            <span class="text-default-500 shrink-0 text-sm">
               <KunTime :time="rating.created" />
             </span>
           </div>
