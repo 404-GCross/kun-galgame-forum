@@ -67,11 +67,21 @@ const CatalogCardInclude = "names,covers"
 // tagCategory renders a canonical tag's category chip. The wiki's three-value
 // axis is gone (P2), so the only distinction reconstructed here is the one the
 // SFW view acts on; everything else shows the catalog's own kind.
-func tagCategory(kind, tier string) string {
-	if tier == "hidden" {
-		// `hidden` is the canonical vocabulary's marker for tags that are not
-		// browse-worthy — the closest successor to the wiki's sexual bucket,
-		// and the SFW view treats it the same way.
+//
+// The adult bucket comes from the tag's OWN `sexual` flag. It used to be
+// proxied off tier=="hidden", from before the catalog served a real per-tag
+// bool: the proxy conflated two unrelated axes, calling every junk term adult
+// and — far worse — calling every adult term in the core tier safe. The two
+// axes are now read separately: `sexual` decides the category (and the SFW
+// gate), `hidden` decides whether the tag is listed at all (see
+// client.TagTierHidden), because upstream is moving to that tier as its
+// junk/do-not-display marker.
+//
+// This is the same rule client.catalogTagCategory already applies to a work's
+// tag chips; the two deliberately stay separate functions because they read
+// different upstream shapes, not because they mean different things.
+func tagCategory(kind string, sexual bool) string {
+	if sexual {
 		return "sexual"
 	}
 	return kind
@@ -84,17 +94,45 @@ func tagCategory(kind, tier string) string {
 // carried a category and a count the search does not know, and the shared card
 // rendered them — every hit said "+ 0" however many games it had. The count is
 // one click away on the detail page.
+//
+// Gated exactly like the browse list, which this face had simply never been:
+// it ran the OPEN population with no filter at all, so typing two characters
+// offered a SFW visitor the adult vocabulary the browse page next door has
+// always withheld — and the picker feeds the multi-tag filter, so the leak was
+// one click from a result set too. Hidden-tier tags are dropped for everyone
+// (they are junk, not content), adult tags only for SFW callers.
 func (s *TagService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
+	isSFW bool,
 ) ([]dto.TaxonomySearchItem, *errors.AppError) {
 	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags",
 		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
 	if appErr != nil {
 		return nil, appErr
 	}
-	items := make([]dto.TaxonomySearchItem, 0, len(hits))
+
+	// Tier rides the hit; `sexual` does not, so it takes the memoized detail
+	// lookup — and only when there is a gate to apply.
+	kept := make([]client.CatalogEntityHit, 0, len(hits))
+	ids := make([]int, 0, len(hits))
 	for _, h := range hits {
+		if h.Tier == client.TagTierHidden {
+			continue
+		}
+		kept = append(kept, h)
+		ids = append(ids, int(h.ID))
+	}
+	sexual := map[int]bool{}
+	if isSFW && len(ids) > 0 {
+		sexual = s.galgameClient.CatalogSexualTagIDs(ctx, ids)
+	}
+
+	items := make([]dto.TaxonomySearchItem, 0, len(kept))
+	for _, h := range kept {
+		if sexual[int(h.ID)] {
+			continue
+		}
 		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.Name})
 	}
 	return items, nil
@@ -186,7 +224,17 @@ func (s *TagService) GetList(
 	}
 	tags := make([]dto.TagListItem, 0, len(rows))
 	for _, t := range rows {
-		category := tagCategory(t.Kind, t.Tier)
+		// Hidden-tier tags leave the browse vocabulary entirely — upstream is
+		// making that tier its junk/do-not-display marker, and a page of junk
+		// terms is worse than a short page. Like the SFW drop below this runs
+		// AFTER pagination (the lane filters on tier equality, not exclusion),
+		// so a page can come back under-filled while `total` stays the whole
+		// vocabulary. That asymmetry is the list's long-standing contract —
+		// consumers page by `total`, never by "was this page full".
+		if t.Tier == client.TagTierHidden {
+			continue
+		}
+		category := tagCategory(t.Kind, t.Sexual)
 		if isSFW && category == "sexual" {
 			continue
 		}
@@ -233,7 +281,12 @@ func (s *TagService) GetDetail(
 		Name: t.Name,
 		// The canonical vocabulary's own axis; the wiki's category axis did not
 		// migrate (P2).
-		Category:    tagCategory(t.Kind, t.Tier),
+		Category: tagCategory(t.Kind, t.Sexual),
+		// The tag itself is never hidden by a direct link (the stance this
+		// whole method takes: an id someone holds resolves), but a hidden tag
+		// is not a page search engines should carry, so the FE noindexes on
+		// this flag exactly as it already does on category=="sexual".
+		Hidden:      t.Tier == client.TagTierHidden,
 		Description: preferredIntro(t.Intros),
 		// Tag aliases did not migrate (P2) — the canonical vocabulary has no
 		// alias table. Always empty rather than absent so the FE contract holds.

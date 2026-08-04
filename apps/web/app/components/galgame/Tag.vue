@@ -22,8 +22,16 @@ const isMobile = computed(() => props.variant === 'mobile')
 
 // Adult tags are off by default and only pre-selected when the viewer has NSFW
 // enabled (cookie-persisted, so this is correct at SSR setup — same source the
-// page's isNsfwMode reads in [gid]/index.vue). A SFW viewer can still opt in by
-// ticking the 成人内容 checkbox.
+// page's isNsfwMode reads in [gid]/index.vue).
+//
+// This toggle is now a convenience for NSFW-ENABLED viewers ONLY. The server
+// withholds sexual tags from a SFW response entirely (galgame_service.GetDetail
+// → withoutSexualTags): hiding them here still shipped them inside the SSR
+// payload, where a crawler reads them. So a SFW viewer ticking 成人内容 sees
+// nothing appear — there is nothing to reveal, which is the point. Flipping the
+// NSFW setting reloads the page (SidebarNSFWToggle), and the detail fetch
+// carries the cookie, so the fuller set arrives on that reload; there is
+// deliberately no second fetch path for it.
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 const isNsfwEnabled = computed(
   () =>

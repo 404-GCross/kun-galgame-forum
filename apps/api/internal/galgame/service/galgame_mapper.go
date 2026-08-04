@@ -246,6 +246,26 @@ func tagsFromNextMoe(tags []dto.NextMoeTagWithSpoiler) []dto.GalgameDetailTag {
 	return out
 }
 
+// withoutSexualTags drops the adult chips from a detail payload.
+//
+// This is a SERVER-side gate on purpose. The detail page renders for everyone
+// by design (§16.2: a direct URL is 有意为之), and the tag strip has a
+// client-side category filter that already hid these chips from a SFW viewer —
+// but hiding is not withholding: the full tag list still shipped inside the
+// SSR HTML and the __NUXT__ payload, so an anonymous visitor and, more to the
+// point, a crawler read the adult vocabulary of every game on the site. A chip
+// nobody is meant to see must not be in the response at all.
+func withoutSexualTags(tags []dto.GalgameDetailTag) []dto.GalgameDetailTag {
+	out := make([]dto.GalgameDetailTag, 0, len(tags))
+	for _, t := range tags {
+		if t.Category == "sexual" {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
 // detailRatingFromRow maps a DB rating row into the detail-page rating card.
 func detailRatingFromRow(
 	r repository.GalgameDetailRatingRow,

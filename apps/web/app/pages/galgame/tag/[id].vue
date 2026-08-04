@@ -82,7 +82,15 @@ if (!data.value) {
   })
 }
 
-if (data.value.category !== 'sexual') {
+// Two independent reasons to keep a tag page out of the index: it is adult
+// (`category === 'sexual'`), or upstream parked it in the do-not-display tier
+// (`hidden` — junk terms, absent from every list, search and picker). Either
+// way the page itself still renders: a direct link to a tag always resolves.
+const isIndexable = computed(
+  () => data.value?.category !== 'sexual' && !data.value?.hidden
+)
+
+if (isIndexable.value) {
   useKunSeoMeta({
     title: `标签 ${data.value.name} 的 Galgame`,
     description:

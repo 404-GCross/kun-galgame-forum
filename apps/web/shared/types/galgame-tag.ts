@@ -28,6 +28,10 @@ export interface GalgameTagDetail {
   id: number
   name: string
   category: KunGalgameTagCategory
+  // The canonical vocabulary's do-not-display tier. Such a tag appears in no
+  // list, no search and no picker; its page still renders for a direct link,
+  // but carries noindex.
+  hidden: boolean
   description: string
   alias: string[]
   galgame: GalgameCard[]

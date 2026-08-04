@@ -150,7 +150,8 @@ export const buildSitemapUrls = async (
     return urls
   }
 
-  // Single-GET lists (no pagination): tag, engine.
+  // Single-GET lists (no pagination): engine (a few hundred hand-curated rows
+  // the BE ships in one response).
   const collectSingle = async (
     path: string,
     pick: (data: unknown) => Record<string, unknown>[],
@@ -209,17 +210,25 @@ export const buildSitemapUrls = async (
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame/official/${num(r, 'id')}`,
       priority: 0.5
+    },
+    {
+      // The tag list is server-PAGED (page/limit + total) and was collected
+      // with one unpaginated GET, which took the BE default of 100 rows: the
+      // sitemap has been offering ~100 of the ~1,700 tag pages, and the rest
+      // were reachable only by internal links. It joins the paged sources so
+      // the whole vocabulary is enumerated; `total` is the unfiltered count,
+      // which is exactly what the paged collector expects (see the note above
+      // — SFW and hidden-tier rows are dropped after pagination).
+      path: '/galgame-tag',
+      pick: (d) => ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
+      total: (d) => (d as { total?: number })?.total,
+      loc: (r) => `/galgame/tag/${num(r, 'id')}`,
+      priority: 0.5
     }
   ]
 
   const groups = await Promise.all([
     ...paged.map((src) => collect(src)),
-    collectSingle(
-      '/galgame-tag',
-      (d) => ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
-      (r) => `/galgame/tag/${num(r, 'id')}`,
-      0.5
-    ),
     collectSingle(
       '/galgame-engine',
       (d) => (Array.isArray(d) ? (d as Record<string, unknown>[]) : []),

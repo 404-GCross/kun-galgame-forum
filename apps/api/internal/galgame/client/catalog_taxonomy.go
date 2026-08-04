@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 
 	"kun-galgame-api/pkg/errors"
 )
@@ -34,7 +35,18 @@ type CatalogTaxonomyItem struct {
 	WorkCount   int      `json:"work_count"`
 	Description string   `json:"description"`
 	Aliases     []string `json:"aliases"`
+	// Sexual is the tag row's own adult-content flag — tag-specific, like
+	// Kind/Tier. It is the axis the SFW view gates on; false means the tag's
+	// vocabulary carries NO such axis (a tag minted purely from Bangumi /
+	// DLsite folksonomy), NOT an assertion that the tag is safe.
+	Sexual bool `json:"sexual"`
 }
+
+// TagTierHidden is the canonical vocabulary's "do not display" tier. Upstream
+// parks junk and non-browse-worthy terms there, so a hidden tag belongs in no
+// browse list, no search feed and no picker — only on its own page, reached by
+// a direct link.
+const TagTierHidden = "hidden"
 
 // Label returns the row's display label, papering over the two naming
 // conventions (labels use display_name, tags/engines use name).
@@ -86,6 +98,7 @@ type CatalogTagDetail struct {
 	Tier      string         `json:"tier"`
 	Kind      string         `json:"kind"`
 	WorkCount int            `json:"work_count"`
+	Sexual    bool           `json:"sexual"`
 	Intros    []CatalogIntro `json:"intros"`
 }
 
@@ -261,6 +274,12 @@ type CatalogEntityHit struct {
 	ID         int64  `json:"id"`
 	EntityType string `json:"entity_type"`
 	Name       string `json:"name"`
+	// Tier / Kind ride TAG hits only (the same vocabulary the browse lane
+	// renders) and are absent on every other family. Tier is what lets the tag
+	// picker drop `hidden` rows without a second lookup; the hit shape carries
+	// no `sexual` flag, which is why the SFW gate needs CatalogSexualTagIDs.
+	Tier string `json:"tier"`
+	Kind string `json:"kind"`
 }
 
 // CatalogEntitySearch runs the shared entity search. searchType is the face's
@@ -293,6 +312,61 @@ func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, key
 		parsed.Items = []CatalogEntityHit{}
 	}
 	return parsed.Items, nil
+}
+
+// CatalogSexualTagIDs answers "which of these canonical tags are adult?" for
+// the SFW gate on the tag PICKER feed.
+//
+// The browse lane ships each row's `sexual` flag inline, so it needs none of
+// this. The entity-search hit shape does NOT (it is identity + tier + kind),
+// and a picker that quietly offers 陵辱 to a SFW visitor is the same leak the
+// browse list closed — so the flag is resolved from the detail lane, one call
+// per tag, concurrently, and memoized on the shared TTL cache. A search page
+// therefore costs at most `limit` upstream calls the first time it sees a set
+// of tags and none after that; an NSFW caller pays nothing, because the gate
+// never runs.
+//
+// Ids absent from the result are NOT sexual (that is what cachedBatch's
+// negative caching stores). An id whose lookup FAILED is likewise absent — the
+// same posture as the rest of this file's best-effort hydration: an upstream
+// hiccup must not empty a picker, and the search call itself would already
+// have failed if the catalog were really down.
+func (c *GalgameClient) CatalogSexualTagIDs(ctx context.Context, ids []int) map[int]bool {
+	flags, appErr := cachedBatch(
+		&c.tagSexualMu, c.tagSexualCache, ids, false,
+		func(missing []int) (map[int]bool, *errors.AppError) {
+			return c.fetchSexualTagIDs(ctx, missing), nil
+		},
+	)
+	if appErr != nil {
+		return map[int]bool{}
+	}
+	return flags
+}
+
+// fetchSexualTagIDs resolves tag ids → sexual, concurrently, keeping only the
+// TRUE ones: a map miss then reads as "not adult" both here and in the cache.
+func (c *GalgameClient) fetchSexualTagIDs(ctx context.Context, ids []int) map[int]bool {
+	var (
+		mu  sync.Mutex
+		wg  sync.WaitGroup
+		out = make(map[int]bool, len(ids))
+	)
+	for _, id := range ids {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			rec, found, appErr := c.CatalogTag(ctx, strconv.Itoa(id))
+			if appErr != nil || !found || !rec.Sexual {
+				return
+			}
+			mu.Lock()
+			out[id] = true
+			mu.Unlock()
+		}(id)
+	}
+	wg.Wait()
+	return out
 }
 
 // LookupWikiLabel resolves a legacy wiki 会社 id (galgame_official PK) to its

@@ -199,9 +199,13 @@ type TagListPage struct {
 }
 
 type TagDetail struct {
-	ID           int           `json:"id"`
-	Name         string        `json:"name"`
-	Category     string        `json:"category"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	// Hidden mirrors the canonical vocabulary's do-not-display tier. Such a tag
+	// is absent from every list, search and picker; its page still renders for
+	// a direct link, but the FE gives it noindex on this flag.
+	Hidden       bool          `json:"hidden"`
 	Description  string        `json:"description"`
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`

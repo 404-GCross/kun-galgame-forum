@@ -196,6 +196,10 @@ func firstNonEmpty(vals ...string) string {
 // to confirm" interstitial, logged-in OR NSFW-cookie-on users see the
 // page directly. This trades a tiny SSR leak (mitigated by FE
 // `useKunDisableSeo`) for a much better UX on shared NSFW links.
+//
+// The ENTRY is ungated; its adult TAG CHIPS are not. isSFW gates those at the
+// bottom of this method — the one part of the payload whose leak has no UX
+// argument behind it. See withoutSexualTags.
 func (s *GalgameService) GetDetail(
 	ctx context.Context,
 	galgameID, currentUserID int,
@@ -258,6 +262,14 @@ func (s *GalgameService) GetDetail(
 	detail.Language = languages
 	detail.Type = types
 	detail.Ratings = ratings
+	// The GAME is not gated (see the note above — a direct URL is 有意为之), but
+	// its adult TAG chips are: `isSFW` arrived here unused, so the sexual
+	// vocabulary shipped in the SSR/__NUXT__ payload of every entry, to
+	// crawlers included. The FE keeps its own category toggle for NSFW-enabled
+	// viewers, who still receive the whole set.
+	if isSFW {
+		detail.Tag = withoutSexualTags(detail.Tag)
+	}
 	return &detail, nil
 }
 

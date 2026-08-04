@@ -113,6 +113,12 @@ type GalgameClient struct {
 	labelLinkMu    sync.RWMutex
 	labelLinkCache map[batchCacheKey]batchCacheEntry[string]
 
+	// canonical tag id → adult flag (see CatalogSexualTagIDs). The entity-search
+	// hit shape carries no `sexual`, so the picker's SFW gate resolves it from
+	// the detail lane; memoizing keeps a repeated typeahead at zero extra calls.
+	tagSexualMu    sync.RWMutex
+	tagSexualCache map[batchCacheKey]batchCacheEntry[bool]
+
 	// gid → catalog work id memo (see catalogIDsForGIDs). Separate from the
 	// brief caches because it has a different lifetime: a brief goes stale in
 	// minutes, an identity mapping essentially never does.
@@ -174,6 +180,7 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 		gidCache:     map[int]gidLookupEntry{},
 
 		labelLinkCache: map[batchCacheKey]batchCacheEntry[string]{},
+		tagSexualCache: map[batchCacheKey]batchCacheEntry[bool]{},
 	}
 }
 

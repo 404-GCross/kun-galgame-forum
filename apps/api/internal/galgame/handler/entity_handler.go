@@ -154,7 +154,7 @@ func (h *EntityHandler) GetTagList(c fiber.Ctx) error {
 
 // SearchTags — GET /galgame-tag/search
 func (h *EntityHandler) SearchTags(c fiber.Ctx) error {
-	items, appErr := h.tagService.Search(c.Context(), collectQuery(c))
+	items, appErr := h.tagService.Search(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
