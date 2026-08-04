@@ -54,13 +54,6 @@ const contact = computed(
       </template>
     </MessageAsideSystemItem>
 
-    <!--
-      Galgame notifications — galgame submission review feedback. Data source
-      is the galgame service, not /message/nav/system, so it has its own
-      component with its own fetches.
-    -->
-    <MessageAsideGalgameItem />
-
     <MessageAsideItem
       v-for="(room, index) in contact"
       :key="index"

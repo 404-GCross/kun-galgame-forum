@@ -90,7 +90,7 @@ const handleResubmit = async (item: UserClaimItem) => {
           <KunLink to="/edit/galgame/publish">
             <KunButton size="sm">新建提交</KunButton>
           </KunLink>
-          <KunLink to="/message/wiki">
+          <KunLink to="/message/notice">
             <KunButton size="sm" variant="flat">审核通知</KunButton>
           </KunLink>
         </div>

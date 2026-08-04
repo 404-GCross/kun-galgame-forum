@@ -12,8 +12,9 @@ export interface NotificationCategoryGroup {
   textValue: string
   icon: string
   // `local` categories live in the `message` table — they show up in the
-  // notification list and the muted view. `chat` / `wiki` are separate streams.
-  stream: 'local' | 'chat' | 'wiki'
+  // notification list and the muted view. `chat` is a separate stream. (The
+  // former `wiki` stream retired in wave 169 with the wiki message page.)
+  stream: 'local' | 'chat'
   items: NotificationCategory[]
 }
 
@@ -62,18 +63,6 @@ export const notificationCategoryGroups: NotificationCategoryGroup[] = [
     icon: 'lucide:mail',
     stream: 'chat',
     items: [{ key: 'chat', label: '私信消息' }]
-  },
-  {
-    value: 'wiki',
-    textValue: '资料库',
-    icon: 'lucide:book-open',
-    stream: 'wiki',
-    items: [
-      { key: 'wiki:approved', label: '资料库编辑通过' },
-      { key: 'wiki:declined', label: '资料库编辑被拒' },
-      { key: 'wiki:banned', label: '资料库被封禁' },
-      { key: 'wiki:unbanned', label: '资料库被解封' }
-    ]
   }
 ]
 
