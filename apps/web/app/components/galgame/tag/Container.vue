@@ -14,7 +14,7 @@ const { data, status } = await useKunFetch<{
   query: pageData
 })
 
-const searchResult = ref<GalgameTagItem[]>([])
+const searchResult = ref<GalgameTaxonomySearchItem[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
 
@@ -63,10 +63,13 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  const res = await kunFetch<GalgameTagItem[]>(`/galgame-tag/search`, {
-    method: 'GET',
-    query: { q: searchQuery.value }
-  })
+  const res = await kunFetch<GalgameTaxonomySearchItem[]>(
+    `/galgame-tag/search`,
+    {
+      method: 'GET',
+      query: { q: searchQuery.value }
+    }
+  )
   isSearching.value = false
 
   searchResult.value = res ?? []
@@ -86,7 +89,7 @@ const onInputBlur = () => {
   }, 120)
 }
 
-const selectedTags = ref<GalgameTagItem[]>([])
+const selectedTags = ref<GalgameTaxonomySearchItem[]>([])
 const resultGames = ref<GalgameCard[]>([])
 const totalGameCount = ref(0)
 const gamesPage = ref(1)
@@ -121,7 +124,7 @@ const fetchGames = async () => {
   }
 }
 
-const addTag = (tag: GalgameTagItem) => {
+const addTag = (tag: GalgameTaxonomySearchItem) => {
   if (selectedTags.value.find((t) => t.id === tag.id)) return
   selectedTags.value.push(tag)
   gamesPage.value = 1

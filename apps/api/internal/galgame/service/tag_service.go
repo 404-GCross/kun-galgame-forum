@@ -80,20 +80,22 @@ func tagCategory(kind, tier string) string {
 // Search — GET /galgame-tag/search
 //
 // Backed by the catalog entity search's tags index. The hit shape is
-// identity-only, so the cards render name + link and nothing else; the counts
-// the old Meilisearch hit carried are one click away on the detail page.
+// identity-only, so this answers in the search shape: a browse row would have
+// carried a category and a count the search does not know, and the shared card
+// rendered them — every hit said "+ 0" however many games it had. The count is
+// one click away on the detail page.
 func (s *TagService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
-) ([]dto.TagListItem, *errors.AppError) {
+) ([]dto.TaxonomySearchItem, *errors.AppError) {
 	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags",
 		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
 	if appErr != nil {
 		return nil, appErr
 	}
-	items := make([]dto.TagListItem, 0, len(hits))
+	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, h := range hits {
-		items = append(items, dto.TagListItem{ID: int(h.ID), Name: h.Name})
+		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.Name})
 	}
 	return items, nil
 }

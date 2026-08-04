@@ -1,34 +1,27 @@
 <script setup lang="ts">
-import { KUN_GALGAME_OFFICIAL_LANGUAGE_MAP } from '~/constants/galgameOfficial'
+import {
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
+  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
+} from '~/constants/galgameOfficial'
 
-defineProps<{
-  official: GalgameOfficialItem
+// Renders a browse row OR a search hit. A hit carries identity only (the
+// catalog's entity search is a picker feed), so everything below the name is
+// optional here and simply absent rather than zero-filled — the card used to
+// print "+ 0" and a blank category for every search result.
+const props = defineProps<{
+  official: GalgameOfficialItem | GalgameTaxonomySearchItem
 }>()
 
-const getOfficialCategoryInfo = (category: string) => {
-  switch (category) {
-    case 'company':
-      return {
-        text: '公司',
-        class: 'bg-primary-100 text-primary-800'
-      }
-    case 'individual':
-      return {
-        text: '个人',
-        class: 'bg-success-100 text-success-800'
-      }
-    case 'amateur':
-      return {
-        text: '同人',
-        class: 'bg-secondary-100 text-secondary-800'
-      }
-    default:
-      return {
-        text: category,
-        class: 'bg-default-100 text-default-800'
-      }
-  }
-}
+const detail = computed(() =>
+  'category' in props.official ? props.official : undefined
+)
+
+// The category vocabulary is the CATALOG's (game_brand / publisher /
+// doujin_circle / …). The old three-case switch only knew the retired wiki
+// words, so every catalog kind fell through to its raw English key — the browse
+// list has been showing "publisher" and "group" chips.
+const categoryText = (category: string) =>
+  KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
 </script>
 
 <template>
@@ -39,36 +32,29 @@ const getOfficialCategoryInfo = (category: string) => {
   >
     <h3 class="text-default-900 font-semibold">
       {{ official.name }}
-      <KunChip size="xs">
-        {{ `+ ${official.galgame_count}` }}
+      <KunChip v-if="detail" size="xs">
+        {{ `+ ${detail.galgame_count}` }}
       </KunChip>
     </h3>
-    <div class="flex items-center gap-x-2">
-      <KunChip
-        size="xs"
-        class-name="rounded-md"
-        :color="
-          official.category === 'company'
-            ? 'primary'
-            : official.category === 'individual'
-              ? 'secondary'
-              : 'success'
-        "
-      >
-        {{ getOfficialCategoryInfo(official.category).text }}
+    <div v-if="detail" class="flex items-center gap-x-2">
+      <KunChip size="xs" class-name="rounded-md" color="primary">
+        {{ categoryText(detail.category) }}
       </KunChip>
-      <span class="text-default-500 dark:text-default-400 text-xs">
-        {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[official.lang] || official.lang }}
+      <span
+        v-if="detail.lang"
+        class="text-default-500 dark:text-default-400 text-xs"
+      >
+        {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[detail.lang] || detail.lang }}
       </span>
     </div>
     <div
-      v-if="official.alias.length"
+      v-if="detail?.alias.length"
       class="text-default-500 flex flex-wrap gap-2"
     >
       <KunChip
         size="xs"
         color="success"
-        v-for="(a, index) in official.alias"
+        v-for="(a, index) in detail.alias"
         :key="index"
       >
         {{ a }}

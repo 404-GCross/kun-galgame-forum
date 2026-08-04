@@ -64,6 +64,23 @@ type GalgameSample struct {
 // ──────────────────────────────────────────
 
 // ──────────────────────────────────────────
+// Taxonomy search
+// ──────────────────────────────────────────
+
+// TaxonomySearchItem is one picker row — identity and nothing else.
+//
+// The catalog's entity search is identity-only by design (a picker feed; a
+// consumer that needs metadata follows the id to the detail lane). Search used
+// to answer in the BROWSE row's shape, which meant every field the search does
+// not know shipped as its zero value and the shared card rendered them: every
+// hit claimed "+ 0" games and a blank category, no matter how many games it
+// actually had. A shape that cannot say more than it knows cannot lie.
+type TaxonomySearchItem struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// ──────────────────────────────────────────
 // Official
 // ──────────────────────────────────────────
 

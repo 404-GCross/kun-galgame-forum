@@ -15,7 +15,7 @@ const { data, status } = await useKunFetch<{
   query: { page, limit }
 })
 
-const searchResult = ref<GalgameOfficialItem[]>([])
+const searchResult = ref<GalgameTaxonomySearchItem[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
 const displayOfficials = computed(() =>
@@ -28,7 +28,7 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  const res = await kunFetch<GalgameOfficialItem[]>(
+  const res = await kunFetch<GalgameTaxonomySearchItem[]>(
     `/galgame-official/search`,
     {
       method: 'GET',

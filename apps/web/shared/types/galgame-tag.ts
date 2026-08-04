@@ -14,6 +14,16 @@ export interface GalgameTagItem {
   galgame_count: number
 }
 
+// A search hit. The catalog's entity search is a picker feed — identity and
+// nothing else — so a hit genuinely does not know its category or how many
+// games carry it. Kept distinct from the browse row rather than zero-filled:
+// a card that renders "+ 0" for a tag with 600 games is worse than a card that
+// says nothing.
+export interface GalgameTaxonomySearchItem {
+  id: number
+  name: string
+}
+
 export interface GalgameTagDetail {
   id: number
   name: string

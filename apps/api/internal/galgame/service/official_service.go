@@ -65,23 +65,24 @@ func (s *OfficialService) GetList(
 
 // Search — GET /galgame-official/search
 //
-// The frontend (galgame/official/Container.vue) does `searchResult.value = res`
-// expecting a bare GalgameOfficialItem[], so the envelope is unwrapped here and
-// the gateway response shape stays put.
+// Identity only: the upstream search face returns id + name and nothing else,
+// so this answers in the search shape rather than dressing a hit up as a browse
+// row whose count, category and language would all be zero values.
+//
+// The frontend does `searchResult.value = res` expecting a bare array, so the
+// envelope is unwrapped here and the gateway response shape stays put.
 func (s *OfficialService) Search(
 	ctx context.Context,
 	rawQuery url.Values,
-) ([]dto.OfficialListItem, *errors.AppError) {
+) ([]dto.TaxonomySearchItem, *errors.AppError) {
 	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "labels",
 		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
 	if appErr != nil {
 		return nil, appErr
 	}
-	items := make([]dto.OfficialListItem, 0, len(hits))
+	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, o := range hits {
-		items = append(items, dto.OfficialListItem{
-			ID: int(o.ID), Name: o.Name, Alias: []string{},
-		})
+		items = append(items, dto.TaxonomySearchItem{ID: int(o.ID), Name: o.Name})
 	}
 	return items, nil
 }
