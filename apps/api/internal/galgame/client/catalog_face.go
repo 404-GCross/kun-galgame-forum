@@ -448,6 +448,7 @@ type catWorkDetail struct {
 		Name        string `json:"name"`
 		Source      string `json:"source"`
 		CanonicalID int64  `json:"canonical_id"`
+		Tier        string `json:"tier"`
 		Kind        string `json:"kind"`
 		Spoiler     int    `json:"spoiler"`
 		Sexual      bool   `json:"sexual"`

@@ -138,6 +138,12 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		if t.CanonicalID == 0 {
 			continue
 		}
+		// Hidden-tier vocabulary (platform words, site-wide truisms — junk) is
+		// excluded from browse/search/picker; the detail chip strip follows the
+		// same rule so a chip never links to a page every list refuses to show.
+		if t.Tier == TagTierHidden {
+			continue
+		}
 		f.Tag = append(f.Tag, dto.NextMoeTagWithSpoiler{
 			SpoilerLevel: t.Spoiler,
 			Tag: dto.NextMoeTag{
