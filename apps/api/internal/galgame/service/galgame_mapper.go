@@ -124,9 +124,13 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 		Alias:                    nextMoeAliasesToNames(g.Alias),
 		Engine:                   enginesFromNextMoe(g.Engine),
 		Official:                 officialsFromNextMoe(g.Official),
-		Tag:                      tagsFromNextMoe(g.Tag),
-		Created:                  g.Created,
-		Updated:                  g.Updated,
+		// Left unassigned when the series page came back, so the field shipped
+		// as JSON null on every game — a required Array prop on the FE, which
+		// warned on every detail render and rendered no 所属系列 at all.
+		Series:  seriesFromNextMoe(g.Series),
+		Tag:     tagsFromNextMoe(g.Tag),
+		Created: g.Created,
+		Updated: g.Updated,
 	}
 }
 
