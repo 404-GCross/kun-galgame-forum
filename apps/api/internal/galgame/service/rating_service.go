@@ -494,6 +494,8 @@ func (s *RatingService) buildRatingGalgame(
 	// summary at its zero-ish defaults + local rating stats below.
 	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID); appErr == nil && found {
 		g := client.CatalogDetailToFull(d, galgameID)
+		// Same 制作方 block as the detail page, so the same 官网 hydration.
+		s.galgameClient.HydrateOfficialLinks(ctx, &g)
 		summary.ID = g.ID
 		summary.Banner = g.Banner
 		summary.EffectiveBannerHash = g.EffectiveBannerHash

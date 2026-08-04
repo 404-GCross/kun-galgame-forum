@@ -215,6 +215,10 @@ func (s *GalgameService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
 	g := client.CatalogDetailToFull(d, galgameID)
+	// The maker's 官网 rides on the LABEL record, not on the work's attribution
+	// edge, so it takes a second (memoized) lookup. Without it the 制作方 block
+	// says 暂无官网 for every maker, homepage or not.
+	s.galgameClient.HydrateOfficialLinks(ctx, &g)
 
 	// Async view bump (don't block the response).
 	go s.galgameRepo.IncrementView(galgameID)

@@ -131,6 +131,12 @@ type GalgameClient struct {
 	detailMu    sync.RWMutex
 	detailCache map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]
 
+	// label id → 官网 (see HydrateOfficialLinks). A work detail's labels[] rows
+	// carry no links, so the maker's site is a second lookup; memoizing it keeps
+	// a detail page at zero extra upstream calls for a maker it has seen.
+	labelLinkMu    sync.RWMutex
+	labelLinkCache map[batchCacheKey]batchCacheEntry[string]
+
 	// gid → catalog work id memo (see catalogIDsForGIDs). Separate from the
 	// brief caches because it has a different lifetime: a brief goes stale in
 	// minutes, an identity mapping essentially never does.
@@ -192,6 +198,8 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 		briefCache:   map[batchCacheKey]batchCacheEntry[GalgameBrief]{},
 		detailCache:  map[batchCacheKey]batchCacheEntry[GalgameDetailBrief]{},
 		gidCache:     map[int]gidLookupEntry{},
+
+		labelLinkCache: map[batchCacheKey]batchCacheEntry[string]{},
 	}
 }
 

@@ -130,7 +130,7 @@ func (s *OfficialService) GetDetail(
 		// counterpart; the label's own name IS the original in the common case
 		// (a Japanese brand is stored under its Japanese name), and the
 		// alternate spellings are in alias[].
-		Link:        firstLabelLink(o),
+		Link:        client.PrimaryLabelLink(o),
 		Category:    o.Kind,
 		Lang:        o.Lang,
 		Description: preferredIntro(o.Intros),
@@ -148,19 +148,4 @@ func (s *OfficialService) GetDetail(
 // ResolveLegacyID maps a legacy wiki 会社 id onto its catalog label id.
 func (s *OfficialService) ResolveLegacyID(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
 	return s.galgameClient.LookupWikiLabel(ctx, wikiID)
-}
-
-// firstLabelLink picks the maker's primary web presence for the header button.
-// The official site is preferred; otherwise the first link the catalog carries
-// (identity anchors never appear in links[], so anything here is a real page).
-func firstLabelLink(o *client.CatalogLabelDetail) string {
-	for _, l := range o.Links {
-		if l.Source == "official" || l.Source == "homepage" {
-			return l.URL
-		}
-	}
-	if len(o.Links) > 0 {
-		return o.Links[0].URL
-	}
-	return ""
 }
