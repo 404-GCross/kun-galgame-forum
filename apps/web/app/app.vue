@@ -158,6 +158,11 @@ onMounted(() => {
          stable root so it animates on close and survives a triggering popover. -->
     <LazyReportModal />
 
+    <!-- Single global 推话题 modal (triggered by every <TopicFooterUpvote>),
+         here for the same reason: the mobile ⋯ menu row that opens it unmounts
+         with its popover the instant the dialog is clicked. -->
+    <LazyTopicUpvoteModal />
+
     <KunFloatingBar />
 
     <LazyTopicReplyPanel />
