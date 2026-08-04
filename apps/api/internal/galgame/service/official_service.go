@@ -33,11 +33,19 @@ func NewOfficialService(galgameClient *client.GalgameClient, galgameSvc *Galgame
 }
 
 // GetList — GET /galgame-official
+//
+// has_works=1 drops the empty vocabulary. The label词表 is 37,623 rows and some
+// 40% of them have no works — imported organisations nothing here credits — so
+// browsing it unfiltered was mostly "+ 0" cards. The filter is the same
+// predicate upstream counts with (so a listed 会社 always has something to
+// show) and `total` converges with it, which is why this is a query parameter
+// rather than a filter applied to the page after the fact: dropping rows
+// locally would leave short pages under an inflated pager.
 func (s *OfficialService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 ) (*dto.OfficialListPage, *errors.AppError) {
-	base := client.OpenPopulation(url.Values{})
+	base := client.OpenPopulation(url.Values{"has_works": {"1"}})
 	if kind := rawQuery.Get("kind"); kind != "" {
 		base.Set("kind", kind)
 	}

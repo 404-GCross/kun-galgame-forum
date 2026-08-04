@@ -167,12 +167,18 @@ func (s *TagService) GetByMultiTag(
 // filtered vocabulary (an identity count, so it does not move with the NSFW
 // cookie); each row's work_count IS nsfw-aware, so a count never disagrees with
 // the member list the same caller can page.
+//
+// has_works=1 drops the empty vocabulary — 114 of the 1,744 canonical tags have
+// no works at all, and a browse page of "+ 0" chips is a list of dead ends. The
+// filter is the same predicate upstream counts with, so "count > 0" and "row
+// present" cannot drift, and `total` converges with the rows rather than
+// promising pages that filter away to nothing.
 func (s *TagService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.TagListPage, *errors.AppError) {
-	base := client.OpenPopulation(url.Values{})
+	base := client.OpenPopulation(url.Values{"has_works": {"1"}})
 	rows, total, appErr := s.galgameClient.CatalogTaxonomyPageAt(ctx, "tags", base,
 		atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 100))
 	if appErr != nil {
