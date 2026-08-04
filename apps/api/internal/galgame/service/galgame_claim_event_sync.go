@@ -240,6 +240,20 @@ func isApproval(ev *catalogclient.ClaimEventFeedItem) bool {
 		ev.FromState != nil && *ev.FromState == catalogclient.ClaimStatePending
 }
 
+// claimantOf resolves who a freshly-live entry credits as its creator (the
+// author chip on the kungal card). The two routes into `live` name different
+// people: an approval's actor is the REVIEWER, so the claimant is the
+// remembered submitter — the same memo the +3 award reads — while every other
+// route's actor moved their own claim. 0 = unknown (memo expired or a
+// system-minted event); the stub then keeps a NULL creator and renders no
+// author chip, never a wrong one.
+func (s *GalgameClaimEventSync) claimantOf(ctx context.Context, ev *catalogclient.ClaimEventFeedItem) int {
+	if isApproval(ev) {
+		return s.submitterOf(ctx, ev.WorkID)
+	}
+	return int(ev.ActorUID)
+}
+
 // apply performs one transition's local side effects. retry=true means a
 // TRANSIENT failure — the caller holds the cursor and this event is re-applied
 // next tick, which is safe because every effect below is idempotent.
@@ -249,8 +263,15 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 		// live is the moment an entry becomes publicly listable — seed the stub
 		// so the browse list has an anchor. Idempotent.
 		gid := int(*ev.ProductWorkID)
+		creator := s.claimantOf(ctx, ev)
 		if err := s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
-			return s.galgameRepo.CreateLocalStub(tx, gid)
+			if err := s.galgameRepo.CreateLocalStub(tx, gid); err != nil {
+				return err
+			}
+			if creator > 0 {
+				return s.galgameRepo.SetCreatorIfUnset(tx, gid, creator)
+			}
+			return nil
 		}); err != nil {
 			slog.Warn("claim live: 创建本地 stub 失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
 			return true

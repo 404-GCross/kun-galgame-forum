@@ -102,6 +102,17 @@ func (r *GalgameRepository) EnsureLocalStub(tx *gorm.DB, galgameID int) error {
 		Create(&model.GalgameLocal{ID: galgameID}).Error
 }
 
+// SetCreatorIfUnset attributes a galgame to the user whose claim put it on the
+// site — once. The column is a snapshot (wiki-era submitter for migrated rows,
+// adoption-time claimant for registry-born ones), so an existing attribution is
+// never overwritten: republishing after a withdrawal must not reassign the
+// entry to whoever pressed the button that time.
+func (r *GalgameRepository) SetCreatorIfUnset(tx *gorm.DB, galgameID, userID int) error {
+	return tx.Model(&model.GalgameLocal{}).
+		Where("id = ? AND creator_user_id IS NULL", galgameID).
+		UpdateColumn("creator_user_id", userID).Error
+}
+
 // Touch marks a CONTENT update on a galgame (claim / merged edit) so the kungal
 // list (ORDER BY g.resource_update_time DESC) surfaces it: it ensures the local
 // stub exists, then sets `resource_update_time = now`. Engagement (like /

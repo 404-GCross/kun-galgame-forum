@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"kun-galgame-api/pkg/catalogclient"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -68,6 +70,37 @@ func TestOnlyApprovalAwardsFromTheFeed(t *testing.T) {
 	}
 	if isApproval(event(4, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid)) {
 		t.Error("a decline is not an approval")
+	}
+}
+
+// The author chip must credit the CLAIMANT: on the owner-publish route the
+// event's own actor, on the approval route never the actor — that is the
+// reviewer, and the submitter comes from the redis memo instead (an expired
+// memo yields 0 = no chip, not a mis-credit).
+func TestClaimantAttribution(t *testing.T) {
+	gid := ptr(int64(11))
+	// An unroutable redis stands in for "the memo is unreachable": submitterOf
+	// must degrade to 0, and the non-approval routes must never consult it.
+	s := NewGalgameClaimEventSync(nil, nil, redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1}))
+
+	publish := event(1, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStateLive, gid)
+	publish.ActorUID = 61516
+	if got := s.claimantOf(t.Context(), publish); got != 61516 {
+		t.Errorf("owner publish: claimant = %d, want the event's actor 61516", got)
+	}
+
+	born := event(2, nil, catalogclient.ClaimStateLive, gid)
+	born.ActorUID = 7
+	if got := s.claimantOf(t.Context(), born); got != 7 {
+		t.Errorf("born live: claimant = %d, want the event's actor 7", got)
+	}
+
+	// Approval with no reachable memo (nil redis → submitterOf returns 0):
+	// the reviewer's uid must NOT leak into the attribution.
+	approval := event(3, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)
+	approval.ActorUID = 2
+	if got := s.claimantOf(t.Context(), approval); got != 0 {
+		t.Errorf("approval without memo: claimant = %d, want 0 (never the reviewer)", got)
 	}
 }
 

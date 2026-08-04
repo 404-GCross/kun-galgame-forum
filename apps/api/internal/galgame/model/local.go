@@ -42,10 +42,13 @@ type GalgameLocal struct {
 	// forbidden (copyright-holder notice or other third-party takedown).
 	// Enforced in resource_service.go; toggled via the moderator ban endpoint.
 	ResourcePublishBanned bool `gorm:"column:resource_publish_banned;default:false" json:"resource_publish_banned"`
-	// CreatorUserID is the FROZEN wiki-era submitter (migration 066). The
-	// catalog face carries no product's submitter by design (doc 106 R2), so
-	// the author chip kungal renders on every galgame card is served from this
-	// one-off snapshot instead. Written only by cmd/backfill-galgame-creator;
+	// CreatorUserID is a WRITE-ONCE attribution snapshot. The catalog face
+	// carries no product's submitter by design (doc 106 R2), so the author
+	// chip kungal renders on every galgame card is served locally: migrated
+	// rows hold the frozen wiki-era submitter (migration 066,
+	// cmd/backfill-galgame-creator), registry-born rows the claimant recorded
+	// by the claim-event cron when the entry first went live
+	// (SetCreatorIfUnset — never overwritten by later republishes).
 	// nil = unknown, which renders as no author chip rather than as user 0.
 	CreatorUserID *int `gorm:"column:creator_user_id" json:"creator_user_id"`
 }
