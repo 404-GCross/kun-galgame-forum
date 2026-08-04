@@ -193,7 +193,12 @@ const handleConfirmReason = async () => {
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-          <KunLink :to="`/galgame/${gidOf(row)}/edit`" target="_blank">
+          <!-- Preview the entry as a reader sees it, not the proposal editor:
+               a reviewer decides on the PAGE (cover, screenshots, intro,
+               links), and the detail header carries 编辑资料 for the cases
+               that need a fix before approval. A pending claim renders as a
+               draft here — only `hidden` is withheld from the detail face. -->
+          <KunLink :to="`/galgame/${gidOf(row)}`" target="_blank">
             <KunButton size="sm" variant="flat">查看</KunButton>
           </KunLink>
           <KunButton
