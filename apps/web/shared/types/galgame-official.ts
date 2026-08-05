@@ -25,6 +25,11 @@ export interface GalgameOfficialItem {
   lang: string
   alias: string[]
   galgame_count: number
+  /** The 会社 logo as a ready-made absolute CDN URL (original size — use
+   * `withImageVariant(logo, 'mini')` for the thumbnail). `''` when the maker
+   * has no logo; optional because the galgame-detail labels[] lane shares this
+   * shape and sends none. Always SFW, so no content gate applies. */
+  logo?: string
 }
 
 // One of a 会社's web presences. `source` is the catalog's own key
@@ -47,6 +52,9 @@ export interface GalgameOfficialDetail {
   // is every presence the catalog carries, each labelled by its source.
   links: GalgameOfficialLink[]
   link: string
+  /** See GalgameOfficialItem.logo. `''` when the maker has no logo — the page
+   * then renders the name alone rather than an empty frame. */
+  logo: string
   category: KunGalgameOfficialCategory
   lang: string
   description: string

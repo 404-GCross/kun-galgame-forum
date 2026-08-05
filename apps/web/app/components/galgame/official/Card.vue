@@ -22,6 +22,15 @@ const detail = computed(() =>
 // list has been showing "publisher" and "group" chips.
 const categoryText = (category: string) =>
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
+
+// The brand mark, at the `_mini` (360px) variant — a 64px thumbnail has no use
+// for the original. Both shapes carry it: a browse row and a search hit alike,
+// which is what lets the search results show the logo without a second lookup.
+// '' (or absent, on a maker with no logo) means render nothing and let the name
+// take the full width — an empty frame reads as a broken image.
+const logoSrc = computed(() =>
+  props.official.logo ? withImageVariant(props.official.logo, 'mini') : ''
+)
 </script>
 
 <template>
@@ -30,12 +39,24 @@ const categoryText = (category: string) =>
     :is-hoverable="true"
     :href="`/galgame/official/${official.id}`"
   >
-    <h3 class="text-default-900 font-semibold">
-      {{ official.name }}
-      <KunChip v-if="detail" size="xs">
-        {{ `+ ${detail.galgame_count}` }}
-      </KunChip>
-    </h3>
+    <div class="flex items-center gap-2">
+      <!-- object-contain, never cover: a brand mark cropped to a square is a
+           different logo. The frame is omitted entirely when there is none. -->
+      <KunImage
+        v-if="logoSrc"
+        :src="logoSrc"
+        :alt="`${official.name} logo`"
+        loading="lazy"
+        object-fit="contain"
+        class-name="size-10 shrink-0 rounded-md"
+      />
+      <h3 class="text-default-900 min-w-0 font-semibold">
+        {{ official.name }}
+        <KunChip v-if="detail" size="xs">
+          {{ `+ ${detail.galgame_count}` }}
+        </KunChip>
+      </h3>
+    </div>
     <div v-if="detail" class="flex items-center gap-x-2">
       <KunChip size="xs" class-name="rounded-md" color="primary">
         {{ categoryText(detail.category) }}

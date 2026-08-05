@@ -63,7 +63,10 @@ func (s *OfficialService) GetList(
 			// The browse row is identity + count; the maker's website lives on
 			// the record (links[]), which the detail page fetches. The list
 			// cards never rendered a website anyway.
-			Category:     o.Kind,
+			Category: o.Kind,
+			// The one image the browse row does carry. Resolved here rather
+			// than shipped as a hash so the card can render it straight.
+			Logo:         s.galgameClient.ImageURLFromHash(o.LogoHash),
 			Alias:        emptyStrSliceIfNil(o.Aliases),
 			GalgameCount: o.WorkCount,
 		})
@@ -73,9 +76,10 @@ func (s *OfficialService) GetList(
 
 // Search — GET /galgame-official/search
 //
-// Identity only: the upstream search face returns id + name and nothing else,
-// so this answers in the search shape rather than dressing a hit up as a browse
-// row whose count, category and language would all be zero values.
+// Identity only: the upstream search face returns id + name (+ the label's logo
+// hash, which for a maker IS identity) and nothing else, so this answers in the
+// search shape rather than dressing a hit up as a browse row whose count,
+// category and language would all be zero values.
 //
 // The frontend does `searchResult.value = res` expecting a bare array, so the
 // envelope is unwrapped here and the gateway response shape stays put.
@@ -90,7 +94,11 @@ func (s *OfficialService) Search(
 	}
 	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, o := range hits {
-		items = append(items, dto.TaxonomySearchItem{ID: int(o.ID), Name: o.Name})
+		items = append(items, dto.TaxonomySearchItem{
+			ID:   int(o.ID),
+			Name: o.Name,
+			Logo: s.galgameClient.ImageURLFromHash(o.LogoHash),
+		})
 	}
 	return items, nil
 }
@@ -141,6 +149,7 @@ func (s *OfficialService) GetDetail(
 		// alternate spellings are in alias[].
 		Links:       officialLinks(o.Links),
 		Link:        client.PrimaryLabelLink(o),
+		Logo:        s.galgameClient.ImageURLFromHash(o.LogoHash),
 		Category:    o.Kind,
 		Lang:        o.Lang,
 		Description: preferredIntro(o.Intros),
