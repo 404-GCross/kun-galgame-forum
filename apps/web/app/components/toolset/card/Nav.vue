@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
 import {
   kunGalgameToolsetTypeOptions,
   kunGalgameToolsetLanguageOptions,
@@ -12,7 +13,7 @@ import {
   KUN_GALGAME_TOOLSET_SORT_FIELD_MAP
 } from '~/constants/toolset'
 
-const { page, type, language, platform, version, sortField, sortOrder } =
+const { page, type, language, platform, version, sortField, sortOrder, query } =
   useToolsetFilters()
 
 watch(
@@ -28,9 +29,26 @@ watch(
     page.value = 1
   }
 )
+
+// Keyword search: reset to page 1 when the query changes so the user
+// always sees results from the top. Debounced so typing doesn't thrash
+// the URL/fetch on every keystroke.
+watchDebounced(
+  query,
+  () => {
+    page.value = 1
+  },
+  { debounce: 250 }
+)
 </script>
 
 <template>
+  <KunInput
+        v-model="query"
+        type="text"
+        placeholder="模糊名字查询"
+        class-name="col-span-2 lg:col-span-1"
+      />
   <div
     class="flex w-full shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-transparent sm:flex-nowrap"
   >

@@ -10,7 +10,8 @@ const {
   platform,
   version,
   sortField,
-  sortOrder
+  sortOrder,
+  query
 } = useToolsetFilters()
 
 const { data, status } = await useKunFetch<{
@@ -26,7 +27,8 @@ const { data, status } = await useKunFetch<{
     platform,
     version,
     sort_field: sortField,
-    sort_order: sortOrder
+    sort_order: sortOrder,
+    query
   }
 })
 </script>

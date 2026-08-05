@@ -38,6 +38,10 @@ export const useToolsetFilters = () => {
   )
   const sortOrder = useRouteQuery<KunOrder>('sortOrder', 'desc', opts)
 
+  // Keyword search across name + aliases + description + version. URL-backed
+  // like the other filters; empty string = no keyword filter (URL-omitted).
+  const query = useRouteQuery<string>('query', '', opts)
+
   const limit = 24
 
   return {
@@ -48,6 +52,7 @@ export const useToolsetFilters = () => {
     platform,
     version,
     sortField,
-    sortOrder
+    sortOrder,
+    query
   }
 }
