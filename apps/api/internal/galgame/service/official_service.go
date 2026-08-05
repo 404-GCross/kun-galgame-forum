@@ -26,50 +26,35 @@ type OfficialService struct {
 	// over the label's member ids (the catalog can't filter by kungal-local
 	// resource data). See GetDetail.
 	galgameSvc *GalgameService
+	// index holds the browse list in "most games first" order — an order the
+	// catalog cannot serve, so kungal computes it over the whole vocabulary.
+	// See official_index.go.
+	index *officialIndexCache
 }
 
 func NewOfficialService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *OfficialService {
-	return &OfficialService{galgameClient: galgameClient, galgameSvc: galgameSvc}
+	return &OfficialService{
+		galgameClient: galgameClient,
+		galgameSvc:    galgameSvc,
+		index:         newOfficialIndexCache(),
+	}
 }
 
 // GetList — GET /galgame-official
 //
-// has_works=1 drops the empty vocabulary. The label词表 is 37,623 rows and some
-// 40% of them have no works — imported organisations nothing here credits — so
-// browsing it unfiltered was mostly "+ 0" cards. The filter is the same
-// predicate upstream counts with (so a listed 会社 always has something to
-// show) and `total` converges with it, which is why this is a query parameter
-// rather than a filter applied to the page after the fact: dropping rows
-// locally would leave short pages under an inflated pager.
+// Ordered by how many games the maker has, which is the only ranking a browse
+// list of 22,000 companies can be read with. The catalog's lane is id ASC and
+// has no sort parameter, so the order is computed here over the whole
+// vocabulary and cached — see official_index.go for the walk and its staleness
+// bargain.
 func (s *OfficialService) GetList(
 	ctx context.Context,
 	rawQuery url.Values,
 ) (*dto.OfficialListPage, *errors.AppError) {
-	base := client.OpenPopulation(url.Values{"has_works": {"1"}})
-	if kind := rawQuery.Get("kind"); kind != "" {
-		base.Set("kind", kind)
-	}
-	rows, total, appErr := s.galgameClient.CatalogTaxonomyPageAt(ctx, "labels", base,
+	items, total, appErr := s.page(ctx, rawQuery.Get("kind"),
 		atoiOr(rawQuery.Get("page"), 1), atoiOr(rawQuery.Get("limit"), 50))
 	if appErr != nil {
 		return nil, appErr
-	}
-
-	items := make([]dto.OfficialListItem, 0, len(rows))
-	for _, o := range rows {
-		items = append(items, dto.OfficialListItem{
-			ID:   int(o.ID),
-			Name: o.Label(),
-			// The browse row is identity + count; the maker's website lives on
-			// the record (links[]), which the detail page fetches. The list
-			// cards never rendered a website anyway.
-			Category: o.Kind,
-			// The one image the browse row does carry. Resolved here rather
-			// than shipped as a hash so the card can render it straight.
-			Logo:         s.galgameClient.ImageURLFromHash(o.LogoHash),
-			Alias:        emptyStrSliceIfNil(o.Aliases),
-			GalgameCount: o.WorkCount,
-		})
 	}
 	return &dto.OfficialListPage{Officials: items, Total: total}, nil
 }

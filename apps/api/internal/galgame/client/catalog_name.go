@@ -23,7 +23,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
@@ -172,32 +171,6 @@ func (c *GalgameClient) CatalogRowsByCatalogIDs(
 		out[r.ID] = r
 	}
 	return out, nil
-}
-
-// CatalogItemToStaffWork projects one hydrated catalog row plus the person's
-// roles on it into a filmography card. gid is 0 when the work is not a live
-// kungal entry — the card then has no link, which is honest: the forum has
-// nothing to show for it.
-func CatalogItemToStaffWork(it *CatalogWorkListItem, roles []string) dto.StaffWork {
-	w := dto.StaffWork{
-		ID:        it.gid(),
-		CatalogID: int(it.ID),
-		Name: dto.KunLanguage{
-			EnUs: it.name("en-us"), JaJp: it.name("ja-jp"),
-			ZhCn: it.name("zh-cn"), ZhTw: it.name("zh-tw"),
-		},
-		ContentLimit: contentLimitOf(it.ClaimedBy, it.ContentRating),
-		ReleaseDate:  it.ReleaseDate,
-		Roles:        roles,
-	}
-	// A work with no title in any of the four product keys still has the
-	// registry's own display name, which is what every other lane falls back to.
-	if w.Name.JaJp == "" && w.Name.ZhCn == "" && w.Name.ZhTw == "" && w.Name.EnUs == "" {
-		w.Name.JaJp = it.DisplayName
-	}
-	_, w.Banner, w.BannerWidth, w.BannerHeight, w.BannerThumbhash =
-		coverFields(it.Covers, it.Cover)
-	return w
 }
 
 // PickCatalogName renders one credited name, Japanese first — see

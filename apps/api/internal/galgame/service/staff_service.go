@@ -29,10 +29,15 @@ import (
 // StaffService serves the credited-name detail lane.
 type StaffService struct {
 	galgameClient *client.GalgameClient
+	// enricher fuses the catalog rows with the forum's own view/like counts,
+	// platform badges and frozen author — the same overlay the entity detail
+	// pages and the calendar use, so a filmography card is the site's ordinary
+	// galgame card rather than a lookalike.
+	enricher *GalgameEnricher
 }
 
-func NewStaffService(galgameClient *client.GalgameClient) *StaffService {
-	return &StaffService{galgameClient: galgameClient}
+func NewStaffService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *StaffService {
+	return &StaffService{galgameClient: galgameClient, enricher: enricher}
 }
 
 // staffPersonPage renders one source's person page URL from the identity anchor
@@ -115,6 +120,11 @@ func (s *StaffService) GetDetail(
 	// label to map back from.
 	var roleKeys []string
 	labelOf := map[string]string{}
+	// The cards are built in one batch at the end rather than row by row: the
+	// filmography renders through the SHARED galgame card, and the local
+	// enrichment behind it (views, likes, platform badges, the frozen author)
+	// is a set of batch lookups that must see the whole page at once.
+	items := make([]dto.NextMoeGalgameItem, 0, len(name.Credits))
 	for _, c := range name.Credits {
 		row, ok := rows[c.Work.ID]
 		if !ok {
@@ -140,10 +150,26 @@ func (s *StaffService) GetDetail(
 		for _, key := range client.SortStaffRoleKeys(onThisWork) {
 			labels = append(labels, labelOf[key])
 		}
-		work := client.CatalogItemToStaffWork(&row, labels)
-		work.Characters = characters
-		detail.Works = append(detail.Works, work)
+		items = append(items, client.CatalogItemToNextMoeItem(&row))
+		detail.Works = append(detail.Works, dto.StaffWork{
+			CatalogID:  int(row.ID),
+			Roles:      labels,
+			Characters: characters,
+		})
 	}
+
+	// ToCards answers one card per item, in order, so the overlays built above
+	// line up index for index.
+	for i, card := range s.enricher.ToCards(ctx, items) {
+		detail.Works[i].GalgameCard = card
+		// The claim funnel is the calendar's, not this page's. Left alone, every
+		// unclaimed work would paint itself as a 未在论坛发布 call to action —
+		// and a filmography is mostly decades-old games, so the whole grid would
+		// shout it and bury the works the forum actually has. Those rows stay
+		// the neutral 未收录 card that this page has always shown.
+		detail.Works[i].Status = 0
+	}
+
 	detail.Roles = make([]string, 0, len(roleKeys))
 	for _, key := range client.SortStaffRoleKeys(roleKeys) {
 		detail.Roles = append(detail.Roles, labelOf[key])

@@ -65,6 +65,17 @@ const categoryText = (category: string) =>
 const linkText = (source: string) =>
   KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP[source] || source
 
+// A 会社's intro runs to several paragraphs for the makers people actually
+// look up, and on a phone that is the whole first screen — the games, which is
+// what the page is FOR, start below the fold. So it opens clamped.
+//
+// The toggle is offered on LENGTH rather than on measured overflow: a
+// measurement needs the DOM, which the server render does not have, and a
+// button that appears only after hydration moves the text under the reader's
+// thumb. Three lines is roughly this many characters at the narrowest layout.
+const INTRO_CLAMP_CHARS = 100
+const isIntroExpanded = ref(false)
+
 const { data, status } = await useKunFetch<GalgameOfficialDetail>(
   `/galgame-official/${official_id.value}`,
   {
@@ -131,72 +142,50 @@ if (!moved) {
 
 <template>
   <div v-if="data && !data.moved_to" class="space-y-6">
-    <KunHeader
-      :name="`${data.name} 制作的 Galgame`"
-      :description="data.description"
-    >
+    <!-- The intro is NOT the header's description any more. KunHeader renders
+         that immediately under the title at full length, which is exactly the
+         block that pushed the games off a phone screen; it now lives in the
+         body below, clamped. -->
+    <KunHeader :name="`${data.name} 制作的 Galgame`">
       <!-- The 会社's own brand mark, at full size (the header frame is large
            enough that the 360px `_mini` variant would show its resampling).
            Logos are always SFW upstream, so no content gate sits in front of
            it. A maker with none renders no frame at all — the header simply
            looks the way it always has. -->
       <template v-if="data.logo" #headerEndContent>
-        <KunImage
-          :src="data.logo"
-          :alt="`${data.name} logo`"
-          loading="eager"
-          object-fit="contain"
-          class-name="size-16 shrink-0 rounded-md sm:size-20"
-        />
+        <!-- On its own light surface, not bare: a brand mark is usually a
+             transparent PNG drawn in one dark colour, and against the dark
+             theme's background half of them disappear entirely. -->
+        <div class="bg-default-100 shrink-0 rounded-lg p-2 sm:p-3">
+          <KunImage
+            :src="data.logo"
+            :alt="`${data.name} logo`"
+            loading="eager"
+            object-fit="contain"
+            class-name="size-14 sm:size-20"
+          />
+        </div>
       </template>
 
       <template #endContent>
         <div class="space-y-3">
-          <p class="text-default-500">
-            本页展示本站已收录的、由该会社制作的 Galgame, 可按类型 / 语言 / 平台
-            / 排序筛选。本站尚未收录的作品不在此列。默认仅显示 SFW 的 Galgame,
-            查看 NSFW Galgame 请在设置面板打开 NSFW 开关。如果有数据错误请
-            <KunLink to="/doc/contact"> 联系我们 </KunLink>。
-          </p>
-
-          <!-- The 会社's own facts, all of which the payload has always carried
-               and none of which this page used to show: its type, the language
-               its name is written in, and how many of its games are here. -->
-          <div class="text-default-500 flex flex-wrap items-center gap-2">
-            会社类别
+          <!-- One dense line of the 会社's own facts. These used to be three
+               stacked rows, each with its own Chinese label in front of a chip;
+               the labels said nothing the chip's colour and content did not,
+               and they cost three lines of a phone's first screen. -->
+          <div class="flex flex-wrap items-center gap-2">
             <KunChip color="primary">{{ categoryText(data.category) }}</KunChip>
-            <template v-if="data.lang">
-              名称语言
-              <KunChip color="secondary">
-                {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[data.lang] || data.lang }}
-              </KunChip>
-            </template>
-            <template v-if="data.galgame_count">
-              本站收录
-              <KunChip color="success">{{ data.galgame_count }} 部</KunChip>
-            </template>
-          </div>
-          <div
-            v-if="data.alias.length"
-            class="text-default-500 flex flex-wrap gap-2"
-          >
-            别名
-            <KunChip
-              color="primary"
-              v-for="(a, index) in data.alias"
-              :key="index"
-            >
-              {{ a }}
+            <KunChip v-if="data.lang" color="secondary">
+              {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[data.lang] || data.lang }}
             </KunChip>
-          </div>
-          <!-- The web presences. Each is named by its own source, so an X
-               account is never dressed up as 官方网站 — and a 会社 reachable
-               only on X still gets a way to be reached. -->
-          <div
-            v-if="data.links.length"
-            class="text-default-500 flex flex-wrap items-center gap-2"
-          >
-            会社主页
+            <KunChip v-if="data.galgame_count" color="success">
+              本站收录 {{ data.galgame_count }} 部
+            </KunChip>
+
+            <!-- The web presences, on the same line as the facts. Each is named
+                 by its own source, so an X account is never dressed up as
+                 官方网站 — and a 会社 reachable only on X still gets a way to
+                 be reached. -->
             <KunLink
               v-for="link in data.links"
               :key="link.url"
@@ -209,10 +198,11 @@ if (!moved) {
             >
               {{ linkText(link.source) }}
             </KunLink>
-          </div>
-          <div class="flex flex-wrap justify-end gap-2">
+
             <KunButton
+              class-name="ml-auto"
               variant="flat"
+              size="sm"
               color="default"
               @click="showDraftsModal = true"
             >
@@ -220,6 +210,48 @@ if (!moved) {
               未发布的游戏
             </KunButton>
           </div>
+
+          <div
+            v-if="data.alias.length"
+            class="text-default-500 flex flex-wrap items-center gap-2 text-sm"
+          >
+            别名
+            <KunChip size="xs" v-for="(a, index) in data.alias" :key="index">
+              {{ a }}
+            </KunChip>
+          </div>
+
+          <!-- The intro, clamped so the games stay reachable. -->
+          <div v-if="data.description" class="space-y-1">
+            <p
+              :class="
+                cn(
+                  'text-default-600 whitespace-pre-line',
+                  !isIntroExpanded && 'line-clamp-3'
+                )
+              "
+            >
+              {{ data.description }}
+            </p>
+            <KunButton
+              v-if="data.description.length > INTRO_CLAMP_CHARS"
+              variant="light"
+              size="sm"
+              color="primary"
+              @click="isIntroExpanded = !isIntroExpanded"
+            >
+              {{ isIntroExpanded ? '收起简介' : '展开简介' }}
+            </KunButton>
+          </div>
+
+          <!-- The page's own small print. It was four sentences of body text at
+               the very top; two of them (the SFW rule, the filters) are already
+               said by the KunInfo and the filter bar right below it, so what is
+               left is the provenance and the correction route. -->
+          <p class="text-default-400 text-xs">
+            本页仅展示本站已收录的作品, 资料来自 NextMoe 目录。如果有数据错误请
+            <KunLink to="/doc/contact" size="sm">联系我们</KunLink>。
+          </p>
         </div>
       </template>
     </KunHeader>

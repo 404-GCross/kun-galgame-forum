@@ -263,22 +263,21 @@ type TagDetail struct {
 // Staff (credited name)
 // ──────────────────────────────────────────
 
-// StaffWork is one entry in a credited name's filmography. ID is the FORUM gid
-// when the entry lives here and 0 otherwise — most of a working career is
-// games this forum has never ingested, and those rows render as plain cards
-// with nowhere to click rather than being dropped.
+// StaffWork is one entry in a credited name's filmography: the SHARED galgame
+// card, plus what this person did on it.
+//
+// The card is embedded rather than reimplemented so the filmography renders
+// through the same component every other galgame grid on the site uses — and
+// so it carries the same local enrichment (views, likes, platform badges) for
+// the works the forum has ingested. GalgameCard.ID is the forum gid when the
+// entry lives here and 0 otherwise: most of a working career is games this
+// forum has never ingested, and those rows render as 未收录 cards with nowhere
+// to click rather than being dropped.
 type StaffWork struct {
-	ID           int         `json:"id"`
-	CatalogID    int         `json:"catalog_id"`
-	Name         KunLanguage `json:"name"`
-	Banner       string      `json:"banner"`
-	BannerWidth  int         `json:"banner_width,omitempty"`
-	BannerHeight int         `json:"banner_height,omitempty"`
-	// BannerThumbhash drives the blur-up placeholder; absent for images that
-	// predate the image_service backfill.
-	BannerThumbhash string  `json:"banner_thumbhash,omitempty"`
-	ContentLimit    string  `json:"content_limit"`
-	ReleaseDate     *string `json:"release_date"`
+	GalgameCard
+	// CatalogID is the registry id, and the only stable key on this list: every
+	// work the forum has not ingested shares gid 0.
+	CatalogID int `json:"catalog_id"`
 	// Roles are this person's credits ON THIS WORK, localized — the reason a
 	// filmography beats a plain game grid.
 	Roles []string `json:"roles"`

@@ -1,13 +1,20 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends GalgameCard">
 import { storeToRefs } from 'pinia'
 import { GALGAME_RESOURCE_PLATFORM_ICON_MAP } from '~/constants/galgameResource'
 
 const props = defineProps<{
-  galgames: GalgameCard[]
+  galgames: T[]
   isTransparent?: boolean
   // Max columns at the widest breakpoint. Default 4 (the full-width lists); the
   // calendar's narrower 2/3 panel passes 3 so the cards aren't cramped.
   columns?: 3 | 4
+}>()
+
+// Generic in T so a caller with a RICHER card (the 制作人员 filmography, whose
+// rows carry the person's credits on each game) gets its own shape back in the
+// slot instead of the base card. The slot renders under the title.
+defineSlots<{
+  meta?: (props: { galgame: T }) => unknown
 }>()
 
 // Card layout is user-configurable (persisted): each banner corner, the
@@ -33,10 +40,17 @@ const gridClass = computed(() =>
 // status=2 = unclaimed VNDB draft (calendar). It 404s at /galgame/:gid, so send
 // it to the publish wizard pre-searched by name → 认领并发布. Published games
 // link to their detail page as usual.
-const cardHref = (galgame: GalgameCard) =>
-  galgame.status === GalgameStatus.VndbDraft
-    ? `/edit/galgame/publish?q=${encodeURIComponent(getPreferredLanguageText(galgame.name))}`
-    : `/galgame/${galgame.id}`
+//
+// A card with no gid at all (id 0 — a catalogue game the forum has never
+// ingested, which is most of a 制作人员 filmography) links NOWHERE: /galgame/0
+// is not a page, and a card that navigates to a 404 is worse than one that
+// stays put under its 未收录 badge.
+const cardHref = (galgame: GalgameCard) => {
+  if (galgame.status === GalgameStatus.VndbDraft) {
+    return `/edit/galgame/publish?q=${encodeURIComponent(getPreferredLanguageText(galgame.name))}`
+  }
+  return galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
+}
 </script>
 
 <template>
@@ -44,7 +58,7 @@ const cardHref = (galgame: GalgameCard) =>
     <KunCard
       :is-transparent="isTransparent"
       v-for="galgame in galgames"
-      :key="galgame.id"
+      :key="galgame.catalog_id ?? galgame.id"
       :href="cardHref(galgame)"
       :target="isOpenInNewTab ? '_blank' : undefined"
       class-name="p-0"
@@ -173,6 +187,8 @@ const cardHref = (galgame: GalgameCard) =>
         >
           {{ galgame.name['ja-jp'] }}
         </p>
+
+        <slot name="meta" :galgame="galgame" />
 
         <div
           v-if="showPublisher && galgame.is_on_forum !== false"

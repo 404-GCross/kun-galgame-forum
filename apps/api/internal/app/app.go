@@ -483,7 +483,7 @@ func New(cfg *config.Config) *App {
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
-	galgameStaffSvc := galgameService.NewStaffService(gc)
+	galgameStaffSvc := galgameService.NewStaffService(gc, galgameEnricher)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
 	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)

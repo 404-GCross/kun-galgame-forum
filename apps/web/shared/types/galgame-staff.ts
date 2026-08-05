@@ -5,19 +5,11 @@
 // never "this person has none". The page says as much rather than implying the
 // name is the whole person.
 
-/** One entry in a credited name's filmography. */
-export interface GalgameStaffWork {
-  /** Forum gid, or 0 when this game is not on the forum — most of a working
-   *  career is games the forum has never ingested. Those cards do not link. */
-  id: number
+/** One entry in a credited name's filmography: the ordinary galgame card, plus
+ *  what this person did on the game. `id` is 0 for a work the forum has never
+ *  ingested (most of a working career), which is why the key is catalog_id. */
+export interface GalgameStaffWork extends GalgameCard {
   catalog_id: number
-  name: KunLanguage
-  banner: string
-  banner_width?: number
-  banner_height?: number
-  banner_thumbhash?: string
-  content_limit: string
-  release_date: string | null
   /** This person's credits on THIS game — the reason a filmography beats a grid. */
   roles: string[]
   /** Voice acting only: the characters this person voiced in this game. */

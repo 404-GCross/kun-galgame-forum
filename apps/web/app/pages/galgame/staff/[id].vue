@@ -58,13 +58,6 @@ const loadMore = async () => {
   nextOffset.value = res.next_offset
 }
 
-// Only the games this forum has an entry for can be opened. The rest still
-// render — a career is not the subset we happen to host — but as plain cards.
-const workHref = (work: GalgameStaffWork) =>
-  work.id > 0 ? `/galgame/${work.id}` : undefined
-
-const releaseYear = (date: string | null) => date?.slice(0, 4) ?? ''
-
 // The person's own facts, which the registry publishes only where the
 // name→person link is public — a hidden link arrives zeroed, and each row is
 // then simply absent. Every field is optional on the wire as well: this page
@@ -101,11 +94,11 @@ useKunSeoMeta({
       <!-- The portrait describes the PERSON, and the registry publishes it only
            where the name→person link is public — so a name with none looks
            exactly like a name whose link is hidden. Both render as no frame at
-           all rather than an empty one.
-           Full size, like the 会社 logo in the same slot: the frame is large
-           enough for a downscaled variant to show its resampling, and the
-           catalog scope promises no particular preset for a portrait. -->
+           all rather than an empty one. -->
       <template v-if="data.photo" #headerEndContent>
+        <!-- Full size, like the 会社 logo in the same slot: the frame is large
+             enough for a downscaled variant to show its resampling, and the
+             catalog scope promises no particular preset for a portrait. -->
         <KunImage
           :src="data.photo"
           :alt="data.name"
@@ -191,36 +184,15 @@ useKunSeoMeta({
       </template>
     </KunHeader>
 
-    <div
-      v-if="works.length"
-      class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-    >
-      <KunCard
-        v-for="work in works"
-        :key="work.catalog_id"
-        :is-transparent="false"
-        :href="workHref(work)"
-        class-name="h-full p-0"
-        content-class="flex h-full flex-col gap-2 p-3"
-      >
-        <template #cover>
-          <KunImage
-            :src="withBannerVariant(work.banner, 'mini')"
-            loading="lazy"
-            :alt="getPreferredLanguageText(work.name)"
-            placeholder="/placeholder.webp"
-            :thumbhash="work.banner_thumbhash"
-            class="w-full object-cover"
-            :style="{ aspectRatio: '16/9' }"
-          />
-        </template>
-
-        <p class="line-clamp-2 font-medium">
-          {{ getPreferredLanguageText(work.name) }}
-        </p>
-
-        <div class="flex flex-wrap gap-1">
-          <KunChip v-for="role in work.roles" :key="role" size="xs">
+    <!-- The site's ordinary galgame card, not a lookalike: same cover framing,
+         same badges, same reader settings — and for the works the forum has
+         ingested, the same view / like / platform data. What this page adds is
+         the only thing a filmography needs on top, through the card's #meta
+         slot: what this person did on each game. -->
+    <GalgameCard v-if="works.length" :galgames="works" :is-transparent="false">
+      <template #meta="{ galgame }">
+        <div class="mt-2 flex flex-wrap gap-1">
+          <KunChip v-for="role in galgame.roles" :key="role" size="xs">
             {{ role }}
           </KunChip>
         </div>
@@ -228,25 +200,13 @@ useKunSeoMeta({
         <!-- For a voice actor the cast IS the credit: a bare 声优 chip says
              nothing a reader on this page did not already know. -->
         <p
-          v-if="work.characters?.length"
-          class="text-default-500 line-clamp-2 text-xs"
+          v-if="galgame.characters?.length"
+          class="text-default-500 mt-1 line-clamp-2 text-xs"
         >
-          {{ work.characters.join(' / ') }}
+          {{ galgame.characters.join(' / ') }}
         </p>
-
-        <!-- Pinned to the bottom of the card. The chip row wraps to one or two
-             lines depending on how many hats this person wore, and without
-             mt-auto the footer rode up with it, leaving the grid ragged. -->
-        <div
-          class="text-default-400 mt-auto flex items-center justify-between text-xs"
-        >
-          <!-- A game the forum has no entry for: the credit is real, the page
-               is not, so the card says why it does not open. -->
-          <span>{{ work.id === 0 ? '本站未收录' : '' }}</span>
-          <span>{{ releaseYear(work.release_date) }}</span>
-        </div>
-      </KunCard>
-    </div>
+      </template>
+    </GalgameCard>
 
     <KunNull v-else description="暂无该制作人员参与的 Galgame" />
 

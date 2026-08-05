@@ -155,6 +155,10 @@ export interface GalgameCard {
   // ratings / views) — the card hides those forum-only fields + shows 未收录.
   // Absent on the /galgame list + other card sources (treated as "on forum").
   is_on_forum?: boolean
+  // Catalog (registry) id. Only the 制作人员 filmography carries it, and it is
+  // that grid's key: every work the forum has not ingested shares `id` 0, so
+  // `id` alone would collide on most of a person's career.
+  catalog_id?: number
   platform: string[]
   language: string[]
   resource_update_time: Date | string
