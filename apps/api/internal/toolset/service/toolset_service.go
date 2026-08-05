@@ -87,6 +87,7 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 		Platform: req.Platform,
 		Version:  req.Version,
 		UserID:   req.UserID,
+		Query:    req.Query,
 	}
 	total := s.toolsetRepo.CountFiltered(filters)
 

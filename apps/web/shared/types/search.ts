@@ -1,7 +1,9 @@
 import type { HomeTopic, HomeGalgame } from './home'
+import type { ToolsetCard } from './toolset'
 
 export type SearchResultTopic = HomeTopic
 export type SearchResultGalgame = HomeGalgame
+export type SearchResultToolset = ToolsetCard
 
 // BE `UserItem` (apps/api/internal/search/dto) currently leaves
 // `moemoepoint` and `created` zero — they're not joined from
@@ -35,10 +37,11 @@ export type SearchResultComment = {
   created: Date | string
 }
 
-export type SearchType = 'topic' | 'galgame' | 'user' | 'reply' | 'comment'
+export type SearchType = 'topic' | 'galgame' | 'toolset' | 'user' | 'reply' | 'comment'
 export type SearchResult =
   | SearchResultTopic
   | SearchResultGalgame
+  | SearchResultToolset
   | SearchResultUser
   | SearchResultReply
   | SearchResultComment

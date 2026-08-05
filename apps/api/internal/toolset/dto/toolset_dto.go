@@ -21,6 +21,9 @@ type ToolsetListRequest struct {
 	Version   string `query:"version"`
 	SortField string `query:"sort_field"`
 	SortOrder string `query:"sort_order"`
+	// Query is the keyword search across name + description + version (on the
+	// toolset row) and alias name (on galgame_toolset_alias). Empty = off.
+	Query string `query:"query" validate:"max=100"`
 	// UserID is set by the per-user handler (GET /user/:id/toolsets) from the
 	// path, NOT bound from the query — so the public /toolset list can't be
 	// author-filtered by an arbitrary caller.

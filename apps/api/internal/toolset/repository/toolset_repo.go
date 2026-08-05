@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"time"
 
 	"kun-galgame-api/internal/toolset/model"
@@ -31,6 +32,9 @@ type ListFilters struct {
 	// UserID > 0 scopes the list to one author's toolsets (their profile 工具
 	// section). 0 = no author filter (the public list).
 	UserID int
+	// Query — keyword search across name + description + version (on the
+	// toolset row) and alias name (on galgame_toolset_alias). Empty = off.
+	Query string
 }
 
 // ListOptions holds sort + pagination parameters.
@@ -59,7 +63,19 @@ func (r *ToolsetRepository) buildListQuery(f ListFilters) *gorm.DB {
 	if f.UserID > 0 {
 		q = q.Where("user_id = ?", f.UserID)
 	}
+	if kw := strings.TrimSpace(f.Query); kw != "" {
+		q = q.Where("name ILIKE ?", "%"+escapeLike(kw)+"%")
+	}
 	return q
+}
+
+// escapeLike 转义 LIKE 模式中的通配符 % 和 _
+func escapeLike(s string) string {
+    return strings.NewReplacer(
+        "\\", "\\\\",
+        "%",  "\\%",
+        "_",  "\\_",
+    ).Replace(s)
 }
 
 // CountFiltered counts toolsets matching the filters.

@@ -13,6 +13,10 @@ export const navItems: NavItem[] = [
     value: 'galgame'
   },
   {
+    textValue: 'Gal 工具资源',
+    value: 'toolset'
+  },
+  {
     textValue: '用户',
     value: 'user'
   },

@@ -28,11 +28,25 @@ const isLoadComplete = computed(
 
 const searchQuery = async (searchType?: string): Promise<SearchPage> => {
   isLoading.value = true
+  const type = searchType || activeType.value
+  // toolset reuses the public /toolset list endpoint with its `query` keyword
+  // filter (BE has no /search?type=toolset). Same {items,total} envelope.
+  if (type === 'toolset') {
+    const result = await kunFetch<SearchPage>('/toolset', {
+      method: 'GET',
+      query: {
+        query: keywords.value,
+        ...pageData
+      }
+    })
+    isLoading.value = false
+    return result ?? { items: [], total: 0 }
+  }
   const result = await kunFetch<SearchPage>('/search', {
     method: 'GET',
     query: {
       keywords: keywords.value,
-      type: searchType || activeType.value,
+      type,
       ...pageData
     }
   })
