@@ -20,8 +20,10 @@
 //
 // kunFetch surfaces business errors via its response handler (quota
 // exceeded, moderation rejected, missing credentials, etc.); on those
-// it returns null. Callers should treat null as "show wiki message,
-// don't proceed" and not retry blindly.
+// it returns null. Callers should treat null as "already reported,
+// don't proceed" and not retry blindly. Since wave 169 the proxy lands
+// bytes on the catalog edit image face (image-service site `catalog`),
+// not the retired wiki.
 
 export type GalgameImageUploadPreset = 'galgame_banner' | 'galgame_screenshot'
 

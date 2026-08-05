@@ -7,8 +7,9 @@
 // revision); merge/decline close the proposal.
 import { editValueEqual } from '~/components/editkit/utils'
 import {
-  galgameEditFieldConfig,
-  galgameEditLabel
+  createGalgameEditConfig,
+  galgameEditLabel,
+  type GalgameEditNames
 } from '~/constants/galgameEdit'
 
 const route = useRoute()
@@ -46,6 +47,77 @@ const effective = computed(
   () => proposal.value?.effective_patch ?? proposal.value?.patch ?? {}
 )
 const fieldOf = (key: string) => data.value?.fields.find((f) => f.key === key)
+
+// ---- relation id → name resolution -----------------------------------------
+// The reviewer adjudicates on NAMES, not registry ids. The game detail ships
+// the CURRENT tag/会社/engine/series edges resolved; any id the proposal adds
+// is fetched from that entity's own detail face. Resolution is client-side and
+// progressive — an id whose name never arrives keeps rendering as `#id`, which
+// degrades the diff, never blocks it.
+const names = ref<GalgameEditNames>({})
+const editConfig = computed(() => createGalgameEditConfig(names.value))
+const configOf = (key: string) => editConfig.value[key]
+
+const relationIds = (key: string): number[] => {
+  const pools = [data.value?.values?.[key], effective.value[key]]
+  const out = new Set<number>()
+  for (const pool of pools) {
+    if (!Array.isArray(pool)) {
+      continue
+    }
+    for (const el of pool) {
+      const id = Number(
+        key === 'catalog.work.labels'
+          ? (el as { label_id?: unknown })?.label_id
+          : el
+      )
+      if (Number.isFinite(id)) {
+        out.add(id)
+      }
+    }
+  }
+  return [...out]
+}
+
+onMounted(async () => {
+  const gid = proposal.value?.gid
+  if (!gid) {
+    return
+  }
+  const detail = await kunFetch<GalgameDetail>(`/galgame/${gid}`, {
+    method: 'GET'
+  })
+  const toMap = (arr?: { id: number; name: string }[]) =>
+    new Map((arr ?? []).map((x) => [x.id, x.name]))
+  const maps: Required<GalgameEditNames> = {
+    tag: toMap(detail?.tag),
+    official: toMap(detail?.official),
+    engine: toMap(detail?.engine),
+    series: toMap(detail?.series)
+  }
+  const families = [
+    { map: maps.tag, key: 'catalog.work.tag_ids', path: 'galgame-tag' },
+    { map: maps.official, key: 'catalog.work.labels', path: 'galgame-official' },
+    { map: maps.engine, key: 'catalog.work.engine_ids', path: 'galgame-engine' },
+    { map: maps.series, key: 'catalog.work.series_ids', path: 'galgame-series' }
+  ]
+  await Promise.all(
+    families.flatMap(({ map, key, path }) =>
+      relationIds(key)
+        .filter((id) => !map.has(id))
+        .map(async (id) => {
+          const hit = await kunFetch<{ id: number; name: string }>(
+            `/${path}/${id}`,
+            { method: 'GET' }
+          )
+          if (hit?.name) {
+            map.set(id, hit.name)
+          }
+        })
+    )
+  )
+  names.value = maps
+})
 
 // ---- per-field review state -------------------------------------------------
 // overrides: reviewer-corrected values (amend set); rejected: field keys the
@@ -280,7 +352,7 @@ const userName = (uid?: number) => {
             :diff-hint="fieldOf(String(key))?.diff_hint"
             :from="data.values[String(key)]"
             :to="editing[String(key)] ? overrides[String(key)] : value"
-            :config="galgameEditFieldConfig(String(key))"
+            :config="configOf(String(key))"
           />
 
           <div
@@ -333,7 +405,7 @@ const userName = (uid?: number) => {
             <EditkitSchemaField
               v-model="overrides[String(key)]"
               :field="fieldOf(String(key))!"
-              :config="galgameEditFieldConfig(String(key))"
+              :config="configOf(String(key))"
             />
           </div>
         </div>

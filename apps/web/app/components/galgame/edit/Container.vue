@@ -75,16 +75,11 @@ const reviewable = computed(() => {
 // can_review / would_automerge projection above. Stays on useRole, not useCan.
 const { canModerate } = useRole()
 
-const gameName = computed(() => {
-  const values = bootstrap.value?.values ?? {}
-  const name: KunLanguage = {
-    'en-us': String(values['galgame.game.name_en_us'] ?? ''),
-    'ja-jp': String(values['galgame.game.name_ja_jp'] ?? ''),
-    'zh-cn': String(values['galgame.game.name_zh_cn'] ?? ''),
-    'zh-tw': String(values['galgame.game.name_zh_tw'] ?? '')
-  }
-  return getPreferredLanguageText(name)
-})
+// Bootstrap values are catalog.work.* fields — display_name is the single
+// cross-site name the registry derives from the official titles.
+const gameName = computed(() =>
+  String(bootstrap.value?.values['catalog.work.display_name'] ?? '')
+)
 
 const patch = ref<Record<string, unknown>>({})
 const note = ref('')
@@ -161,7 +156,7 @@ const handleWithdraw = async (id: number) => {
         content-class="space-y-2"
       >
         <KunHeader
-          :name="`编辑资料 · ${gameName}`"
+          :name="gameName ? `编辑资料 · ${gameName}` : '编辑资料'"
           description="修改字段后保存：拥有直接编辑权限（管理员 / 游戏创建者）时立即生效，否则进入审核队列，由审核人处理（审核人可在合并前修正您的提案，双方都会署名）"
           scale="h2"
         />
