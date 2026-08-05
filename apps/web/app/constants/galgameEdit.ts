@@ -27,7 +27,6 @@ import type {
   EditFieldConfigMap,
   EditSelectOption
 } from '~/components/editkit/types'
-import GalgameEditIntroEditor from '~/components/galgame/edit/IntroEditor.vue'
 import {
   KUN_GALGAME_OFFICIAL_KIND_OPTIONS,
   KUN_GALGAME_OFFICIAL_KIND_DEVELOPER
@@ -119,6 +118,27 @@ const resolveFrom =
     })
   }
 
+// Diff/chip display for one relation item: the NAME when the host supplied a
+// map covering it, `#id` otherwise — a reviewer should adjudicate on names,
+// not registry ids.
+const idFormatItem =
+  (map?: Map<number, string>) =>
+  (item: unknown): string =>
+    map?.get(Number(item)) ?? `#${String(item)}`
+
+const labelFormatItem =
+  (map?: Map<number, string>) =>
+  (item: unknown): string => {
+    const row = item as { label_id?: number; kind?: number }
+    const name =
+      (row.label_id !== undefined && map?.get(Number(row.label_id))) ||
+      `#${row.label_id ?? '?'}`
+    const kind = KUN_GALGAME_OFFICIAL_KIND_OPTIONS.find(
+      (o) => o.value === row.kind
+    )?.label
+    return kind ? `${name} · ${kind}` : String(name)
+  }
+
 const GROUP_TITLES = '标题'
 const GROUP_INTRO = '介绍'
 const GROUP_BASIC = '基本信息'
@@ -177,47 +197,27 @@ const INTRO_LANG_OPTIONS: EditSelectOption[] = [
 ]
 
 const imageRow = (value: unknown): string => {
-  if (typeof value === 'string') {
-    // The banner field is the legacy URL column — already renderable.
-    return value
-  }
   if (value && typeof value === 'object') {
-    const row = value as { cdn_url?: string; image_hash?: string }
+    const row = value as { image_hash?: string }
     if (row.image_hash) {
-      return galgameImageSrc({
-        cdn_url: row.cdn_url,
-        image_hash: row.image_hash
-      })
+      return galgameImageSrc({ image_hash: row.image_hash })
     }
   }
   return ''
 }
 
 // ---- image upload hooks (E3b ruling 3) -------------------------------------
-// Uploads ride the existing galgame image proxy (POST /image/galgame →
-// wiki → image_service under site=galgame_wiki, the byte-owner iron rule);
-// the editor only carries the returned hash/URL in the patch. Item shapes
-// mirror the engine's SnapshotCover / SnapshotScreenshot STRICT key sets —
-// never add render-only keys (e.g. cdn_url), the engine rejects unknown keys.
+// Uploads ride the galgame image proxy (POST /image/galgame → the catalog edit
+// image face; bytes land under the image-service `catalog` site since wave
+// 169); the editor only carries the returned hash in the patch. Item shapes
+// are the engine's STRICT key sets — covers {image_hash, kind?,
+// portrait_pinned?, sexual?, violence?}, screenshots {image_hash, caption?,
+// sexual?, violence?} — the engine rejects any other key ("unknown key"),
+// and ordering is the ARRAY ORDER: sort_order is derived server-side and must
+// never be submitted.
 
-interface EditImageItem {
-  image_hash: string
-  sort_order: number
-  [key: string]: unknown
-}
-
-/** Stamp sort_order = index — item 0 is the pinned cover (the wiki's
- * "at most one sort_order=0" invariant holds by construction). */
-const normalizeImageItems = (items: unknown[]): unknown[] =>
-  items.map((item, index) => ({
-    ...(item as EditImageItem),
-    sort_order: index
-  }))
-
-const uploadBanner = async (file: File): Promise<unknown | null> => {
-  const res = await uploadGalgameImage(file, 'galgame_banner', file.name)
-  return res ? res.url : null
-}
+const hasImageHash = (items: unknown[], hash: string): boolean =>
+  items.some((item) => (item as { image_hash?: string }).image_hash === hash)
 
 const uploadCoverItem = async (
   file: File,
@@ -227,19 +227,11 @@ const uploadCoverItem = async (
   if (!res) {
     return null
   }
-  if (current.some((item) => (item as EditImageItem).image_hash === res.hash)) {
+  if (hasImageHash(current, res.hash)) {
     useMessage('已跳过重复图片', 'warn')
     return null
   }
-  return {
-    image_hash: res.hash,
-    sort_order: current.length,
-    sexual: 0,
-    violence: 0,
-    source: '',
-    source_key: '',
-    kind: ''
-  }
+  return { image_hash: res.hash }
 }
 
 const uploadScreenshotItem = async (
@@ -250,19 +242,11 @@ const uploadScreenshotItem = async (
   if (!res) {
     return null
   }
-  if (current.some((item) => (item as EditImageItem).image_hash === res.hash)) {
+  if (hasImageHash(current, res.hash)) {
     useMessage('已跳过重复图片', 'warn')
     return null
   }
-  return {
-    image_hash: res.hash,
-    sort_order: current.length,
-    caption: '',
-    sexual: 0,
-    violence: 0,
-    source: '',
-    source_key: ''
-  }
+  return { image_hash: res.hash }
 }
 
 export const createGalgameEditConfig = (
@@ -349,6 +333,7 @@ export const createGalgameEditConfig = (
     multiple: true,
     searchEntities: searchSeries,
     resolveEntities: resolveFrom(names.series),
+    formatItem: idFormatItem(names.series),
     description: '搜索并选择所属系列'
   },
   [K('tag_ids')]: {
@@ -358,6 +343,7 @@ export const createGalgameEditConfig = (
     multiple: true,
     searchEntities: searchTags,
     resolveEntities: resolveFrom(names.tag),
+    formatItem: idFormatItem(names.tag),
     description: '搜索标签名称添加'
   },
   [K('labels')]: {
@@ -374,6 +360,7 @@ export const createGalgameEditConfig = (
     entityDefaultKind: KUN_GALGAME_OFFICIAL_KIND_DEVELOPER,
     searchEntities: searchOfficials,
     resolveEntities: resolveFrom(names.official),
+    formatItem: labelFormatItem(names.official),
     description: '搜索会社名称添加, 并选择它在本作中的身份 (开发商 / 发行商 …)'
   },
   [K('engine_ids')]: {
@@ -383,6 +370,7 @@ export const createGalgameEditConfig = (
     multiple: true,
     searchEntities: searchEngines,
     resolveEntities: resolveFrom(names.engine),
+    formatItem: idFormatItem(names.engine),
     description: '搜索引擎名称添加'
   },
 
@@ -402,7 +390,6 @@ export const createGalgameEditConfig = (
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadCoverItem,
-    normalizeItems: normalizeImageItems,
     pinFirstLabel: '封面',
     description: '拖拽排序；第一张为详情页头图，可点“设为封面”置顶'
   },
@@ -412,15 +399,14 @@ export const createGalgameEditConfig = (
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadScreenshotItem,
-    normalizeItems: normalizeImageItems,
     description: '拖拽可调整展示顺序'
   }
 })
 
-/** Static config with NO taxonomy name maps — the edit page builds its own
- * with createGalgameEditConfig(names) off the galgame detail; other consumers
- * (review workbench, label lookups) use this, where relation pickers still
- * search by name but show current ids as `#id`. */
+/** Static config with NO taxonomy name maps — pages that can resolve names
+ * (the edit page off the galgame detail, the review workbench off detail +
+ * by-id lookups) build their own with createGalgameEditConfig(names); this one
+ * serves label lookups, where relation items render as `#id`. */
 export const GALGAME_EDIT_FIELD_CONFIG: EditFieldConfigMap =
   createGalgameEditConfig()
 

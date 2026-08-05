@@ -281,9 +281,9 @@ const removeImageItem = (index: number) => {
 
 // Drag-to-reorder for the image list (sortablejs via @vueuse). useSortable
 // mutates the local `sortItems` mirror on drop; we push the new order up
-// through emitImageItems (which re-stamps sort_order). The editValueEqual
-// guards keep the mirror ↔ modelValue sync from looping (normalizeItems
-// restamps sort_order, so a reorder does change the emitted items).
+// through emitImageItems. The editValueEqual guards keep the mirror ↔
+// modelValue sync from looping — order is part of value identity, so a
+// reorder does change the emitted items.
 const gridRef = ref<HTMLElement | null>(null)
 const sortItems = ref<unknown[]>([...imageItems.value])
 watch(imageItems, (items) => {
