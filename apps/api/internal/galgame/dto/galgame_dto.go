@@ -172,6 +172,24 @@ type GalgameDetailTag struct {
 	SpoilerLevel int    `json:"spoiler_level"`
 }
 
+// GalgameDetailStaff is one credited role on the 制作人员 panel — 脚本, 原画,
+// 声优 — already folded and ordered by the catalog projection.
+type GalgameDetailStaff struct {
+	RoleKey  string                   `json:"role_key"`
+	RoleName string                   `json:"role_name"`
+	People   []GalgameDetailStaffName `json:"people"`
+}
+
+// GalgameDetailStaffName is one credited identity. ID addresses the credited
+// NAME in the catalog; nothing on the forum links to it yet. Characters is the
+// voice-acting case: every character this name voices in this game.
+type GalgameDetailStaffName struct {
+	ID         int      `json:"id"`
+	Name       string   `json:"name"`
+	Latin      string   `json:"latin,omitempty"`
+	Characters []string `json:"characters,omitempty"`
+}
+
 // GalgameDetailRatingGalgame is the tiny galgame embed inside each rating card.
 type GalgameDetailRatingGalgame struct {
 	ID           int         `json:"id"`
@@ -262,6 +280,7 @@ type GalgameDetail struct {
 	Official              []GalgameDetailOfficial `json:"official"`
 	Series                []GalgameDetailSeries   `json:"series"`
 	Tag                   []GalgameDetailTag      `json:"tag"`
+	Staff                 []GalgameDetailStaff    `json:"staff"`
 	Ratings               []GalgameDetailRating   `json:"ratings"`
 	Created               string                  `json:"created"`
 	Updated               string                  `json:"updated"`

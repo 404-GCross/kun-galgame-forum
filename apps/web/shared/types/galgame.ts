@@ -39,6 +39,26 @@ export interface GalgameScreenshot extends GalgameCover {
   caption: string
 }
 
+// One credited role on the 制作人员 panel. The backend has already folded the
+// catalog's duplicate role vocabularies (插画/原画, 脚本/剧本) into one group each,
+// merged the spellings of a single person, and ordered authorship above the
+// cast — the FE renders the list as it arrives.
+export interface GalgameDetailStaff {
+  role_key: string
+  role_name: string
+  people: GalgameDetailStaffName[]
+}
+
+export interface GalgameDetailStaffName {
+  // The catalog's credit-NAME id. Nothing links to it yet; it is here so the
+  // day the forum grows a person page, the anchor already exists.
+  id: number
+  name: string
+  latin?: string
+  // Voice acting only: every character this name voices in this game.
+  characters?: string[]
+}
+
 export interface GalgameDetail {
   id: number
   vndb_id: string
@@ -101,6 +121,7 @@ export interface GalgameDetail {
   official: GalgameOfficialItem[]
   series: GalgameDetailSeriesRef[]
   tag: GalgameDetailTag[]
+  staff: GalgameDetailStaff[]
   ratings: GalgameRatingCardOnGalgamePage[]
   created: Date | string
   updated: Date | string

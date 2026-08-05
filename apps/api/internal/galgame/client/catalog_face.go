@@ -488,6 +488,33 @@ type catWorkDetail struct {
 	// series_siblings, which is vndb's pairwise same_series closure projected to
 	// briefs: that one has no entity behind it and nothing to link to.
 	Series []catWorkSeries `json:"series"`
+	// Credits is include-gated upstream (omitted entirely without
+	// include=credits), which is why the detail query asks for it by name.
+	Credits []catCreditGroup `json:"credits"`
+}
+
+// catCreditGroup is one role's signings on a work. The face has already
+// resolved role_name to the localized label (name_cn, falling back to ja then
+// the key), so kungal never keeps its own copy of the role vocabulary — it is
+// generated upstream from the Bangumi staff positions and runs to hundreds of
+// rows.
+type catCreditGroup struct {
+	RoleKey  string          `json:"role_key"`
+	RoleName string          `json:"role_name"`
+	Credits  []catCreditItem `json:"credits"`
+}
+
+// catCreditItem is one signing. ID is the CREDIT-NAME id (an addressable
+// identity at /v1/catalog/names/{id}), not a person id: the public face does
+// not publish person_id here, so two credited spellings of one human arrive as
+// two rows — see catalogStaffFromCredits for what kungal does about it.
+// Character is set for voice acting only, one row per voiced character.
+type catCreditItem struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Latin       string `json:"latin"`
+	CharacterID int64  `json:"character_id"`
+	Character   string `json:"character"`
 }
 
 // catWorkSeries is one series membership on a work record. member_count is the
@@ -520,7 +547,9 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 	}
 	// spoilers=0 keeps the character roster's spoiler traits closed; the tag
 	// edges carry their own per-edge spoiler level for the FE to gate on.
-	q := url.Values{"spoilers": {"0"}}
+	// credits is the one heavy block kungal renders (the 制作人员 panel); the
+	// other one, relations, has no surface here and stays unasked.
+	q := url.Values{"spoilers": {"0"}, "include": {"credits"}}
 	openPopulation(q)
 	data, appErr := c.GetV1(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)
 	if appErr != nil {

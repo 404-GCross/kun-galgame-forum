@@ -257,6 +257,7 @@ type NextMoeGalgameDetailFull struct {
 	Engine                   []NextMoeEngineWithAlias   `json:"engine"`
 	Series                   []NextMoeSeriesRef         `json:"series"`
 	Tag                      []NextMoeTagWithSpoiler    `json:"tag"`
+	Staff                    []NextMoeStaffGroup        `json:"staff"`
 	Contributor              []NextMoeContributor       `json:"contributor"`
 	Created                  string                     `json:"created"`
 	Updated                  string                     `json:"updated"`
@@ -264,6 +265,27 @@ type NextMoeGalgameDetailFull struct {
 	// ("dlsite" → the DLsite workno). Carried through so the service can build the
 	// 正版购买 link for the galgame header.
 	Refs map[string]string `json:"refs,omitempty"`
+}
+
+// NextMoeStaffGroup is one credited role on a work — 脚本, 原画, 声优 — with the
+// people who filled it. RoleName arrives already localized from the catalog.
+type NextMoeStaffGroup struct {
+	RoleKey  string             `json:"role_key"`
+	RoleName string             `json:"role_name"`
+	People   []NextMoeStaffName `json:"people"`
+}
+
+// NextMoeStaffName is one credited identity inside a role group. ID addresses
+// the credited NAME (catalog credit_name), not the human behind it; kungal has
+// no page for either yet, so it rides along unrendered for the day it does.
+//
+// Characters is populated for voice acting only, and holds every character this
+// name voices in the work — one VA with three roles is one row, not three.
+type NextMoeStaffName struct {
+	ID         int      `json:"id"`
+	Name       string   `json:"name"`
+	Latin      string   `json:"latin,omitempty"`
+	Characters []string `json:"characters,omitempty"`
 }
 
 // NextMoeSeriesRef is one series a work belongs to: identity only, because the

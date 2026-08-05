@@ -162,6 +162,8 @@ const hasContributorCard = computed(
                 <GalgameLink />
               </div>
 
+              <GalgameStaff :staff="galgame.staff" />
+
               <GalgameGallery :screenshots="galgame.screenshots" />
 
               <GalgameSeriesPanel

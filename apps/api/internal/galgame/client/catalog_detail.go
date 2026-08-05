@@ -55,6 +55,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		Created:            d.Created,
 		ResourceUpdateTime: zeroTS,
 		Refs:               refsMap(d.Refs),
+		Staff:              catalogStaffFromCredits(d.Credits),
 		Covers:             catalogCoversToNextMoe(d),
 		Screenshots:        catalogScreenshotsToNextMoe(d),
 		// Wiki-era contribution froze with the wiki (D6). The author still

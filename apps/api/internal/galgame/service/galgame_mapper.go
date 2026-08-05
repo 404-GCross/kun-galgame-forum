@@ -129,6 +129,7 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 		// warned on every detail render and rendered no 所属系列 at all.
 		Series:  seriesFromNextMoe(g.Series),
 		Tag:     tagsFromNextMoe(g.Tag),
+		Staff:   staffFromNextMoe(g.Staff),
 		Created: g.Created,
 		Updated: g.Updated,
 	}
@@ -246,6 +247,23 @@ func tagsFromNextMoe(tags []dto.NextMoeTagWithSpoiler) []dto.GalgameDetailTag {
 			SpoilerLevel: t.SpoilerLevel,
 			GalgameCount: t.Tag.GalgameCount,
 		}
+	}
+	return out
+}
+
+// staffFromNextMoe copies the 制作人员 panel across the DTO boundary. The
+// folding, dedup and ordering already happened in the catalog projection — this
+// is a plain field copy, kept so the forum-facing type can diverge later.
+func staffFromNextMoe(groups []dto.NextMoeStaffGroup) []dto.GalgameDetailStaff {
+	out := make([]dto.GalgameDetailStaff, len(groups))
+	for i, g := range groups {
+		people := make([]dto.GalgameDetailStaffName, len(g.People))
+		for j, p := range g.People {
+			people[j] = dto.GalgameDetailStaffName{
+				ID: p.ID, Name: p.Name, Latin: p.Latin, Characters: p.Characters,
+			}
+		}
+		out[i] = dto.GalgameDetailStaff{RoleKey: g.RoleKey, RoleName: g.RoleName, People: people}
 	}
 	return out
 }
