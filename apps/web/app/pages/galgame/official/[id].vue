@@ -135,6 +135,21 @@ if (!moved) {
       :name="`${data.name} 制作的 Galgame`"
       :description="data.description"
     >
+      <!-- The 会社's own brand mark, at full size (the header frame is large
+           enough that the 360px `_mini` variant would show its resampling).
+           Logos are always SFW upstream, so no content gate sits in front of
+           it. A maker with none renders no frame at all — the header simply
+           looks the way it always has. -->
+      <template v-if="data.logo" #headerEndContent>
+        <KunImage
+          :src="data.logo"
+          :alt="`${data.name} logo`"
+          loading="eager"
+          object-fit="contain"
+          class-name="size-16 shrink-0 rounded-md sm:size-20"
+        />
+      </template>
+
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">

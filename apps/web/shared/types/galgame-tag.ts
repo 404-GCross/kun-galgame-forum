@@ -22,6 +22,10 @@ export interface GalgameTagItem {
 export interface GalgameTaxonomySearchItem {
   id: number
   name: string
+  /** The one exception to identity-only, and only on 会社 (label) hits: a
+   * ready-made logo URL, because the brand mark IS a maker's identity. Absent
+   * on tag hits and on makers with no logo. */
+  logo?: string
 }
 
 export interface GalgameTagDetail {

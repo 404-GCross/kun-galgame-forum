@@ -49,6 +49,14 @@ type CatalogTaxonomyItem struct {
 	// would otherwise report every series as clean and put r18 covers in front
 	// of SFW readers. nil = unanswered, and the caller probes instead.
 	HasNSFW *bool `json:"has_nsfw"`
+	// LogoHash is the label's 会社 logo, content-addressed in image_service —
+	// label lane only, "" when the maker has none (and on a catalog that
+	// predates the field, which is why absent must read as "no logo" and never
+	// as an error). Resolve it with GalgameClient.ImageURLFromHash; the banner
+	// walker does not touch it, since it carries no `sort_order` sibling.
+	//
+	// Always SFW (the catalog stores logos with sexual=0), so no gate here.
+	LogoHash string `json:"logo_hash"`
 }
 
 // TagTierHidden is the canonical vocabulary's "do not display" tier. Upstream
@@ -90,6 +98,8 @@ type CatalogLabelDetail struct {
 	WorkCount   int                `json:"work_count"`
 	Intros      []CatalogIntro     `json:"intros"`
 	Links       []CatalogLabelLink `json:"links"`
+	// LogoHash — see CatalogTaxonomyItem.LogoHash.
+	LogoHash string `json:"logo_hash"`
 }
 
 // CatalogLabelLink is one of a label's web presences. Source is the catalog's
@@ -291,6 +301,10 @@ type CatalogEntityHit struct {
 	// no `sexual` flag, which is why the SFW gate needs CatalogSexualTagIDs.
 	Tier string `json:"tier"`
 	Kind string `json:"kind"`
+	// LogoHash rides LABEL hits only — the one piece of non-identity data the
+	// hit shape carries, because a maker picker that shows the brand mark is
+	// the whole point and a second round trip per hit is not. "" elsewhere.
+	LogoHash string `json:"logo_hash"`
 }
 
 // CatalogEntitySearch runs the shared entity search. searchType is the face's

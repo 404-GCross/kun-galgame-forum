@@ -78,6 +78,11 @@ type GalgameSample struct {
 type TaxonomySearchItem struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
+	// Logo is the LABEL hit's ready-made 会社 logo URL — the one exception to
+	// "identity and nothing else", because the brand mark IS identity for a
+	// maker and the catalog ships its hash inline on the hit. omitempty: a tag
+	// hit has no logo and must not claim an empty one.
+	Logo string `json:"logo,omitempty"`
 }
 
 // ──────────────────────────────────────────
@@ -85,10 +90,16 @@ type TaxonomySearchItem struct {
 // ──────────────────────────────────────────
 
 type OfficialListItem struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Link         string   `json:"link"`
-	Category     string   `json:"category"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Link     string `json:"link"`
+	Category string `json:"category"`
+	// Logo is the 会社 logo as a READY-MADE absolute CDN URL (original size —
+	// the FE derives the `_mini` variant with withImageVariant, the same way it
+	// does for galgame banners), "" when the maker has no logo. A URL rather
+	// than a hash so no consumer has to know the CDN layout, matching how every
+	// other catalog-derived image reaches this face.
+	Logo         string   `json:"logo"`
 	Lang         string   `json:"lang"`
 	Alias        []string `json:"alias"`
 	GalgameCount int      `json:"galgame_count"`
@@ -117,14 +128,17 @@ type OfficialDetail struct {
 	// carries, each with the source key that names it — a 会社 whose only
 	// presence is an X account has an empty Link and one entry here, which is
 	// the honest reading of "no official site, but you can still find them".
-	Links        []OfficialLink `json:"links"`
-	Link         string         `json:"link"`
-	Category     string         `json:"category"`
-	Lang         string         `json:"lang"`
-	Description  string         `json:"description"`
-	Alias        []string       `json:"alias"`
-	Galgame      []GalgameCard  `json:"galgame"`
-	GalgameCount int64          `json:"galgame_count"`
+	Links []OfficialLink `json:"links"`
+	Link  string         `json:"link"`
+	// Logo — see OfficialListItem.Logo. "" when the maker has no logo, which is
+	// the page's cue to render the name alone rather than a broken frame.
+	Logo         string        `json:"logo"`
+	Category     string        `json:"category"`
+	Lang         string        `json:"lang"`
+	Description  string        `json:"description"`
+	Alias        []string      `json:"alias"`
+	Galgame      []GalgameCard `json:"galgame"`
+	GalgameCount int64         `json:"galgame_count"`
 	// MovedTo is the ONLY field set when this label id was merged away
 	// upstream: the identity now lives on that catalog label id and the page
 	// must 301 to it in a single hop. Everything else stays zero on purpose —

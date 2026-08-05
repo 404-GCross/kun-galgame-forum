@@ -34,6 +34,21 @@ func bannerURLFromHash(cdnBase, hash string) string {
 		hash[:2] + "/" + hash[2:4] + "/" + hash + ".webp"
 }
 
+// ImageURLFromHash resolves any content hash the catalog hands over as a BARE
+// hash — a 会社 logo, say — to its absolute CDN URL, using the same layout and
+// the same configured base the banner walker uses.
+//
+// The walker itself cannot do this job: it keys off `image_hash` + `sort_order`
+// (a cover / screenshot row), and a logo is neither. Returns "" for an empty or
+// too-short hash, so a caller can pass the field through unchecked and get the
+// "no image" answer back.
+func (c *GalgameClient) ImageURLFromHash(hash string) string {
+	if c.imageCDNBase == "" {
+		return ""
+	}
+	return bannerURLFromHash(c.imageCDNBase, hash)
+}
+
 // rewriteBanners walks the galgame response JSON and, for every object
 // carrying U2 hash fields (`effective_banner_hash` / per-row
 // `image_hash` + `sort_order`), injects a CDN URL alongside (so the FE
