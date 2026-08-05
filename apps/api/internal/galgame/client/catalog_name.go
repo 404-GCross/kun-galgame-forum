@@ -57,6 +57,31 @@ type CatalogName struct {
 	Name     catNameBuckets `json:"name"`
 	Latin    string         `json:"latin"`
 	PersonID int64          `json:"person_id"`
+	// The five fields below describe the PERSON, not the name, and therefore
+	// ride the same public-link gate `person_id` / `siblings` do: the registry
+	// zeroes every one of them for a name whose link is private. So an absent
+	// photo here means "nothing published about this person" — never "the
+	// person has no photo" — and the page must not fill the gap by guessing.
+	//
+	// All five are additive: a catalog that predates them decodes as a name
+	// with no person data, which renders exactly like a hidden link.
+
+	// PhotoHash is a bare content hash in image_service's catalog scope, "" for
+	// none. Resolve it with GalgameClient.ImageURLFromHash (the banner walker
+	// does not fire on it — it carries no `sort_order` sibling), the same way
+	// a 会社 logo is resolved.
+	PhotoHash string `json:"photo_hash"`
+	// Gender: 1 = male, 2 = female, nil = unknown. nil rather than 0 because
+	// "the registry does not know" is a different answer from any code.
+	Gender *int `json:"gender"`
+	// Birth* is a FUZZY date whose precision is self-expressed by which parts
+	// are present: a year alone, a year and a month, or a month and a day with
+	// no year at all are each a complete answer the registry can stand behind.
+	// Any part is independently nil, so consumers must format from what is
+	// there rather than assembling a calendar date.
+	BirthY *int `json:"birth_y"`
+	BirthM *int `json:"birth_m"`
+	BirthD *int `json:"birth_d"`
 	// Siblings are the other names the SAME person signs under — public links
 	// only, so an empty list means "none published", never "none exist".
 	Siblings []struct {

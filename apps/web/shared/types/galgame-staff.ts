@@ -44,6 +44,24 @@ export interface GalgameStaffDetail {
   name_zh?: string
   latin?: string
   intro: string
+  /** The person's portrait as a ready-made absolute CDN URL (original size —
+   *  use `withImageVariant(photo, 'mini')` for a thumbnail). `''` when there is
+   *  none, and optional because this field postdates the page.
+   *
+   *  `photo` / `gender` / `birth_*` describe the PERSON behind the name, so the
+   *  registry publishes them only where the name→person link is public. A
+   *  hidden link arrives zeroed, which renders identically to a name with no
+   *  person on record — the page must not try to tell the two apart. */
+  photo?: string
+  /** 1 = male, 2 = female. null / absent = unknown or unpublished. */
+  gender?: number | null
+  /** A FUZZY birth date: which parts are present is the precision claim, and
+   *  each part is independently null. Year alone, year+month, and month+day
+   *  with no year are all valid — render with `formatFuzzyDate`, never by
+   *  building a Date. */
+  birth_y?: number | null
+  birth_m?: number | null
+  birth_d?: number | null
   links: GalgameStaffLink[]
   siblings: GalgameStaffSibling[]
   /** Positions seen on the loaded works, ordered authorship-first and

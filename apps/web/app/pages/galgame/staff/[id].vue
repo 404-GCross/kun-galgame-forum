@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { KUN_GALGAME_STAFF_GENDER_MAP } from '~/constants/galgameStaff'
+
 // `id` is a CATALOG CREDIT-NAME id — the id the 制作人员 panel on every game
 // detail page already carries, so the link needs no lookup.
 //
@@ -63,6 +65,21 @@ const workHref = (work: GalgameStaffWork) =>
 
 const releaseYear = (date: string | null) => date?.slice(0, 4) ?? ''
 
+// The person's own facts, which the registry publishes only where the
+// name→person link is public — a hidden link arrives zeroed, and each row is
+// then simply absent. Every field is optional on the wire as well: this page
+// renders against a catalog that may not ship them yet, and 「未知」 rows would
+// be the only thing such a reader ever saw.
+const genderText = computed(() =>
+  data.value?.gender ? KUN_GALGAME_STAFF_GENDER_MAP[data.value.gender] : ''
+)
+
+// Fuzzy by design — a year alone and a month+day with no year are both whole
+// answers here, so the formatter renders from the parts rather than a Date.
+const birthdayText = computed(() =>
+  formatFuzzyDate(data.value?.birth_y, data.value?.birth_m, data.value?.birth_d)
+)
+
 const subtitle = computed(() => {
   const parts = [data.value?.name_zh, data.value?.latin].filter(
     (part): part is string => !!part && part !== data.value?.name
@@ -81,8 +98,38 @@ useKunSeoMeta({
 <template>
   <div v-if="data" class="space-y-6">
     <KunHeader :name="data.name" :description="subtitle">
+      <!-- The portrait describes the PERSON, and the registry publishes it only
+           where the name→person link is public — so a name with none looks
+           exactly like a name whose link is hidden. Both render as no frame at
+           all rather than an empty one.
+           Full size, like the 会社 logo in the same slot: the frame is large
+           enough for a downscaled variant to show its resampling, and the
+           catalog scope promises no particular preset for a portrait. -->
+      <template v-if="data.photo" #headerEndContent>
+        <KunImage
+          :src="data.photo"
+          :alt="data.name"
+          loading="eager"
+          object-fit="cover"
+          class-name="w-28 shrink-0 rounded-lg sm:w-32"
+          :style="{ aspectRatio: '3/4' }"
+        />
+      </template>
+
       <template #endContent>
         <div class="space-y-3">
+          <!-- Each row appears only where the registry published that fact.
+               Nothing here says 「未知」: a name whose person link is private is
+               indistinguishable from one the registry has no person for, and
+               the page does not pretend to know which it is looking at. -->
+          <div
+            v-if="genderText || birthdayText"
+            class="text-default-500 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+          >
+            <span v-if="genderText">性别 {{ genderText }}</span>
+            <span v-if="birthdayText">生日 {{ birthdayText }}</span>
+          </div>
+
           <p v-if="data.intro" class="text-default-600">{{ data.intro }}</p>
 
           <div v-if="data.roles.length" class="flex flex-wrap gap-2">

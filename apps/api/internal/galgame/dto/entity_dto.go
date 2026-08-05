@@ -308,12 +308,32 @@ type StaffSibling struct {
 // the evidence supports it AND the link is public, so Siblings may be empty for
 // someone who demonstrably has other pen names.
 type StaffDetail struct {
-	ID       int            `json:"id"`
-	Name     string         `json:"name"`
-	NameJa   string         `json:"name_ja,omitempty"`
-	NameZh   string         `json:"name_zh,omitempty"`
-	Latin    string         `json:"latin,omitempty"`
-	Intro    string         `json:"intro"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	NameJa string `json:"name_ja,omitempty"`
+	NameZh string `json:"name_zh,omitempty"`
+	Latin  string `json:"latin,omitempty"`
+	Intro  string `json:"intro"`
+	// Photo is the PERSON's portrait as a READY-MADE absolute CDN URL (original
+	// size — the FE derives the variant it needs), "" for none. A URL rather
+	// than a hash so no consumer has to know the CDN layout, matching how the
+	// 会社 logo and every cover reach this face.
+	//
+	// Photo/Gender/Birth* all describe the person behind the name, so the
+	// registry publishes them only where the name→person link is public. A
+	// hidden link arrives zeroed here, and the page then renders no portrait
+	// and no meta — which is the same thing it renders for a name the registry
+	// has no person for. Both are honest; inferring the difference is not.
+	Photo string `json:"photo"`
+	// Gender: 1 = male, 2 = female, null = unknown or unpublished.
+	Gender *int `json:"gender"`
+	// The birthday is FUZZY: which parts are present IS the precision claim.
+	// Year alone, year+month, and month+day with no year are all valid, so the
+	// three parts travel separately rather than as a formatted date — the
+	// renderer decides how to say what it was given.
+	BirthY   *int           `json:"birth_y"`
+	BirthM   *int           `json:"birth_m"`
+	BirthD   *int           `json:"birth_d"`
 	Links    []StaffLink    `json:"links"`
 	Siblings []StaffSibling `json:"siblings"`
 	// Roles is the set of positions seen on the LOADED works, deliberately

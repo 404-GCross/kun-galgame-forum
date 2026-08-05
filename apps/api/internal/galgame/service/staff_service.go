@@ -75,12 +75,21 @@ func (s *StaffService) GetDetail(
 	}
 
 	detail := &dto.StaffDetail{
-		ID:         int(name.ID),
-		Name:       staffDisplayName(name),
-		NameJa:     name.Name.JA,
-		NameZh:     name.Name.ZH,
-		Latin:      name.Latin,
-		Intro:      staffIntro(name),
+		ID:     int(name.ID),
+		Name:   staffDisplayName(name),
+		NameJa: name.Name.JA,
+		NameZh: name.Name.ZH,
+		Latin:  name.Latin,
+		Intro:  staffIntro(name),
+		// Pure passthrough, with no policy of its own: the registry has already
+		// applied the person-link visibility gate, and a name whose link is
+		// private arrives with all five zeroed. Re-deciding anything here could
+		// only ever loosen a deliberate decision made upstream.
+		Photo:      s.galgameClient.ImageURLFromHash(name.PhotoHash),
+		Gender:     name.Gender,
+		BirthY:     name.BirthY,
+		BirthM:     name.BirthM,
+		BirthD:     name.BirthD,
 		Links:      staffLinks(name),
 		Siblings:   staffSiblings(name),
 		Works:      []dto.StaffWork{},
