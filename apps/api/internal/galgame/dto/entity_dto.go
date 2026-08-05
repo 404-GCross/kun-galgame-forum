@@ -258,3 +258,71 @@ type TagDetail struct {
 	Galgame      []GalgameCard `json:"galgame"`
 	GalgameCount int64         `json:"galgame_count"`
 }
+
+// ──────────────────────────────────────────
+// Staff (credited name)
+// ──────────────────────────────────────────
+
+// StaffWork is one entry in a credited name's filmography. ID is the FORUM gid
+// when the entry lives here and 0 otherwise — most of a working career is
+// games this forum has never ingested, and those rows render as plain cards
+// with nowhere to click rather than being dropped.
+type StaffWork struct {
+	ID           int         `json:"id"`
+	CatalogID    int         `json:"catalog_id"`
+	Name         KunLanguage `json:"name"`
+	Banner       string      `json:"banner"`
+	BannerWidth  int         `json:"banner_width,omitempty"`
+	BannerHeight int         `json:"banner_height,omitempty"`
+	// BannerThumbhash drives the blur-up placeholder; absent for images that
+	// predate the image_service backfill.
+	BannerThumbhash string  `json:"banner_thumbhash,omitempty"`
+	ContentLimit    string  `json:"content_limit"`
+	ReleaseDate     *string `json:"release_date"`
+	// Roles are this person's credits ON THIS WORK, localized — the reason a
+	// filmography beats a plain game grid.
+	Roles []string `json:"roles"`
+	// Characters is the voice-acting case: the catalog files one credit per
+	// character voiced, so a VA arrives on the same work several times. Folded
+	// onto the card, because for a voice actor the cast IS the credit.
+	Characters []string `json:"characters,omitempty"`
+}
+
+// StaffLink is one external identity page for the person.
+type StaffLink struct {
+	Source string `json:"source"`
+	Name   string `json:"name"`
+	// URL is empty for a source kungal has no verified person-page template
+	// for; the row then renders as text. Better a missing link than a wrong one.
+	URL string `json:"url,omitempty"`
+}
+
+// StaffSibling is another name the same person signs work under.
+type StaffSibling struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// StaffDetail is the 制作人员 page. It describes a credited NAME, which is not
+// the same thing as a human: the registry links names to a person only where
+// the evidence supports it AND the link is public, so Siblings may be empty for
+// someone who demonstrably has other pen names.
+type StaffDetail struct {
+	ID       int            `json:"id"`
+	Name     string         `json:"name"`
+	NameJa   string         `json:"name_ja,omitempty"`
+	NameZh   string         `json:"name_zh,omitempty"`
+	Latin    string         `json:"latin,omitempty"`
+	Intro    string         `json:"intro"`
+	Links    []StaffLink    `json:"links"`
+	Siblings []StaffSibling `json:"siblings"`
+	// Roles is the set of positions seen on the LOADED works, deliberately
+	// without counts: the credits list is offset-paged and publishes no total,
+	// so a count could only ever describe this page. A role, once seen, is true
+	// of the person no matter how many pages follow.
+	Roles []string    `json:"roles"`
+	Works []StaffWork `json:"works"`
+	// NextOffset is null on the last page — the only end-of-list signal the
+	// catalog gives, and the reason this page counts nothing.
+	NextOffset *int `json:"next_offset"`
+}

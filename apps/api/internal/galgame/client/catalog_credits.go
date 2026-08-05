@@ -24,6 +24,7 @@ package client
 // first.
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -203,4 +204,55 @@ func normalizeCreditName(name string) string {
 		}
 		return r
 	}, name)
+}
+
+// StaffRoleCanonicalKey folds a role key onto the key it is DISPLAYED under,
+// so the two faces that render credits — a game's 制作人员 panel and a person's
+// filmography — group the same way. Anything not folded is already canonical.
+func StaffRoleCanonicalKey(roleKey string) string {
+	if folded, ok := staffRoleFold[roleKey]; ok {
+		return folded
+	}
+	return roleKey
+}
+
+// StaffRoleLabel is the label a role renders under anywhere on the site: the
+// two faces must not disagree about whether 一河のあ did 插画 or 原画. A folded
+// key resolves to the pinned label; everything else keeps the catalog's own,
+// which already arrives localized.
+func StaffRoleLabel(roleKey, roleName string) string {
+	key := StaffRoleCanonicalKey(roleKey)
+	if pinned, ok := staffRoleName[key]; ok {
+		return pinned
+	}
+	if roleName != "" {
+		return roleName
+	}
+	return key
+}
+
+// SortStaffRoleKeys orders canonical role KEYS by the same authorship-first
+// ranking the panel uses, so a person's headline reads 脚本 · 原画 · 声优 rather
+// than in whatever order the registry happened to return them.
+//
+// It ranks keys, not labels: only four roles carry a pinned Chinese label, so a
+// label cannot be mapped back to its position — sorting the rendered strings
+// silently left every unpinned role unranked.
+func SortStaffRoleKeys(keys []string) []string {
+	rank := make(map[string]int, len(staffRoleDisplayOrder))
+	for i, key := range staffRoleDisplayOrder {
+		rank[key] = i
+	}
+	weight := func(key string) int {
+		if key == staffRoleLast {
+			return len(staffRoleDisplayOrder) + 1
+		}
+		if r, ok := rank[key]; ok {
+			return r
+		}
+		return len(staffRoleDisplayOrder)
+	}
+	out := slices.Clone(keys)
+	sort.SliceStable(out, func(i, j int) bool { return weight(out[i]) < weight(out[j]) })
+	return out
 }

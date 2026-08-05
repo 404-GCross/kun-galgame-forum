@@ -107,3 +107,32 @@ func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
 		t.Errorf("panel order = %s, want 其他 last and the unranked qa in between", got)
 	}
 }
+
+// The filmography header ranks roles by KEY. Ranking the rendered labels looked
+// equivalent and was not: only four roles carry a pinned Chinese label, so every
+// other one missed the rank table and kept whatever order the registry returned
+// — 主题歌作词 landed above 作词 on a live page.
+func TestSortStaffRoleKeys_RanksUnpinnedRolesToo(t *testing.T) {
+	got := SortStaffRoleKeys([]string{
+		"other-staff", "企画", "theme-song-lyrics", "director", "lyric", "scenario",
+	})
+	want := "scenario,director,lyric,theme-song-lyrics,企画,other-staff"
+	if strings.Join(got, ",") != want {
+		t.Errorf("role order = %s, want %s", strings.Join(got, ","), want)
+	}
+}
+
+// A folded role reads the same on a person's page as on a game's panel.
+func TestStaffRoleLabel_AgreesWithThePanel(t *testing.T) {
+	for _, c := range []struct{ key, upstream, want string }{
+		{"原画", "原画", "原画"},
+		{"illustration", "插画", "原画"},
+		{"剧本", "剧本", "脚本"},
+		{"director-direction", "导演", "导演"},
+		{"qa", "QA", "QA"}, // unfolded: the catalog's own label stands
+	} {
+		if got := StaffRoleLabel(c.key, c.upstream); got != c.want {
+			t.Errorf("StaffRoleLabel(%q, %q) = %q, want %q", c.key, c.upstream, got, c.want)
+		}
+	}
+}

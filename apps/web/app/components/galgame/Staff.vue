@@ -4,9 +4,10 @@
 // role vocabularies, merges the spellings of one person, puts authorship above
 // the cast and 其他 at the bottom), so this renders the list verbatim.
 //
-// Names are plain text on purpose: the catalog addresses them (each row carries
-// its credit-name id) but the forum has no person page to link to yet, and a
-// link that goes nowhere is worse than none.
+// Each name links to its own page at /galgame/staff/:id — the id every row
+// carries is the catalog credit-name id that page is addressed by, so the link
+// needs no lookup. What is behind it is a NAME, not a person: the same human
+// may hold several, and the page says so rather than pretending otherwise.
 const props = defineProps<{
   staff: GalgameDetailStaff[]
 }>()
@@ -47,9 +48,15 @@ const hiddenCount = computed(() => props.staff.length - COLLAPSED_GROUPS)
           <span
             v-for="person in group.people"
             :key="person.id"
-            class="text-default-800 text-base"
+            class="text-base"
           >
-            {{ person.name }}
+            <KunLink
+              :to="`/galgame/staff/${person.id}`"
+              underline="none"
+              class-name="text-default-800 hover:text-primary"
+            >
+              {{ person.name }}
+            </KunLink>
             <!-- Voice acting is the one role where the credit means nothing
                  without the character it was for. -->
             <span

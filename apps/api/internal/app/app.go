@@ -483,6 +483,7 @@ func New(cfg *config.Config) *App {
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
 	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
+	galgameStaffSvc := galgameService.NewStaffService(gc)
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
 	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)
@@ -654,21 +655,22 @@ func New(cfg *config.Config) *App {
 		CreatorHandler:                 galgameHandler.NewCreatorHandler(creatorSvc),
 		GalgameEntityHandler: galgameHandler.NewEntityHandler(
 			galgameOfficialSvc, galgameEngineSvc, galgameSeriesSvc, galgameTagSvc,
+			galgameStaffSvc,
 		),
-		GalgameCalendarHandler:      galgameHandler.NewCalendarHandler(galgameCalendarSvc),
-		GalgameDraftsHandler:        galgameHandler.NewDraftsHandler(galgameDraftsSvc),
-		GalgameProxyHandler:         galgameHandler.NewGalgameProxyHandler(galgameProxySvc),
-		GalgameSubmissionHandler:    galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
-		GalgameClaimReviewHandler:   galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
-		GalgameEditHandler:          galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
-		ActivityHandler:             activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
-		ImageHandler:                imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
-		SearchHandler:               searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),
-		ToolsetHandler:              toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
-		ToolsetPracticalityHandler:  toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
-		ToolsetResourceHandler:      toolsetHandler.NewResourceHandler(toolsetResourceSvc),
-		ToolsetUploadHandler:        toolsetHandler.NewUploadHandler(toolsetUploadSvc),
-		CronStop:                    cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run),
+		GalgameCalendarHandler:     galgameHandler.NewCalendarHandler(galgameCalendarSvc),
+		GalgameDraftsHandler:       galgameHandler.NewDraftsHandler(galgameDraftsSvc),
+		GalgameProxyHandler:        galgameHandler.NewGalgameProxyHandler(galgameProxySvc),
+		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
+		GalgameClaimReviewHandler:  galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
+		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
+		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
+		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
+		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),
+		ToolsetHandler:             toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
+		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
+		ToolsetResourceHandler:     toolsetHandler.NewResourceHandler(toolsetResourceSvc),
+		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
+		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run),
 	}
 
 	// Load the runtime permission overrides (BOTH the role and user layers) into

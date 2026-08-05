@@ -34,6 +34,7 @@ type EntityHandler struct {
 	engineService   *service.EngineService
 	seriesService   *service.SeriesService
 	tagService      *service.TagService
+	staffService    *service.StaffService
 }
 
 func NewEntityHandler(
@@ -41,12 +42,14 @@ func NewEntityHandler(
 	engine *service.EngineService,
 	series *service.SeriesService,
 	tag *service.TagService,
+	staff *service.StaffService,
 ) *EntityHandler {
 	return &EntityHandler{
 		officialService: official,
 		engineService:   engine,
 		seriesService:   series,
 		tagService:      tag,
+		staffService:    staff,
 	}
 }
 
@@ -242,4 +245,26 @@ func collectQuery(c fiber.Ctx) url.Values {
 		q.Set(k, v)
 	}
 	return q
+}
+
+// ──────────────────────────────────────────
+// Staff (credited name)
+// ──────────────────────────────────────────
+
+// GetStaffDetail — GET /galgame-staff/:id (catalog credit-name id)
+//
+// offset/limit page the filmography. The catalog publishes no total for it, so
+// the response carries next_offset and nothing else — see dto.StaffDetail.
+func (h *EntityHandler) GetStaffDetail(c fiber.Ctx) error {
+	detail, appErr := h.staffService.GetDetail(
+		c.Context(),
+		c.Params("id"),
+		fiber.Query(c, "offset", 0),
+		fiber.Query(c, "limit", 50),
+		utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, detail)
 }

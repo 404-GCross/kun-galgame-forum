@@ -220,6 +220,8 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
+	// One credited name (catalog credit_name id) + a page of its filmography.
+	api.Get("/galgame-staff/:id", a.GalgameEntityHandler.GetStaffDetail)
 	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
 	// Rich index/panel cards. Must precede the :id catch-all.
 	api.Get("/galgame-series/cards", a.GalgameEntityHandler.GetSeriesCards)
