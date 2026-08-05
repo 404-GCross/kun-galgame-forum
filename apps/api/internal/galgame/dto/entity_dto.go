@@ -344,4 +344,8 @@ type StaffDetail struct {
 	// NextOffset is null on the last page — the only end-of-list signal the
 	// catalog gives, and the reason this page counts nothing.
 	NextOffset *int `json:"next_offset"`
+	// MovedTo is the ONLY field set when this name id was merged away (wave
+	// 171's fold): the page 301s to the survivor instead of rendering anything
+	// under the dead id.
+	MovedTo int `json:"moved_to,omitempty"`
 }

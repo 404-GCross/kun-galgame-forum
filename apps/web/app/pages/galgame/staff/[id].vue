@@ -27,6 +27,21 @@ const { data } = await useKunFetch<GalgameStaffDetail>(
   { method: 'GET', query: { limit: PAGE_SIZE }, watch: false }
 )
 
+// A folded name (wave 171) keeps its old id addressable, but only as a 301:
+// `moved_to` arrives instead of the record, never alongside it. `navigateTo`
+// is NOT an early return on the server — it parks the redirect and hands
+// control back, so everything below that touches the record is gated on
+// `moved`, and the template root carries the same gate (the moved payload's
+// works/siblings are null, and an ungated spread would 500 over the parked
+// 301 — the exact /galgame/official/13323 failure mode).
+const moved = !!data.value?.moved_to
+if (data.value?.moved_to) {
+  await navigateTo(`/galgame/staff/${data.value.moved_to}`, {
+    redirectCode: 301,
+    replace: true
+  })
+}
+
 if (!data.value) {
   throw createError({
     statusCode: 404,
@@ -37,8 +52,8 @@ if (!data.value) {
 
 // The filmography is offset-paged with no total, so this is a 加载更多 rather
 // than a pager: we know whether ANOTHER page exists, never how many.
-const works = ref<GalgameStaffWork[]>([...data.value.works])
-const nextOffset = ref<number | null>(data.value.next_offset)
+const works = ref<GalgameStaffWork[]>(moved ? [] : [...data.value.works])
+const nextOffset = ref<number | null>(moved ? null : data.value.next_offset)
 const loadingMore = ref(false)
 
 const loadMore = async () => {
@@ -80,16 +95,18 @@ const subtitle = computed(() => {
   return parts.join(' · ')
 })
 
-useKunSeoMeta({
-  title: `${data.value.name} 参与制作的 Galgame`,
-  description:
-    data.value.intro ||
-    `${data.value.name} 在本站收录的 Galgame 中担任 ${data.value.roles.join(' / ')} 等职位的作品一览。`
-})
+if (!moved) {
+  useKunSeoMeta({
+    title: `${data.value.name} 参与制作的 Galgame`,
+    description:
+      data.value.intro ||
+      `${data.value.name} 在本站收录的 Galgame 中担任 ${data.value.roles.join(' / ')} 等职位的作品一览。`
+  })
+}
 </script>
 
 <template>
-  <div v-if="data" class="space-y-6">
+  <div v-if="data && !data.moved_to" class="space-y-6">
     <KunHeader :name="data.name" :description="subtitle">
       <!-- The portrait describes the PERSON, and the registry publishes it only
            where the name→person link is public — so a name with none looks

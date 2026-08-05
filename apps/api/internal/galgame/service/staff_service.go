@@ -71,9 +71,15 @@ func (s *StaffService) GetDetail(
 	if err != nil || id <= 0 {
 		return nil, errors.ErrBadRequest("无效的制作人员 ID")
 	}
-	name, found, appErr := s.galgameClient.CatalogNameDetail(ctx, id, limit, offset)
+	name, found, movedTo, appErr := s.galgameClient.CatalogNameDetail(ctx, id, limit, offset)
 	if appErr != nil {
 		return nil, appErr
+	}
+	// A folded name (wave 171) keeps its old id addressable as a 301: moved_to
+	// arrives instead of the record, never alongside it, so nothing of the
+	// survivor is ever painted under the dead id.
+	if movedTo != 0 {
+		return &dto.StaffDetail{MovedTo: int(movedTo)}, nil
 	}
 	if !found {
 		return nil, errors.ErrNotFound("未找到该制作人员")

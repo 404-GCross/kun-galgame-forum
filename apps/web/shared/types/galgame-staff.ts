@@ -63,4 +63,7 @@ export interface GalgameStaffDetail {
   works: GalgameStaffWork[]
   /** null on the last page — the only end-of-list signal there is. */
   next_offset: number | null
+  /** Set INSTEAD of the record when this name id was merged away: the page
+   *  301s to the survivor and every other field arrives zeroed/null. */
+  moved_to?: number
 }
