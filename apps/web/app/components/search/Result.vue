@@ -9,6 +9,9 @@ const isTopicResults = (results: unknown[]): results is SearchResultTopic[] =>
 const isGalgameResults = (
   results: unknown[]
 ): results is SearchResultGalgame[] => props.type === 'galgame'
+const isToolsetResults = (
+  results: unknown[]
+): results is SearchResultToolset[] => props.type === 'toolset'
 const isUserResults = (results: unknown[]): results is SearchResultUser[] =>
   props.type === 'user'
 const isReplyResults = (results: unknown[]): results is SearchResultReply[] =>
@@ -31,6 +34,8 @@ const isCommentResults = (
       v-if="isGalgameResults(results)"
       :galgames="results"
     />
+
+    <ToolsetCard v-if="isToolsetResults(results)" :items="results" />
 
     <div v-if="isUserResults(results)" class="space-y-3">
       <SearchUserCard
