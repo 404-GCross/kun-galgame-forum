@@ -87,10 +87,12 @@ watch([() => route.fullPath, showKUNGalgameNoResource], () => {
       </div>
 
       <KunLoading :loading="status === 'pending'">
-        <GalgameCard v-if="data.galgames" :galgames="data.galgames" />
+        <GalgameCard v-if="data.galgames.length" :galgames="data.galgames" />
+        <KunNull v-else description="没有找到符合条件的 Galgame" />
       </KunLoading>
 
       <KunCard
+        v-if="data.galgames.length"
         :is-hoverable="false"
         :is-transparent="false"
         content-class="gap-3"
