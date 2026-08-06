@@ -84,10 +84,17 @@ type fakeOwners map[int]int
 
 func (f fakeOwners) OwnerOf(gid int) int { return f[gid] }
 
-// fakeEditFace records every edit-face request and serves canned replies.
+// fakeEditFace records every edit-face request and serves canned replies, on
+// BOTH planes: the Basic-authed S2S face and the Bearer user face (wave 177).
 type fakeEditFace struct {
 	mu       sync.Mutex
 	requests []recordedRequest
+	// userStatus/userBody override the reply on the USER plane only. Scoped to
+	// that plane deliberately: a lane that mixes the two (bootstrap reads the
+	// snapshot S2S, the projection as the user) must be able to fail exactly the
+	// half under test.
+	userStatus int
+	userBody   string
 }
 
 type recordedRequest struct {
@@ -95,16 +102,20 @@ type recordedRequest struct {
 	Path   string
 	Query  string
 	Body   map[string]any
-	// Face is "s2s" for the Basic-authed /api/v1/catalog/edit/* face and "other"
-	// for anything else. The BFF speaks exactly one edit channel, so "other" in a
-	// recorded request is itself the failure this axis exists to catch.
+	// Face is "s2s" for the Basic-authed /api/v1/catalog/edit/* face, "user" for
+	// the Bearer /api/v1/user/catalog/edit/* face, and "other" for anything else
+	// — "other" in a recorded request is itself a failure. WHICH of the two
+	// planes a lane took is the whole subject of wave 177's routing tests.
 	Face string
-	Auth string // Authorization header (Basic on the S2S face)
+	Auth string // Authorization header (Basic on S2S, Bearer on the user plane)
 }
 
 // s2sFace reports whether a path targets the S2S /api/v1/catalog/edit/* face —
-// the only edit channel this BFF has.
+// the asserted-actor channel (owner + moderation lanes).
 func s2sFace(path string) bool { return strings.HasPrefix(path, "/api/v1/catalog/edit/") }
+
+// userFace reports whether a path targets the user-token editing face.
+func userFace(path string) bool { return strings.HasPrefix(path, "/api/v1/user/catalog/edit/") }
 
 func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -115,8 +126,11 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_ = json.Unmarshal(raw, &body)
 		}
 		face := "other"
-		if s2sFace(r.URL.Path) {
+		switch {
+		case s2sFace(r.URL.Path):
 			face = "s2s"
+		case userFace(r.URL.Path):
+			face = "user"
 		}
 		f.mu.Lock()
 		f.requests = append(f.requests, recordedRequest{
@@ -128,7 +142,20 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		if face == "user" && f.userStatus != 0 {
+			w.WriteHeader(f.userStatus)
+			_, _ = w.Write([]byte(f.userBody))
+			return
+		}
 		switch {
+		// ── the user-token plane (wave 177) ──
+		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}}`))
+		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/withdraw":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/schema/catalog.work":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
+		// ── the asserted-actor S2S plane ──
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/withdraw":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
@@ -256,20 +283,23 @@ func TestEditDegradesWhenUnconfigured(t *testing.T) {
 	}
 }
 
-// TestEditActorAssertionShape pins the S2S actor assertion on submit: the
-// proposer's roles pass through verbatim with their trust tier, site is kungal,
-// and the dirty-field patch reaches the face untouched. Every proposer — plain
-// or staff — rides this one channel.
+// TestEditActorAssertionShape pins the S2S actor assertion on the lane that
+// still uses it — the OWNER's submit (wave 177 moved everyone else onto their
+// own token). The proposer's roles pass through verbatim with their trust tier,
+// site is kungal, the ownership fact rides along, and the dirty-field patch
+// reaches the face untouched.
 func TestEditActorAssertionShape(t *testing.T) {
 	fake := &fakeEditFace{}
-	app := editTestApp(t, fake.server(t).URL, moderatorUser)
+	// A staff member who ALSO created the entry: gid 1's creator is uid 7.
+	owner := &middleware.UserInfo{ID: 7, Name: "mod-owner", Roles: []string{"moderator"}}
+	app := editTestApp(t, fake.server(t).URL, owner)
 	status, raw := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals",
 		`{"patch":{"catalog.work.name_zh_cn":"新标题"},"note":"typo"}`)
 	if status != http.StatusOK {
 		t.Fatalf("submit: status = %d body %s", status, raw)
 	}
 	if len(fake.requests) != 1 || fake.requests[0].Face != "s2s" {
-		t.Fatalf("staff submit must be a single S2S call, got %+v", fake.requests)
+		t.Fatalf("an owner's submit must be a single S2S call, got %+v", fake.requests)
 	}
 	body := fake.requests[0].Body
 	if body["entity_type"] != "catalog.work" || body["site"] != "kungal" {
@@ -280,7 +310,7 @@ func TestEditActorAssertionShape(t *testing.T) {
 		t.Fatalf("patch not passed through verbatim: %v", patch)
 	}
 	actor := body["actor"].(map[string]any)
-	if actor["user_id"] != float64(moderatorUser.ID) {
+	if actor["user_id"] != float64(owner.ID) {
 		t.Fatalf("actor user_id = %v", actor["user_id"])
 	}
 	if tier, _ := actor["trust_tier"].(float64); tier != 3 {
@@ -289,6 +319,9 @@ func TestEditActorAssertionShape(t *testing.T) {
 	roles, _ := actor["roles"].([]any)
 	if len(roles) != 1 || roles[0] != "moderator" {
 		t.Fatalf("roles = %v, want [moderator]", roles)
+	}
+	if actor["is_entity_owner"] != true {
+		t.Fatalf("the owner lane exists to carry is_entity_owner: %v", actor)
 	}
 }
 

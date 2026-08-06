@@ -42,6 +42,16 @@ import (
 // Degradation: an unconfigured catalog client → 503 on every endpoint and
 // the frontend hides the entries. Never a local fallback.
 //
+// Two planes since wave 177. The HUMAN lanes — submit by a non-owner, withdraw
+// your own proposal, and the editor's capability projection for a non-owner —
+// now travel on the user's OWN OAuth token (`catalog:edit` scope), so the
+// catalog derives uid, roles and site from the token and kungal asserts
+// nothing. The OWNER and MODERATION lanes stay on the asserted-actor S2S
+// channel, because is_entity_owner is a FORUM fact (galgame.creator_user_id)
+// that no token claim carries: routing the creator over the token would silently
+// take away their direct-merge. A stale grant on the user plane surfaces as
+// code 235 ("log out and back in"), never as a plain 403 — see userEditError.
+//
 // Owner-review (E3b): the review surfaces admit the game's CREATOR alongside
 // moderators — the BFF asserts is_entity_owner from the galgame row's uid and
 // the engine's kungal overlay grants owners the review rule on the
@@ -306,7 +316,28 @@ func (h *EditHandler) notifyDecision(prop *catalogclient.EditProposal, gid int, 
 	}
 }
 
-// editError maps a catalogclient edit error onto the house envelope. The
+// editStatusError maps the edit engine's 4xx taxonomy onto the house envelope.
+// BOTH planes share it: a lane that took the user token must not report a
+// validation failure or a rebase conflict differently from the same lane on the
+// S2S channel — which plane carried the write is an implementation detail the
+// user never chose. nil = a status with no user-facing meaning (the caller
+// degrades it to 503).
+func editStatusError(status int, message string) *errors.AppError {
+	switch status {
+	case http.StatusForbidden:
+		return errors.ErrForbidden("你没有权限执行此操作")
+	case http.StatusNotFound:
+		return errors.ErrNotFound("条目或提案不存在")
+	case http.StatusUnprocessableEntity:
+		return errors.ErrValidation(message)
+	case http.StatusConflict:
+		return errors.New(errors.CodeBiz,
+			"操作冲突（条目已被他人修改或提案已关闭），请刷新后重试", http.StatusConflict)
+	}
+	return nil
+}
+
+// editError maps a catalogclient S2S edit error onto the house envelope. The
 // edit face's 4xx replies carry actionable reasons (validation details,
 // policy denials, rebase conflicts) — surface them; transport failures and
 // the unconfigured client degrade to 503.
@@ -316,16 +347,8 @@ func editError(c fiber.Ctx, err error) error {
 	case stderrors.Is(err, catalogclient.ErrNotConfigured):
 		return response.Error(c, errEditDown)
 	case stderrors.As(err, &apiErr):
-		switch apiErr.Status {
-		case http.StatusForbidden:
-			return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
-		case http.StatusNotFound:
-			return response.Error(c, errors.ErrNotFound("条目或提案不存在"))
-		case http.StatusUnprocessableEntity:
-			return response.Error(c, errors.ErrValidation(apiErr.Message))
-		case http.StatusConflict:
-			return response.Error(c, errors.New(errors.CodeBiz,
-				"操作冲突（条目已被他人修改或提案已关闭），请刷新后重试", http.StatusConflict))
+		if appErr := editStatusError(apiErr.Status, apiErr.Message); appErr != nil {
+			return response.Error(c, appErr)
 		}
 		slog.Error("galgame edit: upstream error", "status", apiErr.Status, "code", apiErr.Code, "msg", apiErr.Message)
 		return response.Error(c, errEditDown)
@@ -333,6 +356,51 @@ func editError(c fiber.Ctx, err error) error {
 		slog.Warn("galgame edit: catalog unreachable", "error", err)
 		return response.Error(c, errEditDown)
 	}
+}
+
+// userEditError is the same mapping for the USER-TOKEN plane (wave 177), plus
+// the two denials only a forwarded token can produce.
+//
+// The scope case is the one that must not be folded into the generic 403: the
+// user's grant predates `catalog:edit` and no refresh can widen it, so the only
+// fix is a re-login. Code 235 is what the frontend keys the re-login prompt on;
+// a 233 there would tell a user they are not allowed to edit when in fact they
+// are, and a 205 would log out a perfectly live session.
+func userEditError(c fiber.Ctx, err error) error {
+	var apiErr *catalogclient.UserAPIError
+	switch {
+	case stderrors.Is(err, catalogclient.ErrInsufficientScope):
+		return response.Error(c, errors.ErrReauthRequired(
+			"编辑资料需要新的授权，请退出登录后重新登录以授予该权限"))
+	case stderrors.Is(err, catalogclient.ErrUnauthorized):
+		return response.Error(c, errors.ErrAuthExpired())
+	case stderrors.Is(err, catalogclient.ErrNotFound):
+		return response.Error(c, errors.ErrNotFound("条目或提案不存在"))
+	case stderrors.Is(err, catalogclient.ErrNotConfigured):
+		return response.Error(c, errEditDown)
+	case stderrors.As(err, &apiErr):
+		if appErr := editStatusError(apiErr.Status, apiErr.Message); appErr != nil {
+			return response.Error(c, appErr)
+		}
+		slog.Error("galgame edit: user-plane upstream error",
+			"status", apiErr.Status, "code", apiErr.Code, "msg", apiErr.Message)
+		return response.Error(c, errEditDown)
+	default:
+		slog.Warn("galgame edit: catalog user plane unreachable", "error", err)
+		return response.Error(c, errEditDown)
+	}
+}
+
+// userToken is the session's own OAuth access token, the credential the user
+// lanes travel on. The browser never holds it (kun_session keeps it opaque in
+// Redis), which is why these writes traverse kungal at all; an empty one is a
+// dead session, not something to ask the catalog about.
+func userToken(c fiber.Ctx) (string, *errors.AppError) {
+	token := middleware.GetAccessToken(c)
+	if token == "" {
+		return "", errors.ErrAuthExpired()
+	}
+	return token, nil
 }
 
 func parseGid(c fiber.Ctx) (int64, *errors.AppError) {
@@ -391,11 +459,30 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	// The schema projects can_review / would_automerge from the asserted
-	// overlay, so it must carry THIS actor's assertion.
-	schema, err := h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
-	if err != nil {
-		return editError(c, err)
+	// The schema projects can_review / would_automerge for the CALLER, so the
+	// projection has to be asked for on the same plane the caller's writes will
+	// take — otherwise the editor renders capabilities the submit lane does not
+	// actually have.
+	//
+	// Owner: the S2S assertion, because is_entity_owner is a forum fact with no
+	// token claim behind it and it is exactly what grants the creator can_review
+	// on the default keys. Everyone else: their own token, which carries uid and
+	// roles and asserts nothing.
+	var schema *catalogclient.EditSchema
+	if actor.IsEntityOwner {
+		schema, err = h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
+		if err != nil {
+			return editError(c, err)
+		}
+	} else {
+		token, appErr := userToken(c)
+		if appErr != nil {
+			return response.Error(c, appErr)
+		}
+		schema, err = h.catalog.GetEditSchemaUser(ctx, token, entityTypeGame, workID)
+		if err != nil {
+			return userEditError(c, err)
+		}
 	}
 	return response.OK(c, fiber.Map{
 		"gid":        gid,
@@ -460,12 +547,35 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	actor.IsEntityOwner = h.isGameOwner(c.Context(), workID, actor.UserID)
-	result, err := h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
-		EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
-		Patch: req.Patch, Note: req.Note, Actor: actor,
-	})
-	if err != nil {
-		return editError(c, err)
+
+	// Two planes, one outcome shape (wave 177). The owner keeps the asserted
+	// actor because their direct-merge hangs on is_entity_owner, which the token
+	// cannot carry. Everyone else — including staff — files as themselves over
+	// their own token: a contributor's proposal lands open, and an admin's still
+	// automerges, because the roles that decide that ride IN the token. So
+	// result.Merged stays the one thing this handler reads either way.
+	var result *catalogclient.EditCreateResult
+	var err error
+	if actor.IsEntityOwner {
+		result, err = h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
+			EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
+			Patch: req.Patch, Note: req.Note, Actor: actor,
+		})
+		if err != nil {
+			return editError(c, err)
+		}
+	} else {
+		token, appErr := userToken(c)
+		if appErr != nil {
+			return response.Error(c, appErr)
+		}
+		result, err = h.catalog.CreateEditProposalUser(c.Context(), token, catalogclient.UserEditCreateRequest{
+			EntityType: entityTypeGame, EntityID: workID,
+			Patch: req.Patch, Note: req.Note,
+		})
+		if err != nil {
+			return userEditError(c, err)
+		}
 	}
 	if !result.Merged {
 		h.submitSideEffects(c.Context(), &result.Proposal)
@@ -1027,27 +1137,33 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 	return response.OK(c, prop)
 }
 
-// Withdraw — POST /galgame-edit/proposals/:id/withdraw (auth). The engine
-// enforces proposer-only (ErrNotProposer); no moderator gate here. The tenant
-// pre-flight is this BFF's own job on the S2S channel: the asserted-actor face
-// will not fence family/tenant for us, so a bare id from another tenant must be
-// turned into a 404 here rather than reaching the engine.
+// Withdraw — POST /galgame-edit/proposals/:id/withdraw (auth). Closing your own
+// proposal is the purest user lane there is, so it rides the user token whole
+// (wave 177): the engine reads both the proposer and the tenant off the token
+// and answers a foreign id itself.
+//
+// That is why the S2S tenant pre-flight this used to run is gone rather than
+// merely redundant. It existed because the ASSERTED-actor face fences neither
+// proposer nor tenant, so the BFF had to. With the token carrying both, a
+// pre-flight would only re-ask a question the write already answers — and it
+// would answer it on a channel the caller is no longer speaking.
 func (h *EditHandler) Withdraw(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	// The route is authed; keep the local requirement explicit so a withdraw can
+	// never be attempted with an anonymous (therefore empty) token.
+	if _, appErr := middleware.MustGetUser(c); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	ctx := c.Context()
-	if _, err := h.proposalForReview(ctx, id); err != nil {
-		return editError(c, err)
-	}
-	prop, err := h.catalog.WithdrawEditProposal(ctx, id, actor)
+	prop, err := h.catalog.WithdrawEditProposalUser(c.Context(), token, id)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	return response.OK(c, prop)
 }
