@@ -32,6 +32,14 @@
 //     entry. It stays listed because the admin console shows it, and because a
 //     visibility gate is still a gate somebody has to be able to find.
 //
+//     galgame.review_submission joined it there in wave 179. The four
+//     submission verdicts (approve / decline / ban / unban) now travel on the
+//     moderator's OWN token and infra checks catalog.claim.review against the
+//     roles that token carries — fed by the permission console, so a grant
+//     lands without a forum deploy. RequireModerator on those routes is
+//     likewise a view gate now. It is deliberately NOT tightened to match
+//     infra: two answers to one question is how the last mirror drifted.
+//
 //     It used to have two neighbours, galgame.edit_decide and
 //     galgame.edit_revert, mirroring edit.galgame.game.review. Wave 178 deleted
 //     both: infra now derives entity ownership from the user's own token, so

@@ -606,10 +606,13 @@ func (a *App) setupRoutes() {
 	// each route carries its own gate rather than a shared group middleware.
 	galgameAdmin := authed.Group("")
 	// INFRA-PROXY (mirrors infra key `catalog.claim.review`, moderator+): the
-	// submission review queue and its four verdicts. RequireModerator is the
-	// ENTRY gate; the registry re-checks the asserted actor against
-	// catalog.claim.review, which is granted moderator and up so the queue keeps
-	// exactly the staffing it had on the wiki.
+	// submission review queue and its four verdicts. Since wave 179 the verdict
+	// travels on the moderator's OWN token and the registry checks
+	// catalog.claim.review against the roles that token carries — so
+	// RequireModerator here is a PURE VIEW gate deciding which page opens, with
+	// no say in the outcome. A grant made in the permission console takes effect
+	// on the next token without a forum deploy; the local gate must never be
+	// "tightened" into a second answer that can disagree with it.
 	//
 	// The queue reads pending CLAIMS, not a message log: an entry leaves it
 	// because its state moved, so the list cannot drift from reality the way a

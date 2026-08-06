@@ -188,6 +188,12 @@ export const kunRoleRank = (roles: string[]): number =>
 // `galgame.edit_decide` / `galgame.edit_revert` mirrors were deleted rather
 // than reworded. The workbench reads the edit face's own capability projection
 // (`can_decide` / `can_revert`) instead — see docs/proj/permissions.md 表一.
+//
+// Wave 179 did the same to the SUBMISSION lifecycle: the four verdicts now ride
+// the moderator's own token and infra checks catalog.claim.review against it,
+// so `galgame.review_submission` joined `galgame.review` as a pure view gate.
+// The count stays 7 — the entry still decides which page opens, and a
+// visibility gate is still a gate somebody has to be able to find.
 export interface KunProxyPermission {
   key: string
   label: string
@@ -206,7 +212,7 @@ export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
   {
     key: 'galgame.review_submission',
     label: 'Galgame 提交审核队列',
-    note: '版主+；镜像 NextMoe edit.galgame.game.status'
+    note: '版主+；纯查看门（裁决权归 infra catalog.claim.review，按用户 token 判定）'
   },
   {
     key: 'galgame.review',

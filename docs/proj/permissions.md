@@ -17,12 +17,14 @@
 | # | 操作 | 论坛本地门（router） | 镜像 infra key | 阈值 |
 |---|---|---|---|---|
 | 1 | 直发建条目 | `POST /galgame` · `RequireModerator` | `galgame.create` | 版主+ |
-| 2 | 提交审核队列 | ~~`GET /admin/galgame/messages`~~(wave 169 退役)· `PUT /admin/galgame/:gid/status` · `RequireModerator` | `galgame.review_submission` / `edit.galgame.game.status` | 版主+ |
+| 2 | 提交审核队列 | ~~`GET /admin/galgame/messages`~~(wave 169 退役)· `GET /admin/galgame/submissions` + `POST /admin/galgame/:gid/review` · `RequireModerator` | `catalog.claim.review` | 版主+（**纯查看门**,见 wave 179) |
 | 3 | 提案查看 / 队列 | `GET /galgame-edit/queue` · `RequireModerator`；提案详情 `reviewEntry` | `galgame.review` | 版主+ 或条目创建者（**纯查看门**） |
 | 4 | Wiki 条目编辑 | `PUT /galgame-{tag,official,engine,series}` · `RequireAdmin` | `galgame.taxonomy.edit_any` | **管理员+**（见下） |
 | 5 | Wiki 条目删除 | `DELETE …/:id` · `RequireAdmin` | `galgame.taxonomy.edit_any` | **管理员+** |
 | 6 | Wiki 条目回滚 | `POST …/:id/revert` · `RequireAdmin` | `galgame.taxonomy.review` | **管理员+** |
 | 7 | Trust 举报收件箱 | `/admin/trust/review-items*` · `RequireModerator` | `trust.queue_access` | 版主+ |
+
+**wave 179：第 2 项从「权威镜像」降为「纯查看门」，条数仍是 7。** 投稿生命周期(建条目 / 认领 / 重新提交 / 撤回 / 我的提交 + 四道审核裁决)整条迁到 Bearer 面：infra 自己按 token 推导 actor 与 site、按 `catalog_work.owner_user_id` 校验归属、按 **token 里的角色** 判 `catalog.claim.review`。于是 `POST /admin/galgame/:gid/review` 上的 `RequireModerator` 只决定「哪个页面能打开」,裁决权全在 infra——和 178 对 `galgame.review` 的处理同一个判断。镜像 key 随之从 `edit.galgame.game.status`(wiki 时代的状态流转门,早已随 wiki 退役)更正为真正被判的 `catalog.claim.review`。**别把这道本地门「对齐 infra」收紧成第二个答案**:权限台改授权后 token 侧即时生效,本地门只会滞后。同波论坛侧删除了 `catalogclient.EditActor` 与 S2S 的 `SubmitWork` / `ActOnClaim`——S2S 面上已没有任何「代表某个人行动」的调用。
 
 **（wave 178 退役：原第 4 项「提案裁决」与第 5 项「修订回滚」。）** 二者的论坛本地门已删除，`POST /galgame-edit/proposals/:id/{amend,merge,decline}` 与 `POST /galgame/:gid/edit/revert` 只做 auth（有会话即有 token 可转发），鉴权全在 infra 的 Bearer 编辑面（`edit.catalog.work.review` + 从 token 推导的 owner）。别按「表里少了两行」再补回本地门。
 
