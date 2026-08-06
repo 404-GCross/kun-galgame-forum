@@ -27,7 +27,11 @@ const handleNewComment = (comment: TopicComment) => {
 
 <template>
   <div class="w-full">
-    <div class="flex items-center justify-end">
+    <div class="flex items-center justify-between gap-1">
+      <!-- 表态 sits alone on the left, the way it does in the topic's own
+           footer; the reaction chips it feeds are their own row above. -->
+      <TopicReactionTrigger />
+
       <div class="flex items-center gap-1">
         <TopicFooterReply
           :target-user-name="reply.user.name"

@@ -141,10 +141,11 @@ const handleNewComment = (comment: TopicComment) => {
         @leave="hidePreview"
       />
 
-      <div class="mt-2 flex flex-wrap items-center gap-1.5">
-        <TopicReactionBar />
-        <TopicReactionTrigger />
-      </div>
+      <!-- Chips get a row to themselves (they wrap, and a wrapping chip row
+           would otherwise drag the action buttons down with it); the 表态
+           trigger lives at the left end of the action row below, mirroring the
+           topic's own footer. -->
+      <TopicReactionBar class="mt-2" />
 
       <TopicReplyFooter
         :reply="reply"

@@ -489,6 +489,32 @@ func (s *ReplyService) ToggleReplyReaction(ctx context.Context, userID, replyID 
 	}
 }
 
+// GetReplyReactionHistory returns a reply's reaction events — who reacted, with
+// which reaction, and when — newest first, capped. The reply-level counterpart
+// of TopicService.GetTopicReactionHistory, powering the same 查看历史 modal
+// (topicReactionHistoryLimit is shared; it lives in topic_service.go).
+func (s *ReplyService) GetReplyReactionHistory(ctx context.Context, replyID int) ([]dto.ReactionHistoryItem, *errors.AppError) {
+	rows, err := s.replyRepo.GetReplyReactionHistory(replyID, topicReactionHistoryLimit)
+	if err != nil {
+		return nil, errors.ErrInternal("操作失败")
+	}
+	ids := make([]int, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.UserID)
+	}
+	userMap := s.userClient.Hydrate(ctx, ids)
+	out := make([]dto.ReactionHistoryItem, 0, len(rows))
+	for _, row := range rows {
+		u := userMap[row.UserID]
+		out = append(out, dto.ReactionHistoryItem{
+			User:     dto.KunUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
+			Reaction: row.Reaction,
+			Created:  row.Created,
+		})
+	}
+	return out, nil
+}
+
 // clearReplyReaction removes the user's `reaction` on a reply if present (like⇄
 // dislike exclusion), reversing the like count + moemoepoint for a 'like'.
 func (s *ReplyService) clearReplyReaction(tx *gorm.DB, replyID, userID, ownerID int, reaction string) error {

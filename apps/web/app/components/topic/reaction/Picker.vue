@@ -12,9 +12,10 @@ import {
 
 const props = defineProps<{
   mineKeys?: string[]
-  // Topic context only: enables the 查看历史 row (replies don't get it).
-  topicId?: number
-  // Total reactions on the topic, shown as "xxx 人回应了话题".
+  // Enables the 查看历史 row + picks its wording. Off only where there is no
+  // history feed to open (the feed card).
+  subject?: 'topic' | 'reply'
+  // Total reactions on the subject, shown as "xxx 人回应了话题 / 该回复".
   total?: number
 }>()
 const emit = defineEmits<{ select: [key: string]; viewHistory: [] }>()
@@ -93,11 +94,13 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       </button>
     </div>
 
-    <!-- 查看历史 — topic reactions only (left: count, right: open the modal). -->
-    <template v-if="topicId">
+    <!-- 查看历史 (left: count, right: open the modal). -->
+    <template v-if="subject">
       <KunDivider />
       <div class="flex items-center justify-between px-1 text-sm">
-        <span class="text-default-500">{{ total ?? 0 }} 人回应了话题</span>
+        <span class="text-default-500">
+          {{ total ?? 0 }} 人回应了{{ subject === 'reply' ? '该回复' : '话题' }}
+        </span>
         <button
           type="button"
           class="text-primary shrink-0 hover:underline"

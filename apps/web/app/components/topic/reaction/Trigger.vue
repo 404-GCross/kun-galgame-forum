@@ -1,12 +1,15 @@
 <script setup lang="ts">
 // The reaction trigger: an icon-only KunReaction that opens the picker popover.
 // State is injected (shared with the chips), so reacting here updates the bar.
-const { toggle, mineKeys, list, topicId } = inject(reactionsKey)!
+const { toggle, mineKeys, list, topicId, replyId } = inject(reactionsKey)!
 
 const picker = ref<{ close: () => void } | null>(null)
 const historyOpen = ref(false)
 
-// Total reactions on the topic (sum of per-reaction counts) — the "xxx 人" count.
+// Which subject the history feed hangs off — absent where there is none.
+const subject = topicId ? 'topic' : replyId ? 'reply' : undefined
+
+// Total reactions on the subject (sum of per-reaction counts) — the "xxx 人" count.
 const total = computed(() => list.value.reduce((sum, r) => sum + r.count, 0))
 
 const onSelect = (key: string) => {
@@ -33,7 +36,7 @@ const onViewHistory = () => {
 
     <TopicReactionPicker
       :mine-keys="mineKeys"
-      :topic-id="topicId"
+      :subject="subject"
       :total="total"
       @select="onSelect"
       @view-history="onViewHistory"
@@ -41,8 +44,9 @@ const onViewHistory = () => {
   </KunPopover>
 
   <TopicReactionHistoryModal
-    v-if="topicId"
+    v-if="subject"
     v-model="historyOpen"
     :topic-id="topicId"
+    :reply-id="replyId"
   />
 </template>

@@ -1,9 +1,20 @@
 <script setup lang="ts">
-// 查看历史: every reaction on a topic — reactor avatar + name, the reaction icon,
-// and when. A row links to that user's profile. Fetched lazily on first open.
+// 查看历史: every reaction on a topic OR a single reply — reactor avatar + name,
+// the reaction icon, and when. A row links to that user's profile. Fetched
+// lazily on first open. The caller passes exactly one of topicId / replyId.
 import { reactionAsset } from '~/constants/reaction'
 
-const props = defineProps<{ topicId: number }>()
+const props = defineProps<{ topicId?: number; replyId?: number }>()
+
+const isReply = computed(() => !!props.replyId)
+// The reply feed is a query param off the topic-scoped route; :tid is unused by
+// the handler (the reply id already resolves the topic), so 0 stands in for it —
+// the same placeholder the reaction toggle uses.
+const endpoint = computed(() =>
+  props.replyId
+    ? `/topic/0/reply/reaction/history?reply_id=${props.replyId}`
+    : `/topic/${props.topicId}/reaction/history`
+)
 const open = defineModel<boolean>({ required: true })
 
 interface ReactionHistoryItem {
@@ -19,10 +30,9 @@ let loaded = false
 watch(open, async (isOpen) => {
   if (!isOpen || loaded) return
   isLoading.value = true
-  const result = await kunFetch<ReactionHistoryItem[]>(
-    `/topic/${props.topicId}/reaction/history`,
-    { method: 'GET' }
-  )
+  const result = await kunFetch<ReactionHistoryItem[]>(endpoint.value, {
+    method: 'GET'
+  })
   isLoading.value = false
   if (result) {
     records.value = result
@@ -34,13 +44,18 @@ watch(open, async (isOpen) => {
 <template>
   <KunModal v-model="open" inner-class-name="max-w-md w-[92vw]">
     <div class="space-y-3">
-      <h3 class="text-lg font-bold">话题回应历史</h3>
+      <h3 class="text-lg font-bold">
+        {{ isReply ? '回复回应历史' : '话题回应历史' }}
+      </h3>
 
       <div v-if="isLoading" class="flex justify-center py-8">
         <KunLoading />
       </div>
 
-      <KunNull v-else-if="!records.length" description="还没有人回应这个话题" />
+      <KunNull
+        v-else-if="!records.length"
+        :description="isReply ? '还没有人回应这条回复' : '还没有人回应这个话题'"
+      />
 
       <div v-else class="max-h-[60vh] space-y-0.5 overflow-y-auto">
         <KunLink

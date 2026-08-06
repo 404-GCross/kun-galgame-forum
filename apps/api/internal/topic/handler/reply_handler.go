@@ -202,6 +202,23 @@ func (h *ReplyHandler) ToggleReplyReaction(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
+// GetReplyReactionHistory lists a reply's reaction events (newest first) for the
+// 查看历史 modal — the reply-level twin of TopicHandler.GetTopicReactionHistory.
+// GET /api/topic/:tid/reply/reaction/history?reply_id=<id>
+func (h *ReplyHandler) GetReplyReactionHistory(c fiber.Ctx) error {
+	replyID, err := strconv.Atoi(c.Query("reply_id"))
+	if err != nil {
+		return response.Error(c, errors.ErrBadRequest("无效的回复 ID"))
+	}
+
+	records, appErr := h.replyService.GetReplyReactionHistory(c.Context(), replyID)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	return response.OK(c, records)
+}
+
 // PinReply toggles pinning a reply.
 // PUT /api/topic/:tid/reply/pin
 func (h *ReplyHandler) PinReply(c fiber.Ctx) error {

@@ -118,6 +118,18 @@ func (r *TopicRepository) GetTopicReactionHistory(topicID, limit int) ([]Reactio
 	return rows, err
 }
 
+// GetReplyReactionHistory is GetTopicReactionHistory for a single reply.
+func (r *ReplyRepository) GetReplyReactionHistory(replyID, limit int) ([]ReactionHistoryRow, error) {
+	var rows []ReactionHistoryRow
+	err := r.db.Model(&model.TopicReplyReaction{}).
+		Select("user_id, reaction, created").
+		Where("topic_reply_id = ?", replyID).
+		Order("created DESC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
 // ReplyReactionRow is GetRepliesReactions' windowed row (adds the reply id).
 type ReplyReactionRow struct {
 	TopicReplyID int    `gorm:"column:topic_reply_id"`
