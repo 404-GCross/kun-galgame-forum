@@ -130,7 +130,11 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
         <KunIcon name="lucide:images" class="size-4" />
         查看所有封面
       </button>
-      <GalgameCovers v-model="coversOpen" :covers="galgame.covers" />
+      <GalgameCovers
+        v-model="coversOpen"
+        :gid="galgame.id"
+        :covers="galgame.covers"
+      />
     </div>
 
     <!-- min-w-0: a long unbroken title (Japanese names run wide with no space

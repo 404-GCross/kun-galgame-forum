@@ -68,6 +68,17 @@ type GalgameCover struct {
 	Width     int    `json:"width,omitempty"`
 	Height    int    `json:"height,omitempty"`
 	Thumbhash string `json:"thumbhash,omitempty"`
+	// ── best-cover vote facet (wave 176) ────────────────────────────────────
+	//
+	// ID is the CATALOG cover row id — the address the vote endpoints take, and
+	// the only id a cover has (the forum stores no cover rows of its own). It is
+	// omitted when the tally lookup did not answer, and the FE renders no vote
+	// control for a cover it cannot name.
+	ID int64 `json:"id,omitempty"`
+	// VoteCount is advisory: it orders nothing, here or upstream. Voted is this
+	// viewer's ballot, false for an anonymous read.
+	VoteCount int  `json:"vote_count"`
+	Voted     bool `json:"voted"`
 }
 
 type GalgameScreenshot struct {

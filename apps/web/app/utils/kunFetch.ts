@@ -26,6 +26,12 @@ const CODE_AUTH_EXPIRED = 205
 // again at the next refresh, putting them in an infinite loop. Instead
 // surface the message prominently and stop there.
 const CODE_BANNED = 234
+// The session is alive and the user IS allowed — their OAuth grant is simply
+// older than the scope the action needs, and a grant only widens at
+// authorization time. So this is NOT a logout (205) and not a plain denial
+// (233): the only fix is one deliberate log-out / log-in round, which is what
+// the message says. Shown long, because it asks the user to do something.
+const CODE_REAUTH_REQUIRED = 235
 
 // Business codes the Go backend returns when an action needs a logged-in user
 // (distinct from 205 = a dead/expired session). The client gates most of these
@@ -94,6 +100,11 @@ const handleApiError = async (code: number, message: string) => {
       userStore.resetUser()
     }
     useMessage(message || '您的账号已被封禁', 'error', 10000)
+    return
+  }
+
+  if (code === CODE_REAUTH_REQUIRED) {
+    useMessage(message || '请退出登录后重新登录以授予该权限', 'error', 10000)
     return
   }
 

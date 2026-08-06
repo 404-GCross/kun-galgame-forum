@@ -33,6 +33,12 @@ export interface GalgameCover {
   width?: number
   height?: number
   thumbhash?: string
+  // Best-cover vote facet. `id` is the CATALOG cover row id — the address the
+  // vote endpoints take, absent when the tally lookup did not answer (the UI
+  // then renders no vote control). `vote_count` is advisory: it orders nothing.
+  id?: number
+  vote_count?: number
+  voted?: boolean
 }
 
 export interface GalgameScreenshot extends GalgameCover {

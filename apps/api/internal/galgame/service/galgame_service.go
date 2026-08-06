@@ -12,6 +12,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
 	userRepo "kun-galgame-api/internal/user/repository"
+	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
@@ -31,7 +32,11 @@ type GalgameService struct {
 	stateRepo        *userRepo.StateRepository
 	galgameClient    *client.GalgameClient
 	userClient       *userclient.Client
-	helpers          InteractionHelpers
+	// catalog is the S2S client, used here for ONE thing: the detail page's
+	// best-cover vote tallies, which the public face does not publish (see
+	// cover_votes.go). Nil / unconfigured simply drops the facet.
+	catalog *catalogclient.Client
+	helpers InteractionHelpers
 	// DLsite affiliate wiring for the header's 正版购买 button. Empty template =
 	// the button never renders.
 	dlsiteLinkTemplate string
@@ -47,6 +52,7 @@ func NewGalgameService(
 	stateRepo *userRepo.StateRepository,
 	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
+	catalog *catalogclient.Client,
 	dlsiteLinkTemplate string,
 	dlsiteCouponURL string,
 ) *GalgameService {
@@ -61,6 +67,7 @@ func NewGalgameService(
 		stateRepo:          stateRepo,
 		galgameClient:      galgameClient,
 		userClient:         userClient,
+		catalog:            catalog,
 	}
 }
 
@@ -262,6 +269,9 @@ func (s *GalgameService) GetDetail(
 	detail.Language = languages
 	detail.Type = types
 	detail.Ratings = ratings
+	// Advisory best-cover votes: the cover row ids the vote endpoints address,
+	// their counts, and this viewer's ballot. Best-effort — see cover_votes.go.
+	s.hydrateCoverVotes(ctx, galgameID, currentUserID, detail.Covers)
 	// The GAME is not gated (see the note above — a direct URL is 有意为之), but
 	// its adult TAG chips are: `isSFW` arrived here unused, so the sexual
 	// vocabulary shipped in the SSR/__NUXT__ payload of every entry, to

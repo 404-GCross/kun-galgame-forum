@@ -442,6 +442,12 @@ func (a *App) setupRoutes() {
 	// (static segments win over :gid).
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
 	authed.Put("/galgame/:gid/like", a.GalgameHandler.ToggleLike)
+	// Best-cover vote (advisory; one ballot per user per game — voting another
+	// cover MOVES it). Unlike every other catalog write here, this one travels
+	// as the USER: kungal forwards the session's OAuth access token as a Bearer
+	// and the registry derives the actor from it (wave 176).
+	authed.Put("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Vote)
+	authed.Delete("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Unvote)
 	// Galgame collections (收藏夹). Favorite is now membership in one or more
 	// collections. /galgame/collection is static and 2-segment; the picker
 	// read/write hang off the /galgame/:gid/collections param path.

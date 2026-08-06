@@ -65,7 +65,13 @@ const buildAuthorizeUrl = async (
     client_id: config.public.oauthClientId as string,
     redirect_uri: config.public.oauthRedirectUri as string,
     response_type: 'code',
-    scope: 'openid profile',
+    // catalog:edit is what lets the API forward THIS user's token to the
+    // catalog for their own writes (the best-cover vote), instead of kungal
+    // asserting them over S2S. A grant is fixed at authorization time: a
+    // session created before this line shipped does not carry the scope and no
+    // refresh can widen it — those users get code 235 and are asked to log out
+    // and back in once.
+    scope: 'openid profile catalog:edit',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256'

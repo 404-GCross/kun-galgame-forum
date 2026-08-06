@@ -139,6 +139,7 @@ type App struct {
 	GalgameSubmissionHandler       *galgameHandler.SubmissionHandler
 	GalgameClaimReviewHandler      *galgameHandler.ClaimReviewHandler
 	GalgameEditHandler             *galgameHandler.EditHandler
+	GalgameCoverVoteHandler        *galgameHandler.CoverVoteHandler
 	ActivityHandler                *activityHandler.ActivityHandler
 	ImageHandler                   *imageHandler.ImageHandler
 	SearchHandler                  *searchHandler.SearchHandler
@@ -484,7 +485,7 @@ func New(cfg *config.Config) *App {
 	// filter/sort/hydrate), so they take it as a dependency.
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
-		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc,
+		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc, catalogCli,
 		cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL,
 	)
 	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
@@ -676,6 +677,9 @@ func New(cfg *config.Config) *App {
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameClaimReviewHandler:  galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
 		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
+		// The best-cover vote face — the one write that travels as the USER
+		// (Bearer), not as kungal asserting them (wave 176).
+		GalgameCoverVoteHandler: galgameHandler.NewCoverVoteHandler(catalogCli, gc),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),

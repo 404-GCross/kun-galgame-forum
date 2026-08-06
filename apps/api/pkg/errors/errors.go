@@ -29,11 +29,16 @@ func New(code int, message string, statusCode int) *AppError {
 // 234 → account banned → client shows banned page; DOES NOT redirect to
 //       /login because logging in again hits the same OAuth 10014 error
 //       (see docs/oauth/api-reference.md §错误码速查)
+// 235 → the session is alive but its OAuth grant is too narrow for the action
+//
+//	(a token minted before a scope existed); the client tells the user to
+//	log out and back in — NOT a logout, and not a plain business error
 const (
-	CodeOK      = 0
-	CodeAuth    = 205
-	CodeBiz     = 233
-	CodeBanned  = 234
+	CodeOK             = 0
+	CodeAuth           = 205
+	CodeBiz            = 233
+	CodeBanned         = 234
+	CodeReauthRequired = 235
 )
 
 // Auth errors
@@ -50,6 +55,15 @@ func ErrAuthExpired() *AppError {
 // through /login → OAuth → /login in a loop.
 func ErrAccountBanned() *AppError {
 	return New(CodeBanned, "账号已封禁", 403)
+}
+
+// ErrReauthRequired signals a valid session whose OAuth grant lacks a scope the
+// action needs. Distinct from ErrForbidden (a permission the user does not
+// have) and from ErrAuthExpired (a dead session): the user IS allowed and IS
+// logged in — the token predates the scope, and only a fresh login can widen a
+// grant. The client surfaces the message instead of logging the user out.
+func ErrReauthRequired(msg string) *AppError {
+	return New(CodeReauthRequired, msg, 403)
 }
 
 func ErrForbidden(msg string) *AppError {
