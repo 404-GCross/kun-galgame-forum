@@ -1,6 +1,7 @@
 package catalogclient
 
-// Contract tests for the editing engine on the user-token plane (wave 177).
+// Contract tests for the editing engine on the user-token plane — the
+// contributor lanes (wave 177) and the adjudication lanes (wave 178).
 // The axes are the ones a wrong implementation gets wrong SILENTLY: which
 // credential travels (a Basic header here would restore the S2S posture and
 // void the whole point), which fields do NOT travel (an actor or a site in the
@@ -244,6 +245,282 @@ func TestUserEditUnconfigured(t *testing.T) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 	if _, err := c.GetEditSchemaUser(context.Background(), "user-jwt", "catalog.work", 1); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("err = %v, want ErrNotConfigured", err)
+	}
+}
+
+// ── the adjudication lanes (wave 178) ──
+//
+// These moved onto the token because the catalog now derives ENTITY OWNERSHIP
+// from it, which was the one input the forum used to have to assert. So the
+// axis here is the same one as above and one more: the amend/merge/decline/
+// revert bodies must carry the operation and nothing about who is performing
+// it — no actor, and (revert) no site either, since the acting tenant is the
+// token's too.
+
+func TestAmendEditProposalUser(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":1,"seq":1,`+
+		`"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"},"note":"typo fixed"}}`)
+
+	amendment, err := userClient(srv.URL).AmendEditProposalUser(context.Background(), "user-jwt", 7,
+		map[string]any{"catalog.work.name_zh_cn": "修正"}, []string{"catalog.work.vndb_id"}, "typo fixed")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/amendments" {
+		t.Fatalf("amend hit %s %s", got.method, got.path)
+	}
+	if got.auth != "Bearer user-jwt" || strings.HasPrefix(got.auth, "Basic ") {
+		t.Fatalf("auth = %q, want the user's bearer only", got.auth)
+	}
+	if _, ok := got.body["actor"]; ok {
+		t.Fatalf("the user plane asserts no actor: %v", got.body)
+	}
+	set, _ := got.body["set"].(map[string]any)
+	unset, _ := got.body["unset"].([]any)
+	if set["catalog.work.name_zh_cn"] != "修正" || len(unset) != 1 || unset[0] != "catalog.work.vndb_id" {
+		t.Fatalf("amend delta wrong: %v", got.body)
+	}
+	if got.body["note"] != "typo fixed" {
+		t.Fatalf("note lost: %v", got.body)
+	}
+	if amendment.Seq != 1 || amendment.AmenderUID != 7 {
+		t.Fatalf("amendment decoded wrong: %+v", amendment)
+	}
+}
+
+// An empty delta must not put empty `set` / `unset` keys on the wire — the
+// engine reads a present-but-empty unset as "reject nothing" vs absent, and
+// the note is optional in the same way.
+func TestAmendEditProposalUserOmitsEmptyParts(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7}}`)
+	if _, err := userClient(srv.URL).AmendEditProposalUser(context.Background(), "user-jwt", 7,
+		map[string]any{"catalog.work.name_zh_cn": "x"}, nil, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := got.body["unset"]; ok {
+		t.Fatalf("an absent unset must not travel: %v", got.body)
+	}
+	if _, ok := got.body["note"]; ok {
+		t.Fatalf("an empty note must not travel: %v", got.body)
+	}
+}
+
+func TestMergeEditProposalUser(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":100,"seq":4,`+
+		`"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`)
+
+	rev, err := userClient(srv.URL).MergeEditProposalUser(context.Background(), "user-jwt", 7, "looks right")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/merge" {
+		t.Fatalf("merge hit %s %s", got.method, got.path)
+	}
+	if got.auth != "Bearer user-jwt" {
+		t.Fatalf("auth = %q, want the user's bearer", got.auth)
+	}
+	if _, ok := got.body["actor"]; ok {
+		t.Fatalf("the user plane asserts no actor: %v", got.body)
+	}
+	if got.body["note"] != "looks right" {
+		t.Fatalf("note lost: %v", got.body)
+	}
+	// The amender is what marks a reviewer correction on the merged notice, so
+	// it has to survive the decode.
+	if rev.Seq != 4 || rev.AmenderUID == nil || *rev.AmenderUID != 42 {
+		t.Fatalf("revision decoded wrong: %+v", rev)
+	}
+}
+
+func TestDeclineEditProposalUser(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":7,`+
+		`"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`)
+
+	prop, err := userClient(srv.URL).DeclineEditProposalUser(context.Background(), "user-jwt", 7, "来源不可靠")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/decline" {
+		t.Fatalf("decline hit %s %s", got.method, got.path)
+	}
+	if got.auth != "Bearer user-jwt" {
+		t.Fatalf("auth = %q, want the user's bearer", got.auth)
+	}
+	if _, ok := got.body["actor"]; ok {
+		t.Fatalf("the user plane asserts no actor: %v", got.body)
+	}
+	if got.body["note"] != "来源不可靠" {
+		t.Fatalf("decline reason lost: %v", got.body)
+	}
+	if prop.Status != "declined" {
+		t.Fatalf("proposal decoded wrong: %+v", prop)
+	}
+}
+
+func TestRevertEditEntityUser(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{`+
+		`"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},`+
+		`"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`)
+
+	res, err := userClient(srv.URL).RevertEditEntityUser(context.Background(), "user-jwt",
+		"catalog.work", 1000, 3, "回滚")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/revert" {
+		t.Fatalf("revert hit %s %s", got.method, got.path)
+	}
+	if got.auth != "Bearer user-jwt" {
+		t.Fatalf("auth = %q, want the user's bearer", got.auth)
+	}
+	if _, ok := got.body["actor"]; ok {
+		t.Fatalf("the user plane asserts no actor: %v", got.body)
+	}
+	// The acting tenant comes off the token like everything else.
+	if _, ok := got.body["site"]; ok {
+		t.Fatalf("the user plane asserts no site: %v", got.body)
+	}
+	if got.body["entity_type"] != "catalog.work" || got.body["entity_id"] != float64(1000) ||
+		got.body["to_seq"] != float64(3) || got.body["note"] != "回滚" {
+		t.Fatalf("revert body wrong: %v", got.body)
+	}
+	if res.Revision.Action != "reverted" || res.Proposal.ID != 8 {
+		t.Fatalf("revert result decoded wrong: %+v", res)
+	}
+}
+
+// The detail read is a GET with no body, and it must decode the two parts only
+// the detail carries: the amendment log and the effective patch (what a merge
+// would actually land, which is what the workbench predicts can_decide from).
+func TestGetEditProposalUser(t *testing.T) {
+	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":7,`+
+		`"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,`+
+		`"patch":{"catalog.work.name_zh_cn":"新标题","catalog.work.vndb_id":"v1"},`+
+		`"effective_patch":{"catalog.work.name_zh_cn":"修正"},`+
+		`"amendments":[{"id":1,"seq":1,"amender_uid":42,"set":{"catalog.work.name_zh_cn":"修正"},`+
+		`"unset":["catalog.work.vndb_id"],"note":"来源存疑"}]}}`)
+
+	prop, err := userClient(srv.URL).GetEditProposalUser(context.Background(), "user-jwt", 7)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/edit/proposals/7" {
+		t.Fatalf("detail hit %s %s", got.method, got.path)
+	}
+	if got.auth != "Bearer user-jwt" {
+		t.Fatalf("auth = %q, want the user's bearer", got.auth)
+	}
+	if got.query != "" {
+		t.Fatalf("the detail read takes no parameters: %q", got.query)
+	}
+	if len(prop.Amendments) != 1 || prop.Amendments[0].AmenderUID != 42 {
+		t.Fatalf("amendments decoded wrong: %+v", prop)
+	}
+	if prop.EffectivePatch["catalog.work.name_zh_cn"] != "修正" || len(prop.EffectivePatch) != 1 {
+		t.Fatalf("effective patch decoded wrong: %+v", prop.EffectivePatch)
+	}
+}
+
+// Every new lane shares the error taxonomy — above all the scope denial, which
+// is the only 403 a user can fix themselves.
+func TestUserEditAdjudicationErrorMapping(t *testing.T) {
+	lanes := map[string]func(c *Client) error{
+		"amend": func(c *Client) error {
+			_, err := c.AmendEditProposalUser(context.Background(), "user-jwt", 7,
+				map[string]any{"catalog.work.name_zh_cn": "x"}, nil, "")
+			return err
+		},
+		"merge": func(c *Client) error {
+			_, err := c.MergeEditProposalUser(context.Background(), "user-jwt", 7, "")
+			return err
+		},
+		"decline": func(c *Client) error {
+			_, err := c.DeclineEditProposalUser(context.Background(), "user-jwt", 7, "no")
+			return err
+		},
+		"revert": func(c *Client) error {
+			_, err := c.RevertEditEntityUser(context.Background(), "user-jwt", "catalog.work", 1000, 3, "")
+			return err
+		},
+		"detail": func(c *Client) error {
+			_, err := c.GetEditProposalUser(context.Background(), "user-jwt", 7)
+			return err
+		},
+	}
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   error
+	}{
+		{"dead token", http.StatusUnauthorized, `{"code":205,"message":"invalid token"}`, ErrUnauthorized},
+		{"missing scope", http.StatusForbidden, `{"code":233,"message":"missing required scope: catalog:edit"}`, ErrInsufficientScope},
+		{"unknown proposal", http.StatusNotFound, `{"code":233,"message":"not found"}`, ErrNotFound},
+	}
+	for lane, call := range lanes {
+		for _, tc := range cases {
+			t.Run(lane+"/"+tc.name, func(t *testing.T) {
+				srv, _ := recordingServer(t, tc.status, tc.body)
+				if err := call(userClient(srv.URL)); !errors.Is(err, tc.want) {
+					t.Fatalf("err = %v, want %v", err, tc.want)
+				}
+			})
+		}
+		// A plain permission denial and a closed proposal keep the upstream's own
+		// wording and status — a maintainer has to be able to read why.
+		t.Run(lane+"/plain denial", func(t *testing.T) {
+			srv, _ := recordingServer(t, http.StatusForbidden, `{"code":233,"message":"field review denied"}`)
+			err := call(userClient(srv.URL))
+			if errors.Is(err, ErrInsufficientScope) {
+				t.Fatalf("a policy denial must not read as a scope problem: %v", err)
+			}
+			var apiErr *UserAPIError
+			if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden ||
+				!strings.Contains(apiErr.Message, "review denied") {
+				t.Fatalf("err = %v, want the upstream's own 403", err)
+			}
+		})
+		t.Run(lane+"/closed", func(t *testing.T) {
+			srv, _ := recordingServer(t, http.StatusConflict, `{"code":233,"message":"proposal is closed"}`)
+			var apiErr *UserAPIError
+			if err := call(userClient(srv.URL)); !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict {
+				t.Fatalf("err = %v, want a *UserAPIError 409", err)
+			}
+		})
+	}
+}
+
+// No token, no call — on every new lane too.
+func TestUserEditAdjudicationWithoutTokenNeverCalls(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
+	defer srv.Close()
+	c := userClient(srv.URL)
+	_, amend := c.AmendEditProposalUser(context.Background(), "", 7, map[string]any{"k": "v"}, nil, "")
+	_, merge := c.MergeEditProposalUser(context.Background(), "", 7, "")
+	_, decline := c.DeclineEditProposalUser(context.Background(), "", 7, "x")
+	_, revert := c.RevertEditEntityUser(context.Background(), "", "catalog.work", 1, 2, "")
+	_, detail := c.GetEditProposalUser(context.Background(), "", 7)
+	for name, err := range map[string]error{
+		"amend": amend, "merge": merge, "decline": decline, "revert": revert, "detail": detail,
+	} {
+		if !errors.Is(err, ErrUnauthorized) {
+			t.Fatalf("%s: err = %v, want ErrUnauthorized", name, err)
+		}
+	}
+	if called {
+		t.Fatal("a tokenless user-plane call must not reach the catalog")
+	}
+}
+
+// An unconfigured client refuses before the token is even considered.
+func TestUserEditAdjudicationUnconfigured(t *testing.T) {
+	c := New(Config{})
+	if _, err := c.MergeEditProposalUser(context.Background(), "user-jwt", 7, ""); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("err = %v, want ErrNotConfigured", err)
+	}
+	if _, err := c.RevertEditEntityUser(context.Background(), "user-jwt", "catalog.work", 1, 2, ""); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 }

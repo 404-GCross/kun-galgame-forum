@@ -60,11 +60,14 @@ func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
+	// The wizard's banner rides the editing engine, which is user-token-only
+	// since wave 178 — so the session's own token travels with the actor.
+	token := middleware.GetAccessToken(c)
 	var form service.SubmissionForm
 	if err := c.Bind().Body(&form); err != nil {
 		return response.Error(c, errors.ErrBadRequest("请求格式错误"))
 	}
-	res, appErr := h.svc.Submit(c.Context(), actor, &form)
+	res, appErr := h.svc.Submit(c.Context(), actor, token, &form)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

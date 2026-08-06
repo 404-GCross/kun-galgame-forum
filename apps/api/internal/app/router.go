@@ -512,12 +512,12 @@ func (a *App) setupRoutes() {
 	// recorded, instead of one that left no trace of who published what.
 	// Editing engine (E3a): the schema-driven editor + the kungal review
 	// queue over the generic edit face (S2S actor assertion — see
-	// galgame/handler/edit_handler.go). The entry gates are exactly that —
-	// entries; field-level adjudication rights come from the engine's own
-	// policy (admin/ren hold edit.galgame.game.review). The proposal-directed
-	// review surfaces are auth-only since E3b: the handler admits moderators
-	// AND the game's creator (owner-review — the engine's kungal overlay
-	// grants owners the default keys only).
+	// galgame/handler/edit_handler.go). Every write below travels on the
+	// caller's OWN OAuth token since wave 178, and infra authorizes it — the
+	// forum's mirrored permission gates went away with the actor assertions.
+	// What is left here is auth (a session, so there is a token to forward) and
+	// two VIEW entries: the queue's moderator gate, and the handler's own
+	// moderator-or-creator check on the proposal workbench.
 	authed.Get("/galgame/:gid/edit/bootstrap", a.GalgameEditHandler.Bootstrap)
 	authed.Post("/galgame/:gid/edit/proposals", a.GalgameEditHandler.Submit)
 	authed.Get("/galgame-edit/mine", a.GalgameEditHandler.Mine)
@@ -530,8 +530,8 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame-edit/proposals/:id/amend", a.GalgameEditHandler.Amend)
 	authed.Post("/galgame-edit/proposals/:id/merge", a.GalgameEditHandler.Merge)
 	authed.Post("/galgame-edit/proposals/:id/decline", a.GalgameEditHandler.Decline)
-	// Engine-backed revert (E3b — the old wire's owner-or-admin revert moved
-	// onto the new chain; the engine gates every restored field).
+	// Engine-backed revert: the engine gates every restored field against the
+	// caller's token, so this route carries no local threshold of its own.
 	authed.Post("/galgame/:gid/edit/revert", a.GalgameEditHandler.Revert)
 	// The old-wire editor write proxies (PUT /galgame/:gid, PR
 	// submit/merge/decline, revert, links/aliases, contributors) retired in

@@ -87,9 +87,15 @@ type SubmitResult struct {
 // one; the stub is created later by the claim-event cron at the moment the claim
 // goes live. That is the invariant the wiki flow had ("a pending submission gets
 // no stub"), kept without a second copy of the lifecycle living locally.
+// accessToken is the submitter's own OAuth token, carried alongside the asserted
+// actor because the two halves of this operation now speak on different planes:
+// the CLAIM half (SubmitWork) is still an asserted-actor S2S call, while the
+// banner edit below is an ordinary user edit and rides the token like every
+// other edit does since wave 178.
 func (s *SubmissionService) Submit(
 	ctx context.Context,
 	actor catalogclient.EditActor,
+	accessToken string,
 	form *SubmissionForm,
 ) (*SubmitResult, *errors.AppError) {
 	if form.DisplayName() == "" {
@@ -112,9 +118,9 @@ func (s *SubmissionService) Submit(
 	// visible to the reviewer alongside it. Best-effort: a failure here costs
 	// the cover, never the submission.
 	if patch := form.CoverPatch(); patch != nil {
-		if _, err := s.catalog.CreateEditProposal(ctx, catalogclient.EditCreateRequest{
+		if _, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
 			EntityType: catalogclient.EntityTypeWork, EntityID: res.WorkID,
-			Site: submissionSite, Patch: patch, Note: "投稿时提交的横幅图", Actor: actor,
+			Patch: patch, Note: "投稿时提交的横幅图",
 		}); err != nil {
 			slog.Warn("submit: 附加横幅图失败", "work", res.WorkID, "error", err)
 		}

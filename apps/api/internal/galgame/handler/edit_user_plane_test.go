@@ -1,17 +1,19 @@
 package handler
 
-// Routing tests for wave 177: which PLANE each editor lane takes, and what a
-// user-plane denial looks like by the time it reaches the browser.
+// Routing tests for the editor's PLANE: which channel each lane takes, and what
+// a user-plane denial looks like by the time it reaches the browser.
 //
-// The split is the subject. A lane that quietly stayed on S2S would still work
-// — that is exactly why it needs a test: the dogfood is invisible from the
-// response body, and only the recorded request says whether the user or the
-// forum was the one acting. The three axes:
-//   - the OWNER keeps the asserted-actor channel (is_entity_owner is a forum
-//     fact with no token claim behind it — routing the creator over the token
-//     would silently take away their direct-merge);
-//   - everyone else submits, withdraws and reads their capability projection
-//     over their OWN token, with no actor and no site in the payload;
+// A lane that quietly stayed on S2S would still work — that is exactly why it
+// needs a test: the dogfood is invisible from the response body, and only the
+// recorded request says whether the user or the forum was the one acting.
+//
+// Wave 177 moved the contributor lanes here and left the entry CREATOR on the
+// asserted-actor channel, because is_entity_owner was a forum fact no token
+// carried. Wave 178 removed that exception at the root: infra holds per-user
+// ownership itself and derives the capability from the token, so the axes are
+// now simply
+//   - EVERY act — the owner's included — rides the user's own token, with no
+//     actor and no site in the payload;
 //   - a grant that predates `catalog:edit` comes back as code 235, so the UI can
 //     say "log out and back in" instead of "no permission".
 
@@ -50,6 +52,10 @@ func userPlaneApp(t *testing.T, catalogURL string, user *middleware.UserInfo, to
 	authed.Get("/galgame/:gid/edit/bootstrap", h.Bootstrap)
 	authed.Post("/galgame/:gid/edit/proposals", h.Submit)
 	authed.Post("/galgame-edit/proposals/:id/withdraw", h.Withdraw)
+	authed.Post("/galgame-edit/proposals/:id/amend", h.Amend)
+	authed.Post("/galgame-edit/proposals/:id/merge", h.Merge)
+	authed.Post("/galgame-edit/proposals/:id/decline", h.Decline)
+	authed.Post("/galgame/:gid/edit/revert", h.Revert)
 	return app
 }
 
@@ -79,9 +85,33 @@ func envelopeCode(t *testing.T, raw []byte) int {
 	return env.Code
 }
 
-// A non-owner's submit travels as the USER: the user-plane path, the session's
-// bearer, and a body that claims neither actor nor site.
-func TestEditSubmitNonOwnerRidesTheUserToken(t *testing.T) {
+// A submit travels as the USER: the user-plane path, the session's bearer, and
+// a body that claims neither actor nor site. plainUser (uid 7) is gid 1's
+// CREATOR and is included deliberately — the creator was the last caller with a
+// lane of their own, and this is the test that says they no longer have one.
+func TestEditSubmitRidesTheUserToken(t *testing.T) {
+	for _, user := range []*middleware.UserInfo{bystander, plainUser, adminUser} {
+		fake := &fakeEditFace{}
+		app := userPlaneApp(t, fake.server(t).URL, user, "user-jwt")
+		status, raw := doJSON(t, app, "POST", "/api/galgame/1/edit/proposals",
+			`{"patch":{"catalog.work.name_zh_cn":"新标题"}}`)
+		if status != http.StatusOK {
+			t.Fatalf("submit as %s: status = %d body %s", user.Name, status, raw)
+		}
+		if len(fake.requests) != 1 || fake.requests[0].Face != "user" {
+			t.Fatalf("submit as %s must be a single user-plane call, got %+v", user.Name, fake.requests)
+		}
+		if fake.requests[0].Auth != "Bearer user-jwt" {
+			t.Fatalf("submit as %s used auth %q", user.Name, fake.requests[0].Auth)
+		}
+		if _, ok := fake.requests[0].Body["actor"]; ok {
+			t.Fatalf("submit as %s asserted an actor: %v", user.Name, fake.requests[0].Body)
+		}
+	}
+}
+
+// The submit's payload, in full.
+func TestEditSubmitPayloadOnTheUserPlane(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := userPlaneApp(t, fake.server(t).URL, bystander, "user-jwt")
 
@@ -151,39 +181,30 @@ func TestEditWithdrawAlwaysRidesTheUserToken(t *testing.T) {
 }
 
 // Bootstrap's projection follows the plane the caller's WRITES will take, or
-// the editor renders capabilities the submit lane does not have. The snapshot
-// read stays S2S either way — it is a public-ish value read, not a claim.
+// the editor renders capabilities the submit lane does not have. Since every
+// write is the user plane, so is every projection — the creator's included,
+// whose can_review now arrives derived from the token instead of asserted into
+// the query. The snapshot read stays S2S: it is a value read, not a claim.
 func TestEditBootstrapProjectionFollowsThePlane(t *testing.T) {
-	fake := &fakeEditFace{}
-	app := userPlaneApp(t, fake.server(t).URL, bystander, "user-jwt")
-	if status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/bootstrap", ""); status != http.StatusOK {
-		t.Fatalf("bootstrap: status = %d body %s", status, raw)
-	}
-	if req := fake.callTo("/api/v1/user/catalog/edit/schema/catalog.work"); req == nil {
-		t.Fatalf("a non-owner projection must ride the user plane, got %+v", fake.requests)
-	} else if req.Query != "entity_id=1000" {
-		t.Fatalf("the user plane takes no actor parameters: %q", req.Query)
-	}
-	if req := fake.callTo("/api/v1/catalog/edit/snapshot"); req == nil || req.Face != "s2s" {
-		t.Fatalf("the value snapshot stays S2S, got %+v", fake.requests)
-	}
-
-	// The owner's projection keeps the assertion — is_entity_owner is what
-	// grants the creator can_review on the default keys.
-	ownerFake := &fakeEditFace{}
-	ownerApp := userPlaneApp(t, ownerFake.server(t).URL, plainUser, "user-jwt") // uid 7 = creator
-	if status, raw := doJSON(t, ownerApp, "GET", "/api/galgame/1/edit/bootstrap", ""); status != http.StatusOK {
-		t.Fatalf("owner bootstrap: status = %d body %s", status, raw)
-	}
-	req := ownerFake.callTo("/api/v1/catalog/edit/schema/catalog.work")
-	if req == nil || req.Face != "s2s" {
-		t.Fatalf("the owner projection must stay S2S, got %+v", ownerFake.requests)
-	}
-	if !strings.Contains(req.Query, "is_entity_owner=true") || !strings.Contains(req.Query, "user_id=7") {
-		t.Fatalf("owner assertion missing from the projection query: %q", req.Query)
-	}
-	if ownerFake.callTo("/api/v1/user/catalog/edit/schema/catalog.work") != nil {
-		t.Fatalf("the owner lane must not touch the user plane: %+v", ownerFake.requests)
+	for _, user := range []*middleware.UserInfo{bystander, plainUser} { // uid 7 = creator
+		fake := &fakeEditFace{}
+		app := userPlaneApp(t, fake.server(t).URL, user, "user-jwt")
+		if status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/bootstrap", ""); status != http.StatusOK {
+			t.Fatalf("bootstrap as %s: status = %d body %s", user.Name, status, raw)
+		}
+		req := fake.callTo("/api/v1/user/catalog/edit/schema/catalog.work")
+		if req == nil {
+			t.Fatalf("the projection for %s must ride the user plane, got %+v", user.Name, fake.requests)
+		}
+		if req.Query != "entity_id=1000" {
+			t.Fatalf("the user plane takes no actor parameters: %q", req.Query)
+		}
+		if fake.callTo("/api/v1/catalog/edit/schema/catalog.work") != nil {
+			t.Fatalf("no projection may still be asserted on S2S for %s: %+v", user.Name, fake.requests)
+		}
+		if req := fake.callTo("/api/v1/catalog/edit/snapshot"); req == nil || req.Face != "s2s" {
+			t.Fatalf("the value snapshot stays S2S, got %+v", fake.requests)
+		}
 	}
 }
 
@@ -195,6 +216,13 @@ func TestEditUserPlaneStaleGrantAsksForReauth(t *testing.T) {
 		{"submit", "POST", "/api/galgame/1/edit/proposals", `{"patch":{"catalog.work.name_zh_cn":"x"}}`},
 		{"withdraw", "POST", "/api/galgame-edit/proposals/7/withdraw", ""},
 		{"bootstrap", "GET", "/api/galgame/1/edit/bootstrap", ""},
+		// The adjudication lanes joined the plane in wave 178 and inherit the same
+		// mappings — they are the lanes a maintainer hits, and telling a maintainer
+		// "no permission" when the fix is a re-login is exactly what 235 prevents.
+		{"amend", "POST", "/api/galgame-edit/proposals/7/amend", `{"set":{"catalog.work.name_zh_cn":"x"}}`},
+		{"merge", "POST", "/api/galgame-edit/proposals/7/merge", `{"note":""}`},
+		{"decline", "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"理由"}`},
+		{"revert", "POST", "/api/galgame/1/edit/revert", `{"to_seq":3}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeEditFace{userStatus: http.StatusForbidden,
@@ -264,6 +292,13 @@ func TestEditUserPlaneWithoutTokenNeverCalls(t *testing.T) {
 		{"submit", "POST", "/api/galgame/1/edit/proposals", `{"patch":{"catalog.work.name_zh_cn":"x"}}`},
 		{"withdraw", "POST", "/api/galgame-edit/proposals/7/withdraw", ""},
 		{"bootstrap", "GET", "/api/galgame/1/edit/bootstrap", ""},
+		// The adjudication lanes joined the plane in wave 178 and inherit the same
+		// mappings — they are the lanes a maintainer hits, and telling a maintainer
+		// "no permission" when the fix is a re-login is exactly what 235 prevents.
+		{"amend", "POST", "/api/galgame-edit/proposals/7/amend", `{"set":{"catalog.work.name_zh_cn":"x"}}`},
+		{"merge", "POST", "/api/galgame-edit/proposals/7/merge", `{"note":""}`},
+		{"decline", "POST", "/api/galgame-edit/proposals/7/decline", `{"note":"理由"}`},
+		{"revert", "POST", "/api/galgame/1/edit/revert", `{"to_seq":3}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeEditFace{}

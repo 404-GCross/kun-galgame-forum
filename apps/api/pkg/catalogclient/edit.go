@@ -1,10 +1,12 @@
-// The editing-engine S2S face (infra E3a; contract /api/v1/catalog/edit/*).
-// kungal's BFF authenticates its user locally and ASSERTS the actor over the
-// Basic-authed S2S channel: roles pass through VERBATIM (the edit face
-// resolves them through the galgame family's own perm vocabulary — E3a
-// ruling 1), trust tier is the conservative staff mapping. The engine's
-// kungal site overlay then decides every write's fate: proposals never
-// automerge — they land in the kungal review queue for amend/merge/decline.
+// The editing-engine S2S face (infra E3a; contract /api/v1/catalog/edit/*),
+// reduced by wave 178 to what it should always have been: the CLAIM-FREE reads.
+// The value snapshot, the revision log, the diff and the proposal lists say
+// nothing about who is asking, so there is nothing here for a token to carry —
+// while every act moved to user_edit.go's Bearer plane, where the catalog reads
+// the actor, the tenant and the entity's ownership off the token itself.
+//
+// The shared wire types below serve both planes: the Bearer face answers with
+// the same proposal / amendment / revision / schema shapes.
 //
 // Unlike the GET-only reads in client.go, the edit face's 4xx replies carry
 // actionable reasons (validation details, policy denials, rebase conflicts),
@@ -21,19 +23,21 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
-// EditActor is the asserted end-user identity (the community S2S posture).
-// IsEntityOwner (E3b) asserts the user owns the entity the operation targets
-// (kungal: the galgame row's creator uid) — it feeds the engine's
-// OwnerReview overlay capability on the default-policy fields.
+// EditActor is the asserted end-user identity (the community S2S posture), now
+// used only by the CLAIMS face — the editing engine takes the user's own token
+// and asserts nothing.
+//
+// It carried an IsEntityOwner flag until wave 178, when the catalog started
+// holding per-user work ownership itself (catalog_work.owner_user_id) and
+// deriving the capability from the token. A field the forum could assert about
+// somebody else's rights is exactly what that move was for; it is gone.
 type EditActor struct {
-	UserID        int64    `json:"user_id"`
-	Roles         []string `json:"roles,omitempty"`
-	TrustTier     int16    `json:"trust_tier,omitempty"`
-	IsEntityOwner bool     `json:"is_entity_owner,omitempty"`
+	UserID    int64    `json:"user_id"`
+	Roles     []string `json:"roles,omitempty"`
+	TrustTier int16    `json:"trust_tier,omitempty"`
 }
 
 // EditProposal is the wire shape of a proposal (status: open / merged /
@@ -131,16 +135,6 @@ type EditDiff struct {
 	Fields  []EditFieldDiff `json:"fields"`
 }
 
-// EditCreateRequest files a proposal.
-type EditCreateRequest struct {
-	EntityType string         `json:"entity_type"`
-	EntityID   int64          `json:"entity_id"`
-	Site       string         `json:"site"`
-	Patch      map[string]any `json:"patch"`
-	Note       string         `json:"note,omitempty"`
-	Actor      EditActor      `json:"actor"`
-}
-
 // EditCreateResult reports whether the direct-edit sugar landed the patch
 // (never on kungal's overlaid fields — automerge=never).
 type EditCreateResult struct {
@@ -188,60 +182,9 @@ const EntityTypeWork = "catalog.work"
 // the BFF (the engine re-validates each one against its registry anyway).
 const FieldKeyPrefix = EntityTypeWork + "."
 
-// CreateEditProposal files an edit against the generic edit face.
-func (c *Client) CreateEditProposal(ctx context.Context, req EditCreateRequest) (*EditCreateResult, error) {
-	return editPost[EditCreateResult](ctx, c, editBase+"/proposals", req)
-}
-
 // GetEditProposal reads one proposal with its amendments and effective patch.
 func (c *Client) GetEditProposal(ctx context.Context, id int64) (*EditProposal, error) {
 	return editGet[EditProposal](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10))
-}
-
-// AmendEditProposal appends a maintainer patch delta (the crown mechanism:
-// correct a value / reject a field, then merge — double attribution).
-func (c *Client) AmendEditProposal(ctx context.Context, id int64, set map[string]any, unset []string, note string, actor EditActor) (*EditAmendment, error) {
-	body := map[string]any{"actor": actor}
-	if len(set) > 0 {
-		body["set"] = set
-	}
-	if len(unset) > 0 {
-		body["unset"] = unset
-	}
-	if note != "" {
-		body["note"] = note
-	}
-	return editPost[EditAmendment](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10)+"/amendments", body)
-}
-
-// MergeEditProposal merges an open proposal (per-field rebase; a 409
-// EditAPIError reports unresolved conflicts).
-func (c *Client) MergeEditProposal(ctx context.Context, id int64, note string, actor EditActor) (*EditRevision, error) {
-	return editPost[EditRevision](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10)+"/merge",
-		map[string]any{"note": note, "actor": actor})
-}
-
-// DeclineEditProposal declines an open proposal with a reason.
-func (c *Client) DeclineEditProposal(ctx context.Context, id int64, note string, actor EditActor) (*EditProposal, error) {
-	return editPost[EditProposal](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10)+"/decline",
-		map[string]any{"note": note, "actor": actor})
-}
-
-// WithdrawEditProposal closes the actor's own open proposal.
-func (c *Client) WithdrawEditProposal(ctx context.Context, id int64, actor EditActor) (*EditProposal, error) {
-	return editPost[EditProposal](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10)+"/withdraw",
-		map[string]any{"actor": actor})
-}
-
-// RevertEditEntity restores an entity's registered fields to a historical
-// revision through the engine's merge path (a NEW revision, action=reverted;
-// the log is append-only). Field-level authorization is the engine's: the
-// review rule per restored field (owners pass on kungal's default keys).
-func (c *Client) RevertEditEntity(ctx context.Context, site, entityType string, entityID int64, toSeq int, note string, actor EditActor) (*EditRevertResult, error) {
-	return editPost[EditRevertResult](ctx, c, editBase+"/revert", map[string]any{
-		"entity_type": entityType, "entity_id": entityID, "to_seq": toSeq,
-		"site": site, "note": note, "actor": actor,
-	})
 }
 
 // ListEditProposals lists proposals newest-first (the review queue and the
@@ -326,29 +269,6 @@ func (c *Client) DiffEditRevisions(ctx context.Context, entityType string, entit
 	q.Set("from_seq", strconv.Itoa(fromSeq))
 	q.Set("to_seq", strconv.Itoa(toSeq))
 	return editGet[EditDiff](ctx, c, editBase+"/diff?"+q.Encode())
-}
-
-// GetEditSchema reads the field schema + the asserted actor's capability
-// projection, entity-aware (entityID 0 = type-level).
-func (c *Client) GetEditSchema(ctx context.Context, site, entityType string, entityID int64, actor EditActor) (*EditSchema, error) {
-	q := url.Values{}
-	q.Set("site", site)
-	if entityID > 0 {
-		q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	}
-	if actor.UserID > 0 {
-		q.Set("user_id", strconv.FormatInt(actor.UserID, 10))
-	}
-	if len(actor.Roles) > 0 {
-		q.Set("roles", strings.Join(actor.Roles, ","))
-	}
-	if actor.TrustTier > 0 {
-		q.Set("trust_tier", strconv.FormatInt(int64(actor.TrustTier), 10))
-	}
-	if actor.IsEntityOwner {
-		q.Set("is_entity_owner", "true")
-	}
-	return editGet[EditSchema](ctx, c, editBase+"/schema/"+entityType+"?"+q.Encode())
 }
 
 // EditSnapshot reads the entity's CURRENT registered-field values (the

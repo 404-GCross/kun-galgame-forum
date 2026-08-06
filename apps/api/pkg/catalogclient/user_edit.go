@@ -1,18 +1,19 @@
-// The editing engine on the USER-TOKEN plane (wave 177) — the human lanes of
-// the schema-driven editor, spoken as the user instead of about them.
+// The editing engine on the USER-TOKEN plane — EVERY human lane of the
+// schema-driven editor (wave 177 moved the contributor lanes here; wave 178
+// finished the job with the adjudication lanes), spoken as the user instead of
+// about them.
 //
-// edit.go's S2S face is not going away: it stays the channel for the lanes
-// where kungal knows something the token cannot carry. Two facts split the
-// traffic:
+// What changed in wave 178 is where ownership lives. `is_entity_owner` used to
+// be a FORUM fact (galgame.creator_user_id) with no token claim behind it, which
+// is why the owner's direct-merge and the whole review chain had to keep riding
+// the asserted-actor S2S face. The catalog now holds per-user ownership itself
+// (catalog_work.owner_user_id, backfilled from that very column) and derives the
+// capability from the token — so there is nothing left for the forum to assert
+// and no lane left that a user token cannot carry.
 //
-//   - Who is acting. On the Bearer face the catalog derives uid, roles and the
-//     acting site from the token itself, so nothing about the actor rides in the
-//     body — a forum that asserted an actor here would be asserting nothing.
-//   - What the forum knows that the token does not. `is_entity_owner` is a
-//     FORUM fact (galgame.creator_user_id), and there is no token claim for it;
-//     on this face it is always false. So the owner lane — the entry creator's
-//     direct-merge — keeps riding the asserted-actor S2S path, and only the
-//     ordinary contributor lanes move here.
+// edit.go's S2S face survives only for the reads that make no claim at all
+// (snapshot, revision log, diff, proposal lists) — nobody is "acting" there, so
+// there is nothing for a token to say.
 //
 // The scope consequence is the same one wave 176 established: a token minted
 // before `catalog:edit` existed cannot be widened by a refresh, so that 403
@@ -63,9 +64,63 @@ func (c *Client) WithdrawEditProposalUser(ctx context.Context, accessToken strin
 		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/withdraw", struct{}{})
 }
 
+// GetEditProposalUser reads one proposal — amendments and effective patch
+// included — as the token's subject. Same decode shape as the S2S read; what
+// differs is that the catalog fences the tenant and the viewer itself.
+func (c *Client) GetEditProposalUser(ctx context.Context, accessToken string, id int64) (*EditProposal, error) {
+	return userEditDo[EditProposal](ctx, c, http.MethodGet, accessToken,
+		userEditBase+"/proposals/"+strconv.FormatInt(id, 10), nil)
+}
+
+// AmendEditProposalUser appends a maintainer patch delta as the user (the crown
+// mechanism: correct a value / reject a field, then merge — double attribution).
+// Whether the subject may amend at all is the catalog's call, derived from the
+// token's roles and its ownership of the target entity.
+func (c *Client) AmendEditProposalUser(ctx context.Context, accessToken string, id int64, set map[string]any, unset []string, note string) (*EditAmendment, error) {
+	body := map[string]any{}
+	if len(set) > 0 {
+		body["set"] = set
+	}
+	if len(unset) > 0 {
+		body["unset"] = unset
+	}
+	if note != "" {
+		body["note"] = note
+	}
+	return userEditPost[EditAmendment](ctx, c, accessToken,
+		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/amendments", body)
+}
+
+// MergeEditProposalUser merges an open proposal as the user (per-field rebase;
+// a 409 reports unresolved conflicts).
+func (c *Client) MergeEditProposalUser(ctx context.Context, accessToken string, id int64, note string) (*EditRevision, error) {
+	return userEditPost[EditRevision](ctx, c, accessToken,
+		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/merge", map[string]any{"note": note})
+}
+
+// DeclineEditProposalUser declines an open proposal with a reason, as the user.
+func (c *Client) DeclineEditProposalUser(ctx context.Context, accessToken string, id int64, note string) (*EditProposal, error) {
+	return userEditPost[EditProposal](ctx, c, accessToken,
+		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/decline", map[string]any{"note": note})
+}
+
+// RevertEditEntityUser restores an entity's registered fields to a historical
+// revision, as the user. No site rides in the body — the acting tenant comes off
+// the token like everything else — and the engine still re-checks the review
+// rule on every restored field.
+func (c *Client) RevertEditEntityUser(ctx context.Context, accessToken string, entityType string, entityID int64, toSeq int, note string) (*EditRevertResult, error) {
+	return userEditPost[EditRevertResult](ctx, c, accessToken, userEditBase+"/revert", map[string]any{
+		"entity_type": entityType, "entity_id": entityID, "to_seq": toSeq, "note": note,
+	})
+}
+
 // GetEditSchemaUser reads the field schema plus the TOKEN subject's capability
 // projection. No actor query parameters exist on this face — passing a uid
 // would be a claim, and the point of the plane is that the caller makes none.
+//
+// Since wave 178 the projection also reflects ENTITY OWNERSHIP: an owner's token
+// gets can_review on the owner-reviewable fields with nothing asserted, because
+// the catalog now knows who owns the work.
 func (c *Client) GetEditSchemaUser(ctx context.Context, accessToken, entityType string, entityID int64) (*EditSchema, error) {
 	path := userEditBase + "/schema/" + entityType
 	if entityID > 0 {

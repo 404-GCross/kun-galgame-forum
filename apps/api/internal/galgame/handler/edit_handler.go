@@ -23,39 +23,33 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// EditHandler is the BFF face onto the infra editing engine (E3a; contract
-// /api/v1/catalog/edit/*): the schema-driven galgame editor, the kungal
-// review queue (amend / merge / decline — the maintainer-edit crown), the
-// revision history + diff reads, and the "my proposals" list. kungal
-// authenticates its user locally and ASSERTS the actor over the Basic-authed
-// S2S channel (the letmoe E1 posture); the engine's kungal site overlay then
-// decides every write's fate — proposals never automerge, they land in the
-// review queue.
+// EditHandler is the BFF face onto the infra editing engine: the schema-driven
+// galgame editor, the kungal review queue (amend / merge / decline — the
+// maintainer-edit crown), the revision history + diff reads, and the "my
+// proposals" list.
 //
-// Actor assertion (E3a ruling 3): roles pass through VERBATIM — the edit
-// face resolves them through the galgame family's own perm vocabulary
-// (admin/ren hold edit.galgame.game.review), so the BFF holds no policy
-// logic beyond the entry gates. Trust tier is the conservative staff
-// mapping mirroring the community starter-boost floors (staff → 3,
-// everyone else → 0; kungal declares no creator boost).
+// EVERY act travels on the acting user's OWN OAuth token (`catalog:edit`
+// scope) since wave 178. The catalog derives uid, roles, the acting site AND —
+// the piece that finished the migration — whether the subject owns the target
+// work (catalog_work.owner_user_id, backfilled from galgame.creator_user_id)
+// straight from the token. So kungal asserts nothing about anybody any more,
+// and the mirrored permission gates it used to run before each write are gone
+// with the assertions: authorization is infra's, in one place, and this handler
+// only maps the answer (see userEditError; a stale grant surfaces as code 235,
+// "log out and back in", never as a plain 403).
+//
+// What remains on the Basic-authed S2S channel is only the CLAIM-FREE reads —
+// the value snapshot, the revision log, the diff and the proposal lists. Nobody
+// is acting there, so there is nothing for a token to say.
+//
+// The forum still answers "who created this entry" (EntryOwners /
+// galgame.creator_user_id) but ONLY as a view/UX fact: which surfaces a creator
+// may open, and which control the page offers. Never as an authorization —
+// infra decides that, and a UI gate that disagreed would merely be wrong in a
+// direction the write path corrects.
 //
 // Degradation: an unconfigured catalog client → 503 on every endpoint and
 // the frontend hides the entries. Never a local fallback.
-//
-// Two planes since wave 177. The HUMAN lanes — submit by a non-owner, withdraw
-// your own proposal, and the editor's capability projection for a non-owner —
-// now travel on the user's OWN OAuth token (`catalog:edit` scope), so the
-// catalog derives uid, roles and site from the token and kungal asserts
-// nothing. The OWNER and MODERATION lanes stay on the asserted-actor S2S
-// channel, because is_entity_owner is a FORUM fact (galgame.creator_user_id)
-// that no token claim carries: routing the creator over the token would silently
-// take away their direct-merge. A stale grant on the user plane surfaces as
-// code 235 ("log out and back in"), never as a plain 403 — see userEditError.
-//
-// Owner-review (E3b): the review surfaces admit the game's CREATOR alongside
-// moderators — the BFF asserts is_entity_owner from the galgame row's uid and
-// the engine's kungal overlay grants owners the review rule on the
-// default-policy fields only (status/vndb_id stay perm-gated).
 //
 // Decision side effects (E3b ruling 1 — notifications are the product's job,
 // the engine stays notification-free): merge/decline notify the proposer via
@@ -65,26 +59,28 @@ import (
 // PR chain, all best-effort (a failure logs a warning, never rolls back the
 // decision).
 type EditHandler struct {
-	catalog       *catalogclient.Client // S2S actor-assertion edit face — the ONE channel this BFF speaks
+	catalog       *catalogclient.Client // both catalog faces: the user-token plane + the claim-free S2S reads
 	galgameClient *client.GalgameClient // best-effort brief enrichment + owner lookup
 	users         *userclient.Client    // best-effort attribution enrichment
 	notifier      msgService.Notifier   // best-effort decision notifications
 	repo          *repository.GalgameRepository
-	// owners answers "who submitted this entry", by gid. It is an interface
-	// rather than a direct repo read because it is the ONE fact the edit face
-	// needs from the forum's own tables, and naming it separates "the author we
-	// render" from "the row we store" — the owner-review gate must agree with
-	// the author chip, and a narrow port is what keeps that reviewable.
+	// owners answers "who submitted this entry", by gid — a VIEW fact now (which
+	// surfaces a creator may open), no longer an authorization input. It stays a
+	// narrow port rather than a direct repo read because it must keep agreeing
+	// with the author chip the product renders from the same column.
 	owners EntryOwners
 }
 
-// EntryOwners resolves an entry's submitter. The registry carries none by
-// design — a registry row outlives any account — so this is the forum's own
-// frozen snapshot (galgame.creator_user_id, migration 066), the same column the
-// author chip renders.
+// EntryOwners resolves an entry's submitter, from the forum's own frozen
+// snapshot (galgame.creator_user_id, migration 066) — the same column the author
+// chip renders.
+//
+// The catalog holds its own copy of this fact now (catalog_work.owner_user_id,
+// backfilled from here) and derives edit capability from it. This one survives
+// for the VIEW gates only; nothing here decides whether a write is allowed.
 type EntryOwners interface {
 	// OwnerOf returns the submitter's uid, or 0 when unknown. Unknown fails the
-	// owner check CLOSED; moderators are unaffected.
+	// owner view check CLOSED; moderators are unaffected.
 	OwnerOf(gid int) int
 }
 
@@ -186,33 +182,14 @@ const fieldKeyPrefix = catalogclient.FieldKeyPrefix
 
 var errEditDown = errors.New(errors.CodeBiz, "资料库编辑服务暂不可用", http.StatusServiceUnavailable)
 
-// editActor builds the asserted actor for the current session.
-func editActor(c fiber.Ctx) (catalogclient.EditActor, *errors.AppError) {
-	user := middleware.GetUser(c)
-	if user == nil {
-		return catalogclient.EditActor{}, errors.ErrAuthExpired()
-	}
-	var tier int16
-	// Not an authorization gate — a trust-tier projection for the S2S actor
-	// assertion (staff → 3). Stays on role.CanModerate (identity/tier, not a
-	// pkg/perm forum capability).
-	if role.CanModerate(user.Roles) {
-		tier = 3 // staff (mirrors the community starter-boost staff floor)
-	}
-	return catalogclient.EditActor{UserID: int64(user.ID), Roles: user.Roles, TrustTier: tier}, nil
-}
-
-// ownerOf answers "who created this entry", by gid.
+// ownerOf answers "who created this entry", by gid — the forum's own
+// `galgame.creator_user_id`, the frozen wiki-era submitter snapshot (migration
+// 066) that already backs the author chip on every card. Reading the SAME column
+// the product renders is the point: a creator-only surface that disagreed with
+// the author shown on screen would be impossible to explain.
 //
-// The registry carries no submitter and never will — a registry row outlives
-// any account, so owning it is not a fact about it. The forum keeps its own
-// answer instead: `galgame.creator_user_id`, the frozen wiki-era submitter
-// snapshot (migration 066) that already backs the author chip on every card.
-// Reading the SAME column the product renders is the point: an owner-review
-// gate that disagreed with the author shown on screen would be impossible to
-// explain.
-//
-// 0 = unknown, which fails the owner check closed. Moderators are unaffected.
+// 0 = unknown, which fails the owner view check closed. Moderators are
+// unaffected, and no write depends on this answer.
 func (h *EditHandler) ownerOf(_ context.Context, gid int64) int {
 	if h.owners == nil {
 		return 0
@@ -442,7 +419,7 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -451,38 +428,18 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	// Owner-review (E3b): the entry's creator projects can_review on the
-	// default keys — the capability rides the schema projection, the UI
-	// holds zero policy logic.
-	actor.IsEntityOwner = h.isGameOwner(ctx, workID, actor.UserID)
 	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, workID)
 	if err != nil {
 		return editError(c, err)
 	}
-	// The schema projects can_review / would_automerge for the CALLER, so the
-	// projection has to be asked for on the same plane the caller's writes will
-	// take — otherwise the editor renders capabilities the submit lane does not
-	// actually have.
-	//
-	// Owner: the S2S assertion, because is_entity_owner is a forum fact with no
-	// token claim behind it and it is exactly what grants the creator can_review
-	// on the default keys. Everyone else: their own token, which carries uid and
-	// roles and asserts nothing.
-	var schema *catalogclient.EditSchema
-	if actor.IsEntityOwner {
-		schema, err = h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, workID, actor)
-		if err != nil {
-			return editError(c, err)
-		}
-	} else {
-		token, appErr := userToken(c)
-		if appErr != nil {
-			return response.Error(c, appErr)
-		}
-		schema, err = h.catalog.GetEditSchemaUser(ctx, token, entityTypeGame, workID)
-		if err != nil {
-			return userEditError(c, err)
-		}
+	// The schema projects can_review / would_automerge for the CALLER, and the
+	// caller's writes all take this same plane — including the creator's, whose
+	// ownership the catalog now derives from the token instead of hearing it
+	// asserted. One projection, one plane, no way for the editor to render a
+	// capability the submit lane does not have.
+	schema, err := h.catalog.GetEditSchemaUser(ctx, token, entityTypeGame, workID)
+	if err != nil {
+		return userEditError(c, err)
 	}
 	return response.OK(c, fiber.Map{
 		"gid":        gid,
@@ -508,16 +465,17 @@ type editSubmitRequest struct {
 	Note  string         `json:"note"`
 }
 
-// Submit — POST /galgame/:gid/edit/proposals (auth). Files the proposal. On
-// kungal a reviewer's own edit direct-merges (automerge=review): admin/ren via
-// the review perm, and the game's owner via OwnerReview — result.Merged, the
-// change applies immediately. Everyone else's proposal stays open for the queue.
+// Submit — POST /galgame/:gid/edit/proposals (auth). Files the proposal as the
+// user. On kungal a reviewer's own edit direct-merges (automerge=review):
+// admin/ren via the review perm, and the game's owner via OwnerReview — both
+// decided upstream from the token, both reported back as result.Merged.
+// Everyone else's proposal stays open for the queue.
 func (h *EditHandler) Submit(c fiber.Ctx) error {
 	gid, appErr := parseGid(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -536,46 +494,22 @@ func (h *EditHandler) Submit(c fiber.Ctx) error {
 	if len(req.Note) > 2000 {
 		return response.Error(c, errors.ErrValidation("编辑说明过长"))
 	}
-	// Owner direct-edit (automerge=review): the game's creator reviews the
-	// default keys, so — like admin/ren via perm — their own edit applies
-	// immediately instead of queuing a proposal against themselves. editActor
-	// asserts roles but not ownership; mirror Bootstrap's owner check so the
-	// engine sees the same capability. Only for a valid request (avoids the
-	// S2S brief lookup on rejected input; the brief is warm from Bootstrap).
+	// Only for a valid request (avoids the S2S bridge lookup on rejected input).
 	workID, appErr := h.workIDOf(c.Context(), gid)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor.IsEntityOwner = h.isGameOwner(c.Context(), workID, actor.UserID)
-
-	// Two planes, one outcome shape (wave 177). The owner keeps the asserted
-	// actor because their direct-merge hangs on is_entity_owner, which the token
-	// cannot carry. Everyone else — including staff — files as themselves over
-	// their own token: a contributor's proposal lands open, and an admin's still
-	// automerges, because the roles that decide that ride IN the token. So
-	// result.Merged stays the one thing this handler reads either way.
-	var result *catalogclient.EditCreateResult
-	var err error
-	if actor.IsEntityOwner {
-		result, err = h.catalog.CreateEditProposal(c.Context(), catalogclient.EditCreateRequest{
-			EntityType: entityTypeGame, EntityID: workID, Site: catalogSite,
-			Patch: req.Patch, Note: req.Note, Actor: actor,
-		})
-		if err != nil {
-			return editError(c, err)
-		}
-	} else {
-		token, appErr := userToken(c)
-		if appErr != nil {
-			return response.Error(c, appErr)
-		}
-		result, err = h.catalog.CreateEditProposalUser(c.Context(), token, catalogclient.UserEditCreateRequest{
-			EntityType: entityTypeGame, EntityID: workID,
-			Patch: req.Patch, Note: req.Note,
-		})
-		if err != nil {
-			return userEditError(c, err)
-		}
+	// One plane for everyone — contributor, staff and the entry's creator alike.
+	// The creator's direct-merge used to need an asserted is_entity_owner; the
+	// catalog owns that fact now and reads it off the token, so the outcome that
+	// once justified a second code path comes back through this one as
+	// result.Merged, which is the only thing this handler ever read.
+	result, err := h.catalog.CreateEditProposalUser(c.Context(), token, catalogclient.UserEditCreateRequest{
+		EntityType: entityTypeGame, EntityID: workID,
+		Patch: req.Patch, Note: req.Note,
+	})
+	if err != nil {
+		return userEditError(c, err)
 	}
 	if !result.Merged {
 		h.submitSideEffects(c.Context(), &result.Proposal)
@@ -622,8 +556,8 @@ func (h *EditHandler) submitSideEffects(ctx context.Context, prop *catalogclient
 
 // Revisions — GET /galgame/:gid/edit/revisions (optional auth; public like
 // the galgame's revision history always was). Includes the E2-migrated history.
-// A logged-in reviewer — moderator or the game's creator (E3b) — additionally
-// gets can_revert so the history page can offer the revert control.
+// A logged-in caller additionally gets can_revert — projected from their own
+// capabilities, see canRevert — so the history page can offer the control.
 func (h *EditHandler) Revisions(c fiber.Ctx) error {
 	gid, appErr := parseGid(c)
 	if appErr != nil {
@@ -644,18 +578,47 @@ func (h *EditHandler) Revisions(c fiber.Ctx) error {
 			uids[int(*items[i].AmenderUID)] = true
 		}
 	}
-	canRevert := false
-	if user := middleware.GetUser(c); user != nil {
-		// Revert is review-grade: admin ⊂ ren, or the game's owner. Moderators
-		// are NOT included — they hold no edit.galgame.game.review, so the
-		// engine would reject their revert anyway.
-		canRevert = role.CanAdminister(user.Roles) ||
-			h.isGameOwner(c.Context(), workID, int64(user.ID))
-	}
 	return response.OK(c, fiber.Map{
 		"gid": gid, "items": items, "users": h.userMap(c.Context(), uids),
-		"can_revert": canRevert,
+		"can_revert": h.canRevert(c, workID),
 	})
+}
+
+// canRevert projects, for the CALLER, whether the history page should offer the
+// revert control.
+//
+// The predicate: the viewer's own capability projection loads, reports at least
+// one field, and EVERY field that is still editable at all (not locked, not
+// deprecated) reports can_review. That is the honest reading of what a revert
+// is — it restores the whole registered field set at once, so it is offerable
+// only to somebody who may adjudicate all of it. A viewer who may review some
+// fields but not others would have the button 403 on them, which is worse than
+// not showing it.
+//
+// No token → false, and any projection failure → false: the route is optionally
+// authed, and a public reader simply has no capabilities to project. This is a
+// UX gate; the engine re-checks every restored field on the write anyway.
+func (h *EditHandler) canRevert(c fiber.Ctx, workID int64) bool {
+	token := middleware.GetAccessToken(c)
+	if token == "" {
+		return false
+	}
+	schema, err := h.catalog.GetEditSchemaUser(c.Context(), token, entityTypeGame, workID)
+	if err != nil {
+		slog.Warn("galgame edit: revert projection failed", "work", workID, "error", err)
+		return false
+	}
+	editable := 0
+	for _, f := range schema.Fields {
+		if f.Locked || f.Deprecated {
+			continue
+		}
+		editable++
+		if !f.CanReview {
+			return false
+		}
+	}
+	return editable > 0
 }
 
 // editRevertRequest restores the game to a historical revision.
@@ -664,16 +627,17 @@ type editRevertRequest struct {
 	Note  string `json:"note"`
 }
 
-// Revert — POST /galgame/:gid/edit/revert (auth; moderator or the game's
-// creator — parity with the old wire's owner-or-admin revert). The engine
-// enforces the field-level review rule on every restored field, so an owner
-// can only revert what they may adjudicate (the kungal default keys).
+// Revert — POST /galgame/:gid/edit/revert (auth). Restores the game to a
+// historical revision as the user: infra enforces the field-level review rule on
+// every restored field, so the caller can only revert what they may adjudicate.
+// The forum runs no gate of its own here — it used to mirror one, and a mirror
+// is only ever a second answer to a question that already has one.
 func (h *EditHandler) Revert(c fiber.Ctx) error {
 	gid, appErr := parseGid(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -692,19 +656,9 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor.IsEntityOwner = h.isGameOwner(ctx, workID, actor.UserID)
-	// Review-grade gate: admin ⊂ ren, or the game's owner (mirrors can_revert
-	// and the engine's per-field review rule; moderators excluded).
-	//
-	// INFRA-PROXY mirror: mirrors infra key `edit.galgame.game.review` /
-	// `galgame.owner_override` (admin/ren or owner). The engine re-checks every
-	// restored field, so this stays a role/owner gate, not a pkg/perm key.
-	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
-		return response.Error(c, errors.ErrForbidden("你没有权限执行此操作"))
-	}
-	result, err := h.catalog.RevertEditEntity(ctx, catalogSite, entityTypeGame, workID, req.ToSeq, req.Note, actor)
+	result, err := h.catalog.RevertEditEntityUser(ctx, token, entityTypeGame, workID, req.ToSeq, req.Note)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	return response.OK(c, result)
 }
@@ -824,7 +778,10 @@ func (h *EditHandler) Queue(c fiber.Ctx) error {
 // states, newest-first; ?gid narrows to one galgame (the editor page's
 // "my pending proposal" strip).
 func (h *EditHandler) Mine(c fiber.Ctx) error {
-	actor, appErr := editActor(c)
+	// The proposer filter is an ASSERTION over the S2S list face — the last one
+	// left in this handler. It is a read narrowed to the session's own uid, not
+	// an act, and the user-plane list face is a later wave.
+	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -840,7 +797,7 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 	}
 	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
 		EntityType: entityTypeGame, Site: catalogSite,
-		EntityID: entityID, ProposerUID: actor.UserID,
+		EntityID: entityID, ProposerUID: int64(user.ID),
 		Status: c.Query("status"), Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
@@ -866,54 +823,60 @@ func (h *EditHandler) proposalForReview(ctx context.Context, id int64) (*catalog
 	return prop, nil
 }
 
-// stampOwner loads the proposal (pinned to the kungal tenant) and stamps
-// is_entity_owner onto the actor — the shared preamble both review gates run
-// before applying their own threshold.
-func (h *EditHandler) stampOwner(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
+// reviewEntry gates the proposal VIEW surface (ProposalDetail): the workbench
+// opens for moderators and for the entry's creator, everyone else 403s.
+//
+// This is a pure VIEW/UX gate, and the only local gate the edit chain has left.
+// It decides which page a person can open, not what they may do — every write
+// behind it goes out on their own token and is authorized by infra, which now
+// derives ownership itself. Keeping the read narrow is a product choice (a
+// half-usable workbench for a random visitor is noise, not transparency); the
+// per-game proposal list right next to it stays fully public.
+func (h *EditHandler) reviewEntry(c fiber.Ctx, id int64) (*catalogclient.EditProposal, error) {
+	ctx := c.Context()
 	prop, err := h.proposalForReview(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	actor.IsEntityOwner = h.isGameOwner(ctx, prop.EntityID, actor.UserID)
-	return prop, nil
-}
-
-// reviewEntry authorizes the proposal VIEW surface (ProposalDetail, E3b
-// owner-review): the entry admits moderators AND the game's creator; everyone
-// else 403s. The owner assertion is stamped onto the actor — the engine's
-// kungal overlay holds the field-level policy.
-//
-// INFRA-PROXY mirror: mirrors infra key `galgame.review` (moderator+, plus the
-// owner overlay) — this is a read gate, so the moderator threshold is correct.
-// Adjudication is stricter; see decideEntry.
-func (h *EditHandler) reviewEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
-	prop, err := h.stampOwner(ctx, id, actor)
-	if err != nil {
-		return nil, err
+	user := middleware.GetUser(c)
+	if user == nil {
+		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
 	}
-	if !role.CanModerate(actor.Roles) && !actor.IsEntityOwner {
+	if !role.CanModerate(user.Roles) && !h.isGameOwner(ctx, prop.EntityID, int64(user.ID)) {
 		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
 	}
 	return prop, nil
 }
 
-// decideEntry authorizes the proposal ADJUDICATION surfaces (Amend / Merge /
-// Decline): admits admin ⊂ ren AND the game's creator, but NOT a plain
-// moderator. This closes a real bug — a bare moderator used to pass this forum
-// gate, click merge, then get 403'd by infra, whose edit.galgame.game.review is
-// admin/ren-only (the owner overlay grants owners the default-field review).
+// canDecide projects, for the caller, whether the workbench should offer the
+// amend / merge / decline controls on THIS proposal.
 //
-// INFRA-PROXY mirror: mirrors infra key `edit.galgame.game.review` (admin/ren
-// or the entity owner).
-func (h *EditHandler) decideEntry(ctx context.Context, id int64, actor *catalogclient.EditActor) (*catalogclient.EditProposal, error) {
-	prop, err := h.stampOwner(ctx, id, actor)
-	if err != nil {
-		return nil, err
+// It is computed from the viewer's own capability projection against the
+// proposal's own keys: every key it would land (the effective patch — what the
+// amendments actually left — falling back to the original patch) must resolve to
+// a field the viewer may review. An empty patch decides nothing, so it is false.
+//
+// Deriving it from the projection rather than from a role test is the point of
+// wave 178: the forum no longer holds a second opinion about who may adjudicate,
+// so the button can only ever appear when the write behind it would succeed.
+func canDecide(prop *catalogclient.EditProposal, fields []catalogclient.EditSchemaField) bool {
+	patch := prop.EffectivePatch
+	if len(patch) == 0 {
+		patch = prop.Patch
 	}
-	if !role.CanAdminister(actor.Roles) && !actor.IsEntityOwner {
-		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "decide entry denied"}
+	if len(patch) == 0 {
+		return false
 	}
-	return prop, nil
+	reviewable := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		reviewable[f.Key] = f.CanReview
+	}
+	for key := range patch {
+		if !reviewable[key] {
+			return false
+		}
+	}
+	return true
 }
 
 // GameProposals — GET /galgame/:gid/edit/proposals (public — the old wire's
@@ -948,8 +911,8 @@ func (h *EditHandler) GameProposals(c fiber.Ctx) error {
 	})
 }
 
-// ProposalDetail — GET /galgame-edit/proposals/:id (auth; moderator or the
-// game's creator). The review workbench read: proposal + amendments +
+// ProposalDetail — GET /galgame-edit/proposals/:id (auth; a VIEW gate admits
+// moderators and the entry's creator). The review workbench read: proposal + amendments +
 // effective patch, the entity's CURRENT values (per-field old→new compare),
 // the reviewer's capability projection, and the galgame brief.
 func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
@@ -957,12 +920,12 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 	ctx := c.Context()
-	prop, err := h.reviewEntry(ctx, id, &actor)
+	prop, err := h.reviewEntry(c, id)
 	if err != nil {
 		return editError(c, err)
 	}
@@ -970,21 +933,20 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 	if err != nil {
 		return editError(c, err)
 	}
-	schema, err := h.catalog.GetEditSchema(ctx, catalogSite, entityTypeGame, prop.EntityID, actor)
+	// The projection is the viewer's own — the same one their amend / merge /
+	// decline will be judged against, which is what makes can_decide below a
+	// prediction rather than a guess.
+	schema, err := h.catalog.GetEditSchemaUser(ctx, token, entityTypeGame, prop.EntityID)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	enriched := h.enrich(ctx, []catalogclient.EditProposal{*prop})
 	return response.OK(c, fiber.Map{
-		"proposal": enriched[0],
-		"values":   values,
-		"fields":   schema.Fields,
-		"users":    h.userMap(ctx, collectProposalUIDs([]catalogclient.EditProposal{*prop})),
-		// can_decide projects the decideEntry predicate for the UI: only
-		// admin/ren or the game's owner may amend/merge/decline (a plain
-		// moderator can view but not adjudicate). actor.IsEntityOwner was
-		// stamped by reviewEntry above.
-		"can_decide": role.CanAdminister(actor.Roles) || actor.IsEntityOwner,
+		"proposal":   enriched[0],
+		"values":     values,
+		"fields":     schema.Fields,
+		"users":      h.userMap(ctx, collectProposalUIDs([]catalogclient.EditProposal{*prop})),
+		"can_decide": canDecide(prop, schema.Fields),
 	})
 }
 
@@ -996,16 +958,16 @@ type editAmendRequest struct {
 	Note  string         `json:"note"`
 }
 
-// Amend — POST /galgame-edit/proposals/:id/amend (auth; moderator or the
-// game's creator). The crown mechanism: correct a value / reject a field
-// before merging; the merged revision carries proposer + amender double
-// attribution.
+// Amend — POST /galgame-edit/proposals/:id/amend (auth). The crown mechanism:
+// correct a value / reject a field before merging; the merged revision carries
+// proposer + amender double attribution. Who may amend is infra's answer,
+// derived from the token's roles and its ownership of the target work.
 func (h *EditHandler) Amend(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -1024,13 +986,9 @@ func (h *EditHandler) Amend(c fiber.Ctx) error {
 	if len(req.Note) > 2000 {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
-	ctx := c.Context()
-	if _, err := h.decideEntry(ctx, id, &actor); err != nil {
-		return editError(c, err)
-	}
-	amendment, err := h.catalog.AmendEditProposal(ctx, id, req.Set, req.Unset, req.Note, actor)
+	amendment, err := h.catalog.AmendEditProposalUser(c.Context(), token, id, req.Set, req.Unset, req.Note)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	return response.OK(c, amendment)
 }
@@ -1039,14 +997,18 @@ type editDecisionRequest struct {
 	Note string `json:"note"`
 }
 
-// Merge — POST /galgame-edit/proposals/:id/merge (auth; moderator or the
-// game's creator).
+// Merge — POST /galgame-edit/proposals/:id/merge (auth). Authorization is
+// infra's; the local pre-read exists for the side effects and the tenant pin.
 func (h *EditHandler) Merge(c fiber.Ctx) error {
 	id, appErr := parseProposalID(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -1058,15 +1020,18 @@ func (h *EditHandler) Merge(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	prop, err := h.decideEntry(ctx, id, &actor)
+	// The pre-read is not a gate — it is the side effects' input (who to notify,
+	// which entry to bump) plus the tenant pin that keeps this BFF from
+	// adjudicating a foreign site's proposal by id. Infra decides the merge.
+	prop, err := h.proposalForReview(ctx, id)
 	if err != nil {
 		return editError(c, err)
 	}
-	rev, err := h.catalog.MergeEditProposal(ctx, id, req.Note, actor)
+	rev, err := h.catalog.MergeEditProposalUser(ctx, token, id, req.Note)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
-	h.mergeSideEffects(ctx, prop, actor.UserID, rev)
+	h.mergeSideEffects(ctx, prop, int64(user.ID), rev)
 	return response.OK(c, rev)
 }
 
@@ -1096,8 +1061,8 @@ func (h *EditHandler) mergeSideEffects(ctx context.Context, prop *catalogclient.
 	h.notifyDecision(prop, entry.GID, mergerID, msgService.NotifyMerged, content)
 }
 
-// Decline — POST /galgame-edit/proposals/:id/decline (auth; moderator or
-// the game's creator). The reason is required — a silent decline was the
+// Decline — POST /galgame-edit/proposals/:id/decline (auth). The reason is
+// required — a silent decline was the
 // old galgame's worst reviewer habit; it travels to the proposer in full on
 // the decline notice (E3b ruling 1).
 func (h *EditHandler) Decline(c fiber.Ctx) error {
@@ -1105,7 +1070,11 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	actor, appErr := editActor(c)
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -1120,20 +1089,22 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrValidation("说明过长"))
 	}
 	ctx := c.Context()
-	target, err := h.decideEntry(ctx, id, &actor)
+	// Same as Merge: the pre-read feeds the notice (the proposer to address, the
+	// entry to name) and pins the tenant. Authorization is infra's.
+	target, err := h.proposalForReview(ctx, id)
 	if err != nil {
 		return editError(c, err)
 	}
-	prop, err := h.catalog.DeclineEditProposal(ctx, id, req.Note, actor)
+	prop, err := h.catalog.DeclineEditProposalUser(ctx, token, id, req.Note)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	entry := h.entryOf(ctx, target.EntityID)
 	content := req.Note
 	if entry.Name != "" {
 		content = entry.Name + "：" + req.Note
 	}
-	h.notifyDecision(target, entry.GID, actor.UserID, msgService.NotifyDeclined, content)
+	h.notifyDecision(target, entry.GID, int64(user.ID), msgService.NotifyDeclined, content)
 	return response.OK(c, prop)
 }
 
