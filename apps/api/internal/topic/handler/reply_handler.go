@@ -114,9 +114,8 @@ func (h *ReplyHandler) UpdateReply(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	_ = user
-
-	if appErr := h.replyService.UpdateReply(c.Context(), user.ID, &req); appErr != nil {
+	if appErr := h.replyService.UpdateReply(c.Context(), user.ID,
+		perm.CanUser(user.ID, user.Roles, perm.ReplyEditAny), &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

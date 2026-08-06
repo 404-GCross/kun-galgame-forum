@@ -7,6 +7,11 @@ const props = defineProps<{
 }>()
 
 const currentUserId = usePersistUserStore().id
+// Authors edit their own; staff holding comment.topic.edit may fix anyone's,
+// so an abusive passage can be corrected instead of only deleted wholesale.
+const canEditTopicComment = useCan('comment.topic.edit')
+const canEdit = (comment: TopicComment) =>
+  comment.user.id === currentUserId || canEditTopicComment.value
 const comments = ref(props.commentsData)
 const activeCommentId = ref<number | null>(null)
 const targetUserForPanel = ref<KunUser | null>(null)
@@ -196,10 +201,7 @@ const handleSaveEdit = async (comment: TopicComment) => {
 
               <div class="flex items-center gap-1">
                 <KunButton
-                  v-if="
-                    comment.user.id === currentUserId &&
-                    editingId !== comment.id
-                  "
+                  v-if="canEdit(comment) && editingId !== comment.id"
                   :is-icon-only="true"
                   variant="light"
                   color="default"

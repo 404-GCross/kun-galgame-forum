@@ -154,19 +154,21 @@ func (s *CommentService) CreateComment(
 // Update (edit) comment
 // ──────────────────────────────────────────
 
-// UpdateComment lets the AUTHOR rewrite their comment's content and stamps
-// `edited` (drives the "(编辑于 …)" UI). Mirrors ReplyService.UpdateReply:
-// only the author may edit; admins moderate via delete, not edit.
+// UpdateComment rewrites a comment's content and stamps `edited` (drives the
+// "(编辑于 …)" UI). Mirrors ReplyService.UpdateReply: the author may always edit
+// their own, and canEditAny (perm.CommentTopicEdit) lets staff rewrite someone
+// else's rather than having to delete the whole comment.
 func (s *CommentService) UpdateComment(
 	ctx context.Context,
 	userID int,
+	canEditAny bool,
 	req *dto.UpdateCommentRequest,
 ) (*dto.TopicCommentResponse, *errors.AppError) {
 	comment, err := s.commentRepo.FindCommentByID(req.CommentID)
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该评论")
 	}
-	if comment.UserID != userID {
+	if comment.UserID != userID && !canEditAny {
 		return nil, errors.ErrForbidden("您没有权限编辑此评论")
 	}
 
@@ -194,10 +196,13 @@ func (s *CommentService) UpdateComment(
 	}
 	s.scan.ScanBg(gate.SubjectKindTopicComment, strconv.Itoa(req.CommentID), req.Content, int64(comment.UserID))
 
-	// Refresh the full DTO so the FE can replace the comment in place. The
-	// editor is the author, who can't like their own comment, so isLiked is
-	// always false; like_count is unchanged but re-read to stay exact.
+	// Refresh the full DTO so the FE can replace the comment in place. isLiked
+	// must be READ, not assumed false: that shortcut only held while the editor
+	// was necessarily the author (who can't like their own comment), and
+	// perm.CommentTopicEdit now lets a moderator — who may well have liked it —
+	// edit too. Assuming false would silently un-fill their like button.
 	likeCount, _ := s.commentRepo.CountCommentLikes(req.CommentID)
+	likedMap, _ := s.commentRepo.FindCommentLikeStatus(userID, []int{req.CommentID})
 	userMap := s.userClient.Hydrate(ctx, []int{comment.UserID, comment.TargetUserID})
 	author := userMap[comment.UserID]
 	target := userMap[comment.TargetUserID]
@@ -209,7 +214,7 @@ func (s *CommentService) UpdateComment(
 		User:       dto.KunUser{ID: author.ID, Name: author.Name, Avatar: author.Avatar},
 		TargetUser: dto.KunUser{ID: target.ID, Name: target.Name, Avatar: target.Avatar},
 		Content:    req.Content,
-		IsLiked:    false,
+		IsLiked:    likedMap[req.CommentID],
 		LikeCount:  int(likeCount),
 		Created:    comment.CreatedAt,
 		Edited:     &now,

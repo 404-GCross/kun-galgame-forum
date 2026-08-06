@@ -18,6 +18,7 @@ export const KUN_PERMISSION_GROUP_ORDER = [
   '评论',
   '投票',
   'Galgame',
+  '收藏夹',
   '题目',
   '资源',
   '评分',
@@ -25,11 +26,11 @@ export const KUN_PERMISSION_GROUP_ORDER = [
   '文档',
   '网站',
   '友链',
-  '更新日志',
+  '更新日志与待办',
   '管理'
 ] as const
 
-// The 43 pure-forum permissions → concise Chinese label + group. Insertion
+// The 51 pure-forum permissions → concise Chinese label + group. Insertion
 // order follows the backend catalog's canonical order within each group.
 export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   // 话题
@@ -37,9 +38,11 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'topic.hide': { label: '隐藏话题', group: '话题' },
   'topic.set_best_answer': { label: '设置最佳答案', group: '话题' },
   // 回复
+  'reply.edit_any': { label: '编辑任意回复', group: '回复' },
   'reply.delete_any': { label: '删除任意回复', group: '回复' },
   'reply.pin': { label: '置顶回复', group: '回复' },
   // 评论
+  'comment.topic.edit': { label: '编辑话题评论', group: '评论' },
   'comment.topic.delete': { label: '删除话题评论', group: '评论' },
   'comment.galgame.edit': { label: '编辑 Galgame 评论', group: '评论' },
   'comment.galgame.delete': { label: '删除 Galgame 评论', group: '评论' },
@@ -63,6 +66,9 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
     label: '禁止游戏资源发布',
     group: 'Galgame'
   },
+  // 收藏夹
+  'collection.edit_any': { label: '编辑任意收藏夹', group: '收藏夹' },
+  'collection.delete_any': { label: '删除任意收藏夹', group: '收藏夹' },
   // 题目
   'quiz.edit_any': { label: '编辑任意题目', group: '题目' },
   'quiz.delete_any': { label: '删除任意题目', group: '题目' },
@@ -95,22 +101,26 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'friend_link.create': { label: '创建友链', group: '友链' },
   'friend_link.edit': { label: '编辑友链', group: '友链' },
   'friend_link.delete': { label: '删除友链', group: '友链' },
-  // 更新日志
-  'update_log.create': { label: '创建更新日志', group: '更新日志' },
-  'update_log.edit': { label: '编辑更新日志', group: '更新日志' },
-  'update_log.delete': { label: '删除更新日志', group: '更新日志' },
+  // 更新日志与待办 — ONE vocabulary covering BOTH /update/history and
+  // /update/todo (the routes share update_log.create / .edit / .delete). The
+  // labels must name 待办 explicitly: while they read "更新日志" alone, an
+  // operator scanning this matrix for a 待办 permission found none and concluded
+  // the capability had been forgotten, when in fact it was right here.
+  'update_log.create': { label: '创建更新日志与待办', group: '更新日志与待办' },
+  'update_log.edit': { label: '编辑更新日志与待办', group: '更新日志与待办' },
+  'update_log.delete': { label: '删除更新日志与待办', group: '更新日志与待办' },
   // 管理
   'admin.dashboard': { label: '管理总览与统计', group: '管理' },
   'user.purge_content': { label: '清除用户全部内容', group: '管理' }
 }
 
-// The canonical 43-key list, in declaration order. Used to iterate the editable
+// The canonical 51-key list, in declaration order. Used to iterate the editable
 // universe when computing deltas (never a no-op outside these keys).
 export const KUN_PERMISSION_KEYS = Object.keys(
   KUN_PERMISSION_META
 ) as ForumPermission[]
 
-// The 43 keys pre-bucketed by group in KUN_PERMISSION_GROUP_ORDER — the shared
+// The 51 keys pre-bucketed by group in KUN_PERMISSION_GROUP_ORDER — the shared
 // row layout for BOTH the role matrix and the per-user override panel. Static
 // (the vocabulary is compile-time constant), so it's a plain array, not a
 // computed. Empty groups are dropped.

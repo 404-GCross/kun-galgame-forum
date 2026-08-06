@@ -62,7 +62,8 @@ func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	updated, appErr := h.commentService.UpdateComment(c.Context(), user.ID, &req)
+	updated, appErr := h.commentService.UpdateComment(c.Context(), user.ID,
+		perm.CanUser(user.ID, user.Roles, perm.CommentTopicEdit), &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

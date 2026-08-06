@@ -6,10 +6,13 @@ import type { DocEditorMode } from '~/components/edit/doc/type'
 // DocArticleSummary / DocArticleDetail / DocArticleListResponse are
 // auto-imported (shared/types).
 
-// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
-// on the /admin/doc/article + /doc/* routes. UX guard — the real boundary is the
-// API.
-definePageMeta({ middleware: 'moderator' })
+// Mirrors the API's RequirePermission(doc.create/edit/delete) gates on the
+// /admin/doc/article + /doc/* routes — the same keys, not the moderator tier
+// they used to be approximated by. UX guard; the real boundary is the API.
+definePageMeta({
+  middleware: 'permission',
+  permissions: ['doc.create', 'doc.edit', 'doc.delete']
+})
 
 useKunDisableSeo('文档管理')
 

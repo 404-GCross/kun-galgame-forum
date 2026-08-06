@@ -106,16 +106,21 @@ func (s *CollectionService) Create(ctx context.Context, userID int, req *dto.Cre
 	return c.ID, nil
 }
 
-// Update mutates an owner's collection (partial). The default collection can be
-// renamed / re-described / re-privacied, but not deleted (see Delete).
-func (s *CollectionService) Update(ctx context.Context, userID, cid int, req *dto.UpdateCollectionRequest) *errors.AppError {
-	c, err := s.collectionRepo.GetByIDForUser(cid, userID)
+// Update mutates a collection (partial). The default collection can be renamed
+// / re-described / re-privacied, but not deleted (see Delete).
+//
+// The owner may always edit their own; canEditAny (perm.CollectionEditAny) lets
+// staff fix someone else's — a public collection's name and description are
+// site-visible free text, so a takedown must not be the only remedy. Note that
+// every owner-derived value below reads c.UserID, never the caller: under a
+// staff edit the two differ, and attributing the moderation record or the
+// viewer allow-list to the moderator would be wrong.
+func (s *CollectionService) Update(ctx context.Context, userID int, canEditAny bool, cid int, req *dto.UpdateCollectionRequest) *errors.AppError {
+	c, err := s.loadForMutation(cid, userID, canEditAny)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return errors.ErrNotFound("收藏夹不存在")
-		}
-		return errors.ErrInternal("读取收藏夹失败")
+		return err
 	}
+	ownerID := c.UserID
 
 	if req.Name != nil {
 		c.Name = *req.Name
@@ -129,9 +134,10 @@ func (s *CollectionService) Update(ctx context.Context, userID, cid int, req *dt
 
 	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
 	// fail-open). PATCH is partial, so compose from the EFFECTIVE new name +
-	// description (post-override). author_id is the owner (userID).
+	// description (post-override). author_id is the owner, who is not necessarily
+	// the caller once perm.CollectionEditAny is in play.
 	moderationText := gate.ComposeText(c.Name, c.Description)
-	authorID := int64(userID)
+	authorID := int64(ownerID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
 	if decision == gate.DecisionDeny {
 		return gate.ErrContentBlocked()
@@ -148,7 +154,7 @@ func (s *CollectionService) Update(ctx context.Context, userID, cid int, req *dt
 		case req.ViewerIDs != nil:
 			// Restricted + a new list supplied → replace it. (A restricted update
 			// that omits viewer_ids keeps the existing allow-list untouched.)
-			return s.collectionRepo.ReplaceViewers(tx, cid, sanitizeViewerIDs(*req.ViewerIDs, userID))
+			return s.collectionRepo.ReplaceViewers(tx, cid, sanitizeViewerIDs(*req.ViewerIDs, ownerID))
 		default:
 			return nil
 		}
@@ -158,37 +164,68 @@ func (s *CollectionService) Update(ctx context.Context, userID, cid int, req *dt
 	}
 
 	if decision == gate.DecisionHold {
-		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameCollection, "subject_id", cid, "author_id", userID, "matched", matched)
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameCollection, "subject_id", cid, "author_id", ownerID, "matched", matched)
 	}
-	s.scan.ScanBg(gate.SubjectKindGalgameCollection, strconv.Itoa(cid), moderationText, int64(userID))
+	s.scan.ScanBg(gate.SubjectKindGalgameCollection, strconv.Itoa(cid), moderationText, int64(ownerID))
 	return nil
 }
 
-// Delete removes an owner's collection. The default collection is protected.
+// loadForMutation resolves the collection a mutation targets and answers "may
+// this caller touch it?" in one place, so Update and Delete cannot drift apart.
+//
+// Without the permission the lookup itself is owner-scoped, which keeps the
+// long-standing 404-for-not-yours behaviour: a stranger learns nothing about
+// whether the id exists. With it the lookup is by id alone — staff are allowed
+// to know, and a 404 would be a lie.
+func (s *CollectionService) loadForMutation(cid, userID int, canMutateAny bool) (*model.GalgameCollection, *errors.AppError) {
+	var (
+		c   *model.GalgameCollection
+		err error
+	)
+	if canMutateAny {
+		c, err = s.collectionRepo.GetByID(cid)
+	} else {
+		c, err = s.collectionRepo.GetByIDForUser(cid, userID)
+	}
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.ErrNotFound("收藏夹不存在")
+		}
+		return nil, errors.ErrInternal("读取收藏夹失败")
+	}
+	return c, nil
+}
+
+// Delete removes a collection. The default collection is protected.
 // favorite_count is kept accurate for games held only in this collection; owner
 // moemoepoints are intentionally NOT reversed for a bulk collection delete (a
 // rare action; the small drift only over-credits owners, never the actor).
-func (s *CollectionService) Delete(userID, cid int) *errors.AppError {
-	c, err := s.collectionRepo.GetByIDForUser(cid, userID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return errors.ErrNotFound("收藏夹不存在")
-		}
-		return errors.ErrInternal("读取收藏夹失败")
+//
+// canDeleteAny (perm.CollectionDeleteAny) lets staff take down someone else's.
+// The favorite_count arithmetic below is scoped to the OWNER, not the caller:
+// "games held in no other collection" is a fact about whose shelf this is, and
+// asking it about the moderator would decrement counts for games they never
+// touched. The default-collection guard applies to staff too — it is a
+// data-model invariant (every user keeps exactly one), not a question of rank.
+func (s *CollectionService) Delete(userID int, canDeleteAny bool, cid int) *errors.AppError {
+	c, appErr := s.loadForMutation(cid, userID, canDeleteAny)
+	if appErr != nil {
+		return appErr
 	}
 	if c.IsDefault {
 		return errors.ErrForbidden("默认收藏夹不能删除")
 	}
+	ownerID := c.UserID
 
 	txErr := s.collectionRepo.DB().Transaction(func(tx *gorm.DB) error {
-		affected, err := s.collectionRepo.GalgamesOnlyInCollection(tx, cid, userID)
+		affected, err := s.collectionRepo.GalgamesOnlyInCollection(tx, cid, ownerID)
 		if err != nil {
 			return err
 		}
 		if err := s.collectionRepo.DecrementFavoriteCounts(tx, affected); err != nil {
 			return err
 		}
-		n, err := s.collectionRepo.DeleteForUser(tx, cid, userID)
+		n, err := s.collectionRepo.DeleteForUser(tx, cid, ownerID)
 		if err != nil {
 			return err
 		}

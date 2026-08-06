@@ -37,6 +37,21 @@ if (detail.value) {
   useKunDisableSeo('未找到该收藏夹')
 }
 
+// Staff moderation of a collection someone else owns. A public collection's
+// name and description are site-visible free text, so 编辑 (fix it) and 删除
+// (take it down) both need a path that is not "ask the owner nicely". Only
+// collections the viewer can already OPEN are actionable — private/restricted
+// ones 404 at the detail endpoint, which is the right trade: the exposure being
+// moderated is precisely the public one.
+const canEditAnyCollection = useCan('collection.edit_any')
+const canDeleteAnyCollection = useCan('collection.delete_any')
+const canEdit = computed(
+  () => !!detail.value?.is_owner || canEditAnyCollection.value
+)
+const canDelete = computed(
+  () => !!detail.value?.is_owner || canDeleteAnyCollection.value
+)
+
 const visibilityMeta = (v?: CollectionVisibility) =>
   v === 'private'
     ? { icon: 'lucide:lock', label: '私密' }
@@ -104,13 +119,18 @@ const remove = async () => {
             <span>{{ detail.item_count }} 个游戏</span>
           </div>
 
-          <div v-if="detail.is_owner" class="flex gap-2">
-            <KunButton variant="light" size="sm" @click="editOpen = true">
+          <div v-if="canEdit || canDelete" class="flex gap-2">
+            <KunButton
+              v-if="canEdit"
+              variant="light"
+              size="sm"
+              @click="editOpen = true"
+            >
               <KunIcon name="lucide:pencil" />
               编辑
             </KunButton>
             <KunButton
-              v-if="!detail.is_default"
+              v-if="canDelete && !detail.is_default"
               variant="light"
               color="danger"
               size="sm"
@@ -136,7 +156,7 @@ const remove = async () => {
     <KunNull v-else description="这个收藏夹还没有收藏任何 Galgame" />
 
     <GalgameCollectionEditModal
-      v-if="detail.is_owner"
+      v-if="canEdit"
       v-model="editOpen"
       mode="edit"
       :collection-id="detail.id"

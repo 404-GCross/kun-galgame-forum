@@ -20,25 +20,27 @@ import { storeToRefs } from 'pinia'
 // applied) is the real boundary; components branch on a named CAPABILITY here,
 // never on a role tier.
 //
-// Scope: exactly the 43 PURE-FORUM permissions. The 9 INFRA-PROXY permissions
+// Scope: exactly the 51 PURE-FORUM permissions. The 9 INFRA-PROXY permissions
 // (galgame edit-proposal review, taxonomy admin, trust moderation inbox,
 // galgame submission review, …) deliberately live OUTSIDE this table — their
 // source of truth is infra, not this service. Those UI spots keep useRole()
 // (or an API-provided capability projection, e.g. `can_review` / `can_decide`)
 // with a mirror comment naming the infra permission they stand in for.
 //
-// Thresholds: `moderator` holds the 41 mod keys; `admin` and `ren` hold all 43
-// (the 41 mod keys + the 2 admin-only keys). `user` and `creator` hold NO forum
+// Thresholds: `moderator` holds the 49 mod keys; `admin` and `ren` hold all 51
+// (the 49 mod keys + the 2 admin-only keys). `user` and `creator` hold NO forum
 // permissions. The admin bundle is built FROM the moderator list plus the two
 // admin-only keys, so `moderator ⊂ admin` holds by construction.
 
-// The 41 permissions a moderator holds (admin & ren inherit these).
+// The 49 permissions a moderator holds (admin & ren inherit these).
 const MODERATOR_PERMISSIONS = [
   'topic.edit_any',
   'topic.hide',
   'topic.set_best_answer',
+  'reply.edit_any',
   'reply.delete_any',
   'reply.pin',
+  'comment.topic.edit',
   'comment.topic.delete',
   'comment.galgame.edit',
   'comment.galgame.delete',
@@ -57,6 +59,8 @@ const MODERATOR_PERMISSIONS = [
   'poll.delete_any',
   'poll.view_restricted',
   'galgame.ban_resource_publish',
+  'collection.edit_any',
+  'collection.delete_any',
   'quiz.edit_any',
   'quiz.delete_any',
   'resource.edit_any',
@@ -87,7 +91,7 @@ const ADMIN_ONLY_PERMISSIONS = [
   'user.purge_content'
 ] as const
 
-// admin === ren: the full 43. Built from the moderator list so containment is
+// admin === ren: the full 51. Built from the moderator list so containment is
 // structural, not a copy that could drift.
 const ADMIN_PERMISSIONS = [
   ...MODERATOR_PERMISSIONS,

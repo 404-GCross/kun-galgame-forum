@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
-// Admin-only (admin ⊂ ren): mirrors the API's RequireAdmin gate on the
-// /admin/user/:id/content-stats + purge routes (AdminUserCard). UX guard — the
-// real boundary is the API.
-definePageMeta({ middleware: 'admin' })
+// Mirrors the API's RequirePermission(user.purge_content) gate on the
+// /admin/user/:id/content-stats + purge routes (AdminUserCard) — that pair is
+// permission-gated, not RequireAdmin. UX guard — the real boundary is the API.
+definePageMeta({
+  middleware: 'permission',
+  permissions: ['user.purge_content']
+})
 
 useKunDisableSeo('用户内容管理')
 

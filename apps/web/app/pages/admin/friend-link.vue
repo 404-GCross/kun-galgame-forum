@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { FRIEND_LINK_CATEGORIES } from '~/constants/friendLink'
 
-// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
-// on the /admin/friend-link routes. UX guard — the real boundary is the API.
-definePageMeta({ middleware: 'moderator' })
+// Mirrors the API's RequirePermission(friend_link.create/edit/delete) gates on
+// the /admin/friend-link routes. UX guard — the real boundary is the API.
+definePageMeta({
+  middleware: 'permission',
+  permissions: ['friend_link.create', 'friend_link.edit', 'friend_link.delete']
+})
 
 useKunDisableSeo('友链管理')
 

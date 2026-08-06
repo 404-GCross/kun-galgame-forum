@@ -256,16 +256,21 @@ func (s *ReplyService) CreateReply(
 // Update reply
 // ──────────────────────────────────────────
 
+// UpdateReply rewrites a reply's content and stamps `edited`. The author may
+// always edit their own; canEditAny (perm.ReplyEditAny) lets staff rewrite
+// someone else's — the same author-or-moderator shape TopicWriteService.Update
+// uses. `edited` is stamped either way, so a staff rewrite is never silent.
 func (s *ReplyService) UpdateReply(
 	ctx context.Context,
 	userID int,
+	canEditAny bool,
 	req *dto.UpdateReplyRequest,
 ) *errors.AppError {
 	reply, err := s.replyRepo.FindByID(req.ReplyID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该回复")
 	}
-	if reply.UserID != userID {
+	if reply.UserID != userID && !canEditAny {
 		return errors.ErrForbidden("您没有权限编辑此回复")
 	}
 
@@ -292,7 +297,11 @@ func (s *ReplyService) UpdateReply(
 
 		// @mentions in the edited reply → notify newly mentioned users (deduped,
 		// so anyone already mentioned in this topic isn't re-notified on edit).
-		s.helpers.NotifyMentions(tx, userID, reply.TopicID, reply.Floor, 0, req.Content)
+		// The actor is the reply's AUTHOR, not the editor: the reply carries the
+		// author's byline, so "X 提到了你" must name them even when a moderator
+		// (perm.ReplyEditAny) made the edit. Identical to the old behaviour on the
+		// author path, where the two are the same person.
+		s.helpers.NotifyMentions(tx, reply.UserID, reply.TopicID, reply.Floor, 0, req.Content)
 
 		return nil
 	})

@@ -12,7 +12,7 @@
 // The forum's authority splits into two kinds of operation, and only one of
 // them lives in this package:
 //
-//   - PURE-FORUM permissions (the 47 constants below): the forum's own
+//   - PURE-FORUM permissions (the 51 constants below): the forum's own
 //     resolver is the authoritative gate. These are the content-moderation and
 //     site-management powers whose truth lives entirely here.
 //   - INFRA-PROXY operations (deliberately ABSENT here): operations the forum
@@ -62,11 +62,15 @@ const (
 	// TopicSetBestAnswer: set/unset a topic's best answer.
 	TopicSetBestAnswer Permission = "topic.set_best_answer"
 
+	// ReplyEditAny: edit/rewrite any reply.
+	ReplyEditAny Permission = "reply.edit_any"
 	// ReplyDeleteAny: delete any reply.
 	ReplyDeleteAny Permission = "reply.delete_any"
 	// ReplyPin: pin/unpin a reply.
 	ReplyPin Permission = "reply.pin"
 
+	// CommentTopicEdit: edit any topic comment.
+	CommentTopicEdit Permission = "comment.topic.edit"
 	// CommentTopicDelete: delete any topic comment.
 	CommentTopicDelete Permission = "comment.topic.delete"
 	// CommentGalgameEdit: edit any galgame comment.
@@ -108,6 +112,14 @@ const (
 	// (the local resource_publish_banned flag, migration 061).
 	GalgameBanResourcePublish Permission = "galgame.ban_resource_publish"
 
+	// CollectionEditAny: edit any galgame collection's name / description /
+	// visibility. A public collection's name and description are free user text
+	// that the whole site can see, so staff need a way to fix an abusive one.
+	CollectionEditAny Permission = "collection.edit_any"
+	// CollectionDeleteAny: delete any galgame collection (a user's DEFAULT
+	// collection stays undeletable — that is a data-model rule, not authority).
+	CollectionDeleteAny Permission = "collection.delete_any"
+
 	// QuizEditAny: edit any quiz (includes fetching the answer key).
 	QuizEditAny Permission = "quiz.edit_any"
 	// QuizDeleteAny: delete any quiz.
@@ -118,7 +130,12 @@ const (
 	// ResourceDeleteAny: delete any galgame resource.
 	ResourceDeleteAny Permission = "resource.delete_any"
 
-	// RatingDeleteAny: delete any rating.
+	// RatingDeleteAny: delete any rating. There is deliberately NO
+	// `rating.edit_any` to pair with it — every other authored surface here has
+	// an edit_any because staff fixing a bad passage is better than deleting the
+	// whole thing, but a rating IS the author's opinion of a game: rewriting it
+	// would put words in their mouth under their name. Staff remove an abusive
+	// rating; they never restate it. Do not "complete the symmetry" here.
 	RatingDeleteAny Permission = "rating.delete_any"
 
 	// ToolsetEditAny: edit any toolset.
@@ -167,14 +184,16 @@ const (
 )
 
 // moderatorPerms is everything content-moderation staff (moderator ⊂ admin ⊂
-// ren) can do in the forum — the 41 "mod"-threshold permissions. admin/ren add
+// ren) can do in the forum — the 49 "mod"-threshold permissions. admin/ren add
 // only the two site-administration keys on top (see adminPerms).
 var moderatorPerms = []Permission{
 	TopicEditAny,
 	TopicHide,
 	TopicSetBestAnswer,
+	ReplyEditAny,
 	ReplyDeleteAny,
 	ReplyPin,
+	CommentTopicEdit,
 	CommentTopicDelete,
 	CommentGalgameEdit,
 	CommentGalgameDelete,
@@ -193,6 +212,8 @@ var moderatorPerms = []Permission{
 	PollDeleteAny,
 	PollViewRestricted,
 	GalgameBanResourcePublish,
+	CollectionEditAny,
+	CollectionDeleteAny,
 	QuizEditAny,
 	QuizDeleteAny,
 	ResourceEditAny,

@@ -7,6 +7,7 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -54,7 +55,8 @@ func (h *GalgameCollectionHandler) Update(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.collectionService.Update(c.Context(), user.ID, cid, &req); appErr != nil {
+	if appErr := h.collectionService.Update(c.Context(), user.ID,
+		perm.CanUser(user.ID, user.Roles, perm.CollectionEditAny), cid, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "收藏夹已更新")
@@ -70,7 +72,8 @@ func (h *GalgameCollectionHandler) Delete(c fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, errors.ErrBadRequest("无效的收藏夹 ID"))
 	}
-	if appErr := h.collectionService.Delete(user.ID, cid); appErr != nil {
+	if appErr := h.collectionService.Delete(user.ID,
+		perm.CanUser(user.ID, user.Roles, perm.CollectionDeleteAny), cid); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "收藏夹已删除")
