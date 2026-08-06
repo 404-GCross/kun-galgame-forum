@@ -91,8 +91,10 @@ const { isLightboxOpen, images, currentImageIndex } =
       <!-- KunImage, not a bare <img> + useContentBlurUp: the composable is for
          images it does not own (markdown bodies), and it only paints the blur
          from onMounted — so a cover with its box reserved sat blank until
-         hydration. KunImage owns the placeholder instead: skeleton server-side,
-         thumbhash blur once hydrated, cross-fade to the image on load. -->
+         hydration. KunImage owns the placeholder instead, and since ui 2.18.1
+         decodes the ThumbHash during render, so the blur is already in the SSR
+         HTML: blur → cross-fade to the image on load, no skeleton frame in
+         between (a cover with no ThumbHash still gets the skeleton). -->
       <KunImage
         v-if="isSingle"
         :src="imageTokenUrl(shown[0]!)"
