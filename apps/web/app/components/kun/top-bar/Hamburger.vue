@@ -21,14 +21,17 @@ const startY = ref(0)
 const currentX = ref(0)
 const isDragging = ref(false)
 
+// Locking the body works because the root element keeps `overflow: visible`
+// and hands its scrolling to the viewport — see the html rules in
+// styles/tailwindcss.css, which this depends on. No scrollbar-width padding to
+// go with it: that gutter is reserved permanently, so it is never handed back
+// on lock and compensating for it only shoves the page sideways.
 const lockScroll = () => {
   document.body.style.overflow = 'hidden'
-  document.body.style.paddingRight = `${window.innerWidth - document.documentElement.clientWidth}px`
 }
 
 const unlockScroll = () => {
   document.body.style.overflow = ''
-  document.body.style.paddingRight = ''
 }
 
 const handleTouchStart = (event: TouchEvent) => {
@@ -97,7 +100,7 @@ watch(
   </Transition>
 </template>
 
-<style  scoped>
+<style scoped>
 .slide-enter-active,
 .slide-leave-active {
   transition: all 0.3s ease-in-out;

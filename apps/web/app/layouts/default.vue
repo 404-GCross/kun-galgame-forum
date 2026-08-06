@@ -4,8 +4,11 @@ import {
   KUN_VISUAL_NOVEL_FORUM_WINTER_THEME_BACKGROUND
 } from '~/config/theme'
 
-const { showKUNGalgameBackground, showKUNGalgameBackLoli, showKUNGalgameBackgroundOpacity } =
-  storeToRefs(usePersistSettingsStore())
+const {
+  showKUNGalgameBackground,
+  showKUNGalgameBackLoli,
+  showKUNGalgameBackgroundOpacity
+} = storeToRefs(usePersistSettingsStore())
 
 const imageURL = ref(
   ENABLE_KUN_VISUAL_NOVEL_FORUM_WINTER_THEME
@@ -37,17 +40,26 @@ watch(
       />
     </div>
 
-    <div class="hidden desktop-nav:block">
+    <div class="desktop-nav:block hidden">
       <KunLayoutSidebar />
     </div>
 
     <KunTopBar />
 
     <div class="bg-background flex min-h-dvh min-h-screen justify-center">
+      <!-- No transition on this wrapper, deliberately. Its box is pinned by
+           max-w-7xl and two desktop-nav: margins, and desktop-nav is a pure
+           media query, so nothing here changes at runtime and a transition
+           could never animate anything intended. What it did animate was
+           accidents: any stray reflow of the page column (an overlay's
+           scrollbar compensation, a late-arriving tab) stopped being an
+           instant, near-invisible jump and became a 300ms glide of the whole
+           content column, seen as the cards inside it shaking. Layout shifts
+           are worth removing; animating them is not. -->
       <div
         :class="
           cn(
-            'z-10 w-full max-w-7xl min-w-0 transition-all duration-300 desktop-nav:mr-3',
+            'desktop-nav:mr-3 z-10 w-full max-w-7xl min-w-0',
             // Clears the desktop icon rail (w-20 = 80px) PLUS a ~24px gap so page
             // content (e.g. the home tab rail) isn't flush against it. Only when the
             // rail is actually shown (desktop-nav) — touch tablets get no rail, so
@@ -58,7 +70,7 @@ watch(
       >
         <!-- Small gutter everywhere except the desktop rail layout (desktop-nav),
              which is flush. pt clears the fixed top bar. -->
-        <div class="h-full px-2 pt-22 pb-6 desktop-nav:px-0">
+        <div class="desktop-nav:px-0 h-full px-2 pt-22 pb-6">
           <NuxtPage />
         </div>
 

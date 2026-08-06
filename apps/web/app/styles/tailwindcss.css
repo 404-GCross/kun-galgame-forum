@@ -122,9 +122,42 @@ html {
 }
 @supports (scrollbar-gutter: stable) {
   html {
-    overflow-y: auto;
+    /*
+     * `visible`, NOT `auto` — load-bearing for every overlay on the site.
+     * An overlay's scroll lock (KunUI's, and the platform convention it
+     * follows) sets `body { overflow: hidden }` and relies on the body→
+     * viewport overflow PROPAGATION the CSS box model grants only while the
+     * root element's own overflow is `visible`. Declaring anything else here
+     * — `auto` included — makes html its own scroll container, propagation
+     * stops, and `overflow: hidden` on the body locks a box that was never
+     * the scroller: every modal left the page scrollable underneath.
+     * `scrollbar-gutter` needs no help from `overflow` to do its job; the
+     * root box is a scroll container regardless.
+     */
+    overflow-y: visible;
     scrollbar-gutter: stable;
   }
+}
+
+/*
+ * The gutter above is PERMANENT, so nothing may compensate for it a second
+ * time. Overlay scroll locks conventionally add `padding-right: <scrollbar
+ * width>` to the body on open — in the classic model locking the scroll hides
+ * the scrollbar and hands ~16px back, and the padding puts it where the
+ * scrollbar was. With a reserved gutter there is nothing to hand back, so that
+ * padding is 16px of pure layout shift: it showed as the centered content (the
+ * galgame title card, the 会社 card beside it) twitching 8px sideways at every
+ * modal open and close.
+ *
+ * With propagation restored above the usual implementation already computes 0
+ * here (it measures the viewport AFTER writing the overflow, by which point the
+ * gutter is gone and the difference is nil). This rule is the guard for the
+ * other measurement order, which is the more correct one and would silently
+ * bring the shift back: whatever the scrollbar arithmetic concludes, this
+ * document never owes it any padding.
+ */
+body {
+  padding-right: 0 !important;
 }
 
 /*
