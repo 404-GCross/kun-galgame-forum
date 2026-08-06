@@ -176,18 +176,25 @@ export const KUN_ROLE_RANK: Record<string, number> = {
 export const kunRoleRank = (roles: string[]): number =>
   roles.reduce((max, role) => Math.max(max, KUN_ROLE_RANK[role] ?? 0), 0)
 
-// The 9 INFRA-PROXY operations, shown read-only. Their truth lives in infra
+// The 7 INFRA-PROXY operations, shown read-only. Their truth lives in infra
 // (kun-galgame-infra editing engine / kun_trust), NOT in pkg/perm — surfacing
 // them here would only invite drift, so admins can see the full picture but
 // cannot create an override for them. `taxonomy` is deliberately the stricter
 // admin-only threshold per the site owner's standing ruling.
+//
+// There were nine until wave 178, when infra started deriving entity ownership
+// from the user's own token: proposal adjudication and revision revert are
+// authorized entirely on the Bearer edit face now, so the forum's
+// `galgame.edit_decide` / `galgame.edit_revert` mirrors were deleted rather
+// than reworded. The workbench reads the edit face's own capability projection
+// (`can_decide` / `can_revert`) instead — see docs/proj/permissions.md 表一.
 export interface KunProxyPermission {
   key: string
   label: string
   note: string
 }
 
-// Keys below mirror the CANONICAL 9-op enumeration in apps/api/pkg/perm's
+// Keys below mirror the CANONICAL 7-op enumeration in apps/api/pkg/perm's
 // package doc (and docs/proj/permissions.md 表一) verbatim — display names must
 // not fork from the backend vocabulary.
 export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
@@ -204,17 +211,7 @@ export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
   {
     key: 'galgame.review',
     label: 'Galgame 提案查看 / 队列',
-    note: '版主+ 或条目创建者；镜像 NextMoe galgame.review'
-  },
-  {
-    key: 'galgame.edit_decide',
-    label: 'Galgame 提案裁决',
-    note: '管理员+ 或条目创建者；镜像 NextMoe edit.galgame.game.review'
-  },
-  {
-    key: 'galgame.edit_revert',
-    label: 'Galgame 修订回滚',
-    note: '管理员+ 或条目创建者；镜像 NextMoe edit.galgame.game.review / galgame.owner_override'
+    note: '版主+ 或条目创建者；纯查看门（裁决权归 infra，按用户 token 判定）'
   },
   {
     key: 'taxonomy.edit',

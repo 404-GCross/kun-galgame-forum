@@ -15,16 +15,34 @@
 //   - PURE-FORUM permissions (the 51 constants below): the forum's own
 //     resolver is the authoritative gate. These are the content-moderation and
 //     site-management powers whose truth lives entirely here.
+//
 //   - INFRA-PROXY operations (deliberately ABSENT here): operations the forum
 //     merely forwards to the infra service with the caller's token, where infra
 //     re-checks the real permission. The forum's local gate is only a
 //     fail-fast/visibility mirror, so it stays on pkg/role (CanModerate /
 //     CanAdminister) with an in-code comment naming the infra key it mirrors.
 //     Putting a key here for those would falsely claim the forum owns the
-//     decision — the truth is infra's. The nine such operations are
+//     decision — the truth is infra's. The seven such operations are
 //     galgame.create, galgame.review_submission, galgame.review,
-//     galgame.edit_decide, galgame.edit_revert, taxonomy.edit / .delete /
-//     .revert, and trust.queue_access.
+//     taxonomy.edit / .delete / .revert, and trust.queue_access.
+//
+//     galgame.review is the odd one and worth naming as such: since wave 178 it
+//     mirrors nothing an infra call would refuse. It gates which PAGE opens (the
+//     review queue, the proposal workbench) and nothing else — a pure view/UX
+//     entry. It stays listed because the admin console shows it, and because a
+//     visibility gate is still a gate somebody has to be able to find.
+//
+//     It used to have two neighbours, galgame.edit_decide and
+//     galgame.edit_revert, mirroring edit.galgame.game.review. Wave 178 deleted
+//     both: infra now derives entity ownership from the user's own token, so
+//     adjudication and revert are authorized entirely on the Bearer edit face
+//     and the forum holds no decision gate in front of them. A mirror that
+//     mirrors nothing is not a lighter gate, it is a second answer waiting to
+//     drift from the first — which is exactly what edit_decide existed to
+//     repair the last time it happened. They are not to be re-added; the
+//     workbench predicts what a write may do from the capability projection the
+//     edit face returns (can_review → can_decide / can_revert), never from a
+//     local role test.
 //
 // # Bundles (the golden authorization table)
 //
