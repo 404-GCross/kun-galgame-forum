@@ -47,10 +47,12 @@ const { data, status } = await useKunFetch<{
     </div>
 
     <KunLoading :loading="status === 'pending'">
-      <ToolsetCard v-if="data.items" :items="data.items" />
+      <ToolsetCard v-if="data.items.length" :items="data.items" />
+      <KunNull v-else description="没有找到符合条件的工具资源" />
     </KunLoading>
 
     <KunCard
+      v-if="data.items.length"
       :is-hoverable="false"
       :is-transparent="false"
       content-class="gap-3"
