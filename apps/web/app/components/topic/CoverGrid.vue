@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useContentBlurUp, useContentLightbox } from '@kungal/ui-vue'
+import { useContentLightbox } from '@kungal/ui-vue'
 
 // Renders a topic's covers. Each entry is a /image/<hash> content token resolved
 // to an absolute CDN URL (imageTokenUrl: skips @nuxt/image IPX + the /image 302
@@ -32,16 +32,38 @@ const aspectOf = (token: string): string | undefined => {
   return m?.width && m?.height ? `${m.width} / ${m.height}` : undefined
 }
 
-// Blur-up via plain <img data-thumbhash> + the kun-ui composable. (KunImage can't
-// size itself to the image's natural width, which is exactly what keeps every
-// cover uncropped here — so we drive the placeholder ourselves.)
-const root = ref<HTMLElement | null>(null)
-useContentBlurUp(root)
+// The single cover is sized to the IMAGE, not to the card — a portrait cover
+// stays a narrow column instead of being letterboxed into a full-width box with
+// its rounded right corners stranded in the empty area. KunImage's own sizing is
+// `w-full` + aspect-ratio, so the width has to come from here.
+//
+// It must be a DEFINITE width, not `w-auto`: a box whose width and height both
+// resolve to `auto` lays out as 0×0 until the image decodes (the width/height
+// attributes feed the aspect RATIO, not an intrinsic size), so nothing was
+// reserved and the card jumped by the cover's full height on load — measured
+// 0×0 → 682×384 in the home feed. The multi-cover row never had this: `h-40` is
+// a definite height, so its ratio resolves to a width.
+//
+// So compute the width the browser would settle on anyway: the natural width,
+// capped by the card (100%) and by the 24rem height cap. Same final box,
+// reserved from the first paint. Dims-less covers keep the natural-size
+// behaviour — guessing a ratio would trade this shift for a differently-wrong
+// one, and a tall cover would guess worst.
+const SINGLE_MAX_HEIGHT_PX = 384
+
+const singleWidth = computed(() => {
+  const m = metaOf(shown.value[0]!)
+  if (!m?.width || !m?.height) {
+    return undefined
+  }
+  const heightCapped = Math.round((SINGLE_MAX_HEIGHT_PX * m.width) / m.height)
+  return { width: `min(${m.width}px, 100%, ${heightCapped}px)` }
+})
 
 // Fullscreen viewer, OPT-IN. Body images get one for free inside KunContent, but
-// these covers are bare <img> outside it, so on a detail page clicking one did
-// nothing — and the multi-cover row caps every cover at h-40, exactly the case
-// where you most want a closer look.
+// these covers sit outside it, so on a detail page clicking one did nothing —
+// and the multi-cover row caps every cover at h-40, exactly the case where you
+// most want a closer look.
 //
 // It must stay opt-in: in the three feed/activity cards the grid sits inside a
 // KunLink to the topic, and the composable's handler preventDefaults the click.
@@ -52,6 +74,7 @@ useContentBlurUp(root)
 // ref once in its own onMounted, so a ref that never receives the element simply
 // never gets a listener. Reading the prop at setup is fine — every call site
 // passes a literal, so it never flips at runtime.
+const root = ref<HTMLElement | null>(null)
 const lightboxRoot = props.zoomable ? root : ref<HTMLElement | null>(null)
 
 // The composable collects every <img> inside its container AT CLICK TIME, so the
@@ -65,33 +88,23 @@ const { isLightboxOpen, images, currentImageIndex } =
 <template>
   <div v-if="shown.length">
     <div ref="root">
-      <!-- Single: the element is sized to the image itself (capped at the card
-         width / 24rem height, ratio preserved) — NOT w-full + object-contain,
-         which would letterbox a portrait into the left of a full-width box and
-         leave the rounded right corners stranded in the empty area (square-right
-         bug). Here the box equals the image, so all four corners round cleanly. -->
-      <!-- width/height ATTRS (not just an aspect-ratio style) so the box reserves
-         BEFORE load: an img with only `aspect-ratio` + `max-w-full` and no width
-         has auto (=0) width until the image loads, so nothing was reserved (no
-         placeholder) and the thumbhash background had 0 area to show in. The attrs
-         give the browser the intrinsic size; max-w/max-h + the ratio still cap it. -->
-      <img
+      <!-- KunImage, not a bare <img> + useContentBlurUp: the composable is for
+         images it does not own (markdown bodies), and it only paints the blur
+         from onMounted — so a cover with its box reserved sat blank until
+         hydration. KunImage owns the placeholder instead: skeleton server-side,
+         thumbhash blur once hydrated, cross-fade to the image on load. -->
+      <KunImage
         v-if="isSingle"
         :src="imageTokenUrl(shown[0]!)"
-        :data-thumbhash="metaOf(shown[0]!)?.thumbhash || undefined"
-        :width="metaOf(shown[0]!)?.width || undefined"
-        :height="metaOf(shown[0]!)?.height || undefined"
-        :style="
-          aspectOf(shown[0]!) ? { aspectRatio: aspectOf(shown[0]!) } : undefined
-        "
+        :thumbhash="metaOf(shown[0]!)?.thumbhash"
+        :aspect-ratio="aspectOf(shown[0]!)"
+        :width="metaOf(shown[0]!)?.width"
+        :height="metaOf(shown[0]!)?.height"
+        :style="singleWidth"
         alt="话题封面"
         loading="lazy"
-        :class="
-          cn(
-            'block h-auto max-h-96 w-auto max-w-full rounded-lg',
-            zoomable && 'cursor-zoom-in'
-          )
-        "
+        object-fit="cover"
+        :class-name="cn('rounded-lg', zoomable && 'cursor-zoom-in')"
       />
 
       <!-- Multi: one uniform-height row, each cover at its own aspect ratio (no crop,
@@ -103,21 +116,17 @@ const { isLightboxOpen, images, currentImageIndex } =
         scrollbar="thin"
       >
         <div class="flex gap-1.5">
-          <img
+          <KunImage
             v-for="(token, idx) in shown"
             :key="`${idx}-${token}`"
             :src="imageTokenUrl(token)"
-            :data-thumbhash="metaOf(token)?.thumbhash || undefined"
-            :style="
-              aspectOf(token) ? { aspectRatio: aspectOf(token) } : undefined
-            "
+            :thumbhash="metaOf(token)?.thumbhash"
+            :aspect-ratio="aspectOf(token)"
             alt="话题封面"
             loading="lazy"
-            :class="
-              cn(
-                'h-40 w-auto shrink-0 rounded-lg object-contain',
-                zoomable && 'cursor-zoom-in'
-              )
+            object-fit="contain"
+            :class-name="
+              cn('h-40 w-auto shrink-0 rounded-lg', zoomable && 'cursor-zoom-in')
             "
           />
         </div>

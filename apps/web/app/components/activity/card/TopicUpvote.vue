@@ -83,32 +83,40 @@ provide(
         />
       </KunLink>
 
-      <!-- Footer: 收藏 + reactions (clickable) · 浏览 + 查看详情. -->
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex min-w-0 flex-wrap items-center gap-1">
-          <TopicFooterFavorite
-            :topic-id="topicId"
-            :favorite-count="data?.favorite_count ?? 0"
-            :is-favorite="isFavorited(topicId)"
-          />
-          <TopicReactionBar />
-          <TopicReactionTrigger />
-        </div>
+      <!-- Footer: same shape as the new-topic card — reactions on their own row,
+           then 收藏 + reaction trigger on the left, 浏览 + 查看详情 on the right.
+           They used to share one row here, so the two topic cards in the same
+           feed wrapped differently. TopicReactionBar self-hides when empty. -->
+      <div class="space-y-2">
+        <TopicReactionBar />
 
-        <div class="text-default-500 flex shrink-0 items-center gap-3 text-sm">
-          <span class="flex items-center gap-1">
-            <KunIcon name="lucide:eye" class="size-4" />
-            {{ formatNumber(data?.view ?? 0) }}
-          </span>
-          <KunLink
-            underline="none"
-            color="default"
-            :to="activity.link"
-            class-name="text-default-500 hover:text-primary flex items-center gap-0.5 text-sm"
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex min-w-0 items-center gap-1">
+            <TopicFooterFavorite
+              :topic-id="topicId"
+              :favorite-count="data?.favorite_count ?? 0"
+              :is-favorite="isFavorited(topicId)"
+            />
+            <TopicReactionTrigger />
+          </div>
+
+          <div
+            class="text-default-500 flex shrink-0 items-center gap-3 text-sm"
           >
-            查看详情
-            <KunIcon name="lucide:chevron-right" class="size-4" />
-          </KunLink>
+            <span class="flex items-center gap-1">
+              <KunIcon name="lucide:eye" class="size-4" />
+              {{ formatNumber(data?.view ?? 0) }}
+            </span>
+            <KunLink
+              underline="none"
+              color="default"
+              :to="activity.link"
+              class-name="text-default-500 hover:text-primary flex items-center gap-0.5 text-sm"
+            >
+              查看详情
+              <KunIcon name="lucide:chevron-right" class="size-4" />
+            </KunLink>
+          </div>
         </div>
       </div>
     </div>
