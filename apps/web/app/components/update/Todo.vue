@@ -36,6 +36,16 @@ const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
 const showTodoModal = ref(false)
 const editingTodo = ref<UpdateTodoPayload>({} as UpdateTodoPayload)
 
+// 创建待办 must CLEAR the edit target first. The modal reads todo_id off
+// initial-data to decide create-vs-edit, and this ref keeps the last edited
+// todo, so once you had opened 编辑 even to look, every later 创建待办 reopened
+// that todo — same title, same fields — and submitting PUT-overwrote it instead
+// of creating anything.
+const openCreateTodoModal = () => {
+  editingTodo.value = {} as UpdateTodoPayload
+  showTodoModal.value = true
+}
+
 const openEditTodoModal = (log: UpdateTodo) => {
   if (!data.value) {
     return
@@ -73,7 +83,7 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
     >
       <template #endContent>
         <div v-if="canCreateUpdateLog" class="flex justify-end">
-          <KunButton @click="showTodoModal = true">创建待办</KunButton>
+          <KunButton @click="openCreateTodoModal">创建待办</KunButton>
         </div>
       </template>
     </KunHeader>

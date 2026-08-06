@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import {
-  KUN_ADMIN_PAGE_ASIDE_NAV_ITEM,
-  type KUN_ADMIN_PAGE_ROUTE_TYPE
-} from '~/constants/admin'
+import type { KUN_ADMIN_PAGE_ROUTE_TYPE } from '~/constants/admin'
 
 useKunDisableSeo('管理系统')
 
@@ -15,29 +12,17 @@ const pageType = computed(() => {
 // Underlined vertical tab rail (same style as the home feed, one size up).
 // Selecting a tab navigates to /admin/<router>; the active tab tracks the route.
 //
-// The rail is FILTERED to what this viewer can actually open. It used to render
-// the full list unconditionally, so a moderator saw 数据总览 / 用户管理 / 权限管理
-// / 网站设置 — four tabs whose pages carry `middleware: 'admin'` and bounce them
-// straight back to the homepage. A tab you are shown and then thrown out of
-// reads as the site being broken, or as a permission having gone missing.
-const { canModerate, canAdminister } = useRole()
-const myPermissions = useMyPermissions()
+// The rail is FILTERED to what this viewer can actually open (useAdminNav — the
+// same filter that decides where the 管理系统 entry in the user menu points, so
+// the door and the room can't disagree). It used to render the full list
+// unconditionally, so a moderator saw 数据总览 / 用户管理 / 权限管理 / 网站设置 —
+// four tabs whose pages bounce them straight back to the homepage. A tab you are
+// shown and then thrown out of reads as the site being broken, or as a
+// permission having gone missing.
+const { items } = useAdminNav()
 
 const adminNavItems = computed(() =>
-  KUN_ADMIN_PAGE_ASIDE_NAV_ITEM.filter((item) => {
-    if (item.role === 'admin') {
-      return canAdminister.value
-    }
-    if (item.role === 'moderator') {
-      return canModerate.value
-    }
-    // Any ONE of the listed keys is enough — 文档管理 is worth opening if you can
-    // edit but not delete. An entry with neither field declared stays visible.
-    return (
-      !item.permissions ||
-      item.permissions.some((key) => myPermissions.value(key))
-    )
-  }).map((item) => ({
+  items.value.map((item) => ({
     value: item.to ?? item.router!,
     textValue: item.label,
     icon: item.icon

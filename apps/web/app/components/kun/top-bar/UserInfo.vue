@@ -25,6 +25,12 @@ const isShowMessageDot = computed(() => messageStatus.value === 'new')
 // existing creators don't need to apply, so both are excluded.
 const showCreatorApply = computed(() => !canModerate.value && !isCreator.value)
 
+// Where 管理系统 leads: the first console entry this viewer may actually open,
+// null when there is none (which hides the entry). See useAdminNav — the link
+// used to be hard-coded to /admin/overview, an admin-only page, so a moderator
+// clicking it was bounced home and never reached the rail at all.
+const { entryPath: adminEntryPath } = useAdminNav()
+
 // ── Account switching (docs/oauth/09-account-switching.md §3.6) ──────────────
 // Forum is a BFF, so the menu list is this device's localStorage "known accounts"
 // cache and every switch is a top-level authorize redirect (the OP's session bag
@@ -167,12 +173,12 @@ const openLogout = () => {
       />
     </NuxtLink>
 
-    <!-- 管理系统 — moderators / admins (canModerate). The /admin route is
-         server-gated too; this just hides the entry from plain users, matching
-         moyu's isModerator check. -->
+    <!-- 管理系统 — shown to anyone holding a console capability, pointing at the
+         first surface they may open. Each page is guarded on its own key and the
+         API is the real boundary; this only decides whether there is a door. -->
     <NuxtLink
-      v-if="canModerate"
-      to="/admin/overview"
+      v-if="adminEntryPath"
+      :to="adminEntryPath"
       class="hover:bg-default-100 flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors"
       @click="emit('close')"
     >
