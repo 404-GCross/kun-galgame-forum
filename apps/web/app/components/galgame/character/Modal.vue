@@ -67,6 +67,22 @@ watch(
   { immediate: true }
 )
 
+// Both artworks are shown at FULL size here, so each is framed by its own
+// shape. The fallbacks are what the frames were before dimensions existed, and
+// are only reached when image_service could not answer.
+const figureFrame = computed(() =>
+  artFrame(props.character?.figure_meta, {
+    aspectRatio: '1/1',
+    objectFit: 'contain'
+  })
+)
+const bustFrame = computed(() =>
+  artFrame(props.character?.image_meta, {
+    aspectRatio: '3/4',
+    objectFit: 'cover'
+  })
+)
+
 const kindText = computed(() =>
   props.character
     ? KUN_GALGAME_CHARACTER_KIND_MAP[props.character.kind] || ''
@@ -125,11 +141,11 @@ watch(
   <KunModal v-model="isOpen" size="xl" scroll-behavior="inside">
     <div v-if="character" class="space-y-4">
       <div class="flex flex-col gap-4 sm:flex-row">
-        <!-- The art column. A 立绘 is CONTAINED and a bust is cropped, for the
-             same reason the panel keeps them on separate surfaces: they are
-             different assets, and neither is a resize of the other. When both
-             exist the figure leads and the bust rides beside it — a portrait
-             is often a different pose, not a crop of the same drawing. -->
+        <!-- The art column. Here each picture stands alone, so each gets its
+             OWN ratio rather than a shared frame — nothing is cropped and
+             nothing is letterboxed. When both exist the figure leads and the
+             bust rides beside it: a portrait is often a different pose, not a
+             crop of the same drawing. -->
         <div
           v-if="character.figure || character.image"
           class="flex shrink-0 gap-3 sm:flex-col"
@@ -142,8 +158,9 @@ watch(
               :src="character.figure"
               :alt="character.name"
               loading="eager"
-              aspect-ratio="1/1"
-              object-fit="contain"
+              :aspect-ratio="figureFrame.aspectRatio"
+              :object-fit="figureFrame.objectFit"
+              :thumbhash="figureFrame.thumbhash"
               class-name="w-40 sm:w-56"
             />
           </div>
@@ -156,8 +173,9 @@ watch(
               :src="character.image"
               :alt="character.name"
               loading="eager"
-              aspect-ratio="3/4"
-              object-fit="cover"
+              :aspect-ratio="bustFrame.aspectRatio"
+              :object-fit="bustFrame.objectFit"
+              :thumbhash="bustFrame.thumbhash"
               :class-name="character.figure ? 'w-24 sm:w-28' : 'w-40 sm:w-56'"
             />
           </div>

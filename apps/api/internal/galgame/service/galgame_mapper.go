@@ -283,7 +283,9 @@ func charactersFromNextMoe(chars []dto.NextMoeGalgameCharacter) []dto.GalgameDet
 		out[i] = dto.GalgameDetailCharacter{
 			ID: c.ID, Name: c.Name, Latin: c.Latin,
 			Kind: c.Kind, Spoiler: c.Spoiler,
-			Image: c.Image, Figure: c.Figure, Voices: voices,
+			Image: c.Image, Figure: c.Figure,
+			ImageMeta: c.ImageMeta, FigureMeta: c.FigureMeta,
+			Voices: voices,
 		}
 	}
 	return out

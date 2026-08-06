@@ -92,6 +92,8 @@ func (s *CharacterService) GetDetail(
 		Latin:      ch.Latin,
 		Image:      ch.Image,
 		Figure:     ch.Figure,
+		ImageMeta:  client.ArtMetaDTO(ch.ImageMeta),
+		FigureMeta: client.ArtMetaDTO(ch.FigureMeta),
 		Intros:     characterIntros(ch),
 		Traits:     characterTraits(ch, isSFW),
 		Links:      characterLinks(ch),

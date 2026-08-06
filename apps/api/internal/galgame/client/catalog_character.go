@@ -53,7 +53,13 @@ type CatalogCharacter struct {
 	// and must keep its own ratio.
 	Image  string `json:"image"`
 	Figure string `json:"figure"`
-	Intros []struct {
+	// ImageMeta / FigureMeta are NOT on the wire — the catalog publishes no
+	// shape for entity artwork. They are filled in from image_service after the
+	// decode, so the page reserves the picture's real box instead of guessing
+	// a square at it.
+	ImageMeta  ArtMeta `json:"-"`
+	FigureMeta ArtMeta `json:"-"`
+	Intros     []struct {
 		Lang    string `json:"lang"`
 		Intro   string `json:"intro"`
 		Source  string `json:"source"`
@@ -151,6 +157,9 @@ func (c *GalgameClient) CatalogCharacterDetail(
 	var ch CatalogCharacter
 	if err := json.Unmarshal(env.Data, &ch); err != nil {
 		return nil, false, 0, errors.ErrInternal("解析 Catalog 角色详情响应失败")
+	}
+	if meta := c.resolveArtMeta([]string{ch.Image, ch.Figure}); meta != nil {
+		ch.ImageMeta, ch.FigureMeta = meta[ch.Image], meta[ch.Figure]
 	}
 	return &ch, true, 0, nil
 }

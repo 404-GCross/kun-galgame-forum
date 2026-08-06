@@ -71,6 +71,10 @@ type GalgameCharacterDetail struct {
 	// portrait box leaves a picture of someone's midriff.
 	Image  string `json:"image"`
 	Figure string `json:"figure"`
+	// Each artwork's own shape, resolved from image_service (the catalog
+	// publishes none for entity art). Absent = unknown; see GalgameArtMeta.
+	ImageMeta  *GalgameArtMeta `json:"image_meta,omitempty"`
+	FigureMeta *GalgameArtMeta `json:"figure_meta,omitempty"`
 	// Intro is the one description the page leads with (Chinese first — a bio
 	// is read, not identified by); Intros is every language, for the reader who
 	// wants the original.

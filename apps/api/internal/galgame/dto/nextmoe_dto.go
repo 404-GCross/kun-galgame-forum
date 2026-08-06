@@ -303,10 +303,15 @@ type NextMoeGalgameCharacter struct {
 	Kind string `json:"kind"`
 	// Spoiler: 0=none 1=minor 2=major, i.e. how much the character's presence
 	// gives away. Only VNDB populates it, so 0 is "not flagged", not "safe".
-	Spoiler int                     `json:"spoiler"`
-	Image   string                  `json:"image,omitempty"`
-	Figure  string                  `json:"figure,omitempty"`
-	Voices  []NextMoeCharacterVoice `json:"voices"`
+	Spoiler int    `json:"spoiler"`
+	Image   string `json:"image,omitempty"`
+	Figure  string `json:"figure,omitempty"`
+	// The artwork's intrinsic shape, resolved from image_service rather than
+	// from the catalog (which publishes none for entity art). Absent when the
+	// lookup found nothing — see GalgameArtMeta.
+	ImageMeta  *GalgameArtMeta         `json:"image_meta,omitempty"`
+	FigureMeta *GalgameArtMeta         `json:"figure_meta,omitempty"`
+	Voices     []NextMoeCharacterVoice `json:"voices"`
 }
 
 // NextMoeCharacterVoice is one credited NAME that voiced a character — the same

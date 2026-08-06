@@ -81,8 +81,22 @@ const subtitle = computed(() => {
 
 // The header art: the 立绘 when there is one, because a standing figure is the
 // picture of a character — the bust then rides beside it at thumbnail size.
-// Both are opened full-size by the lightbox; neither is cropped into the
-// other's frame.
+// Both are opened full-size by the lightbox, and each is framed by its own
+// measured shape; neither is cropped into the other's frame. The fallbacks are
+// only reached when image_service could not size the picture.
+const figureFrame = computed(() =>
+  artFrame(data.value?.figure_meta, {
+    aspectRatio: '1/1',
+    objectFit: 'contain'
+  })
+)
+const bustFrame = computed(() =>
+  artFrame(data.value?.image_meta, {
+    aspectRatio: '3/4',
+    objectFit: 'cover'
+  })
+)
+
 const isMachineIntro = computed(
   () => !!data.value?.intros.find((i) => i.intro === data.value?.intro)?.machine
 )
@@ -129,9 +143,10 @@ if (!moved) {
       <template v-if="data.figure || data.image" #headerEndContent>
         <KunLightboxGallery>
           <div class="flex shrink-0 items-start gap-2">
-            <!-- Contained on its own surface: a 立绘 is cut out against a flat
-                 field and arrives at whatever ratio the source drew it, so the
-                 leftover has to be background rather than a crop. -->
+            <!-- Each picture stands alone here, so each is framed by its OWN
+                 measured shape: a 立绘 is cut out against a flat field and
+                 arrives at whatever ratio the source drew it, and nothing is
+                 cropped to fit a frame it was never drawn for. -->
             <KunLightboxGalleryItem
               v-if="data.figure"
               :src="data.figure"
@@ -149,8 +164,9 @@ if (!moved) {
                   :src="data.figure"
                   :alt="data.name"
                   loading="eager"
-                  aspect-ratio="1/1"
-                  object-fit="contain"
+                  :aspect-ratio="figureFrame.aspectRatio"
+                  :object-fit="figureFrame.objectFit"
+                  :thumbhash="figureFrame.thumbhash"
                   class-name="w-40 sm:w-48"
                 />
               </button>
@@ -173,8 +189,9 @@ if (!moved) {
                   :src="data.image"
                   :alt="data.name"
                   loading="eager"
-                  aspect-ratio="3/4"
-                  object-fit="cover"
+                  :aspect-ratio="bustFrame.aspectRatio"
+                  :object-fit="bustFrame.objectFit"
+                  :thumbhash="bustFrame.thumbhash"
                   :class-name="data.figure ? 'w-24 sm:w-28' : 'w-32 sm:w-40'"
                 />
               </button>

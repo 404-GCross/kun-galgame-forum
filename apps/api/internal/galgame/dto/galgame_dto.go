@@ -208,9 +208,33 @@ type GalgameDetailCharacter struct {
 	Spoiler int    `json:"spoiler"`
 	Image   string `json:"image,omitempty"`
 	Figure  string `json:"figure,omitempty"`
+	// The artwork's own shape. See GalgameArtMeta — absent means unknown, and
+	// the renderer keeps its default frame.
+	ImageMeta  *GalgameArtMeta `json:"image_meta,omitempty"`
+	FigureMeta *GalgameArtMeta `json:"figure_meta,omitempty"`
 	// Voices are credited NAMES (/galgame/staff/:id), the same identities the
 	// 制作人员 panel links to.
 	Voices []GalgameDetailCharacterVoice `json:"voices"`
+}
+
+// GalgameArtMeta is one artwork's intrinsic shape, resolved from image_service.
+//
+// It exists because the catalog publishes dimensions for WORK media (covers,
+// screenshots) but not for ENTITY art: a character's bust and 立绘 arrive as
+// bare CDN URLs. Without a ratio the renderer has to guess a frame, and the
+// guess is wrong twice over — it reserves the wrong box, so the layout jumps
+// when the picture lands, and it forces every figure into one shape when a
+// 立绘 is square for some titles and distinctly tall for others.
+//
+// ABSENT means unknown (image_service unconfigured, or a hash it has never
+// seen), never 0×0: a consumer must fall back to its own default frame rather
+// than believe a zero.
+type GalgameArtMeta struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+	// Thumbhash rides along for free from the same lookup and drives the
+	// blur-up placeholder. "" for an image predating the backfill.
+	Thumbhash string `json:"thumbhash,omitempty"`
 }
 
 // GalgameDetailCharacterVoice is one credited name behind a character's voice.

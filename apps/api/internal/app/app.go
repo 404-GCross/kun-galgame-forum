@@ -227,7 +227,19 @@ func New(cfg *config.Config) *App {
 		// caches forever and the markdown renderer calls it synchronously, so
 		// warm renders touch no network. Only wired when image_service is
 		// configured; otherwise content images render as plain lazy <img>.
-		markdown.SetContentImageMetaResolver(imgCli.NewMetaResolver(0).Resolve)
+		//
+		// ONE resolver for both consumers below: metadata is immutable per
+		// content hash, so a shared cache means a character sized on a game
+		// page is already sized when her own page opens — and an image that
+		// appears both in a topic body and on a detail page is looked up once
+		// for the life of the process.
+		imageMeta := imgCli.NewMetaResolver(0)
+		markdown.SetContentImageMetaResolver(imageMeta.Resolve)
+
+		// The catalog's ENTITY artwork (character busts and 立绘) arrives as
+		// bare CDN URLs with no shape attached — unlike covers and screenshots,
+		// whose dimensions the catalog aggregates for us.
+		gc.SetImageMetaResolver(imageMeta.Resolve)
 	} else {
 		slog.Warn("image_service client NOT configured; /image/galgame upload will return 未配置 — set KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET")
 	}

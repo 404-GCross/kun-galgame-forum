@@ -4,7 +4,11 @@
 // Bounded by what the catalog's public lane publishes: there is no 性别 / 生日 /
 // 三围 here, and there will not be — those live on the staff-side face only.
 
-import type { GalgameCard, GalgameDetailCharacterVoice } from './galgame'
+import type {
+  GalgameArtMeta,
+  GalgameCard,
+  GalgameDetailCharacterVoice
+} from './galgame'
 
 export interface GalgameCharacterIntro {
   lang: string
@@ -58,6 +62,9 @@ export interface GalgameCharacterDetail {
    *  `image`, not a larger version of it, and neither falls back to the other.
    *  Render it at its own aspect ratio. */
   figure: string
+  /** Each artwork's own shape — absent when image_service could not answer. */
+  image_meta?: GalgameArtMeta
+  figure_meta?: GalgameArtMeta
   /** The one description the page leads with, already picked server-side. */
   intro: string
   intros: GalgameCharacterIntro[]

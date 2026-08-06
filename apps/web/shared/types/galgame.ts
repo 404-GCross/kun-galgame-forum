@@ -59,6 +59,23 @@ export interface GalgameDetailStaffName {
   characters?: string[]
 }
 
+/** One artwork's intrinsic shape, resolved server-side from image_service.
+ *
+ *  It exists because the catalog publishes dimensions for WORK media (covers,
+ *  screenshots) but not for ENTITY art: a character's bust and 立绘 arrive as
+ *  bare URLs. Without a ratio the renderer has to guess a frame, and the guess
+ *  is wrong twice over — it reserves the wrong box, so the layout jumps when
+ *  the picture lands, and it forces every 立绘 into one shape when in fact
+ *  standing art is square for some titles and distinctly tall for others.
+ *
+ *  ABSENT means unknown, never 0×0: fall back to a default frame. */
+export interface GalgameArtMeta {
+  width: number
+  height: number
+  /** Drives the blur-up placeholder; '' for an image predating the backfill. */
+  thumbhash?: string
+}
+
 /** One entry on the 登场角色 roster. */
 export interface GalgameDetailCharacter {
   /** The catalog CHARACTER id. The forum has no character page yet, so nothing
@@ -82,6 +99,9 @@ export interface GalgameDetailCharacter {
    *  figure on a white field, and cropping it to a portrait box leaves a
    *  picture of someone's midriff. */
   figure?: string
+  /** Each artwork's own shape — absent when image_service could not answer. */
+  image_meta?: GalgameArtMeta
+  figure_meta?: GalgameArtMeta
   /** The credited names that voiced this character — the same identities the
    *  制作人员 panel links to at /galgame/staff/:id. */
   voices: GalgameDetailCharacterVoice[]

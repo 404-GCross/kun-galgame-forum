@@ -51,8 +51,22 @@ const nameOnly = computed(() =>
   visible.value.filter((c) => !c.figure && !c.image)
 )
 
-// Tiles load the `mini` variant (both catalog presets generate one).
+// Tiles load the `mini` variant (both catalog presets generate one). The bust
+// preset COVER-crops to 256×360, so a bust tile is safely 3:4 whatever the
+// original was; the figure preset fits INSIDE 360×360, so a figure keeps the
+// original's ratio and the frame has to be told what that is.
 const thumbOf = (url: string) => withImageVariant(url, 'mini')
+
+// One ratio for the whole 立绘 row rather than one per card — see artGridRatio.
+// Square is the fallback because it is the shape most Getchu standing art
+// arrives in, and it is only reached when image_service answered for none of
+// them.
+const figureRatio = computed(() =>
+  artGridRatio(
+    featured.value.map((c) => c.figure_meta),
+    '1/1'
+  )
+)
 
 // Two rows of the widest bust grid. A long-running series' roster runs to
 // dozens of characters, and the panel sits above the screenshots — it must not
@@ -130,7 +144,8 @@ const open = (character: GalgameDetailCharacter) => {
             :src="thumbOf(c.figure!)"
             :alt="c.name"
             loading="lazy"
-            aspect-ratio="1/1"
+            :aspect-ratio="figureRatio"
+            :thumbhash="c.figure_meta?.thumbhash"
             object-fit="contain"
             class-name="w-full"
             image-class-name="transition-transform duration-200 group-hover:scale-105"
@@ -189,6 +204,7 @@ const open = (character: GalgameDetailCharacter) => {
             :alt="c.name"
             loading="lazy"
             aspect-ratio="3/4"
+            :thumbhash="c.image_meta?.thumbhash"
             object-fit="cover"
             class-name="w-full"
             image-class-name="transition-transform duration-200 group-hover:scale-105"

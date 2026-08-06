@@ -528,6 +528,12 @@ type catWorkCharacter struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
 	} `json:"voices"`
+	// ImageMeta / FigureMeta are NOT on the wire — the catalog publishes no
+	// shape for entity artwork. They are filled in from image_service after the
+	// decode (see hydrateRosterArt), which is the only way the renderer can
+	// reserve the right box for a 立绘 whose ratio differs per title.
+	ImageMeta  ArtMeta `json:"-"`
+	FigureMeta ArtMeta `json:"-"`
 }
 
 // catCreditGroup is one role's signings on a work. The face has already
@@ -602,7 +608,26 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 	if d.ClaimedBy != nil && d.ClaimedBy.State == claimStateHidden {
 		return nil, false, nil
 	}
+	c.hydrateRosterArt(d.Characters)
 	return &d, true, nil
+}
+
+// hydrateRosterArt sizes the roster's artwork in ONE image_service batch for
+// the whole cast — the reason it runs here rather than inside the projection,
+// which sees one character at a time.
+func (c *GalgameClient) hydrateRosterArt(chars []catWorkCharacter) {
+	urls := make([]string, 0, len(chars)*2)
+	for _, ch := range chars {
+		urls = append(urls, ch.Image, ch.Figure)
+	}
+	meta := c.resolveArtMeta(urls)
+	if meta == nil {
+		return
+	}
+	for i := range chars {
+		chars[i].ImageMeta = meta[chars[i].Image]
+		chars[i].FigureMeta = meta[chars[i].Figure]
+	}
 }
 
 // ─── browse / search / calendar ──────────────────────────────────────────

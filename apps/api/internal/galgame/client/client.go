@@ -100,6 +100,10 @@ type GalgameClient struct {
 	// imageCDNBase resolves image hashes → CDN URLs inside doRequest (see
 	// banner.go). Empty disables resolution (responses pass through untouched).
 	imageCDNBase string
+	// imageMeta resolves ENTITY artwork URLs → intrinsic dimensions (see
+	// catalog_art.go). Optional: nil publishes no dimensions, which is the
+	// pre-existing behaviour rather than a failure.
+	imageMeta ImageMetaResolver
 
 	// Public batch-lookup caches (see cachedBatch / briefCacheTTL).
 	briefMu     sync.RWMutex
