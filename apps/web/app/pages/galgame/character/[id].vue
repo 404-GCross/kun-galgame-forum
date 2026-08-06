@@ -179,7 +179,7 @@ if (!moved) {
             >
               <button
                 type="button"
-                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-lg"
+                class="bg-default-100 w-fit cursor-zoom-in overflow-hidden rounded-lg"
                 :aria-label="`查看 ${data.name} 的立绘`"
                 @click="open"
               >
@@ -204,7 +204,7 @@ if (!moved) {
             >
               <button
                 type="button"
-                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-lg"
+                class="bg-default-100 w-fit cursor-zoom-in overflow-hidden rounded-lg"
                 :aria-label="`查看 ${data.name} 的头像`"
                 @click="open"
               >

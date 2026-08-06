@@ -167,7 +167,17 @@ watch(
              page: this popup shrinks a 立绘 to thumbnail width, and the art is
              half the reason a reader clicked the character at all. -->
         <KunLightboxGallery v-if="character.figure || character.image">
-          <div class="flex shrink-0 gap-3 sm:flex-col">
+          <!-- items-start / sm:items-center and w-fit are load-bearing, not
+               cosmetic. These buttons are flex items and carry the tinted
+               backdrop; left to stretch they take the cross-size of the
+               WIDEST sibling, and the backdrop then paints as bands either
+               side of the narrower picture. A square 500×500 立绘 above a 5:6
+               bust produced exactly that — 56px of tint on each side of the
+               bust, which reads as the frame being wrong when the frame is
+               right. Each box hugs its own picture instead. -->
+          <div
+            class="flex shrink-0 items-start gap-3 sm:flex-col sm:items-center"
+          >
             <KunLightboxGalleryItem
               v-if="character.figure"
               :src="character.figure"
@@ -177,7 +187,7 @@ watch(
             >
               <button
                 type="button"
-                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-xl"
+                class="bg-default-100 w-fit cursor-zoom-in overflow-hidden rounded-xl"
                 :aria-label="`查看 ${character.name} 的立绘`"
                 @click="open"
               >
@@ -188,7 +198,7 @@ watch(
                   :aspect-ratio="figureFrame.aspectRatio"
                   :object-fit="figureFrame.objectFit"
                   :thumbhash="figureFrame.thumbhash"
-                  class-name="w-40 sm:w-56"
+                  class-name="w-36 sm:w-48"
                 />
               </button>
             </KunLightboxGalleryItem>
@@ -202,7 +212,7 @@ watch(
             >
               <button
                 type="button"
-                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-xl"
+                class="bg-default-100 w-fit cursor-zoom-in overflow-hidden rounded-xl"
                 :aria-label="`查看 ${character.name} 的头像`"
                 @click="open"
               >
@@ -214,7 +224,7 @@ watch(
                   :object-fit="bustFrame.objectFit"
                   :thumbhash="bustFrame.thumbhash"
                   :class-name="
-                    character.figure ? 'w-24 sm:w-28' : 'w-40 sm:w-56'
+                    character.figure ? 'w-20 sm:w-24' : 'w-36 sm:w-48'
                   "
                 />
               </button>
