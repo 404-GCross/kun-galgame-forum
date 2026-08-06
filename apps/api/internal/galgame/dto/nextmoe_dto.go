@@ -258,6 +258,7 @@ type NextMoeGalgameDetailFull struct {
 	Series                   []NextMoeSeriesRef         `json:"series"`
 	Tag                      []NextMoeTagWithSpoiler    `json:"tag"`
 	Staff                    []NextMoeStaffGroup        `json:"staff"`
+	Characters               []NextMoeGalgameCharacter  `json:"characters"`
 	Contributor              []NextMoeContributor       `json:"contributor"`
 	Created                  string                     `json:"created"`
 	Updated                  string                     `json:"updated"`
@@ -286,6 +287,34 @@ type NextMoeStaffName struct {
 	Name       string   `json:"name"`
 	Latin      string   `json:"latin,omitempty"`
 	Characters []string `json:"characters,omitempty"`
+}
+
+// NextMoeGalgameCharacter is one entry on the 登场角色 roster. Image (bust) and
+// Figure (full-body 立绘) are complete CDN URLs and are DIFFERENT ASSETS: one is
+// not a size of the other and neither falls back to the other, so a character
+// can have both, either or none. The renderer owes the figure its own aspect
+// ratio — cropping it to a portrait box destroys it.
+type NextMoeGalgameCharacter struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Latin string `json:"latin,omitempty"`
+	// Kind: main | secondary | appears | unknown. "unknown" is a real answer —
+	// several sources publish no billing at all.
+	Kind string `json:"kind"`
+	// Spoiler: 0=none 1=minor 2=major, i.e. how much the character's presence
+	// gives away. Only VNDB populates it, so 0 is "not flagged", not "safe".
+	Spoiler int                     `json:"spoiler"`
+	Image   string                  `json:"image,omitempty"`
+	Figure  string                  `json:"figure,omitempty"`
+	Voices  []NextMoeCharacterVoice `json:"voices"`
+}
+
+// NextMoeCharacterVoice is one credited NAME that voiced a character — the same
+// identity the 制作人员 panel links to at /galgame/staff/:id, so the roster
+// needs no lookup of its own.
+type NextMoeCharacterVoice struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // NextMoeSeriesRef is one series a work belongs to: identity only, because the

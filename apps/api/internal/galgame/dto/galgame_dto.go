@@ -190,6 +190,35 @@ type GalgameDetailStaffName struct {
 	Characters []string `json:"characters,omitempty"`
 }
 
+// GalgameDetailCharacter is one entry on the 登场角色 roster.
+//
+// Image and Figure are complete CDN URLs for two DIFFERENT assets — a bust and
+// a full-body 立绘 — and neither is a fallback for the other. The bust is
+// cover-cropped upstream to a portrait box and may be shown that way; the
+// figure must keep its own aspect ratio, or it stops being a figure.
+type GalgameDetailCharacter struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Latin string `json:"latin,omitempty"`
+	// Kind: main | secondary | appears | unknown — the billing, where a source
+	// publishes one. "unknown" is a real answer and the majority for some lanes.
+	Kind string `json:"kind"`
+	// Spoiler: 0=none 1=minor 2=major. Only the VNDB lane fills it in, so 0
+	// means "nobody flagged this", not "safe to show".
+	Spoiler int    `json:"spoiler"`
+	Image   string `json:"image,omitempty"`
+	Figure  string `json:"figure,omitempty"`
+	// Voices are credited NAMES (/galgame/staff/:id), the same identities the
+	// 制作人员 panel links to.
+	Voices []GalgameDetailCharacterVoice `json:"voices"`
+}
+
+// GalgameDetailCharacterVoice is one credited name behind a character's voice.
+type GalgameDetailCharacterVoice struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 // GalgameDetailRatingGalgame is the tiny galgame embed inside each rating card.
 type GalgameDetailRatingGalgame struct {
 	ID           int         `json:"id"`
@@ -274,16 +303,17 @@ type GalgameDetail struct {
 	// ResourcePublishBanned: moderators have forbidden publishing download
 	// resources under this galgame (copyright / third-party). The FE shows a
 	// notice and hides the publish entry.
-	ResourcePublishBanned bool                    `json:"resource_publish_banned"`
-	Alias                 []string                `json:"alias"`
-	Engine                []GalgameDetailEngine   `json:"engine"`
-	Official              []GalgameDetailOfficial `json:"official"`
-	Series                []GalgameDetailSeries   `json:"series"`
-	Tag                   []GalgameDetailTag      `json:"tag"`
-	Staff                 []GalgameDetailStaff    `json:"staff"`
-	Ratings               []GalgameDetailRating   `json:"ratings"`
-	Created               string                  `json:"created"`
-	Updated               string                  `json:"updated"`
+	ResourcePublishBanned bool                     `json:"resource_publish_banned"`
+	Alias                 []string                 `json:"alias"`
+	Engine                []GalgameDetailEngine    `json:"engine"`
+	Official              []GalgameDetailOfficial  `json:"official"`
+	Series                []GalgameDetailSeries    `json:"series"`
+	Tag                   []GalgameDetailTag       `json:"tag"`
+	Staff                 []GalgameDetailStaff     `json:"staff"`
+	Characters            []GalgameDetailCharacter `json:"characters"`
+	Ratings               []GalgameDetailRating    `json:"ratings"`
+	Created               string                   `json:"created"`
+	Updated               string                   `json:"updated"`
 	// DlsitePurchaseURL / DlsiteCouponURL power the 正版购买 button in the galgame
 	// header, assembled server-side (pkg/dlsite) from the catalog's refs.dlsite
 	// work number. Empty when the galgame has no DLsite id or the affiliate is

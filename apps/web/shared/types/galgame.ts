@@ -59,6 +59,39 @@ export interface GalgameDetailStaffName {
   characters?: string[]
 }
 
+/** One entry on the 登场角色 roster. */
+export interface GalgameDetailCharacter {
+  /** The catalog CHARACTER id. The forum has no character page yet, so nothing
+   *  links to it — it is here so the anchor already exists the day one lands. */
+  id: number
+  name: string
+  latin?: string
+  /** Billing: main | secondary | appears | unknown. `unknown` is a real answer
+   *  (several catalog sources publish no billing at all), not a parse failure,
+   *  so it must render as "no badge" rather than as a 未知 chip. */
+  kind: string
+  /** How much the character's presence gives away: 0=none 1=minor 2=major.
+   *  Only the VNDB lane fills this in, so 0 means "nobody flagged it". */
+  spoiler: number
+  /** Bust portrait, a complete CDN URL. Cover-cropped to 256×360 upstream, so
+   *  it may be rendered in a portrait box. */
+  image?: string
+  /** Full-body 立绘, a complete CDN URL. A DIFFERENT ASSET from `image`, not a
+   *  larger version of it, and neither falls back to the other. It must be
+   *  rendered at its own aspect ratio (`contain`) — the source is a whole
+   *  figure on a white field, and cropping it to a portrait box leaves a
+   *  picture of someone's midriff. */
+  figure?: string
+  /** The credited names that voiced this character — the same identities the
+   *  制作人员 panel links to at /galgame/staff/:id. */
+  voices: GalgameDetailCharacterVoice[]
+}
+
+export interface GalgameDetailCharacterVoice {
+  id: number
+  name: string
+}
+
 export interface GalgameDetail {
   id: number
   vndb_id: string
@@ -122,6 +155,7 @@ export interface GalgameDetail {
   series: GalgameDetailSeriesRef[]
   tag: GalgameDetailTag[]
   staff: GalgameDetailStaff[]
+  characters: GalgameDetailCharacter[]
   ratings: GalgameRatingCardOnGalgamePage[]
   created: Date | string
   updated: Date | string

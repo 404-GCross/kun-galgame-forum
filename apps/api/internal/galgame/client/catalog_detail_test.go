@@ -200,3 +200,59 @@ func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
 		t.Errorf("rows dropped along with their counts: %+v %+v", f.Official, f.Engine)
 	}
 }
+
+// TestCatalogDetail_RosterKeepsBothArtsApart pins the 登场角色 projection.
+//
+// The one thing that must not drift here is that `image` and `figure` are
+// separate assets rather than two sizes of one. The bust is cover-cropped
+// upstream and belongs in a portrait box; the full-body 立绘 has to keep its own
+// ratio, and the renderer can only know which is which if the projection keeps
+// them in their own fields. Collapsing them to a single "art" URL — the obvious
+// simplification — is exactly the bug: half the roster would then be cropped to
+// a midriff.
+//
+// It also pins that a roster row survives with NO art at all. Character-image
+// coverage is partial and always will be, and dropping the pictureless rows
+// would silently delete most of the cast of most games.
+func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
+	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","characters":[
+		{"id":11,"name":"藤田 佳奈","latin":"Fujita Kana","kind":"main","spoiler":0,
+		 "image":"https://cdn.example/ab/cd/bust.webp","figure":"https://cdn.example/ef/gh/figure.webp",
+		 "voices":[{"id":7,"name":"五十嵐裕美"},{"id":9,"name":"別名義"}]},
+		{"id":12,"name":"名前だけ","kind":"unknown","spoiler":2,"voices":[]}
+	]}`
+	f := fullOf(t, body)
+
+	if len(f.Characters) != 2 {
+		t.Fatalf("projected %d roster rows, want 2 (a pictureless character is still cast): %+v",
+			len(f.Characters), f.Characters)
+	}
+
+	lead := f.Characters[0]
+	if lead.Image != "https://cdn.example/ab/cd/bust.webp" {
+		t.Errorf("bust = %q, want the image URL verbatim", lead.Image)
+	}
+	if lead.Figure != "https://cdn.example/ef/gh/figure.webp" {
+		t.Errorf("figure = %q, want the figure URL verbatim — it is NOT a variant of the bust", lead.Figure)
+	}
+	if lead.Kind != "main" || lead.Latin != "Fujita Kana" {
+		t.Errorf("billing/latin lost: %+v", lead)
+	}
+	if len(lead.Voices) != 2 || lead.Voices[0].ID != 7 || lead.Voices[1].Name != "別名義" {
+		t.Errorf("voices = %+v, want both credited names with their staff-page ids", lead.Voices)
+	}
+
+	// "unknown" is a real billing the catalog publishes, not a parse failure,
+	// and the spoiler level is what the panel withholds the row on.
+	bare := f.Characters[1]
+	if bare.Kind != "unknown" || bare.Spoiler != 2 {
+		t.Errorf("kind/spoiler = %q/%d, want unknown/2", bare.Kind, bare.Spoiler)
+	}
+	if bare.Image != "" || bare.Figure != "" {
+		t.Errorf("a character with no art must not acquire any: %+v", bare)
+	}
+	// Never nil: the FE iterates it unguarded, and JSON null is not an array.
+	if bare.Voices == nil {
+		t.Error("voices serialized as null, want []")
+	}
+}

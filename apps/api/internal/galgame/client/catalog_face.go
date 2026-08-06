@@ -491,6 +491,43 @@ type catWorkDetail struct {
 	// Credits is include-gated upstream (omitted entirely without
 	// include=credits), which is why the detail query asks for it by name.
 	Credits []catCreditGroup `json:"credits"`
+	// Characters is the work's roster. NOT include-gated — it rides every
+	// detail response, so kungal simply started reading a block it had been
+	// throwing away.
+	Characters []catWorkCharacter `json:"characters"`
+}
+
+// catWorkCharacter is one roster entry: the union of the work_character
+// appearance edge and the VA credits, already merged and ordered upstream
+// (main → secondary → appears → unknown, then by name).
+//
+// Image and Figure are COMPLETE CDN URLs, not hashes — the public face resolves
+// them itself — and they are two different assets rather than two sizes of one:
+//
+//	Image  = the bust (256×360, cover-cropped upstream) — a portrait box.
+//	Figure = the full-body 立绘, which must render at ITS OWN ratio. The source
+//	         is a whole figure on a white field; crop it to a portrait box and
+//	         what is left is a picture of someone's midriff.
+//
+// Neither falls back to the other, and either can be absent.
+type catWorkCharacter struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Latin string `json:"latin"`
+	// Kind is the appearance strength: main | secondary | appears | unknown.
+	// "unknown" is a MEANINGFUL value (a source that files no billing, or a
+	// character reached only through a VA credit), not a parse failure.
+	Kind string `json:"kind"`
+	// Spoiler is how much this character's mere presence gives away:
+	// 0=none 1=minor 2=major. Only the VNDB lane populates it; every other
+	// source is a flat 0, so 0 means "not known to spoil" rather than "safe".
+	Spoiler int    `json:"spoiler"`
+	Image   string `json:"image"`
+	Figure  string `json:"figure"`
+	Voices  []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	} `json:"voices"`
 }
 
 // catCreditGroup is one role's signings on a work. The face has already

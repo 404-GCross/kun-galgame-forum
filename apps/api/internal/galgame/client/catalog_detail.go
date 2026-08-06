@@ -56,6 +56,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		ResourceUpdateTime: zeroTS,
 		Refs:               refsMap(d.Refs),
 		Staff:              catalogStaffFromCredits(d.Credits),
+		Characters:         catalogRosterToNextMoe(d.Characters),
 		Covers:             catalogCoversToNextMoe(d),
 		Screenshots:        catalogScreenshotsToNextMoe(d),
 		// Wiki-era contribution froze with the wiki (D6). The author still
@@ -234,6 +235,33 @@ func catalogIntros(d *catWorkDetail) (jaJP, zhCN, zhTW, enUS string) {
 		}
 	}
 	return jaJP, zhCN, zhTW, enUS
+}
+
+// catalogRosterToNextMoe maps the 登场角色 roster verbatim. The catalog already
+// merged the appearance edges with the VA credits and ordered the result
+// (main → secondary → appears → unknown, then by name), so there is no
+// editorial decision left to take here.
+//
+// A row with NEITHER a name nor any art is dropped: it would render as an empty
+// tile that says nothing and links nowhere. Everything else stays, art or not —
+// a named character with no picture is still part of the cast.
+func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharacter {
+	out := make([]dto.NextMoeGalgameCharacter, 0, len(chars))
+	for _, c := range chars {
+		if c.Name == "" && c.Latin == "" {
+			continue
+		}
+		voices := make([]dto.NextMoeCharacterVoice, 0, len(c.Voices))
+		for _, v := range c.Voices {
+			voices = append(voices, dto.NextMoeCharacterVoice{ID: int(v.ID), Name: v.Name})
+		}
+		out = append(out, dto.NextMoeGalgameCharacter{
+			ID: int(c.ID), Name: c.Name, Latin: c.Latin,
+			Kind: c.Kind, Spoiler: c.Spoiler,
+			Image: c.Image, Figure: c.Figure, Voices: voices,
+		})
+	}
+	return out
 }
 
 // catalogCoversToNextMoe / catalogScreenshotsToNextMoe map the detail image
