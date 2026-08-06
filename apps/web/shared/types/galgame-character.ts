@@ -13,6 +13,9 @@ import type {
 export interface GalgameCharacterIntro {
   lang: string
   intro: string
+  /** Who wrote it (vndb, bangumi …). Rendered as attribution: this is another
+   *  database's prose and the page says so. */
+  source: string
   /** An LLM translation, surfaced only for a language no source wrote. Say so
    *  in the UI rather than passing it off as an original. */
   machine: boolean

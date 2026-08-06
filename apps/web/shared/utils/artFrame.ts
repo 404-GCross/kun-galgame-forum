@@ -3,13 +3,23 @@
 //
 // The rule these helpers encode: KNOW the ratio and the picture keeps its own
 // shape, contained, with nothing cropped and no layout jump. Do NOT know it and
-// the caller's fallback frame applies, which is the pre-existing behaviour
-// rather than a broken one. A guessed ratio is never good enough here, because
-// standing art is square for some titles and distinctly tall for others.
+// impose NO frame at all — the browser then lays the picture out at its own
+// intrinsic proportions once it lands.
+//
+// That second half was originally a guessed fallback frame (3:4 for a bust,
+// square for a 立绘) and it was simply wrong: those numbers describe the CROPPED
+// thumbnail variants, while a modal and a page header show the ORIGINAL. A bust
+// cover-cropped into a guessed 3:4 is a picture of someone's chin. Trading a
+// little layout shift for a correct shape is the right way round — the shift
+// only happens when image_service could not answer at all.
 
 import type { GalgameArtMeta } from '../types/galgame'
 
-/** The frame for one artwork: what box to reserve and how to sit in it. */
+/**
+ * The frame for one artwork: what box to reserve and how to sit in it.
+ * An empty `aspectRatio` means "reserve nothing" — KunImage then renders the
+ * picture at its natural size instead of fitting it into a box.
+ */
 export interface KunArtFrame {
   aspectRatio: string
   objectFit: 'cover' | 'contain'
@@ -23,17 +33,23 @@ const ratioOf = (meta?: GalgameArtMeta): string =>
 
 /**
  * The frame for a single artwork standing on its own (a modal, a page header):
- * its real ratio, contained. `fallback` covers the unresolved case — pass the
- * frame that was right before dimensions existed.
+ * its real ratio, contained — and when the shape is unknown, no frame, so the
+ * picture arrives in its own proportions rather than a plausible-looking crop.
+ *
+ * Pass the FIRST meta that is actually about the picture being rendered; the
+ * later arguments are consulted only while the earlier ones are absent (a
+ * roster line and the character's own record describe the same artwork, and
+ * whichever answered first is equally true).
  */
 export const artFrame = (
-  meta: GalgameArtMeta | undefined,
-  fallback: KunArtFrame
+  ...candidates: (GalgameArtMeta | undefined)[]
 ): KunArtFrame => {
-  const ratio = ratioOf(meta)
-  return ratio
-    ? { aspectRatio: ratio, objectFit: 'contain', thumbhash: meta?.thumbhash }
-    : { ...fallback, thumbhash: meta?.thumbhash }
+  const meta = candidates.find((m) => !!ratioOf(m))
+  return {
+    aspectRatio: ratioOf(meta),
+    objectFit: 'contain',
+    thumbhash: candidates.find((m) => m?.thumbhash)?.thumbhash
+  }
 }
 
 /**

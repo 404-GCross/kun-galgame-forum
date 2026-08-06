@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import {
+  getGalgameCharacterLangName,
+  getGalgameCharacterSourceName
+} from '~/constants/galgameCharacter'
+
 // `id` is a CATALOG character id — the id the 登场角色 roster on every game
 // detail page already carries, so the link needs no lookup.
 //
@@ -72,6 +77,19 @@ const loadMore = async () => {
   nextOffset.value = res.next_offset
 }
 
+// A voice credit names its language only on the character face. Japanese is the
+// unmarked case in this medium, so only the others are labelled: a 中文配音 row
+// standing beside a seiyuu is a second performance, not a recast, and an
+// unlabelled pair reads as the latter.
+const voiceLabel = (voice: GalgameDetailCharacterVoice) =>
+  voice.lang && voice.lang.toLowerCase() !== 'ja'
+    ? `${voice.name}（${getGalgameCharacterLangName(voice.lang)}）`
+    : voice.name
+
+// The romanization, for a reader who cannot read the credited form.
+const voiceTitle = (voices: GalgameDetailCharacterVoice[]) =>
+  voices.map((v) => v.latin || v.name).join(' / ')
+
 const subtitle = computed(() => {
   const parts = [data.value?.name_zh, data.value?.latin].filter(
     (part): part is string => !!part && part !== data.value?.name
@@ -82,24 +100,29 @@ const subtitle = computed(() => {
 // The header art: the 立绘 when there is one, because a standing figure is the
 // picture of a character — the bust then rides beside it at thumbnail size.
 // Both are opened full-size by the lightbox, and each is framed by its own
-// measured shape; neither is cropped into the other's frame. The fallbacks are
-// only reached when image_service could not size the picture.
-const figureFrame = computed(() =>
-  artFrame(data.value?.figure_meta, {
-    aspectRatio: '1/1',
-    objectFit: 'contain'
-  })
-)
-const bustFrame = computed(() =>
-  artFrame(data.value?.image_meta, {
-    aspectRatio: '3/4',
-    objectFit: 'cover'
-  })
-)
+// measured shape; neither is cropped into the other's frame, and neither is
+// forced into a guessed one when image_service could not size it.
+const figureFrame = computed(() => artFrame(data.value?.figure_meta))
+const bustFrame = computed(() => artFrame(data.value?.image_meta))
 
-const isMachineIntro = computed(
-  () => !!data.value?.intros.find((i) => i.intro === data.value?.intro)?.machine
+const leadIntro = computed(() =>
+  data.value?.intros.find((i) => i.intro === data.value?.intro)
 )
+// Attribution and the machine-translation marker travel together: both answer
+// "where did this paragraph come from", and a reader deciding how much to trust
+// a bio wants them in one line rather than two.
+const introCredit = computed(() => {
+  const parts: string[] = []
+  if (leadIntro.value?.source) {
+    parts.push(
+      `简介来自 ${getGalgameCharacterSourceName(leadIntro.value.source)}`
+    )
+  }
+  if (leadIntro.value?.machine) {
+    parts.push('由机器翻译生成')
+  }
+  return parts.join(' · ')
+})
 const otherIntros = computed(() =>
   (data.value?.intros ?? []).filter((i) => i.intro !== data.value?.intro)
 )
@@ -204,8 +227,8 @@ if (!moved) {
         <div class="space-y-3">
           <div v-if="data.intro" class="space-y-1">
             <p class="text-default-600 whitespace-pre-line">{{ data.intro }}</p>
-            <p v-if="isMachineIntro" class="text-default-400 text-xs">
-              本段简介由机器翻译生成
+            <p v-if="introCredit" class="text-default-400 text-xs">
+              {{ introCredit }}
             </p>
           </div>
 
@@ -216,10 +239,14 @@ if (!moved) {
               v-for="intro in otherIntros"
               :key="intro.lang"
               :value="intro.lang"
-              :title="`${intro.lang} 简介`"
+              :title="`${getGalgameCharacterLangName(intro.lang)} 简介`"
             >
               <p class="text-default-600 whitespace-pre-line">
                 {{ intro.intro }}
+              </p>
+              <p v-if="intro.source" class="text-default-400 mt-1 text-xs">
+                来自 {{ getGalgameCharacterSourceName(intro.source)
+                }}<template v-if="intro.machine"> · 由机器翻译生成</template>
               </p>
             </KunAccordionItem>
           </KunAccordion>
@@ -301,8 +328,9 @@ if (!moved) {
         <p
           v-if="galgame.voices?.length"
           class="text-default-500 mt-1 line-clamp-2 text-xs"
+          :title="voiceTitle(galgame.voices)"
         >
-          CV {{ galgame.voices.map((v) => v.name).join(' / ') }}
+          CV {{ galgame.voices.map(voiceLabel).join(' / ') }}
         </p>
       </template>
     </GalgameCard>

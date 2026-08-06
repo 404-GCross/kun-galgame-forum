@@ -249,9 +249,18 @@ type GalgameArtMeta struct {
 }
 
 // GalgameDetailCharacterVoice is one credited name behind a character's voice.
+//
+// Lang and Latin are published by the CHARACTER face and not by the per-game
+// roster, so they are omitempty rather than always-present: the roster's own
+// voice rows carry an id and a name and nothing more. Lang is the language the
+// performance was recorded in — a character with a Japanese seiyuu and a
+// separate Chinese dub credit has two rows, and without it they read as a
+// double casting.
 type GalgameDetailCharacterVoice struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Lang  string `json:"lang,omitempty"`
+	Latin string `json:"latin,omitempty"`
 }
 
 // GalgameDetailRatingGalgame is the tiny galgame embed inside each rating card.

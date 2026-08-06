@@ -116,6 +116,12 @@ export interface GalgameDetailCharacter {
 export interface GalgameDetailCharacterVoice {
   id: number
   name: string
+  /** The language the performance was recorded in. Published by the CHARACTER
+   *  face only — the per-game roster's voice rows carry id and name alone —
+   *  hence optional. A Japanese seiyuu and a separate Chinese dub credit are
+   *  two rows, and without this they read as a double casting. */
+  lang?: string
+  latin?: string
 }
 
 export interface GalgameDetail {

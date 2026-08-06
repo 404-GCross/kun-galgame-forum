@@ -126,7 +126,9 @@ func (s *CharacterService) GetDetail(
 		}
 		voices := make([]dto.GalgameDetailCharacterVoice, 0, len(w.Voices))
 		for _, v := range w.Voices {
-			voices = append(voices, dto.GalgameDetailCharacterVoice{ID: int(v.ID), Name: v.Name})
+			voices = append(voices, dto.GalgameDetailCharacterVoice{
+				ID: int(v.ID), Name: v.Name, Lang: v.Lang, Latin: v.Latin,
+			})
 		}
 		items = append(items, client.CatalogItemToNextMoeItem(&row))
 		detail.Works = append(detail.Works, dto.GalgameCharacterWork{
@@ -159,7 +161,9 @@ func characterIntros(ch *client.CatalogCharacter) []dto.GalgameCharacterIntro {
 			continue
 		}
 		seen[i.Lang] = true
-		out = append(out, dto.GalgameCharacterIntro{Lang: i.Lang, Intro: i.Intro, Machine: i.Machine})
+		out = append(out, dto.GalgameCharacterIntro{
+			Lang: i.Lang, Intro: i.Intro, Source: i.Source, Machine: i.Machine,
+		})
 	}
 	return out
 }

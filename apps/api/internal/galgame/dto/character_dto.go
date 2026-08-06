@@ -13,6 +13,10 @@ package dto
 type GalgameCharacterIntro struct {
 	Lang  string `json:"lang"`
 	Intro string `json:"intro"`
+	// Source is who wrote it (vndb, bangumi …). Shown as attribution: these
+	// bios are other databases' prose, and the page says so rather than
+	// presenting them as the site's own.
+	Source string `json:"source"`
 	// Machine marks an LLM translation, surfaced only for a language no source
 	// wrote. It is labelled in the UI: a machine-translated bio is worth
 	// reading and worth knowing about.

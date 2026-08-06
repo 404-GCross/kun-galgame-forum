@@ -2,7 +2,8 @@
 import {
   KUN_GALGAME_CHARACTER_KIND_MAP,
   KUN_GALGAME_CHARACTER_KIND_COLOR,
-  KUN_GALGAME_CHARACTER_SPOILER_MAP
+  KUN_GALGAME_CHARACTER_SPOILER_MAP,
+  getGalgameCharacterSourceName
 } from '~/constants/galgameCharacter'
 
 // The character popup on a game's 登场角色 panel.
@@ -67,20 +68,20 @@ watch(
   { immediate: true }
 )
 
-// Both artworks are shown at FULL size here, so each is framed by its own
-// shape. The fallbacks are what the frames were before dimensions existed, and
-// are only reached when image_service could not answer.
+// Both artworks are shown at ORIGINAL size here, so each is framed by its own
+// measured shape and nothing is cropped to fit a box it was never drawn for.
+//
+// The roster line and the character's own record describe the same two
+// pictures, so either may supply the shape: the roster's arrives first and is
+// what the popup opens with, and the record's covers the case where the roster
+// was served before image_service could size it. Neither is a fallback GUESS —
+// when both are silent the frame is simply absent and the picture lays itself
+// out.
 const figureFrame = computed(() =>
-  artFrame(props.character?.figure_meta, {
-    aspectRatio: '1/1',
-    objectFit: 'contain'
-  })
+  artFrame(props.character?.figure_meta, detail.value?.figure_meta)
 )
 const bustFrame = computed(() =>
-  artFrame(props.character?.image_meta, {
-    aspectRatio: '3/4',
-    objectFit: 'cover'
-  })
+  artFrame(props.character?.image_meta, detail.value?.image_meta)
 )
 
 const kindText = computed(() =>
@@ -127,6 +128,22 @@ const traitGroups = computed(() => {
   return groups
 })
 
+// Same one line the page uses: where the paragraph came from, and whether a
+// machine wrote the translation. The popup shows only the lead bio — the other
+// languages are what the full page is for — but it must still credit the one it
+// does show.
+const introCredit = computed(() => {
+  const lead = detail.value?.intros.find((i) => i.intro === detail.value?.intro)
+  const parts: string[] = []
+  if (lead?.source) {
+    parts.push(`简介来自 ${getGalgameCharacterSourceName(lead.source)}`)
+  }
+  if (lead?.machine) {
+    parts.push('由机器翻译生成')
+  }
+  return parts.join(' · ')
+})
+
 // Reset the per-character view state whenever the popup switches subject, so
 // one character's revealed spoilers are never already-revealed on the next.
 watch(
@@ -145,41 +162,65 @@ watch(
              OWN ratio rather than a shared frame — nothing is cropped and
              nothing is letterboxed. When both exist the figure leads and the
              bust rides beside it: a portrait is often a different pose, not a
-             crop of the same drawing. -->
-        <div
-          v-if="character.figure || character.image"
-          class="flex shrink-0 gap-3 sm:flex-col"
-        >
-          <div
-            v-if="character.figure"
-            class="bg-default-100 overflow-hidden rounded-xl"
-          >
-            <KunImage
+             crop of the same drawing.
+             Both open full-size in the lightbox, the same as on the character
+             page: this popup shrinks a 立绘 to thumbnail width, and the art is
+             half the reason a reader clicked the character at all. -->
+        <KunLightboxGallery v-if="character.figure || character.image">
+          <div class="flex shrink-0 gap-3 sm:flex-col">
+            <KunLightboxGalleryItem
+              v-if="character.figure"
               :src="character.figure"
               :alt="character.name"
-              loading="eager"
-              :aspect-ratio="figureFrame.aspectRatio"
-              :object-fit="figureFrame.objectFit"
-              :thumbhash="figureFrame.thumbhash"
-              class-name="w-40 sm:w-56"
-            />
-          </div>
+              :wrap="false"
+              v-slot="{ open }"
+            >
+              <button
+                type="button"
+                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-xl"
+                :aria-label="`查看 ${character.name} 的立绘`"
+                @click="open"
+              >
+                <KunImage
+                  :src="character.figure"
+                  :alt="character.name"
+                  loading="eager"
+                  :aspect-ratio="figureFrame.aspectRatio"
+                  :object-fit="figureFrame.objectFit"
+                  :thumbhash="figureFrame.thumbhash"
+                  class-name="w-40 sm:w-56"
+                />
+              </button>
+            </KunLightboxGalleryItem>
 
-          <div
-            v-if="character.image"
-            class="bg-default-100 overflow-hidden rounded-xl"
-          >
-            <KunImage
+            <KunLightboxGalleryItem
+              v-if="character.image"
               :src="character.image"
               :alt="character.name"
-              loading="eager"
-              :aspect-ratio="bustFrame.aspectRatio"
-              :object-fit="bustFrame.objectFit"
-              :thumbhash="bustFrame.thumbhash"
-              :class-name="character.figure ? 'w-24 sm:w-28' : 'w-40 sm:w-56'"
-            />
+              :wrap="false"
+              v-slot="{ open }"
+            >
+              <button
+                type="button"
+                class="bg-default-100 cursor-zoom-in overflow-hidden rounded-xl"
+                :aria-label="`查看 ${character.name} 的头像`"
+                @click="open"
+              >
+                <KunImage
+                  :src="character.image"
+                  :alt="character.name"
+                  loading="eager"
+                  :aspect-ratio="bustFrame.aspectRatio"
+                  :object-fit="bustFrame.objectFit"
+                  :thumbhash="bustFrame.thumbhash"
+                  :class-name="
+                    character.figure ? 'w-24 sm:w-28' : 'w-40 sm:w-56'
+                  "
+                />
+              </button>
+            </KunLightboxGalleryItem>
           </div>
-        </div>
+        </KunLightboxGallery>
 
         <div class="min-w-0 grow space-y-3">
           <div class="space-y-1">
@@ -226,16 +267,11 @@ watch(
               >
                 {{ detail.intro }}
               </p>
-              <!-- Said out loud rather than passed off as an original: a
-                   machine-translated bio is worth reading AND worth knowing
-                   about. -->
-              <p
-                v-if="
-                  detail.intros.find((i) => i.intro === detail!.intro)?.machine
-                "
-                class="text-default-400 text-xs"
-              >
-                本段简介由机器翻译生成
+              <!-- Said out loud rather than passed off as the site's own: a
+                   borrowed, sometimes machine-translated bio is worth reading
+                   AND worth knowing about. -->
+              <p v-if="introCredit" class="text-default-400 text-xs">
+                {{ introCredit }}
               </p>
             </div>
 
@@ -269,6 +305,33 @@ watch(
               <KunIcon name="lucide:eye" />
               显示 {{ hiddenTraitCount }} 条剧透特征
             </KunButton>
+
+            <!-- The identity anchors. Cheap, and the reason a reader opens a
+                 character popup is often to go and read more elsewhere. A
+                 source with no verified template renders as plain text rather
+                 than as a guessed URL that 404s. -->
+            <div
+              v-if="detail.links.length"
+              class="flex flex-wrap items-center gap-3"
+            >
+              <template v-for="link in detail.links" :key="link.source">
+                <KunLink
+                  v-if="link.url"
+                  :to="link.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                  color="default"
+                  class-name="text-default-500 hover:text-default-700"
+                >
+                  {{ link.name }}
+                  <KunIcon name="lucide:external-link" class="inline size-3" />
+                </KunLink>
+                <span v-else class="text-default-400 text-sm">
+                  {{ link.name }}
+                </span>
+              </template>
+            </div>
           </template>
         </div>
       </div>
