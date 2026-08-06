@@ -20,7 +20,7 @@ import { storeToRefs } from 'pinia'
 // applied) is the real boundary; components branch on a named CAPABILITY here,
 // never on a role tier.
 //
-// Scope: exactly the 51 PURE-FORUM permissions. The 9 INFRA-PROXY permissions
+// Scope: exactly the 51 PURE-FORUM permissions. The 7 INFRA-PROXY permissions
 // (galgame edit-proposal review, taxonomy admin, trust moderation inbox,
 // galgame submission review, …) deliberately live OUTSIDE this table — their
 // source of truth is infra, not this service. Those UI spots keep useRole()
