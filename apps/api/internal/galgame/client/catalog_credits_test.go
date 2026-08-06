@@ -108,6 +108,46 @@ func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
 	}
 }
 
+// Every source parks unclassifiable credits in 其他, and routinely the same
+// person it already credited under a real role on the same work — a quarter of
+// the bucket duplicates a classified row. The panel prints no raw position, so
+// the duplicate says nothing: 其他 keeps only the names it alone can show.
+func TestCatalogStaff_OtherStaffYieldsToClassifiedRoles(t *testing.T) {
+	staff := catalogStaffFromCredits([]catCreditGroup{
+		creditGroup("scenario", "脚本", "雪仁"),
+		creditGroup("原画", "原画", "一河のあ"),
+		// 雪仁 arrives spaced — the merge key is the written form, same as the
+		// in-bucket spelling merge. 胡太郎 has no classified credit and stays.
+		creditGroup("other-staff", "其他", "雪 仁", "一河のあ", "胡太郎"),
+	})
+
+	var other []string
+	for _, g := range staff {
+		if g.RoleKey == "other-staff" {
+			for _, p := range g.People {
+				other = append(other, p.Name)
+			}
+		}
+	}
+	if got := strings.Join(other, ","); got != "胡太郎" {
+		t.Errorf("其他 = %s, want only the name with no classified credit", got)
+	}
+}
+
+// When everyone in 其他 already holds a classified credit, the group empties
+// and must disappear rather than render an empty heading.
+func TestCatalogStaff_OtherStaffDropsWhenFullyDuplicated(t *testing.T) {
+	staff := catalogStaffFromCredits([]catCreditGroup{
+		creditGroup("scenario", "脚本", "雪仁"),
+		creditGroup("other-staff", "其他", "雪仁"),
+	})
+	for _, g := range staff {
+		if g.RoleKey == "other-staff" {
+			t.Errorf("emptied 其他 still renders with %d people", len(g.People))
+		}
+	}
+}
+
 // The filmography header ranks roles by KEY. Ranking the rendered labels looked
 // equivalent and was not: only four roles carry a pinned Chinese label, so every
 // other one missed the rank table and kept whatever order the registry returned

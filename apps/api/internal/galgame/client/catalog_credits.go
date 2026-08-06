@@ -94,6 +94,10 @@ var staffRoleHidden = map[string]bool{"developer": true, "publisher": true}
 // longest group on the page.
 const staffRoleLast = "other-staff"
 
+// StaffRoleOtherKey exports the unmapped bucket's key for the one other place
+// that applies the same policy to it (a person's per-work role chips).
+const StaffRoleOtherKey = staffRoleLast
+
 // catalogStaffFromCredits folds, dedupes and orders a work's credit groups.
 func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 	type bucket struct {
@@ -148,6 +152,32 @@ func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 				b.people[i].Characters = appendUniqueStr(b.people[i].Characters, c.Character)
 			}
 		}
+	}
+
+	// 其他 is where every source parks the credits it could not classify, and
+	// all three of them also park people who ALREADY carry a classified credit
+	// on the same work (about a quarter of the bucket, empirically). The raw
+	// position behind the unmapped row is real registry data, but this panel
+	// does not print it — so beside "脚本: 雪仁", a second "其他: 雪仁" says
+	// nothing. Show a name in 其他 only when it is the one thing the panel has
+	// to say about that person.
+	if other := byKey[staffRoleLast]; other != nil {
+		elsewhere := make(map[string]bool)
+		for key, b := range byKey {
+			if key == staffRoleLast {
+				continue
+			}
+			for norm := range b.at {
+				elsewhere[norm] = true
+			}
+		}
+		kept := other.people[:0]
+		for _, p := range other.people {
+			if !elsewhere[normalizeCreditName(p.Name)] {
+				kept = append(kept, p)
+			}
+		}
+		other.people = kept
 	}
 
 	rank := make(map[string]int, len(staffRoleDisplayOrder))

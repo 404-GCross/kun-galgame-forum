@@ -18,6 +18,7 @@ package service
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -140,7 +141,6 @@ func (s *StaffService) GetDetail(
 		for _, r := range c.Roles {
 			key := client.StaffRoleCanonicalKey(r.RoleKey)
 			labelOf[key] = client.StaffRoleLabel(r.RoleKey, r.RoleName)
-			roleKeys = appendUniqueStr(roleKeys, key)
 			onThisWork = appendUniqueStr(onThisWork, key)
 			// One credit per character voiced, so a VA arrives several times on
 			// the same work. Collect the cast onto the one card rather than
@@ -148,6 +148,20 @@ func (s *StaffService) GetDetail(
 			if r.Character != "" {
 				characters = appendUniqueStr(characters, r.Character)
 			}
+		}
+		// The same display policy as the game page's 制作人员 panel: every
+		// source parks unclassifiable credits in 其他, and routinely parks
+		// people who already carry a classified credit on the same work. A
+		// 其他 chip beside a 脚本 chip says nothing, so it renders only when
+		// it is the sole thing known about this work. The header roles are
+		// accumulated AFTER the drop for the same reason.
+		if len(onThisWork) > 1 {
+			onThisWork = slices.DeleteFunc(onThisWork, func(key string) bool {
+				return key == client.StaffRoleOtherKey
+			})
+		}
+		for _, key := range onThisWork {
+			roleKeys = appendUniqueStr(roleKeys, key)
 		}
 		// Sorted per card too, not just in the header: unordered, every card led
 		// with 其他 — the unmapped bucket is the one role nearly every credit
