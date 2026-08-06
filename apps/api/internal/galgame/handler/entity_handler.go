@@ -30,11 +30,12 @@ import (
 // and the series block on every work record. Rendering those is a complete
 // facet, not the half-migration that was refused.
 type EntityHandler struct {
-	officialService *service.OfficialService
-	engineService   *service.EngineService
-	seriesService   *service.SeriesService
-	tagService      *service.TagService
-	staffService    *service.StaffService
+	officialService  *service.OfficialService
+	engineService    *service.EngineService
+	seriesService    *service.SeriesService
+	tagService       *service.TagService
+	staffService     *service.StaffService
+	characterService *service.CharacterService
 }
 
 func NewEntityHandler(
@@ -43,13 +44,15 @@ func NewEntityHandler(
 	series *service.SeriesService,
 	tag *service.TagService,
 	staff *service.StaffService,
+	character *service.CharacterService,
 ) *EntityHandler {
 	return &EntityHandler{
-		officialService: official,
-		engineService:   engine,
-		seriesService:   series,
-		tagService:      tag,
-		staffService:    staff,
+		officialService:  official,
+		engineService:    engine,
+		seriesService:    series,
+		tagService:       tag,
+		staffService:     staff,
+		characterService: character,
 	}
 }
 
@@ -262,6 +265,32 @@ func (h *EntityHandler) GetStaffDetail(c fiber.Ctx) error {
 		fiber.Query(c, "offset", 0),
 		fiber.Query(c, "limit", 50),
 		utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, detail)
+}
+
+// ──────────────────────────────────────────
+// Character
+// ──────────────────────────────────────────
+
+// GetCharacterDetail — GET /galgame-character/:id (catalog character id)
+//
+// offset/limit page the appearance list. Like the filmography it has no total,
+// so the response carries next_offset and nothing else.
+//
+// `works=0` asks for the identity alone — the game page's character modal,
+// which shows who she is and never the list of games she is in.
+func (h *EntityHandler) GetCharacterDetail(c fiber.Ctx) error {
+	detail, appErr := h.characterService.GetDetail(
+		c.Context(),
+		c.Params("id"),
+		fiber.Query(c, "offset", 0),
+		fiber.Query(c, "limit", 50),
+		utils.IsSFW(c),
+		fiber.Query(c, "works", 1) != 0,
 	)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -166,7 +166,7 @@ const hasContributorCard = computed(
 
               <!-- Cast before screenshots: both are picture blocks, and the
                    roster is the one that explains the other. -->
-              <GalgameCharacter :characters="galgame.characters ?? []" />
+              <GalgameCharacterPanel :characters="galgame.characters ?? []" />
 
               <GalgameGallery :screenshots="galgame.screenshots" />
 
