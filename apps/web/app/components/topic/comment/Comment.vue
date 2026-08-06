@@ -184,36 +184,18 @@ const handleSaveEdit = async (comment: TopicComment) => {
           <KunAvatar :user="comment.user" />
 
           <div class="flex w-full flex-col space-y-1">
-            <div class="flex items-center justify-between">
-              <div class="text-sm">
-                <span>{{ comment.user.name }}</span>
-                <span class="text-default-500 mx-1">
-                  {{ depth === 1 ? '回复' : '评论' }}
-                </span>
-                <KunLink
-                  size="sm"
-                  underline="hover"
-                  :to="`/user/${comment.target_user.id}`"
-                >
-                  {{ comment.target_user.name }}
-                </KunLink>
-              </div>
-
-              <div class="flex items-center gap-1">
-                <KunButton
-                  v-if="canEdit(comment) && editingId !== comment.id"
-                  :is-icon-only="true"
-                  variant="light"
-                  color="default"
-                  @click="handleStartEdit(comment)"
-                >
-                  <KunIcon name="lucide:pencil" />
-                </KunButton>
-                <TopicCommentDelete
-                  @remove-comment="handleRemoveComment"
-                  :comment="comment"
-                />
-              </div>
+            <div class="text-sm">
+              <span>{{ comment.user.name }}</span>
+              <span class="text-default-500 mx-1">
+                {{ depth === 1 ? '回复' : '评论' }}
+              </span>
+              <KunLink
+                size="sm"
+                underline="hover"
+                :to="`/user/${comment.target_user.id}`"
+              >
+                {{ comment.target_user.name }}
+              </KunLink>
             </div>
 
             <!-- Edit mode: textarea + save / cancel -->
@@ -260,24 +242,57 @@ const handleSaveEdit = async (comment: TopicComment) => {
                 </span>
               </span>
 
-              <div class="flex gap-2">
+              <!-- Same shape as a reply's footer: reactions as KunReaction
+                   pills, everything else behind ⋯. leading-none kills the
+                   descender the popover's inline-block wrapper would otherwise
+                   add under the row. -->
+              <div class="flex items-center gap-1 leading-none">
                 <TopicCommentLike :comment="comment" />
-                <KunButton
-                  :is-icon-only="true"
-                  variant="light"
-                  color="default"
-                  class-name="gap-1"
-                  @click="handleClickComment(comment)"
-                >
-                  <KunIcon name="uil:comment-dots" />
-                </KunButton>
-                <ReportButton
-                  v-if="comment.user.id !== currentUserId"
-                  subject-kind="forum_comment"
-                  :subject-id="comment.id"
-                  :snapshot="comment.content"
-                  :subject-url="`${kungal.domain.main}/topic/${comment.topic_id}?comment=${comment.id}`"
-                />
+                <KunTooltip text="评论">
+                  <KunReaction
+                    :toggle="false"
+                    size="sm"
+                    icon="uil:comment-dots"
+                    label="评论"
+                    @click="handleClickComment(comment)"
+                  />
+                </KunTooltip>
+                <KunPopover position="top-end">
+                  <template #trigger>
+                    <KunReaction
+                      :toggle="false"
+                      size="sm"
+                      icon="lucide:ellipsis"
+                      label="更多"
+                    />
+                  </template>
+
+                  <div class="flex w-44 flex-col gap-2 p-2">
+                    <KunButton
+                      v-if="canEdit(comment) && editingId !== comment.id"
+                      variant="light"
+                      color="default"
+                      size="sm"
+                      class-name="w-full justify-start gap-2 whitespace-nowrap"
+                      @click="handleStartEdit(comment)"
+                    >
+                      <KunIcon class-name="text-lg" name="lucide:pencil" />
+                      编辑评论
+                    </KunButton>
+                    <TopicCommentDelete
+                      :comment="comment"
+                      @remove-comment="handleRemoveComment"
+                    />
+                    <ReportButton
+                      v-if="comment.user.id !== currentUserId"
+                      menu
+                      subject-kind="forum_comment"
+                      :subject-id="comment.id"
+                      :snapshot="comment.content"
+                      :subject-url="`${kungal.domain.main}/topic/${comment.topic_id}?comment=${comment.id}`"
+                    />
+                  </div>
+                </KunPopover>
               </div>
             </div>
           </div>

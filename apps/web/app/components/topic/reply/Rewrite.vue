@@ -22,12 +22,17 @@ const handleClickRewrite = () => {
 </script>
 
 <template>
-  <KunTooltip v-if="isShowRewrite" text="重新编辑">
-    <KunReaction
-      :toggle="false"
-      icon="lucide:pencil"
-      label="重新编辑"
-      @click="handleClickRewrite"
-    />
-  </KunTooltip>
+  <!-- A ⋯ menu row, like its siblings 置顶 / 最佳答案 / 删除: editing is an owner
+       action, not something every reader needs a button for. -->
+  <KunButton
+    v-if="isShowRewrite"
+    variant="light"
+    color="default"
+    size="sm"
+    class-name="w-full justify-start gap-2 whitespace-nowrap"
+    @click="handleClickRewrite"
+  >
+    <KunIcon class-name="text-lg" name="lucide:pencil" />
+    重新编辑
+  </KunButton>
 </template>

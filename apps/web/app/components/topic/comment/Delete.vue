@@ -54,13 +54,17 @@ const handleDeleteComment = async () => {
 </script>
 
 <template>
+  <!-- A ⋯ menu row (the comment's edit / delete / report live there now), so it
+       matches ReportButton's `menu` shape rather than a bare icon button. -->
   <KunButton
     v-if="canDelete"
-    :is-icon-only="true"
     variant="light"
     color="danger"
+    size="sm"
+    class-name="w-full justify-start gap-2 whitespace-nowrap"
     @click="handleDeleteComment"
   >
-    <KunIcon name="lucide:trash-2" />
+    <KunIcon class-name="text-lg" name="lucide:trash-2" />
+    删除评论
   </KunButton>
 </template>

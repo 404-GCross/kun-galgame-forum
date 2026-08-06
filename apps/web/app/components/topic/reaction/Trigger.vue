@@ -25,13 +25,13 @@ const onViewHistory = () => {
 
 <template>
   <KunPopover ref="picker" position="top-start" opaque>
-    <!-- KunPopover wraps #trigger in an inline-block; a flex span here removes
-         the inline line-box so the icon sits level with the sibling pills/chips
-         (not nudged up by the baseline descender). -->
+    <!-- KunPopover wraps #trigger in an inline-block, whose line box adds a
+         descender's worth of dead space under the button. A flex span here was
+         supposed to remove it and measurably does not (the wrapper keeps its own
+         strut) — the row that hosts this trigger zeroes it with leading-none
+         instead. -->
     <template #trigger>
-      <span class="flex">
-        <KunReaction :toggle="false" icon="lucide:smile-plus" label="表态" />
-      </span>
+      <KunReaction :toggle="false" icon="lucide:smile-plus" label="表态" />
     </template>
 
     <TopicReactionPicker

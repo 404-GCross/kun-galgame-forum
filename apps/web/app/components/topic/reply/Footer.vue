@@ -27,7 +27,14 @@ const handleNewComment = (comment: TopicComment) => {
 
 <template>
   <div class="w-full">
-    <div class="flex items-center justify-between gap-1">
+    <!-- leading-none: KunTooltip / KunPopover wrap their trigger in an
+         inline-block, whose line box adds the font's descender (~3px) under the
+         button. The bare KunReactions beside them have no such wrapper, so the
+         row grew taller than its buttons and every button hung off its top edge
+         — reading as "not vertically centred". Zeroing the strut collapses the
+         phantom space; the buttons set their own line-height via text-sm, and
+         the tooltip / popover panels teleport to body, so nothing inherits it. -->
+    <div class="flex items-center justify-between gap-1 leading-none">
       <!-- 表态 sits alone on the left, the way it does in the topic's own
            footer; the reaction chips it feeds are their own row above. -->
       <TopicReactionTrigger />
@@ -39,7 +46,6 @@ const handleNewComment = (comment: TopicComment) => {
           :target-floor="reply.floor"
           :target-reply-id="reply.id"
         />
-        <TopicReplyRewrite :reply="reply" />
         <KunTooltip text="评论">
           <KunReaction
             :toggle="false"
@@ -70,6 +76,7 @@ const handleNewComment = (comment: TopicComment) => {
               分享该回复
             </KunButton>
             <template v-if="id">
+              <TopicReplyRewrite :reply="reply" />
               <TopicReplyPin :reply="reply" />
               <TopicReplyBestAnswer :reply="reply" />
               <TopicReplyDelete :reply="reply" />
