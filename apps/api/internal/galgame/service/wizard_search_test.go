@@ -7,9 +7,11 @@ package service
 //     pending. Narrowing that to `live` hides every unpublished entry, which is
 //     the shape of the 52k incident: what the wizard cannot see gets submitted
 //     again.
-//   - the PENDING half must hit the registry's PER-USER claim face. It used to
-//     ride the wiki search's include_pending merge, which is why it could only
-//     be asked as part of a search; it is now a question in its own right.
+//   - the PENDING half must hit the registry's PER-USER claim face — on the
+//     BEARER plane since wave 179, where "mine" means the token's holder and no
+//     uid or site is sent at all. It used to ride the wiki search's
+//     include_pending merge, which is why it could only be asked as part of a
+//     search; it is now a question in its own right.
 
 import (
 	"net/http"
@@ -24,11 +26,17 @@ import (
 )
 
 type wizardRecorder struct {
-	mu        sync.Mutex
-	catalogQ  url.Values
-	claimsQ   url.Values
-	claimsHit int
-	wikiHits  int
+	mu       sync.Mutex
+	catalogQ url.Values
+	claimsQ  url.Values
+	// claimsPath / claimsAuth record WHICH plane the pending half took. A
+	// silent fall back onto the S2S face would still return rows — somebody
+	// else's, keyed off a uid the forum chose — which is the failure the Bearer
+	// migration exists to make impossible.
+	claimsPath string
+	claimsAuth string
+	claimsHit  int
+	wikiHits   int
 }
 
 func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
@@ -51,6 +59,8 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			]}}`
 		case strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
+			r.claimsPath = req.URL.Path
+			r.claimsAuth = req.Header.Get("Authorization")
 			r.claimsHit++
 			body = `{"code":0,"message":"ok","data":{"items":[
 			  {"work_id":64689,"display_name":"曇った瞳に恋してる","site":"kungal",
@@ -76,7 +86,7 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 
 func wizardSearch(t *testing.T, svc *SubmissionService) *WizardSearchPage {
 	t.Helper()
-	page, appErr := svc.SearchWithPending(t.Context(), 7,
+	page, appErr := svc.SearchWithPending(t.Context(), "user-jwt",
 		url.Values{"q": {"sakura"}, "limit": {"12"}})
 	if appErr != nil {
 		t.Fatalf("SearchWithPending: %v", appErr)
@@ -154,12 +164,19 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	if rec.wikiHits != 0 {
 		t.Errorf("wiki face hits = %d, want 0 — the pending half is terminal now", rec.wikiHits)
 	}
-	// Scoped to kungal's own tenant and to the states a submitter is waiting on:
-	// an unscoped query would show another product's backlog, and including
-	// `live` would put finished entries back into "还没通过".
-	if got := rec.claimsQ.Get("site"); got != "kungal" {
-		t.Errorf("site = %q, want kungal", got)
+	// The tenant is the token's now, so sending one would be either redundant
+	// or a claim about somebody else's product.
+	if rec.claimsPath != "/api/v1/user/catalog/claims/mine" {
+		t.Errorf("pending half hit %q, want the user plane's own-claims face", rec.claimsPath)
 	}
+	if rec.claimsAuth != "Bearer user-jwt" {
+		t.Errorf("pending half auth = %q, want the caller's bearer", rec.claimsAuth)
+	}
+	if got := rec.claimsQ.Get("site"); got != "" {
+		t.Errorf("site = %q, want it absent — the acting tenant rides the token", got)
+	}
+	// Narrowed to the states a submitter is waiting on: including `live` would
+	// put finished entries back into "还没通过".
 	if got := rec.claimsQ.Get("claim_state"); got != "pending,declined" {
 		t.Errorf("claim_state = %q, want pending,declined", got)
 	}

@@ -26,19 +26,17 @@ import (
 	"time"
 )
 
-// EditActor is the asserted end-user identity (the community S2S posture), now
-// used only by the CLAIMS face — the editing engine takes the user's own token
-// and asserts nothing.
+// EditActor — the asserted end-user identity (uid + roles + trust tier) that
+// the S2S posture used to carry — is GONE as of wave 179, and this note is here
+// so nobody reintroduces it as a convenience.
 //
-// It carried an IsEntityOwner flag until wave 178, when the catalog started
-// holding per-user work ownership itself (catalog_work.owner_user_id) and
-// deriving the capability from the token. A field the forum could assert about
-// somebody else's rights is exactly what that move was for; it is gone.
-type EditActor struct {
-	UserID    int64    `json:"user_id"`
-	Roles     []string `json:"roles,omitempty"`
-	TrustTier int16    `json:"trust_tier,omitempty"`
-}
+// It shrank once already: wave 178 dropped its IsEntityOwner flag when the
+// catalog started holding per-user work ownership itself. Wave 179 took the
+// rest, because the claims face was its last consumer and that face now derives
+// the subject, the tenant and the review permission from the user's own token.
+// Nothing S2S is left that acts on a person's behalf — the surviving Basic-authed
+// calls are reads with no actor at all — so a struct whose whole job was for the
+// forum to assert who somebody is has no honest use.
 
 // EditProposal is the wire shape of a proposal (status: open / merged /
 // declined / withdrawn). EffectivePatch and Amendments only arrive on the

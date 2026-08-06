@@ -27,6 +27,15 @@ import (
 // the edit face (editDo), so a 409 keeps its body: an illegal transition
 // answers with the claim's CURRENT state, which is the whole reason the action
 // endpoints exist instead of a claim_state patch.
+//
+// Wave 179 emptied this file of WRITES. Every human lifecycle move — the mint
+// and all eight actions — now speaks as the user over Bearer (user_claims.go),
+// so ActOnClaim / SubmitWork and their asserted-actor request types were
+// deleted rather than left as a second way in. What stays is exactly what has
+// no user behind it: the transition feed the claim-event cron reads, and
+// UserClaims(uid), which answers "what has THAT person published" for a profile
+// page nobody holds a token for. The shared shapes (states, actions, results,
+// the per-user page) are declared here and reused by both planes.
 
 // Claim states — the public claim vocabulary (`claimed_by.state`). Eternal
 // wire values.
@@ -54,68 +63,12 @@ const (
 	ClaimActionUnban    = "unban"
 )
 
-// ClaimActionRequest is the body of one lifecycle action. Site is the acting
-// tenant and must equal this client's catalog_site binding for the four owner
-// actions; review actions ignore it (a reviewer acts across tenants and the
-// event still records the claim's own site).
-type ClaimActionRequest struct {
-	Site  string    `json:"site,omitempty"`
-	Actor EditActor `json:"actor"`
-	// ProductWorkID is read by `claim` alone — the product-side id the registry
-	// row starts pointing at — and ignored by every other action.
-	ProductWorkID int64 `json:"product_work_id,omitempty"`
-	// Reason is recorded on the event. REQUIRED by decline: a refusal the
-	// submitter cannot act on is the failure mode the field exists to prevent.
-	Reason string `json:"reason,omitempty"`
-}
-
 // ClaimActionResult is what the transition did.
 type ClaimActionResult struct {
 	WorkID  int64   `json:"work_id"`
 	From    *string `json:"from_state"`
 	To      string  `json:"to_state"`
 	EventID int64   `json:"event_id"`
-}
-
-// ActOnClaim performs one lifecycle action on a registry work.
-//
-// An illegal transition surfaces as an *EditAPIError with status 409 whose
-// message names the current state — callers render it rather than retrying,
-// because the losing side of a race has already had its answer.
-func (c *Client) ActOnClaim(ctx context.Context, workID int64, action string, req ClaimActionRequest) (*ClaimActionResult, error) {
-	return editPost[ClaimActionResult](ctx,
-		c, "/api/v1/catalog/works/"+strconv.FormatInt(workID, 10)+"/claim-actions/"+action, req)
-}
-
-// WorkSubmitRequest mints a registry work straight into `pending` — the
-// registry-native replacement for the wiki's "submit a new galgame" write.
-//
-// Fields is keyed by the SAME field keys the editing face registers for
-// catalog.work, so one schema drives both the submission form and every later
-// edit of the same entry. Two keys the matrix does not have and this face
-// therefore refuses: a work-level release date (send Released; it becomes one
-// curated release row) and a status (lifecycle is claim_state, moved only by
-// the semantic actions). Covers and screenshots are not accepted either — the
-// bytes are uploaded first and attached as a later edit.
-//
-// ProductWorkID is OMITTED by kungal, and that is the whole id story: the
-// registry issues the identity and the claim adopts the minted work's own id,
-// which the response returns. One allocator instead of two.
-//
-// The alternative — the forum handing out ids from its own sequence — is what
-// this replaces, and it was a standing hazard rather than a mere preference:
-// two sequences advancing independently over one shared key space stay correct
-// only for as long as somebody keeps reseeding the follower, and the failure is
-// silent (a collision reads as "your submission already exists"). Adopting a
-// primary key is unique by construction and has nothing to keep in step.
-type WorkSubmitRequest struct {
-	Site  string    `json:"site"`
-	Actor EditActor `json:"actor"`
-	// ProductWorkID anchors the claim at an id the product allocated. Omit it
-	// (0) to let the registry issue one; `omitempty` is what carries that.
-	ProductWorkID int64           `json:"product_work_id,omitempty"`
-	Fields        map[string]any  `json:"fields"`
-	Released      *WorkSubmitDate `json:"released,omitempty"`
 }
 
 // WorkSubmitDate is the fuzzy submitted date. The nullable tail IS the
@@ -138,13 +91,6 @@ type WorkSubmitResult struct {
 	ClaimState    string `json:"claim_state"`
 	EventID       int64  `json:"event_id"`
 	ReleaseID     int64  `json:"release_id,omitempty"`
-}
-
-// SubmitWork files a new submission. Idempotency is the claim's own unique key
-// (medium, site, product_work_id): a retried wizard gets a 409 naming the work
-// it already created and its current state, and never mints a second identity.
-func (c *Client) SubmitWork(ctx context.Context, req WorkSubmitRequest) (*WorkSubmitResult, error) {
-	return editPost[WorkSubmitResult](ctx, c, "/api/v1/catalog/works/submit", req)
 }
 
 // ClaimEventFeedItem is one claim transition.
@@ -240,6 +186,12 @@ type UserClaimFilter struct {
 }
 
 // UserClaims lists the works a user has acted on, newest activity first.
+//
+// This is the THIRD-PERSON read and the only reason the S2S claim face still
+// exists: a profile page counts what somebody else has published, and there is
+// no token of theirs to hold. The caller's OWN list is MyClaims — asking this
+// one with the session's uid would work and would still be wrong, because it
+// makes the forum the authority on who is asking.
 func (c *Client) UserClaims(ctx context.Context, uid int64, f UserClaimFilter) (*UserClaimPage, error) {
 	q := url.Values{}
 	if f.Site != "" {

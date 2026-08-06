@@ -22,8 +22,11 @@ import (
 //
 // Authority: the four verdicts require `catalog.claim.review`, a permission
 // granted to moderator and up so that the wiki's moderation staffing carries
-// over unchanged. The forum's own RequireModerator gate stays as the ENTRY
-// check; the registry re-checks the asserted actor, so this BFF holds no policy.
+// over unchanged. Since wave 179 that check runs against the MODERATOR'S OWN
+// TOKEN — their roles as the permission console currently holds them, not as
+// kungal asserted them — so the forum's RequireModerator gate has become a pure
+// view/entry check with no say in the outcome. Nothing here holds policy, and a
+// grant made in the console takes effect without a forum deploy.
 type ClaimReviewService struct {
 	galgameClient *client.GalgameClient
 	catalog       *catalogclient.Client
@@ -102,14 +105,15 @@ var reviewActions = map[string]bool{
 	catalogclient.ClaimActionUnban:   true,
 }
 
-// Review records one verdict on a submission.
+// Review records one verdict on a submission, as the reviewer themselves.
 //
-// The site is deliberately NOT sent: a review action is cross-tenant authority
-// and the registry records the claim's own site on the event. Sending kungal's
-// binding here would look like tenancy and behave like nothing.
+// The site is deliberately NOT sent — a review action is cross-tenant authority
+// and the registry records the claim's own site on the event — and since wave
+// 179 the reviewer is not sent either: their token IS the assertion, checked
+// against catalog.claim.review at the only place that can be sure of it.
 func (s *ClaimReviewService) Review(
 	ctx context.Context,
-	actor catalogclient.EditActor,
+	accessToken string,
 	gid int,
 	action string,
 	reason string,
@@ -130,8 +134,8 @@ func (s *ClaimReviewService) Review(
 	if !ok {
 		return nil, errors.ErrNotFound("条目不存在")
 	}
-	res, err := s.catalog.ActOnClaim(ctx, workID, action, catalogclient.ClaimActionRequest{
-		Actor: actor, Reason: reason,
+	res, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, action, catalogclient.UserClaimActionRequest{
+		Reason: reason,
 	})
 	if err != nil {
 		return nil, claimActionError(err)

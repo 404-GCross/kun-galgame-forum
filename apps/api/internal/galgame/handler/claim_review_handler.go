@@ -11,10 +11,12 @@ import (
 // ClaimReviewHandler is the moderation face of the submission lifecycle.
 //
 // It replaces the wiki admin message queue plus its status-change proxy. The
-// route gate stays RequireModerator — the forum's own entry check — while the
-// registry re-checks the asserted actor against catalog.claim.review, which
-// wave 157 granted moderator and up precisely so this transition changes no
-// one's rights.
+// route gate stays RequireModerator, but since wave 179 it is a PURE VIEW gate:
+// it decides which page opens, and the verdict itself is authorized by the
+// registry against catalog.claim.review over the MODERATOR'S OWN TOKEN. That is
+// the same call wave 178 made for the proposal workbench, for the same reason —
+// a local mirror of a remote rule is a second answer waiting to drift, and the
+// permission console feeds the token side without a forum deploy.
 type ClaimReviewHandler struct {
 	svc *service.ClaimReviewService
 }
@@ -46,7 +48,7 @@ type reviewRequest struct {
 // this, and why" a recorded fact rather than something a reviewer had to
 // remember to write down somewhere else.
 func (h *ClaimReviewHandler) Review(c fiber.Ctx) error {
-	actor, appErr := claimActor(c)
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -58,7 +60,7 @@ func (h *ClaimReviewHandler) Review(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, errors.ErrBadRequest("请求格式错误"))
 	}
-	res, appErr := h.svc.Review(c.Context(), actor, gid, req.Action, req.Reason)
+	res, appErr := h.svc.Review(c.Context(), token, gid, req.Action, req.Reason)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

@@ -24,15 +24,18 @@ import (
 // So both halves are pinned here.
 
 type submitRecorder struct {
-	mu       sync.Mutex
-	body     map[string]any
-	editBody map[string]any
-	// editPath / editAuth record WHICH plane the banner edit took. Since wave
-	// 178 the editing engine has only one, the user's own token — the claims
-	// mint next to it is still asserted, and a banner that quietly followed the
-	// claim onto the S2S face would work while undoing the dogfood.
-	editPath string
-	editAuth string
+	mu   sync.Mutex
+	body map[string]any
+	// submitPath / submitAuth record WHICH plane the MINT took. Until wave 179
+	// it was the asserted-actor S2S face sitting next to a Bearer banner edit —
+	// two planes for one gesture, and the only one that let kungal name a
+	// submitter who was not the one logged in. Both halves are the user's token
+	// now, and a silent fall back to Basic would still work while undoing that.
+	submitPath string
+	submitAuth string
+	editBody   map[string]any
+	editPath   string
+	editAuth   string
 }
 
 func (r *submitRecorder) service(t *testing.T) *SubmissionService {
@@ -46,6 +49,8 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 		switch {
 		case strings.HasSuffix(req.URL.Path, "/catalog/works/submit"):
 			r.body = body
+			r.submitPath = req.URL.Path
+			r.submitAuth = req.Header.Get("Authorization")
 		case strings.Contains(req.URL.Path, "/catalog/edit/proposals"):
 			r.editBody = body
 			r.editPath = req.URL.Path
@@ -94,7 +99,7 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	res, appErr := svc.Submit(t.Context(), catalogclient.EditActor{UserID: 7}, "user-jwt",
+	res, appErr := svc.Submit(t.Context(), "user-jwt",
 		&SubmissionForm{NameJaJP: "白恋サクラ", AgeLimit: "r18", ContentLimit: "nsfw"})
 	if appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
@@ -107,8 +112,19 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	if _, present := rec.body["product_work_id"]; present {
 		t.Errorf("request carried product_work_id %v — kungal must name no id", rec.body["product_work_id"])
 	}
-	if rec.body["site"] != "kungal" {
-		t.Errorf("site = %v, want kungal", rec.body["site"])
+	// The mint speaks as the user: the tenant and the actor are the token's, so
+	// neither may appear in the body.
+	if rec.submitPath != "/api/v1/user/catalog/works/submit" {
+		t.Errorf("mint hit %q, want the user plane", rec.submitPath)
+	}
+	if rec.submitAuth != "Bearer user-jwt" {
+		t.Errorf("mint auth = %q, want the submitter's bearer and no Basic credential", rec.submitAuth)
+	}
+	if _, ok := rec.body["site"]; ok {
+		t.Errorf("the mint must assert no site: %v", rec.body)
+	}
+	if _, ok := rec.body["actor"]; ok {
+		t.Errorf("the mint must assert no actor: %v", rec.body)
 	}
 	// The gid is the ADOPTED id off the response, not anything local.
 	if res.GID != 90210 {
@@ -126,7 +142,7 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	if _, appErr := svc.Submit(t.Context(), catalogclient.EditActor{UserID: 7}, "user-jwt",
+	if _, appErr := svc.Submit(t.Context(), "user-jwt",
 		&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw", BannerHash: "abc123"}); appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
 	}
@@ -143,7 +159,8 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 		t.Errorf("entity_id = %v, want the registry work id 90210", rec.editBody["entity_id"])
 	}
 	// The banner is an ordinary edit, so it takes the ordinary edit plane: the
-	// submitter's own token, no asserted actor and no site.
+	// submitter's own token, no asserted actor and no site — the same plane the
+	// mint above now takes.
 	if rec.editPath != "/api/v1/user/catalog/edit/proposals" {
 		t.Errorf("banner edit hit %q, want the user plane", rec.editPath)
 	}
@@ -169,7 +186,7 @@ func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	res, appErr := svc.Submit(t.Context(), catalogclient.EditActor{UserID: 7}, "user-jwt",
+	res, appErr := svc.Submit(t.Context(), "user-jwt",
 		&SubmissionForm{NameJaJP: "白恋サクラ", AgeLimit: "all", ContentLimit: "sfw"})
 	if appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
@@ -190,7 +207,7 @@ func TestSubmitRefusesATitlelessForm(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	if _, appErr := svc.Submit(t.Context(), catalogclient.EditActor{UserID: 7}, "user-jwt",
+	if _, appErr := svc.Submit(t.Context(), "user-jwt",
 		&SubmissionForm{AgeLimit: "all"}); appErr == nil {
 		t.Fatal("want a refusal for a form with no title")
 	}

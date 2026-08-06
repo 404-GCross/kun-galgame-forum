@@ -1,12 +1,14 @@
 // The catalog USER-TOKEN write plane (wave 176), the first face this BFF
 // speaks as the USER rather than as itself.
 //
-// Every other call in this package is S2S: HTTP Basic with kungal's OAuth
-// client credentials, with the end user ASSERTED in the payload (see
-// edit.go's EditActor). The user plane inverts that — the forum forwards the
-// logged-in user's own OAuth access token as a Bearer, and the catalog derives
-// BOTH the actor and the acting site from the token itself. Nothing about who
-// is voting rides in the body; there is no body at all.
+// Every other call in this package was S2S when this file landed: HTTP Basic
+// with kungal's OAuth client credentials, with the end user ASSERTED in the
+// payload (edit.go's EditActor, retired in wave 179). The user plane inverts
+// that — the forum forwards the logged-in user's own OAuth access token as a
+// Bearer, and the catalog derives BOTH the actor and the acting site from the
+// token itself. Nothing about who is voting rides in the body; there is no body
+// at all. Waves 177-179 finished the migration this file started, so what is
+// left on the S2S channel asserts nothing about anybody.
 //
 // Consequences worth stating, because they are the reason this file is
 // separate rather than one more helper in edit.go:

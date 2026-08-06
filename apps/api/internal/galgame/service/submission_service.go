@@ -62,7 +62,13 @@ func NewSubmissionService(
 }
 
 // submissionSite is the tenant kungal files its claims under. It must equal the
-// forum OAuth client's catalog_site binding or every owner action is a 403.
+// forum OAuth client's catalog_site binding.
+//
+// Since wave 179 no WRITE sends it: the acting tenant is derived from the
+// user's token, the same binding read from the other end. What still names it
+// explicitly are the reads that have no token behind them — the moderation
+// queue (whose whole job is to show kungal's backlog and nobody else's) and the
+// third-person profile stats.
 const submissionSite = client.ClaimSiteKungal
 
 // SubmitResult is what the wizard needs after filing: the id the entry will
@@ -87,14 +93,16 @@ type SubmitResult struct {
 // one; the stub is created later by the claim-event cron at the moment the claim
 // goes live. That is the invariant the wiki flow had ("a pending submission gets
 // no stub"), kept without a second copy of the lifecycle living locally.
-// accessToken is the submitter's own OAuth token, carried alongside the asserted
-// actor because the two halves of this operation now speak on different planes:
-// the CLAIM half (SubmitWork) is still an asserted-actor S2S call, while the
-// banner edit below is an ordinary user edit and rides the token like every
-// other edit does since wave 178.
+//
+// accessToken is the submitter's own OAuth token and it now carries BOTH halves
+// of the operation. Until wave 179 the mint was an asserted-actor S2S call
+// sitting next to a Bearer banner edit — two planes for one user gesture, and
+// the only one of them that let kungal name a submitter who was not the one
+// logged in. The claim face derives the actor and the tenant from the token
+// like the edit face already did, so the split is gone and the site constant no
+// longer rides along.
 func (s *SubmissionService) Submit(
 	ctx context.Context,
-	actor catalogclient.EditActor,
 	accessToken string,
 	form *SubmissionForm,
 ) (*SubmitResult, *errors.AppError) {
@@ -105,8 +113,7 @@ func (s *SubmissionService) Submit(
 	if appErr != nil {
 		return nil, appErr
 	}
-	res, err := s.catalog.SubmitWork(ctx, catalogclient.WorkSubmitRequest{
-		Site: submissionSite, Actor: actor,
+	res, err := s.catalog.SubmitWorkUser(ctx, accessToken, catalogclient.UserWorkSubmitRequest{
 		Fields: form.Fields(), Released: released,
 	})
 	if err != nil {
@@ -135,12 +142,18 @@ func (s *SubmissionService) Submit(
 // whole operation is one state move. The two local side effects are unchanged,
 // including the moemoepoint key, which is stable per (galgame, claimer) so a
 // retried claim cannot double-award.
+//
+// uid is the LOCAL award's payee and nothing else — the registry learns who
+// acted from the token. It is passed rather than derived because moemoepoint is
+// a forum ledger keyed on a forum user id; reading it as an authority claim is
+// the mistake wave 179 removed everywhere it mattered.
 func (s *SubmissionService) Claim(
 	ctx context.Context,
-	actor catalogclient.EditActor,
+	accessToken string,
+	uid int64,
 	gid int,
 ) (*catalogclient.ClaimActionResult, *errors.AppError) {
-	res, appErr := s.act(ctx, actor, gid, catalogclient.ClaimActionPublish, "")
+	res, appErr := s.act(ctx, accessToken, gid, catalogclient.ClaimActionPublish, "")
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -150,9 +163,9 @@ func (s *SubmissionService) Claim(
 	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
 		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
 	}
-	moemoepoint.Award(int(actor.UserID), constants.RewardCreateGalgame,
+	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
 		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
-		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(actor.UserID, 10)))
+		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(uid, 10)))
 	return res, nil
 }
 
@@ -162,10 +175,10 @@ func (s *SubmissionService) Claim(
 // to the same entry — one write path for a field, whoever is changing it.
 func (s *SubmissionService) Resubmit(
 	ctx context.Context,
-	actor catalogclient.EditActor,
+	accessToken string,
 	gid int,
 ) (*catalogclient.ClaimActionResult, *errors.AppError) {
-	return s.act(ctx, actor, gid, catalogclient.ClaimActionSubmit, "")
+	return s.act(ctx, accessToken, gid, catalogclient.ClaimActionSubmit, "")
 }
 
 // Withdraw pulls a submission back to draft.
@@ -177,16 +190,22 @@ func (s *SubmissionService) Resubmit(
 // be resubmitted without re-typing it.
 func (s *SubmissionService) Withdraw(
 	ctx context.Context,
-	actor catalogclient.EditActor,
+	accessToken string,
 	gid int,
 ) (*catalogclient.ClaimActionResult, *errors.AppError) {
-	return s.act(ctx, actor, gid, catalogclient.ClaimActionWithdraw, "")
+	return s.act(ctx, accessToken, gid, catalogclient.ClaimActionWithdraw, "")
 }
 
-// act resolves a gid to its registry work and performs one owner action.
+// act resolves a gid to its registry work and performs one owner action as the
+// token's subject.
+//
+// There is no local ownership pre-flight and deliberately none: since wave 179
+// the registry checks that the token's uid IS the work's owner, so "publish
+// somebody else's draft" is refused at the only place that can actually know.
+// A forum-side mirror of that rule would be a second answer waiting to drift.
 func (s *SubmissionService) act(
 	ctx context.Context,
-	actor catalogclient.EditActor,
+	accessToken string,
 	gid int,
 	action string,
 	reason string,
@@ -195,8 +214,8 @@ func (s *SubmissionService) act(
 	if appErr != nil {
 		return nil, appErr
 	}
-	res, err := s.catalog.ActOnClaim(ctx, workID, action, catalogclient.ClaimActionRequest{
-		Site: submissionSite, Actor: actor, Reason: reason,
+	res, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, action, catalogclient.UserClaimActionRequest{
+		Reason: reason,
 	})
 	if err != nil {
 		return nil, claimActionError(err)
@@ -218,21 +237,35 @@ func (s *SubmissionService) workIDOf(ctx context.Context, gid int) (int64, *erro
 
 // claimActionError maps the lifecycle face's refusals onto the house envelope.
 //
-// A 409 keeps its status AND its message: an illegal transition names the state
-// the claim is actually in, and that is the point of semantic actions — the
-// losing side of a race has already been told what happened, and should
+// It reads the USER plane's taxonomy since wave 179 (*UserAPIError plus the two
+// sentinels only a forwarded token can produce). The response SHAPES are
+// unchanged — which plane carried the write is an implementation detail no user
+// chose — with one addition that could not exist before:
+//
+//   - ErrInsufficientScope is a re-login prompt (code 235), never a 403. The
+//     user's grant predates `catalog:edit` and no refresh can widen it, so
+//     telling them "你没有权限" would be a lie about a permission they hold.
+//   - ErrUnauthorized is a dead session, not an upstream fault.
+//
+// A 409 still keeps its status AND its message: an illegal transition names the
+// state the claim is actually in, which is the point of semantic actions — the
+// losing side of a race has already been told what happened and should
 // re-render rather than retry.
 func claimActionError(err error) *errors.AppError {
-	var apiErr *catalogclient.EditAPIError
+	var apiErr *catalogclient.UserAPIError
 	switch {
+	case stderrors.Is(err, catalogclient.ErrInsufficientScope):
+		return errors.ErrReauthRequired("投稿需要新的授权，请退出登录后重新登录以授予该权限")
+	case stderrors.Is(err, catalogclient.ErrUnauthorized):
+		return errors.ErrAuthExpired()
+	case stderrors.Is(err, catalogclient.ErrNotFound):
+		return errors.ErrNotFound("条目不存在")
 	case stderrors.Is(err, catalogclient.ErrNotConfigured):
 		return errors.New(errors.CodeBiz, "资料库服务暂不可用", http.StatusServiceUnavailable)
 	case stderrors.As(err, &apiErr):
 		switch apiErr.Status {
 		case http.StatusForbidden:
 			return errors.ErrForbidden("你没有权限执行此操作")
-		case http.StatusNotFound:
-			return errors.ErrNotFound("条目不存在")
 		case http.StatusUnprocessableEntity:
 			return errors.ErrValidation(apiErr.Message)
 		case http.StatusConflict:
@@ -263,17 +296,20 @@ var mineStates = []string{
 // deliberate: what a submitter needs to see on their own submission is the
 // reviewer's verdict and note — an event they did not cause. That is why the
 // wiki's separate "my notifications" query has no successor here.
+//
+// "Mine" is the TOKEN's since wave 179: there is no uid to pass and therefore
+// no way for a caller to mean somebody else by mistake, which is the class of
+// bug an "own data" endpoint taking an id argument invites.
 func (s *SubmissionService) ListMine(
 	ctx context.Context,
-	uid int64,
+	accessToken string,
 	query url.Values,
 ) (*catalogclient.UserClaimPage, *errors.AppError) {
 	states := mineStates
 	if raw := query.Get("claim_state"); raw != "" {
 		states = splitCSV(raw)
 	}
-	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
-		Site:        submissionSite,
+	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
 		ClaimStates: states,
 		Before:      int64(atoiOr(query.Get("before"), 0)),
 		Limit:       atoiOr(query.Get("limit"), 20),
@@ -287,18 +323,11 @@ func (s *SubmissionService) ListMine(
 	return page, nil
 }
 
-// CountMine is ListMine reduced to its total — the per-user statistic the
-// profile page needs. The total is counted under the same filter and is
-// independent of the cursor, which is what lets one face answer both.
-func (s *SubmissionService) CountMine(ctx context.Context, uid int64, states []string) (int64, error) {
-	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
-		Site: submissionSite, ClaimStates: states, Limit: 1,
-	})
-	if err != nil {
-		return 0, err
-	}
-	return page.Total, nil
-}
+// CountMine is gone (wave 179). It was ListMine reduced to its total, and it
+// had no caller: the profile statistic it described is served by
+// GalgameUserStatsService, which reads the THIRD-PERSON face because a profile
+// page is somebody else's. Migrating it would have meant an accessToken
+// parameter nobody could supply.
 
 // ─── the publish wizard search ───────────────────────────────────────────
 
@@ -326,14 +355,14 @@ type WizardSearchPage struct {
 // SearchWithPending serves GET /galgame/search/wizard.
 func (s *SubmissionService) SearchWithPending(
 	ctx context.Context,
-	uid int64,
+	accessToken string,
 	query url.Values,
 ) (*WizardSearchPage, *errors.AppError) {
 	items, total, appErr := s.wizardItems(ctx, query)
 	if appErr != nil {
 		return nil, appErr
 	}
-	pending, appErr := s.wizardPending(ctx, uid)
+	pending, appErr := s.wizardPending(ctx, accessToken)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -397,10 +426,9 @@ func (s *SubmissionService) wizardItems(
 // only ever be asked as part of a search.
 func (s *SubmissionService) wizardPending(
 	ctx context.Context,
-	uid int64,
+	accessToken string,
 ) ([]catalogclient.UserClaimItem, *errors.AppError) {
-	page, err := s.catalog.UserClaims(ctx, uid, catalogclient.UserClaimFilter{
-		Site:        submissionSite,
+	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
 		ClaimStates: []string{catalogclient.ClaimStatePending, catalogclient.ClaimStateDeclined},
 		Limit:       wizardDefaultLimit,
 	})
