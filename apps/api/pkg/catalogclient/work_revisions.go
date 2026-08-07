@@ -23,11 +23,12 @@ import (
 // enrichment in parallel, so a rename on their side is a one-line fix here
 // rather than a hunt through the sync.
 const (
-	// workRevisionsPath is the engine's revision list.
-	workRevisionsPath = "/api/v1/catalog/edit/revisions"
+	// workRevisionsPath is the engine's global cursor feed (NOT
+	// /edit/revisions, which is one entity's log newest-first).
+	workRevisionsPath = "/api/v1/catalog/edit-revisions/feed"
 	// workRevisionsAfterParam is the exclusive id cursor: strictly-after
 	// replay, ascending.
-	workRevisionsAfterParam = "after"
+	workRevisionsAfterParam = "since"
 	workRevisionsLimitParam = "limit"
 	workRevisionsSiteParam  = "site"
 	workRevisionsTypeParam  = "entity_type"
