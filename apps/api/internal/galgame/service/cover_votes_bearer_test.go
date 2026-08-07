@@ -31,6 +31,9 @@ type coverPlaneRecorder struct {
 	path  string
 	query string
 	auth  string
+	// staleToken makes the user face answer the pre-scope 403 (code 233),
+	// the way the catalog denies a session minted before catalog:edit existed.
+	staleToken bool
 }
 
 // server answers the gid→work bridge (gid 1 = work 1000) and both cover faces.
@@ -57,8 +60,14 @@ func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 
 		r.mu.Lock()
 		r.path, r.query, r.auth = req.URL.Path, req.URL.RawQuery, req.Header.Get("Authorization")
+		stale := r.staleToken
 		r.mu.Unlock()
 
+		if stale && strings.Contains(req.URL.Path, "/user/catalog/") {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"code":233,"message":"missing required scope: catalog:edit"}`))
+			return
+		}
 		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"covers":[` +
 			`{"id":88,"image_hash":"abc","vote_count":3,"voted":true}]}}`))
 	}))
@@ -94,6 +103,28 @@ func TestCoverVotesReadAsTheViewerWhenTheyHaveAToken(t *testing.T) {
 	}
 	if covers[0].ID != 88 || covers[0].VoteCount != 3 || !covers[0].Voted {
 		t.Errorf("hydration lost the tally: %+v", covers[0])
+	}
+}
+
+func TestCoverVotesFallBackToPublicCountsOnAStaleToken(t *testing.T) {
+	rec := &coverPlaneRecorder{staleToken: true}
+	covers := []dto.GalgameCover{{ImageHash: "abc"}}
+
+	rec.service(t).hydrateCoverVotes(t.Context(), 1, "pre-scope-jwt", covers)
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	// The scope denial is the one failure the viewer can't do anything about
+	// mid-session, so it must not cost them the public half of the facet: the
+	// read retries on the S2S face and the counts still render (ballot unlit).
+	if rec.path != "/api/v1/catalog/works/1000" {
+		t.Errorf("stale-token covers read landed on %q, want the S2S fallback", rec.path)
+	}
+	if !strings.HasPrefix(rec.auth, "Basic ") {
+		t.Errorf("auth = %q, want the S2S credential after the fallback", rec.auth)
+	}
+	if covers[0].ID != 88 || covers[0].VoteCount != 3 {
+		t.Errorf("fallback lost the tally: %+v", covers[0])
 	}
 }
 

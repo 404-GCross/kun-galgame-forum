@@ -9,6 +9,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"kun-galgame-api/internal/galgame/dto"
@@ -41,6 +42,13 @@ func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid int, accessT
 	)
 	if accessToken != "" {
 		tallies, err = s.catalog.WorkCoversUser(ctx, accessToken, workID)
+		if errors.Is(err, catalogclient.ErrInsufficientScope) {
+			// A session minted before catalog:edit existed cannot widen its
+			// grant by refreshing. Until that viewer logs back in, read the
+			// anonymous plane instead: public counts with the ballot unlit
+			// beat no tallies at all — and beat a warning per page view.
+			tallies, err = s.catalog.WorkCoverVotes(ctx, workID, 0)
+		}
 	} else {
 		tallies, err = s.catalog.WorkCoverVotes(ctx, workID, 0)
 	}
