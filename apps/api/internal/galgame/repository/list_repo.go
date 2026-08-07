@@ -24,6 +24,12 @@ const ratingAggJoin = "LEFT JOIN (SELECT galgame_id, SUM(overall) AS rsum, " +
 	"COUNT(*) AS rcnt FROM galgame_rating GROUP BY galgame_id) rt " +
 	"ON rt.galgame_id = g.id"
 
+// publishedOnly is the visibility predicate every public listing carries
+// (migration 068). A local row exists for any gid an interaction has ever
+// touched — a draft catalog work included — so "the row is here" was never the
+// same question as "kungal publishes this", and the list must ask the second.
+const publishedOnly = "g.published"
+
 // GalgameListRepository owns the paginated list query with resource-filter
 // support (type/language/platform + include/exclude provider sets).
 type GalgameListRepository struct {
@@ -103,7 +109,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	if !hasResourceFilter(f) {
 		build := func() *gorm.DB {
-			q := r.db.Table("galgame g")
+			q := r.db.Table("galgame g").Where(publishedOnly)
 			// nil = no restriction (the global /galgame list). A non-nil set
 			// restricts to it via `= ANY(array)`: ONE bound param regardless of
 			// size — a mega-tag's ~32k member ids would otherwise expand into a
@@ -148,7 +154,8 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 	// join on the outer query too (to ORDER by it).
 	inner := r.db.Table("galgame g").
 		Select("DISTINCT g.id").
-		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id")
+		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id").
+		Where(publishedOnly)
 	// = ANY(array) — one param, empty matches nothing (see the branch above).
 	if f.RestrictIDs != nil {
 		inner = inner.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
@@ -185,7 +192,8 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	main := r.db.Table("galgame g").
 		Select("g.id").
-		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id")
+		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id").
+		Where(publishedOnly)
 	groupBy := "g.id, " + sortCol
 	if isSubquerySort {
 		groupBy = "g.id"

@@ -46,6 +46,9 @@ func (r *RSSRepository) FindRecentGalgameIDs(limit int) []RecentGalgameRow {
 	var rows []RecentGalgameRow
 	r.db.Table("galgame").
 		Select("id, created, creator_user_id").
+		// See migration 068: row existence is not publication, and a feed is
+		// the one surface a mistaken entry cannot be taken back from.
+		Where("published").
 		Order("created DESC").
 		Limit(limit).
 		Scan(&rows)

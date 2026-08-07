@@ -42,6 +42,13 @@ type GalgameLocal struct {
 	// forbidden (copyright-holder notice or other third-party takedown).
 	// Enforced in resource_service.go; toggled via the moderator ban endpoint.
 	ResourcePublishBanned bool `gorm:"column:resource_publish_banned;default:false" json:"resource_publish_banned"`
+	// Published is public visibility (migration 068). It is NOT the same fact as
+	// the row's existence: every interaction path lazy-mints a row for whatever
+	// gid it is handed, draft works included, so existence only means "kungal
+	// holds local state for this id". A false row keeps its likes, ratings and
+	// resources and simply does not appear in any public list. Only the
+	// claim-event cron moves it, off the registry's claim state.
+	Published bool `gorm:"column:published;not null" json:"published"`
 	// CreatorUserID is a WRITE-ONCE attribution snapshot. The catalog face
 	// carries no product's submitter by design (doc 106 R2), so the author
 	// chip kungal renders on every galgame card is served locally: migrated

@@ -192,6 +192,7 @@ type claimEffect int
 const (
 	claimEffectNone claimEffect = iota
 	claimEffectSeedStub
+	claimEffectUnpublish
 	claimEffectDropStub
 	claimEffectRememberSubmitter
 	claimEffectUnknownState
@@ -199,16 +200,19 @@ const (
 
 // effectOf maps a transition onto its local effect. It keys off the
 // DESTINATION state alone, because that — not the route taken to it — is what
-// decides whether kungal needs a row.
+// decides whether kungal shows the entry.
 //
-// The two states that do nothing are deliberate, not omissions:
+// draft and declined stopped being no-ops in wave 180. They were, while row
+// existence WAS visibility and the only alternative to leaving the row alone
+// was deleting it with the user content on it. Now that `published` carries
+// visibility separately (migration 068), the honest answer to both is
+// "unpublish and keep the row":
 //
-//   - declined: the entry was never publicly visible, so there is nothing to
-//     take down.
-//   - draft: a withdrawal from live keeps the stub. The entry can be published
-//     again, and the stub carries the likes, comments and ratings it collected
-//     while it was up — dropping it would destroy user content to reflect a
-//     reversible editorial state.
+//   - draft: a withdrawal must actually take the entry off the lists, and stay
+//     reversible — republishing flips the same flag back on.
+//   - declined: "it was never visible" only holds for a first submission. A
+//     claim that went live, was withdrawn and was resubmitted reaches declined
+//     with a published row behind it, and the entry has to come down.
 func effectOf(ev *catalogclient.ClaimEventFeedItem) claimEffect {
 	// No product-side anchor = nothing local to do. A registry-only claim (or
 	// one whose anchor a merge cleared) has no row in kungal's key space, and
@@ -225,7 +229,7 @@ func effectOf(ev *catalogclient.ClaimEventFeedItem) claimEffect {
 	case catalogclient.ClaimStatePending:
 		return claimEffectRememberSubmitter
 	case catalogclient.ClaimStateDraft, catalogclient.ClaimStateDeclined:
-		return claimEffectNone
+		return claimEffectUnpublish
 	default:
 		return claimEffectUnknownState
 	}
@@ -260,12 +264,13 @@ func (s *GalgameClaimEventSync) claimantOf(ctx context.Context, ev *catalogclien
 func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.ClaimEventFeedItem) (retry bool) {
 	switch effectOf(ev) {
 	case claimEffectSeedStub:
-		// live is the moment an entry becomes publicly listable — seed the stub
-		// so the browse list has an anchor. Idempotent.
+		// live is the moment an entry becomes publicly listable — seed the row
+		// and mark it published (an interaction may have minted it unpublished
+		// first). Idempotent.
 		gid := int(*ev.ProductWorkID)
 		creator := s.claimantOf(ctx, ev)
 		if err := s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
-			if err := s.galgameRepo.CreateLocalStub(tx, gid); err != nil {
+			if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
 				return err
 			}
 			if creator > 0 {
@@ -273,11 +278,19 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 			}
 			return nil
 		}); err != nil {
-			slog.Warn("claim live: 创建本地 stub 失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
+			slog.Warn("claim live: 发布本地行失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
 			return true
 		}
 		if isApproval(ev) {
 			return s.awardApproval(ctx, ev, gid)
+		}
+	case claimEffectUnpublish:
+		// The entry left the published states. Take it off the lists; the row and
+		// everything users put on it stay.
+		if err := s.galgameRepo.UnpublishLocal(int(*ev.ProductWorkID)); err != nil {
+			slog.Warn("claim unpublish: 下架本地行失败, 将重试",
+				"event", ev.ID, "gid", *ev.ProductWorkID, "error", err)
+			return true
 		}
 	case claimEffectDropStub:
 		// The owning product took the entry down. Drop the stub; CASCADE takes

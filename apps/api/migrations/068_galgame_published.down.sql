@@ -1,0 +1,1 @@
+ALTER TABLE galgame DROP COLUMN IF EXISTS published;

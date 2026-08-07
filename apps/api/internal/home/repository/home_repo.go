@@ -66,6 +66,9 @@ func (r *HomeRepository) FindRecentGalgames(limit int) ([]GalgameLocalRow, error
 	var rows []GalgameLocalRow
 	err := r.db.Table("galgame").
 		Select("id, view, like_count, resource_update_time, creator_user_id").
+		// Local rows are minted by interaction for any gid, drafts included
+		// (migration 068) — the rail shows the ones kungal publishes.
+		Where("published").
 		Order("resource_update_time DESC").
 		Limit(limit).
 		Find(&rows).Error

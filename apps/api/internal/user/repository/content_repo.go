@@ -29,7 +29,10 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 	offset := (page - 1) * limit
 	var total int64
 
-	baseQuery := r.db.Table("galgame").Select("galgame.id")
+	// Migration 068: a profile tab is a public listing like any other, so an
+	// entry the owner has since withdrawn drops out of the liked/favorited
+	// lists — the interaction row survives, only the card stops rendering.
+	baseQuery := r.db.Table("galgame").Select("galgame.id").Where("galgame.published")
 
 	switch queryType {
 	case "galgame_like":
@@ -400,7 +403,7 @@ func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]Galgame
 	}
 	var rows []GalgameLocalStats
 	r.db.Table("galgame").Select("id, view, like_count, creator_user_id").
-		Where("id IN ?", ids).Scan(&rows)
+		Where("id IN ?", ids).Where("published").Scan(&rows)
 	out := make(map[int]GalgameLocalStats, len(rows))
 	for _, row := range rows {
 		out[row.ID] = row

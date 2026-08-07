@@ -36,10 +36,12 @@ func TestEffectOfTransition(t *testing.T) {
 		{"approval seeds the stub", event(2, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid), claimEffectSeedStub},
 		{"ban drops the stub", event(3, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateHidden, gid), claimEffectDropStub},
 		{"submit remembers the submitter", event(4, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStatePending, gid), claimEffectRememberSubmitter},
-		// A withdrawal is reversible and the stub carries user content.
-		{"withdrawal keeps the stub", event(5, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateDraft, gid), claimEffectNone},
-		// A declined entry was never publicly visible.
-		{"decline does nothing", event(6, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid), claimEffectNone},
+		// A withdrawal unpublishes and KEEPS the row: it is reversible, and the
+		// row carries the user content collected while the entry was up.
+		{"withdrawal unpublishes, never deletes", event(5, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateDraft, gid), claimEffectUnpublish},
+		// A decline can land on an entry that was live earlier in its life
+		// (live → withdraw → submit → decline), so it takes the entry down too.
+		{"decline unpublishes", event(6, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid), claimEffectUnpublish},
 		// Without an anchor there is no row in kungal's key space to touch, and
 		// the work id must never stand in for a gid.
 		{"no product anchor is inert", event(7, nil, catalogclient.ClaimStateLive, nil), claimEffectNone},

@@ -81,14 +81,28 @@ func (r *GalgameRepository) IncrementView(id int) {
 // Side-effect helpers used by Create
 // ──────────────────────────────────────────
 
-// CreateLocalStub creates the empty galgame row on the local side after galgame
-// creation succeeds, inside the given transaction. Used by paths that
-// transition a galgame to a publicly visible status (admin direct create,
-// claim, approved cron event) so it shows up in the kungal list query
-// driven by the local table.
-func (r *GalgameRepository) CreateLocalStub(tx *gorm.DB, galgameID int) error {
-	return tx.Clauses(clause.OnConflict{DoNothing: true}).
-		Create(&model.GalgameLocal{ID: galgameID}).Error
+// PublishLocal makes a galgame publicly listable: it creates the local row if
+// the claim-event cron got here first, and flips `published` if an interaction
+// did. Both halves matter — DoNothing would lose the flip on every entry a
+// visitor liked or commented on before the transition arrived, and those are
+// precisely the entries somebody was waiting for.
+//
+// The reverse move is UnpublishLocal, never a delete: the row carries the local
+// interaction state.
+func (r *GalgameRepository) PublishLocal(tx *gorm.DB, galgameID int) error {
+	return tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.Assignments(map[string]any{"published": true}),
+	}).Create(&model.GalgameLocal{ID: galgameID, Published: true}).Error
+}
+
+// UnpublishLocal takes an entry out of every public listing while KEEPING the
+// row (migration 068). A withdrawal or a decline is an editorial state, and a
+// reversible one; the likes, ratings and resources collected under the entry
+// are not editorial state and must survive it. No-op when there is no row.
+func (r *GalgameRepository) UnpublishLocal(galgameID int) error {
+	return r.db.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
+		UpdateColumn("published", false).Error
 }
 
 // EnsureLocalStub idempotently INSERTs a zero-stat row. Called from

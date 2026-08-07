@@ -471,7 +471,7 @@ func (r *ActivityRepository) FetchGalgameCounts(galgameIDs []int) (map[int]Galga
 	if err := r.db.Raw(`
 		SELECT id, resource_count, like_count, favorite_count, creator_user_id
 		FROM galgame
-		WHERE id IN ?`, galgameIDs).Scan(&rows).Error; err != nil {
+		WHERE id IN ? AND published`, galgameIDs).Scan(&rows).Error; err != nil {
 		return out, err
 	}
 	for _, row := range rows {
