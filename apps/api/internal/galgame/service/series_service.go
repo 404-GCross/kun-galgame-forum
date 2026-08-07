@@ -32,9 +32,11 @@ func NewSeriesService(galgameClient *client.GalgameClient, galgameSvc *GalgameSe
 	return &SeriesService{galgameClient: galgameClient, galgameSvc: galgameSvc}
 }
 
-// seriesIndexPageCap bounds the index walk. ~600 rows today, so six upstream
-// pages cover it; the cap is a backstop, not a working limit.
-const seriesIndexPageCap = 20
+// seriesIndexPageCap bounds the index walk. The upstream facet grew to ~5.5k
+// rows when the catalog's derived series lane landed (infra wave 184), so the
+// walk needs ~56 pages; the cap is a backstop, not a working limit — at 20 it
+// silently truncated the facet to its first 2,000 rows.
+const seriesIndexPageCap = 100
 
 // GetList — GET /galgame-series
 //
