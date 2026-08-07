@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"unsafe"
 
 	"kun-galgame-api/pkg/config"
 
@@ -70,19 +69,26 @@ func resolveRoutes(t *testing.T) []route {
 	a := &App{Fiber: fiber.New(), Config: testConfig()}
 	a.setupRoutes()
 
+	// GetRoutes(true) is the same stack with the Use entries removed, so
+	// walking the two in lockstep identifies them by position — no reflection
+	// into Fiber's unexported state.
+	all, endpoints := a.Fiber.GetRoutes(), a.Fiber.GetRoutes(true)
+
 	var (
 		out     []route
 		pending []fiber.Route // Use entries seen so far, this method's stack
 		method  string
+		next    int // cursor into endpoints
 	)
-	for _, r := range a.Fiber.GetRoutes() {
+	for _, r := range all {
 		if r.Method != method { // GetRoutes emits one method's stack at a time
 			method, pending = r.Method, nil
 		}
-		if isUse(r) {
-			pending = append(pending, r)
+		if next >= len(endpoints) || !sameRoute(r, endpoints[next]) {
+			pending = append(pending, r) // absent from the filtered list ⇒ a Use entry
 			continue
 		}
+		next++
 		// HEAD is Fiber's automatic mirror of GET; one entry per real route.
 		if r.Method == fiber.MethodHead {
 			continue
@@ -100,23 +106,31 @@ func resolveRoutes(t *testing.T) []route {
 		}
 		out = append(out, route{Route: r, chain: chain})
 	}
+	// Every endpoint must have been consumed exactly once; anything else means
+	// the lockstep walk desynchronised and the chains below it are fiction.
+	if next != len(endpoints) {
+		t.Fatalf("resolved %d of %d endpoints — the Use/endpoint lockstep broke",
+			next, len(endpoints))
+	}
 	if len(out) == 0 {
 		t.Fatal("no routes registered")
 	}
 	return out
 }
 
-// isUse reports whether a route is a mounted middleware rather than an
-// endpoint. Fiber keeps the flag unexported and offers no accessor (GetRoutes'
-// filterUse option can only drop them, and we need to know WHERE they sit), so
-// the test reads the field directly. Pinned to fiber v3.3.0; if the field is
-// ever renamed this fails loudly instead of silently reporting empty chains.
-func isUse(r fiber.Route) bool {
-	v := reflect.ValueOf(&r).Elem().FieldByName("use")
-	if !v.IsValid() {
-		panic("fiber.Route has no `use` field — update this test for the new Fiber")
+// sameRoute identifies a stack entry across the two GetRoutes views. Path and
+// method are not enough on their own (a Use entry sits on a path some route
+// may also occupy), so the handler pointers decide.
+func sameRoute(a, b fiber.Route) bool {
+	if a.Method != b.Method || a.Path != b.Path || len(a.Handlers) != len(b.Handlers) {
+		return false
 	}
-	return *(*bool)(unsafe.Pointer(v.UnsafeAddr()))
+	for i := range a.Handlers {
+		if reflect.ValueOf(a.Handlers[i]).Pointer() != reflect.ValueOf(b.Handlers[i]).Pointer() {
+			return false
+		}
+	}
+	return true
 }
 
 // handlerName renders a handler as "Auth", "RequirePermission" or

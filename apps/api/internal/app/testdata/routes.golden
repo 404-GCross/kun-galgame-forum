@@ -55,6 +55,7 @@ GET    /api/galgame-engine                            cors.New → EntityHandler
 GET    /api/galgame-engine/:id                        cors.New → EntityHandler.GetEngineDetail
 GET    /api/galgame-official                          cors.New → EntityHandler.GetOfficialList
 GET    /api/galgame-official/:id                      cors.New → EntityHandler.GetOfficialDetail
+GET    /api/galgame-official/:id/relation-graph       cors.New → EntityHandler.GetOfficialRelationGraph
 GET    /api/galgame-official/legacy/:id               cors.New → EntityHandler.ResolveLegacyOfficial
 GET    /api/galgame-official/search                   cors.New → EntityHandler.SearchOfficials
 GET    /api/galgame-quiz/:id                          cors.New → OptionalAuth → QuizHandler.GetQuizPlay
