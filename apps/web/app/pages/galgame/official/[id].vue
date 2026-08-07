@@ -256,6 +256,13 @@ if (!moved) {
       </template>
     </KunHeader>
 
+    <!-- The corporate family, between the header and the games. It brings its
+         OWN fetch (see the component): this page's payload is refetched on
+         every pagination / filter change below, and none of that can move a
+         company under a different parent. Renders nothing at all for a 会社
+         with no recorded relations, which is most of them. -->
+    <GalgameOfficialRelationGraph :official-id="official_id" />
+
     <GalgameCardNav :show-advanced="false" />
 
     <KunInfo

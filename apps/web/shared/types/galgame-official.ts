@@ -66,3 +66,50 @@ export interface GalgameOfficialDetail {
   // a live label, so `if (data.moved_to)` is the whole check.
   moved_to?: number
 }
+
+/** The catalog's corporate-relation vocabulary — four MUTUALLY INVERSE pairs.
+ * The graph face only ever emits the canonical half of each pair
+ * (parent / imprint / spawned / succeeded_by); the other four words are what
+ * the same edge means read backwards, and are used here only as display keys. */
+export type GalgameOfficialRelation =
+  | 'parent'
+  | 'subsidiary'
+  | 'imprint'
+  | 'imprint_of'
+  | 'spawned'
+  | 'origin'
+  | 'succeeded_by'
+  | 'formerly'
+
+/** One 会社 in the corporate family graph. */
+export interface GalgameOfficialRelationNode {
+  id: number
+  name: string
+  /** Ready-made absolute CDN URL like GalgameOfficialDetail.logo; `''` when the
+   * maker has no logo, which is the cue to render the name alone. */
+  logo: string
+  /** The CATALOG-wide count, deliberately NOT the page header's forum-local
+   * `galgame_count` — the tree describes the corporate structure, not this
+   * site's holdings. */
+  work_count: number
+}
+
+/** Reads "`to` is the `relation` of `from`" — e.g. {from: Key, to: VisualArt's,
+ * relation: 'parent'} means VisualArt's is Key's parent.
+ *
+ * Note the two ownership words therefore point OPPOSITE ways: a `parent` edge
+ * runs child→parent, an `imprint` edge runs owner→brand. */
+export interface GalgameOfficialRelationEdge {
+  from: number
+  to: number
+  relation: GalgameOfficialRelation
+}
+
+/** The connected component around one 会社 — capped upstream (depth ≤ 4,
+ * ≤ 60 nodes), cycle-safe, and ALWAYS containing the requested label itself.
+ * So `nodes.length <= 1` means "no recorded relations" and the whole section
+ * stays unrendered. */
+export interface GalgameOfficialRelationGraph {
+  nodes: GalgameOfficialRelationNode[]
+  edges: GalgameOfficialRelationEdge[]
+}

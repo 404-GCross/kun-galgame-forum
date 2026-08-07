@@ -63,6 +63,32 @@ export const KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP: Record<string, string> = {
   cien: 'Ci-en'
 }
 
+// The corporate-relation vocabulary, read as "X 是本会社的 ___". The catalog
+// stores four mutually inverse pairs and the graph face ships only the
+// canonical half of each, so the four inverse words are reached by reading an
+// edge backwards rather than by receiving a row of their own.
+export const KUN_GALGAME_OFFICIAL_RELATION_MAP: Record<string, string> = {
+  parent: '母公司',
+  subsidiary: '子公司',
+  imprint: '旗下品牌',
+  imprint_of: '所属公司',
+  spawned: '拆分出的公司',
+  origin: '前身公司',
+  succeeded_by: '继任公司',
+  formerly: '旧名'
+}
+
+// What a node is TO ITS PARENT in the family tree. Only two words can appear:
+// a tree edge is either a parent edge (this node is a subsidiary) or an imprint
+// edge (this node is a brand of the node above). A root that owns others is
+// labelled 母公司 — it is the top of what the catalog knows, not necessarily of
+// the real company.
+export const KUN_GALGAME_OFFICIAL_TREE_ROLE_MAP: Record<string, string> = {
+  subsidiary: '子公司',
+  imprint: '旗下品牌',
+  root: '母公司'
+}
+
 // /migrate/getAllOfficialLanguage.js
 export const KUN_GALGAME_OFFICIAL_LANGUAGE_MAP: Record<string, string> = {
   ja: '日语',
