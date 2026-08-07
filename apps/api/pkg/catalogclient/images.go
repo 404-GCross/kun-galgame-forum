@@ -8,14 +8,19 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"strconv"
 )
 
-// images.go — the edit face's byte-upload leg (POST /api/v1/catalog/edit/images,
-// infra wave 169). Covers/screenshots are edited as HASH ROWS on the proposal
-// face; this call is where the hash comes from: the catalog uploads the bytes
-// under its own image-service identity (site "catalog", kept alive by its
-// refping cron) and hands the hash back for the edit payload to carry.
+// images.go — the edit face's byte-upload leg (infra wave 169).
+// Covers/screenshots are edited as HASH ROWS on the proposal face; this call is
+// where the hash comes from: the catalog uploads the bytes under its own
+// image-service identity (site "catalog", kept alive by its refping cron) and
+// hands the hash back for the edit payload to carry.
+//
+// It moved to the USER plane in wave 180 (POST /api/v1/user/catalog/edit/images).
+// It was the last asserted-actor WRITE the forum had left: an `actor_uid` form
+// field naming whoever the forum said was uploading, stamped into the image
+// audit trail on that word alone. The token carries the subject now, so the
+// field is gone and the audit trail records a person the catalog verified.
 
 // EditImageResult is the image-service upload result the catalog forwards.
 type EditImageResult struct {
@@ -29,16 +34,23 @@ type EditImageResult struct {
 	Deduplicated bool              `json:"deduplicated"`
 }
 
-// UploadEditImage forwards one cover/screenshot to the catalog edit face.
-// preset is the image-service vocabulary the FE already speaks:
-// "galgame_banner" (cover) or "galgame_screenshot". actorUID is the asserted
-// end user, stamped into the image audit trail upstream.
+// UploadEditImageUser forwards one cover/screenshot to the catalog edit face AS
+// the token's subject. preset is the image-service vocabulary the FE already
+// speaks: "galgame_banner" (cover) or "galgame_screenshot".
 //
-// A non-2xx with a readable envelope surfaces as *EditAPIError so the handler
-// can show the upstream message (quota, moderation) instead of a generic 500.
-func (c *Client) UploadEditImage(ctx context.Context, r io.Reader, filename, preset string, actorUID int) (*EditImageResult, error) {
-	if !c.Configured() {
+// The transport is hand-rolled rather than routed through userEditDo because
+// the body is multipart, but the posture is identical: Bearer only, never the
+// Basic credential alongside it (sending both would let the service fall back
+// to the S2S posture and silently undo the dogfood), and the same user-plane
+// taxonomy — a scope denial reaches the caller as ErrInsufficientScope so an
+// old session is told to log back in rather than that it may not upload.
+func (c *Client) UploadEditImageUser(ctx context.Context, accessToken string, r io.Reader, filename, preset string) (*EditImageResult, error) {
+	// Only the base URL matters — this call authenticates with the user's token.
+	if c.baseURL == "" {
 		return nil, ErrNotConfigured
+	}
+	if accessToken == "" {
+		return nil, ErrUnauthorized
 	}
 
 	body := &bytes.Buffer{}
@@ -53,20 +65,15 @@ func (c *Client) UploadEditImage(ctx context.Context, r io.Reader, filename, pre
 	if err := mw.WriteField("preset", preset); err != nil {
 		return nil, err
 	}
-	if actorUID > 0 {
-		if err := mw.WriteField("actor_uid", strconv.Itoa(actorUID)); err != nil {
-			return nil, err
-		}
-	}
 	if err := mw.Close(); err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+editBase+"/images", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+userEditBase+"/images", body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", c.basicAuth)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
 	resp, err := c.httpClient.Do(req)
@@ -81,14 +88,24 @@ func (c *Client) UploadEditImage(ctx context.Context, r io.Reader, filename, pre
 		Message string          `json:"message"`
 		Data    json.RawMessage `json:"data"`
 	}
-	if err := json.Unmarshal(raw, &env); err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, ErrUnauthorized
+	// A body that does not parse still has a status worth honouring — a proxy
+	// error page in front of a dead service must not read as a stored image.
+	decodeErr := json.Unmarshal(raw, &env)
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return nil, ErrUnauthorized
+	case http.StatusForbidden:
+		if isScopeDenial(env.Message) {
+			return nil, ErrInsufficientScope
 		}
+		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
+	}
+	if decodeErr != nil {
 		return nil, fmt.Errorf("%w (status %d): malformed envelope", ErrUpstream, resp.StatusCode)
 	}
 	if resp.StatusCode != http.StatusOK || env.Code != 0 {
-		return nil, &EditAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
+		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
 	}
 	var out EditImageResult
 	if err := json.Unmarshal(env.Data, &out); err != nil {

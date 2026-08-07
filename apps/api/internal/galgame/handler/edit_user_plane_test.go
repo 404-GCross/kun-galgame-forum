@@ -184,7 +184,10 @@ func TestEditWithdrawAlwaysRidesTheUserToken(t *testing.T) {
 // the editor renders capabilities the submit lane does not have. Since every
 // write is the user plane, so is every projection — the creator's included,
 // whose can_review now arrives derived from the token instead of asserted into
-// the query. The snapshot read stays S2S: it is a value read, not a claim.
+// the query. Wave 180 took the value snapshot alongside it for a different
+// reason — the snapshot op is not viewer-fenced upstream and buys no gate at
+// all — so that bootstrap makes no human-triggered read on the forum-asserted
+// Basic lane. Both halves of one page, one plane.
 func TestEditBootstrapProjectionFollowsThePlane(t *testing.T) {
 	for _, user := range []*middleware.UserInfo{bystander, plainUser} { // uid 7 = creator
 		fake := &fakeEditFace{}
@@ -202,8 +205,11 @@ func TestEditBootstrapProjectionFollowsThePlane(t *testing.T) {
 		if fake.callTo("/api/v1/catalog/edit/schema/catalog.work") != nil {
 			t.Fatalf("no projection may still be asserted on S2S for %s: %+v", user.Name, fake.requests)
 		}
-		if req := fake.callTo("/api/v1/catalog/edit/snapshot"); req == nil || req.Face != "s2s" {
-			t.Fatalf("the value snapshot stays S2S, got %+v", fake.requests)
+		if req := fake.callTo("/api/v1/user/catalog/edit/snapshot"); req == nil || req.Face != "user" {
+			t.Fatalf("the value snapshot must ride the user plane, got %+v", fake.requests)
+		}
+		if fake.callTo("/api/v1/catalog/edit/snapshot") != nil {
+			t.Fatalf("no snapshot may still be read S2S for %s: %+v", user.Name, fake.requests)
 		}
 	}
 }

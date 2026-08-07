@@ -44,8 +44,7 @@ var allowedGalgamePresets = map[string]struct{}{
 //
 // POST /api/image/galgame
 func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
-	user, appErr := middleware.MustGetUser(c)
-	if appErr != nil {
+	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -69,8 +68,11 @@ func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	}
 	defer f.Close()
 
+	// The session's own access token, not user.ID: the catalog reads the
+	// uploader off the token now (wave 180). MustGetUser above stays as the
+	// route's auth requirement — a token has to exist to be forwarded.
 	res, sErr := h.imageService.UploadGalgameImage(
-		c.Context(), user.ID, f, file.Filename, preset,
+		c.Context(), middleware.GetAccessToken(c), f, file.Filename, preset,
 	)
 	if sErr != nil {
 		return response.Error(c, sErr)

@@ -523,9 +523,15 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame/:gid/edit/proposals", a.GalgameEditHandler.Submit)
 	authed.Get("/galgame-edit/mine", a.GalgameEditHandler.Mine)
 	authed.Post("/galgame-edit/proposals/:id/withdraw", a.GalgameEditHandler.Withdraw)
-	// INFRA-PROXY (mirrors infra key `galgame.review`, moderator+): the queue
-	// read + proposal view are proxied to the editing engine; RequireModerator
-	// is the entry mirror, the engine's projection holds the real policy.
+	// INFRA-PROXY: the queue read + proposal view are proxied to the editing
+	// engine, and since wave 180 they travel on the caller's OWN token. The
+	// authority is the engine's own review projection over that token — the
+	// per-family review vocabulary plus the entity overlays (owner-review),
+	// i.e. exactly what a merge or a decline verdict resolves against, and
+	// hot-fed by the permission console. RequireModerator survives as the ENTRY
+	// mirror only (which nav item opens), the same ruling as the wave 178/179
+	// review routes: a local gate may decide what to render, never what is
+	// allowed.
 	authed.Get("/galgame-edit/queue", middleware.RequireModerator(), a.GalgameEditHandler.Queue)
 	authed.Get("/galgame-edit/proposals/:id", a.GalgameEditHandler.ProposalDetail)
 	authed.Post("/galgame-edit/proposals/:id/amend", a.GalgameEditHandler.Amend)

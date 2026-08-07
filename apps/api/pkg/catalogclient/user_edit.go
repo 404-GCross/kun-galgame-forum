@@ -11,9 +11,15 @@
 // capability from the token — so there is nothing left for the forum to assert
 // and no lane left that a user token cannot carry.
 //
-// edit.go's S2S face survives only for the reads that make no claim at all
-// (snapshot, revision log, diff, proposal lists) — nobody is "acting" there, so
-// there is nothing for a token to say.
+// Wave 180 finished the thought for the READS. "Makes no claim" turned out to
+// be true of only some of them: the value snapshot and the proposal detail are
+// read BY a person about an entity they may or may not be allowed to see, and
+// "my proposals" was a uid the forum asserted in a query parameter. Those moved
+// here, where the catalog answers them from the token's own subject.
+//
+// edit.go's S2S face keeps only what is genuinely viewer-independent: the
+// revision log, the diff, and the third-person proposal lists (the public
+// per-game list, the contribution counts).
 //
 // The scope consequence is the same one wave 176 established: a token minted
 // before `catalog:edit` existed cannot be widened by a refresh, so that 403
@@ -129,6 +135,95 @@ func (c *Client) GetEditSchemaUser(ctx context.Context, accessToken, entityType 
 		path += "?" + q.Encode()
 	}
 	return userEditDo[EditSchema](ctx, c, http.MethodGet, accessToken, path, nil)
+}
+
+// EditSnapshotUser reads the entity's CURRENT registered-field values — the
+// editor bootstrap's value source and the old→new compare on the review
+// workbench — as the token's subject.
+//
+// What moved here is the CHANNEL, not an entitlement. This op is deliberately
+// NOT tenant-fenced upstream (auth chain only, cross-site open — docs/catalog
+// §4.4): the values it returns are the same entity state every public read
+// already renders, so there is no gate here that the S2S face was missing.
+//
+// The thing being deleted is the asserted-channel posture — a Basic-authed
+// lane where the forum, not the person, was the authenticated party and the
+// service had only kungal's word for whose behalf a human read was being made.
+// The read is authenticated now (a `catalog:edit` token, the reader's own) and
+// still open across sites, per the read-face doctrine.
+func (c *Client) EditSnapshotUser(ctx context.Context, accessToken, entityType string, entityID int64) (map[string]any, error) {
+	q := url.Values{}
+	q.Set("entity_type", entityType)
+	q.Set("entity_id", strconv.FormatInt(entityID, 10))
+	data, err := userEditDo[struct {
+		Values map[string]any `json:"values"`
+	}](ctx, c, http.MethodGet, accessToken, userEditBase+"/snapshot?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return data.Values, nil
+}
+
+// UserEditProposalFilter narrows ListEditProposalsUser. It is
+// EditProposalFilter minus the two fields the token answers:
+//
+//   - Site is gone — the acting tenant is the token's, as everywhere on this
+//     plane.
+//   - ProposerUID is gone, replaced by Mine. The uid could never be anything
+//     but the caller's own and still be honest, so the wire stops carrying a
+//     number that only had one correct value.
+type UserEditProposalFilter struct {
+	EntityType string
+	EntityID   int64
+	Status     string
+	Limit      int
+	// Mine flips the face between the two things a person can ask for: their
+	// OWN proposals (true), and the review queue (false) — which the catalog
+	// serves only to a token whose roles carry the edit review permission, so a
+	// contributor asking gets a 403 rather than everybody's drafts.
+	Mine bool
+}
+
+// ListEditProposalsUser lists proposals newest-first, as the token's subject:
+// the "my proposals" strip (Mine) and the moderator review queue (not Mine).
+func (c *Client) ListEditProposalsUser(ctx context.Context, accessToken string, f UserEditProposalFilter) ([]EditProposal, error) {
+	q := url.Values{}
+	if f.EntityType != "" {
+		q.Set("entity_type", f.EntityType)
+	}
+	if f.EntityID > 0 {
+		q.Set("entity_id", strconv.FormatInt(f.EntityID, 10))
+	}
+	if f.Status != "" {
+		q.Set("status", f.Status)
+	}
+	if f.Limit > 0 {
+		q.Set("limit", strconv.Itoa(f.Limit))
+	}
+	if f.Mine {
+		q.Set("mine", "true")
+	}
+	page, err := userEditDo[proposalListPage](ctx, c, http.MethodGet, accessToken,
+		userEditBase+"/proposals?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+// WorkCoversUser reads one work's covers with their vote tallies AND this
+// viewer's own ballot, taken from the token instead of from a ?uid= the caller
+// chose. WorkCoverVotes survives for the anonymous path, where there is no
+// token to read a ballot from.
+func (c *Client) WorkCoversUser(ctx context.Context, accessToken string, workID int64) ([]CoverTally, error) {
+	data, err := userEditDo[struct {
+		Covers []CoverTally `json:"covers"`
+	}](ctx, c, http.MethodGet, accessToken,
+		userClaimBase+"/works/"+strconv.FormatInt(workID, 10)+"/covers", nil)
+	if err != nil {
+		return nil, err
+	}
+	return data.Covers, nil
 }
 
 func userEditPost[T any](ctx context.Context, c *Client, accessToken, path string, body any) (*T, error) {

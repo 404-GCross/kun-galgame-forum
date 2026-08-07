@@ -12,15 +12,18 @@ import (
 	"log/slog"
 
 	"kun-galgame-api/internal/galgame/dto"
+	"kun-galgame-api/pkg/catalogclient"
 )
 
 // hydrateCoverVotes joins the catalog's cover row ids + vote tallies onto the
 // covers already projected from the public face, matching on image hash (the
 // one key both faces publish — see catalogclient.WorkCoverVotes).
 //
-// viewerUID 0 = anonymous: the counts are still filled in, the voted flags are
-// not.
-func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid, viewerUID int, covers []dto.GalgameCover) {
+// The route is optionally authed, so the read takes whichever plane the viewer
+// actually has (wave 180): with a token, the user face derives `voted` from the
+// token's own subject; without one, the S2S face fills in the counts alone and
+// names nobody. The forum no longer asks the catalog about a uid it picked.
+func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid int, accessToken string, covers []dto.GalgameCover) {
 	if s.catalog == nil || len(covers) == 0 || !s.catalog.Configured() {
 		return
 	}
@@ -32,7 +35,15 @@ func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid, viewerUID i
 	if !ok {
 		return
 	}
-	tallies, err := s.catalog.WorkCoverVotes(ctx, workID, int64(viewerUID))
+	var (
+		tallies []catalogclient.CoverTally
+		err     error
+	)
+	if accessToken != "" {
+		tallies, err = s.catalog.WorkCoversUser(ctx, accessToken, workID)
+	} else {
+		tallies, err = s.catalog.WorkCoverVotes(ctx, workID, 0)
+	}
 	if err != nil {
 		slog.Warn("galgame detail: cover vote tallies unavailable", "gid", gid, "error", err)
 		return

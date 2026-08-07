@@ -38,9 +38,22 @@ import (
 // only maps the answer (see userEditError; a stale grant surfaces as code 235,
 // "log out and back in", never as a plain 403).
 //
-// What remains on the Basic-authed S2S channel is only the CLAIM-FREE reads —
-// the value snapshot, the revision log, the diff and the proposal lists. Nobody
-// is acting there, so there is nothing for a token to say.
+// Wave 180 took the human-serving READS the same way — for three DIFFERENT
+// reasons, which are worth keeping straight because only one of them is a gate:
+//
+//   - "my proposals" was the session uid written into a query parameter, the
+//     last assertion in this handler. It moved to delete that: the question has
+//     one honest answer and `mine=true` lets the catalog give it.
+//   - the proposal DETAIL is genuinely fenced upstream — the user-plane get
+//     answers for the token's own tenant — so this one buys a real check the
+//     Basic lane could not make.
+//   - the value SNAPSHOT buys no gate at all. Its op is deliberately not
+//     tenant-fenced (the values are the same entity state a public read
+//     renders); it moved for channel hygiene, so that no read a HUMAN triggers
+//     is left on a lane where the forum is the authenticated party.
+//
+// What remains Basic-authed is what no person triggers on their own behalf:
+// the revision log, the diff, and the public per-game proposal list.
 //
 // The forum still answers "who created this entry" (EntryOwners /
 // galgame.creator_user_id) but ONLY as a view/UX fact: which surfaces a creator
@@ -428,9 +441,9 @@ func (h *EditHandler) Bootstrap(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, workID)
+	values, err := h.catalog.EditSnapshotUser(ctx, token, entityTypeGame, workID)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	// The schema projects can_review / would_automerge for the CALLER, and the
 	// caller's writes all take this same plane — including the creator's, whose
@@ -750,10 +763,16 @@ func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProp
 	return out
 }
 
-// Queue — GET /galgame-edit/queue (auth + moderator entry). Open proposals
-// on kungal's tenant, newest-first; ?status widens to the decided ones.
-// Field-level adjudication rights still come from the engine's projection —
-// this gate is the ENTRY, not the policy.
+// Queue — GET /galgame-edit/queue (auth). Open proposals on the caller's
+// tenant, newest-first; ?status widens to the decided ones.
+//
+// Authority is the TOKEN's edit review permission, checked by the catalog:
+// the queue face serves everybody's proposals only to a subject who may
+// adjudicate them, so a contributor's token gets a 403 from infra rather than
+// the queue. The route's RequireModerator survives as a pure VIEW gate — which
+// nav entry the console offers — on the same ruling as the wave 178/179 review
+// routes: a local mirror may decide what to render, never what is allowed, and
+// a permission-console grant takes effect without a forum deploy.
 func (h *EditHandler) Queue(c fiber.Ctx) error {
 	status := c.Query("status", "open")
 	switch status {
@@ -761,12 +780,16 @@ func (h *EditHandler) Queue(c fiber.Ctx) error {
 	default:
 		return response.Error(c, errors.ErrBadRequest("未知的提案状态"))
 	}
-	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
-		EntityType: entityTypeGame, Site: catalogSite,
-		Status: status, Limit: queryInt(c, "limit"),
+	token, appErr := userToken(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	items, err := h.catalog.ListEditProposalsUser(c.Context(), token, catalogclient.UserEditProposalFilter{
+		EntityType: entityTypeGame,
+		Status:     status, Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	return response.OK(c, fiber.Map{
 		"items": h.enrich(c.Context(), items),
@@ -778,10 +801,11 @@ func (h *EditHandler) Queue(c fiber.Ctx) error {
 // states, newest-first; ?gid narrows to one galgame (the editor page's
 // "my pending proposal" strip).
 func (h *EditHandler) Mine(c fiber.Ctx) error {
-	// The proposer filter is an ASSERTION over the S2S list face — the last one
-	// left in this handler. It is a read narrowed to the session's own uid, not
-	// an act, and the user-plane list face is a later wave.
-	user, appErr := middleware.MustGetUser(c)
+	// "Mine" is the token's, not a uid this handler names. The proposer filter
+	// that used to ride the S2S list face was the last assertion left here; it
+	// is gone because the question has exactly one honest answer and the
+	// catalog already holds it.
+	token, appErr := userToken(c)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
@@ -795,13 +819,12 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 		}
 		entityID = workID
 	}
-	items, err := h.catalog.ListEditProposals(c.Context(), catalogclient.EditProposalFilter{
-		EntityType: entityTypeGame, Site: catalogSite,
-		EntityID: entityID, ProposerUID: int64(user.ID),
+	items, err := h.catalog.ListEditProposalsUser(c.Context(), token, catalogclient.UserEditProposalFilter{
+		EntityType: entityTypeGame, EntityID: entityID, Mine: true,
 		Status: c.Query("status"), Limit: queryInt(c, "limit"),
 	})
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	return response.OK(c, fiber.Map{
 		"items": h.enrich(c.Context(), items),
@@ -809,16 +832,22 @@ func (h *EditHandler) Mine(c fiber.Ctx) error {
 	})
 }
 
-// proposalForReview loads the proposal and pins it to kungal's own tenant +
-// the galgame entity type — this BFF adjudicates nothing else (the S2S site
-// binding would reject foreign writes anyway; this keeps reads honest too).
-func (h *EditHandler) proposalForReview(ctx context.Context, id int64) (*catalogclient.EditProposal, error) {
-	prop, err := h.catalog.GetEditProposal(ctx, id)
+// proposalForReview loads the proposal AS the caller (wave 180) and pins it to
+// kungal's own tenant + the galgame entity type — this BFF adjudicates nothing
+// else.
+//
+// The tenant pin is kept even though the catalog now fences the tenant from the
+// token: it also pins the ENTITY TYPE, and it is what keeps the side-effect
+// lanes (notify the proposer, bump the entry) from firing on a proposal that is
+// not a kungal galgame edit. The refusal is shaped as a user-plane 404 so the
+// callers map it through userEditError with everything else on this lane.
+func (h *EditHandler) proposalForReview(ctx context.Context, token string, id int64) (*catalogclient.EditProposal, error) {
+	prop, err := h.catalog.GetEditProposalUser(ctx, token, id)
 	if err != nil {
 		return nil, err
 	}
 	if prop.Site != catalogSite || prop.EntityType != entityTypeGame {
-		return nil, &catalogclient.EditAPIError{Status: http.StatusNotFound, Message: "proposal outside the kungal tenant"}
+		return nil, &catalogclient.UserAPIError{Status: http.StatusNotFound, Message: "proposal outside the kungal tenant"}
 	}
 	return prop, nil
 }
@@ -832,18 +861,24 @@ func (h *EditHandler) proposalForReview(ctx context.Context, id int64) (*catalog
 // derives ownership itself. Keeping the read narrow is a product choice (a
 // half-usable workbench for a random visitor is noise, not transparency); the
 // per-game proposal list right next to it stays fully public.
-func (h *EditHandler) reviewEntry(c fiber.Ctx, id int64) (*catalogclient.EditProposal, error) {
+//
+// Wave 180 moved the READ underneath it onto the token (so infra fences the
+// proposal too) and left this check exactly as it was — neither tightened nor
+// loosened. Two gates on a view surface are not a contradiction: infra answers
+// "may this subject see this proposal", this one answers "does kungal offer
+// them the workbench".
+func (h *EditHandler) reviewEntry(c fiber.Ctx, token string, id int64) (*catalogclient.EditProposal, error) {
 	ctx := c.Context()
-	prop, err := h.proposalForReview(ctx, id)
+	prop, err := h.proposalForReview(ctx, token, id)
 	if err != nil {
 		return nil, err
 	}
 	user := middleware.GetUser(c)
 	if user == nil {
-		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
+		return nil, &catalogclient.UserAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
 	}
 	if !role.CanModerate(user.Roles) && !h.isGameOwner(ctx, prop.EntityID, int64(user.ID)) {
-		return nil, &catalogclient.EditAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
+		return nil, &catalogclient.UserAPIError{Status: http.StatusForbidden, Message: "review entry denied"}
 	}
 	return prop, nil
 }
@@ -925,13 +960,13 @@ func (h *EditHandler) ProposalDetail(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	ctx := c.Context()
-	prop, err := h.reviewEntry(c, id)
+	prop, err := h.reviewEntry(c, token, id)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
-	values, err := h.catalog.EditSnapshot(ctx, entityTypeGame, prop.EntityID)
+	values, err := h.catalog.EditSnapshotUser(ctx, token, entityTypeGame, prop.EntityID)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	// The projection is the viewer's own — the same one their amend / merge /
 	// decline will be judged against, which is what makes can_decide below a
@@ -1023,9 +1058,9 @@ func (h *EditHandler) Merge(c fiber.Ctx) error {
 	// The pre-read is not a gate — it is the side effects' input (who to notify,
 	// which entry to bump) plus the tenant pin that keeps this BFF from
 	// adjudicating a foreign site's proposal by id. Infra decides the merge.
-	prop, err := h.proposalForReview(ctx, id)
+	prop, err := h.proposalForReview(ctx, token, id)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	rev, err := h.catalog.MergeEditProposalUser(ctx, token, id, req.Note)
 	if err != nil {
@@ -1091,9 +1126,9 @@ func (h *EditHandler) Decline(c fiber.Ctx) error {
 	ctx := c.Context()
 	// Same as Merge: the pre-read feeds the notice (the proposer to address, the
 	// entry to name) and pins the tenant. Authorization is infra's.
-	target, err := h.proposalForReview(ctx, id)
+	target, err := h.proposalForReview(ctx, token, id)
 	if err != nil {
-		return editError(c, err)
+		return userEditError(c, err)
 	}
 	prop, err := h.catalog.DeclineEditProposalUser(ctx, token, id, req.Note)
 	if err != nil {

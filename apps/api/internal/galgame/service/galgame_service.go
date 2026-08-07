@@ -271,7 +271,7 @@ func (s *GalgameService) GetDetail(
 	detail.Ratings = ratings
 	// Advisory best-cover votes: the cover row ids the vote endpoints address,
 	// their counts, and this viewer's ballot. Best-effort — see cover_votes.go.
-	s.hydrateCoverVotes(ctx, galgameID, currentUserID, detail.Covers)
+	s.hydrateCoverVotes(ctx, galgameID, token, detail.Covers)
 	// The GAME is not gated (see the note above — a direct URL is 有意为之), but
 	// its adult TAG chips are: `isSFW` arrived here unused, so the sexual
 	// vocabulary shipped in the SSR/__NUXT__ payload of every entry, to

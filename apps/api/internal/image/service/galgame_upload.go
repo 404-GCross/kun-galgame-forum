@@ -42,23 +42,46 @@ type UploadGalgameResult struct {
 }
 
 // UploadGalgameImage forwards a galgame cover/screenshot to the catalog's
-// edit-face upload leg and adapts the result. userID is the asserted end
-// user, stamped into the image audit trail upstream.
+// edit-face upload leg and adapts the result.
+//
+// accessToken is the uploader's own OAuth token (wave 180). The asserted
+// `userID` this used to pass is gone: it was a plain claim about who was
+// uploading, honoured upstream on the forum's word alone, and it had no local
+// use here to keep — no quota, no log line, nothing. The audit trail now
+// records the subject the catalog verified for itself.
 func (s *ImageService) UploadGalgameImage(
 	ctx context.Context,
-	userID int,
+	accessToken string,
 	r io.Reader,
 	filename, preset string,
 ) (*UploadGalgameResult, *kunErrors.AppError) {
-	if s.catalogClient == nil || !s.catalogClient.Configured() {
+	// Configured() is deliberately not the pre-check any more: it asks whether
+	// the S2S credential pair is present, and this lane no longer uses it. The
+	// client answers "no base URL" itself, so an unwired catalog still reports
+	// the same thing without a second, now-wrong, definition of wired.
+	if s.catalogClient == nil {
 		return nil, kunErrors.ErrInternal("Catalog 客户端未配置")
 	}
 
-	res, err := s.catalogClient.UploadEditImage(ctx, r, filename, preset, userID)
+	res, err := s.catalogClient.UploadEditImageUser(ctx, accessToken, r, filename, preset)
 	if err != nil {
+		if errors.Is(err, catalogclient.ErrNotConfigured) {
+			return nil, kunErrors.ErrInternal("Catalog 客户端未配置")
+		}
+		// The user plane can refuse in two ways the S2S face never could, and
+		// both are actionable: a session older than the `catalog:edit` scope
+		// needs a re-login (no refresh can widen a grant), and a dead token
+		// needs the ordinary re-auth.
+		switch {
+		case errors.Is(err, catalogclient.ErrInsufficientScope):
+			return nil, kunErrors.ErrReauthRequired(
+				"上传图片需要新的授权，请退出登录后重新登录以授予该权限")
+		case errors.Is(err, catalogclient.ErrUnauthorized):
+			return nil, kunErrors.ErrAuthExpired()
+		}
 		// A readable upstream envelope (quota, moderation, bad preset) is
 		// worth relaying; transport-level failures stay generic.
-		var apiErr *catalogclient.EditAPIError
+		var apiErr *catalogclient.UserAPIError
 		if errors.As(err, &apiErr) && apiErr.Message != "" {
 			return nil, kunErrors.ErrBadRequest(apiErr.Message)
 		}

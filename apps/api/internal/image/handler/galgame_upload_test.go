@@ -14,7 +14,9 @@ package handler
 import (
 	"bytes"
 	"io"
+	"mime"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -24,6 +26,7 @@ import (
 	"kun-galgame-api/internal/image/repository"
 	"kun-galgame-api/internal/image/service"
 	"kun-galgame-api/internal/middleware"
+	"kun-galgame-api/pkg/catalogclient"
 )
 
 // newTestApp wires a Fiber app with the upload handler + a session stub
@@ -149,5 +152,75 @@ func TestUploadGalgameImage_RejectsOversized(t *testing.T) {
 	raw, _ := io.ReadAll(resp.Body)
 	if !strings.Contains(string(raw), "10MB") && !strings.Contains(string(raw), "大小") {
 		t.Errorf("expected size-limit error, got status=%d body=%s", resp.StatusCode, raw)
+	}
+}
+
+// TestUploadGalgameImage_ForwardsTheUploadersToken pins wave 180's half of the
+// U2 lane: the upload was the last edit-face WRITE that named its actor in a
+// form field, honoured upstream on the forum's word alone. It now travels on
+// the uploader's own token, and the failure it replaces is silent — an
+// `actor_uid` left in place keeps working while attributing the image to
+// whoever the forum said, so the absence of the field is the assertion.
+func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
+	var (
+		gotAuth   string
+		gotPath   string
+		gotFields = map[string]string{}
+	)
+	catalog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth, gotPath = r.Header.Get("Authorization"), r.URL.Path
+		_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			t.Errorf("content type: %v", err)
+			return
+		}
+		mr := multipart.NewReader(r.Body, params["boundary"])
+		for {
+			part, err := mr.NextPart()
+			if err != nil {
+				break
+			}
+			raw, _ := io.ReadAll(part)
+			if part.FileName() == "" {
+				gotFields[part.FormName()] = string(raw)
+			}
+		}
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"hash":"h1","url":"https://cdn/image/h1"}}`))
+	}))
+	defer catalog.Close()
+
+	app := fiber.New(fiber.Config{BodyLimit: 20 * 1024 * 1024})
+	app.Use(func(c fiber.Ctx) error {
+		c.Locals(string(middleware.UserInfoKey), &middleware.UserInfo{ID: 1})
+		c.Locals(string(middleware.OAuthAccessTokenKey), "user-jwt")
+		return c.Next()
+	})
+	svc := service.NewImageService(&repository.ImageRepository{}, nil,
+		catalogclient.New(catalogclient.Config{BaseURL: catalog.URL, ClientID: "cid", ClientSecret: "sec"}))
+	app.Post("/image/galgame", NewImageHandler(svc).UploadGalgameImage)
+
+	body, ct := makeMultipart(t, map[string]string{"preset": "galgame_banner"}, "x.png", []byte("PNG!"))
+	req := httptest.NewRequest("POST", "/image/galgame", body)
+	req.Header.Set("Content-Type", ct)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("upload: status = %d body %s", resp.StatusCode, raw)
+	}
+	if gotPath != "/api/v1/user/catalog/edit/images" {
+		t.Errorf("upload hit %q, want the user plane's image leg", gotPath)
+	}
+	if gotAuth != "Bearer user-jwt" {
+		t.Errorf("auth = %q, want the uploader's own bearer", gotAuth)
+	}
+	if _, ok := gotFields["actor_uid"]; ok {
+		t.Errorf("the upload must assert no actor: %v", gotFields)
+	}
+	if gotFields["preset"] != "galgame_banner" {
+		t.Errorf("preset lost on the wire: %v", gotFields)
 	}
 }

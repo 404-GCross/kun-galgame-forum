@@ -188,7 +188,7 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/7":
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7":
 			// An open kungal proposal on game 1 by uid 9 — the review target.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/merge":
@@ -200,19 +200,19 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/revert":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/8":
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/8":
 			// An open kungal proposal whose patch is EMPTY — nothing to decide.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/9":
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/9":
 			// Two keys, and the EFFECTIVE patch is what counts: the amendments
 			// dropped the locked one, so a reviewer of name_zh_cn may decide it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":9,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,` +
 				`"patch":{"catalog.work.name_zh_cn":"新标题","catalog.work.vndb_id":"v1"},` +
 				`"effective_patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals/55":
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/55":
 			// A proposal OUTSIDE kungal's tenant — the BFF must 404 it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"catalog.work","entity_id":1000,"site":"letmoe","status":"open","patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/snapshot":
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/snapshot":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/schema/catalog.work":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
@@ -220,6 +220,8 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":100,"seq":1,"action":"created","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}]}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[]}}`))
+		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals":
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))

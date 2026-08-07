@@ -1,9 +1,13 @@
 // The editing-engine S2S face (infra E3a; contract /api/v1/catalog/edit/*),
-// reduced by wave 178 to what it should always have been: the CLAIM-FREE reads.
-// The value snapshot, the revision log, the diff and the proposal lists say
-// nothing about who is asking, so there is nothing here for a token to carry —
-// while every act moved to user_edit.go's Bearer plane, where the catalog reads
-// the actor, the tenant and the entity's ownership off the token itself.
+// reduced by wave 178 to the claim-free reads and by wave 180 to the
+// VIEWER-INDEPENDENT ones: the revision log, the diff, the public per-game
+// proposal list, and the third-person contribution counts. Those answer the
+// same thing for everybody, so there is nothing here for a token to carry.
+//
+// Everything that is read BY somebody — the value snapshot, one proposal's
+// detail, "my proposals" — went to user_edit.go's Bearer plane along with every
+// act, where the catalog reads the subject, the tenant and the entity's
+// ownership off the token itself.
 //
 // The shared wire types below serve both planes: the Bearer face answers with
 // the same proposal / amendment / revision / schema shapes.
@@ -180,11 +184,6 @@ const EntityTypeWork = "catalog.work"
 // the BFF (the engine re-validates each one against its registry anyway).
 const FieldKeyPrefix = EntityTypeWork + "."
 
-// GetEditProposal reads one proposal with its amendments and effective patch.
-func (c *Client) GetEditProposal(ctx context.Context, id int64) (*EditProposal, error) {
-	return editGet[EditProposal](ctx, c, editBase+"/proposals/"+strconv.FormatInt(id, 10))
-}
-
 // ListEditProposals lists proposals newest-first (the review queue and the
 // "my proposals" reads).
 func (c *Client) ListEditProposals(ctx context.Context, f EditProposalFilter) ([]EditProposal, error) {
@@ -267,21 +266,6 @@ func (c *Client) DiffEditRevisions(ctx context.Context, entityType string, entit
 	q.Set("from_seq", strconv.Itoa(fromSeq))
 	q.Set("to_seq", strconv.Itoa(toSeq))
 	return editGet[EditDiff](ctx, c, editBase+"/diff?"+q.Encode())
-}
-
-// EditSnapshot reads the entity's CURRENT registered-field values (the
-// editor bootstrap's value source, keyed by eternal field keys).
-func (c *Client) EditSnapshot(ctx context.Context, entityType string, entityID int64) (map[string]any, error) {
-	q := url.Values{}
-	q.Set("entity_type", entityType)
-	q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	data, err := editGet[struct {
-		Values map[string]any `json:"values"`
-	}](ctx, c, editBase+"/snapshot?"+q.Encode())
-	if err != nil {
-		return nil, err
-	}
-	return data.Values, nil
 }
 
 // editGet / editPost mirror getData but keep the envelope's business code +

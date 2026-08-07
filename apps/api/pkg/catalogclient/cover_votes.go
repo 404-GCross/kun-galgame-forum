@@ -1,10 +1,14 @@
 package catalogclient
 
 // The READ half of the best-cover vote facet (wave 175 upstream, consumed in
-// 176). It reads over S2S — Basic, not the user's token — because the tallies
-// are public information the page renders for anonymous visitors too; only the
-// `voted` flag is per-viewer, and the viewer is named by the ?uid= parameter
-// rather than by a credential.
+// 176), now the ANONYMOUS-ONLY path (wave 180).
+//
+// The tallies are public information the page renders for logged-out visitors
+// too, so the S2S read survives for them — with no ?uid=, because there is
+// nobody to name. A viewer who HAS a token reads through WorkCoversUser
+// instead, where the ballot comes from the token's subject rather than from a
+// uid the caller picked; that was the last place where the forum could have
+// asked "has THIS person voted" about anyone at all.
 //
 // Why this exists at all, given the detail page already fetches the work: the
 // PUBLIC face (/v1/catalog/works/{id}, what internal/galgame/client reads)
@@ -34,8 +38,11 @@ type CoverTally struct {
 	Voted bool `json:"voted"`
 }
 
-// WorkCoverVotes reads one work's covers with their vote tallies. viewerUID 0
-// means "nobody asking": the counts still come back, the voted flags do not.
+// WorkCoverVotes reads one work's covers with their vote tallies for a viewer
+// with no token — kungal now always passes viewerUID 0, which means "nobody
+// asking": the counts still come back, the voted flags do not. The parameter
+// survives because the upstream face still takes it, not because a caller here
+// has a person to name.
 func (c *Client) WorkCoverVotes(ctx context.Context, workID, viewerUID int64) ([]CoverTally, error) {
 	q := url.Values{}
 	if viewerUID > 0 {
