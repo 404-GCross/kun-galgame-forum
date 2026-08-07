@@ -56,6 +56,10 @@ export interface GalgameSeriesDetail {
   description: string
   galgame: GalgameCard[]
   galgame_count: number
+  /** The REST of the series' catalogue: members this site has not published
+   * (a draft claim, or no claim at all). Status-2 claim cards — GalgameCard's
+   * built-in routing sends each to the publish wizard. Unpaged. */
+  unpublished_galgame: GalgameCard[]
 }
 
 // Wiki /series/search and /series/modal return FULL galgame rows

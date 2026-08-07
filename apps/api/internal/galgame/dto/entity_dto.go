@@ -227,6 +227,13 @@ type SeriesDetail struct {
 	Description  string        `json:"description"`
 	Galgame      []GalgameCard `json:"galgame"`
 	GalgameCount int64         `json:"galgame_count"`
+	// UnpublishedGalgame is the REST of the series' catalogue: members this
+	// site has no published entry for (a draft claim, or no claim at all).
+	// Without it a two-work series with one published member reads as a
+	// one-work "series" — the grouping only makes sense shown whole. Each row
+	// is a status-2 claim card, so its link leads to the publish wizard, not to
+	// a local page. Unpaged: the whole bucket rides one detail response.
+	UnpublishedGalgame []GalgameCard `json:"unpublished_galgame"`
 }
 
 // ──────────────────────────────────────────

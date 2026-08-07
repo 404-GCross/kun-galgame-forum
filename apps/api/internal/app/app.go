@@ -496,7 +496,7 @@ func New(cfg *config.Config) *App {
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
 	galgameEngineSvc := galgameService.NewEngineService(gc, galgameCoreSvc)
-	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameCoreSvc)
+	galgameSeriesSvc := galgameService.NewSeriesService(gc, galgameEnricher, galgameCoreSvc)
 	galgameTagSvc := galgameService.NewTagService(gc, galgameEnricher, galgameCoreSvc)
 	galgameStaffSvc := galgameService.NewStaffService(gc, galgameEnricher)
 	galgameCharacterSvc := galgameService.NewCharacterService(gc, galgameEnricher)

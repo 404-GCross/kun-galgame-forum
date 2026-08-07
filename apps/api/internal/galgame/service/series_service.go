@@ -20,6 +20,10 @@ import (
 // the series' member works, filterable and sortable like /galgame itself.
 type SeriesService struct {
 	galgameClient *client.GalgameClient
+	// enricher renders the unpublished members as claim cards, the same
+	// projection the drafts funnel serves. May be nil (taxonomy-only tests):
+	// the detail then simply carries an empty unpublished bucket.
+	enricher *GalgameEnricher
 	// galgameSvc runs the shared local filter/sort/paginate + hydration flow
 	// over the series' member ids (the catalog cannot filter by kungal-local
 	// resource data). Same arrangement as EngineService.
@@ -28,8 +32,8 @@ type SeriesService struct {
 	index staleCache[indexedSeries]
 }
 
-func NewSeriesService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *SeriesService {
-	return &SeriesService{galgameClient: galgameClient, galgameSvc: galgameSvc}
+func NewSeriesService(galgameClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *SeriesService {
+	return &SeriesService{galgameClient: galgameClient, enricher: enricher, galgameSvc: galgameSvc}
 }
 
 // seriesIndexPageCap bounds the index walk. The upstream facet grew to ~5.5k
@@ -262,8 +266,45 @@ func (s *SeriesService) GetDetail(
 		Galgame:     listCardsToEntityCards(page.Galgames),
 		// The gated page's own total, never the upstream member count: that one
 		// counts the series' whole catalogue, published here or not.
-		GalgameCount: page.Total,
+		GalgameCount:       page.Total,
+		UnpublishedGalgame: s.unpublishedMembers(ctx, id, isSFW),
 	}, nil
+}
+
+// seriesUnpublishedStates selects the members the page's local half cannot
+// show: a claim the wiki never published (draft/pending) or no claim at all
+// (none). NOT hidden — that state means the site withdrew the entry, and a
+// series page relisting it as "unpublished" would republish a takedown.
+const seriesUnpublishedStates = "draft,pending,none"
+
+// unpublishedMembers lists the series' unpublished remainder as claim cards —
+// the same projection the drafts funnel serves, so each card already routes to
+// the publish wizard by name and needs no kungal id.
+//
+// Best-effort: the bucket is supporting material under a page that exists
+// without it, so an upstream miss degrades to an empty list rather than
+// failing the detail. The SFW gate is the page's own (content_limit — every
+// works doc carries a value, an unclaimed row's projected off its age rating).
+func (s *SeriesService) unpublishedMembers(ctx context.Context, id string, isSFW bool) []dto.GalgameCard {
+	if s.enricher == nil {
+		return []dto.GalgameCard{}
+	}
+	q := client.OpenPopulation(url.Values{
+		"series_id":   {id},
+		"page":        {"1"},
+		"limit":       {strconv.Itoa(seriesMemberCap)},
+		"include":     {CatalogCardInclude},
+		"claim_state": {seriesUnpublishedStates},
+		// Oldest first, like the montage: the bucket reads as the series'
+		// timeline with the published entries taken out.
+		"sort": {"released_asc"},
+	})
+	client.ApplyWorksGate(q, isSFW)
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
+	if appErr != nil {
+		return []dto.GalgameCard{}
+	}
+	return s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items))
 }
 
 // seriesIntro picks the blurb to render under the title.

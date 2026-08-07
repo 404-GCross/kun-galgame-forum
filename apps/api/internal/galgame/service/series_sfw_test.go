@@ -99,7 +99,7 @@ func seriesNames(t *testing.T, svc *SeriesService, isSFW bool) []string {
 }
 
 func TestSeriesIndex_HidesAdultSeriesFromSFWReaders(t *testing.T) {
-	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil)
+	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil, nil)
 
 	if got := seriesNames(t, svc, true); len(got) != 1 || got[0] != "全年龄系列" {
 		t.Errorf("SFW index = %v, want only the series with no adult member", got)
@@ -115,7 +115,7 @@ func TestSeriesIndex_HidesAdultSeriesFromSFWReaders(t *testing.T) {
 // would advertise games and then lead to an empty page — which is what series
 // 38 did (one live member, claimed on the wiki, never given a local row).
 func TestSeriesIndex_HidesSeriesWithNothingListable(t *testing.T) {
-	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil)
+	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil, nil)
 
 	for _, name := range seriesNames(t, svc, false) {
 		if name == "无可展示成员" {
@@ -128,7 +128,7 @@ func TestSeriesIndex_HidesSeriesWithNothingListable(t *testing.T) {
 // would otherwise report every series as safe, which is the one reading that
 // shows adult work to a reader who opted out.
 func TestSeriesIndex_UnansweredHasNSFWIsNotSafe(t *testing.T) {
-	svc := NewSeriesService(client.New(seriesStub(t, false).URL, "nm_test_key", ""), nil)
+	svc := NewSeriesService(client.New(seriesStub(t, false).URL, "nm_test_key", ""), nil, nil)
 
 	if got := seriesNames(t, svc, true); len(got) != 0 {
 		t.Errorf("SFW index = %v, want nothing — the catalog answered nothing", got)
