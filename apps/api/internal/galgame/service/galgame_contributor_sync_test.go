@@ -1,0 +1,108 @@
+package service
+
+import (
+	"testing"
+	"time"
+
+	"kun-galgame-api/pkg/catalogclient"
+)
+
+func revision(id int64, gid *int64, actor int64, amender *int64, at time.Time) catalogclient.WorkRevisionFeedItem {
+	return catalogclient.WorkRevisionFeedItem{
+		ID: id, ActorUID: actor, AmenderUID: amender,
+		Site: "kungal", ProductWorkID: gid, CreatedAt: at,
+	}
+}
+
+// One page folds into one row per (galgame, person), counting revisions and
+// widening the first/last window as it goes.
+func TestContributorTouchesFoldsAPage(t *testing.T) {
+	t0 := time.Date(2025, 7, 20, 21, 58, 23, 0, time.UTC)
+	t1 := t0.Add(48 * time.Hour)
+	gid := ptr(int64(4321))
+
+	touches, gids := contributorTouches([]catalogclient.WorkRevisionFeedItem{
+		revision(1, gid, 61516, nil, t1),
+		revision(2, gid, 61516, nil, t0),
+	})
+
+	if len(gids) != 1 || gids[0] != 4321 {
+		t.Fatalf("gids = %v, want one entry 4321 (the count refresh's target list)", gids)
+	}
+	if len(touches) != 1 {
+		t.Fatalf("touches = %d, want the two revisions folded onto one pair", len(touches))
+	}
+	got := touches[0]
+	if got.Count != 2 {
+		t.Errorf("count = %d, want 2", got.Count)
+	}
+	if !got.FirstAt.Equal(t0) {
+		t.Errorf("first_at = %v, want the EARLIER timestamp %v — the feed is ordered by id, not time", got.FirstAt, t0)
+	}
+	if !got.LastAt.Equal(t1) {
+		t.Errorf("last_at = %v, want the later timestamp %v", got.LastAt, t1)
+	}
+}
+
+// A reviewer who amends a proposal contributed to it; the filer still did too.
+func TestContributorTouchesCreditsBothIdentities(t *testing.T) {
+	now := time.Now().UTC()
+	gid := ptr(int64(77))
+
+	touches, _ := contributorTouches([]catalogclient.WorkRevisionFeedItem{
+		revision(1, gid, 100, ptr(int64(200)), now),
+	})
+	if len(touches) != 2 {
+		t.Fatalf("touches = %d, want the actor and the amender credited separately", len(touches))
+	}
+
+	// Amending one's OWN proposal is one contribution — the engine records a
+	// rebase that way, and paying it twice would rank self-amenders first.
+	self, _ := contributorTouches([]catalogclient.WorkRevisionFeedItem{
+		revision(2, gid, 100, ptr(int64(100)), now),
+	})
+	if len(self) != 1 || self[0].Count != 1 {
+		t.Fatalf("self-amendment = %+v, want a single contribution", self)
+	}
+}
+
+// Without a product anchor there is no gid to attribute the edit to, and the
+// work id must never stand in for one.
+func TestContributorTouchesSkipsUnanchoredRevisions(t *testing.T) {
+	now := time.Now().UTC()
+	for _, gid := range []*int64{nil, ptr(int64(0))} {
+		touches, gids := contributorTouches([]catalogclient.WorkRevisionFeedItem{
+			revision(1, gid, 100, nil, now),
+		})
+		if len(touches) != 0 || len(gids) != 0 {
+			t.Errorf("anchor %v yielded %d touches / %d gids, want none", gid, len(touches), len(gids))
+		}
+	}
+	// A revision by nobody (a system-minted row) is inert for the same reason:
+	// user 0 is not a contributor.
+	if touches, _ := contributorTouches([]catalogclient.WorkRevisionFeedItem{
+		revision(2, ptr(int64(77)), 0, nil, now),
+	}); len(touches) != 0 {
+		t.Errorf("actor 0 yielded %d touches, want none", len(touches))
+	}
+}
+
+// The cursor is the largest id SEEN, so a page that arrives out of order can
+// never rewind it — and an empty page leaves it exactly where it was.
+func TestMaxRevisionIDNeverRewinds(t *testing.T) {
+	now := time.Now().UTC()
+	gid := ptr(int64(1))
+	items := []catalogclient.WorkRevisionFeedItem{
+		revision(30, gid, 1, nil, now),
+		revision(12, gid, 1, nil, now),
+	}
+	if got := maxRevisionID(items, 5); got != 30 {
+		t.Errorf("maxRevisionID = %d, want 30", got)
+	}
+	if got := maxRevisionID(items, 99); got != 99 {
+		t.Errorf("maxRevisionID = %d, want the cursor held at 99", got)
+	}
+	if got := maxRevisionID(nil, 7); got != 7 {
+		t.Errorf("maxRevisionID(empty) = %d, want 7", got)
+	}
+}
