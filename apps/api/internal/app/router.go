@@ -339,6 +339,12 @@ func (a *App) setupRoutes() {
 	// AUTHENTICATED routes (require valid session)
 	// ════════════════════════════════════════════
 
+	// An empty-prefix group registers its middleware as Use() on the parent path,
+	// so Auth applies to EVERY route declared below this line — which is exactly
+	// what "authenticated routes start here" means, and why this one is a group
+	// and the per-verb gates further down are not. The corollary is a hard rule:
+	// nothing public or optAuth may be registered after this point, or it
+	// silently starts demanding a session.
 	authed := api.Group("", middleware.Auth(a.Redis, a.OAuthClient))
 	authed.Get("/auth/me", a.OAuthHandler.Me)
 
@@ -589,12 +595,20 @@ func (a *App) setupRoutes() {
 	// never be able to lock admins out of the very surface that repairs overrides
 	// (self-lockout prevention), so this meta-surface sits OUTSIDE the overridable
 	// system, like the infra-proxy mirrors.
-	rolePermAdmin := authed.Group("", middleware.RequireAdmin())
-	rolePermAdmin.Get("/admin/role-permissions", a.AdminRolePermissionHandler.GetMatrix)
-	rolePermAdmin.Put("/admin/role-permissions/:role", a.AdminRolePermissionHandler.Replace)
-	rolePermAdmin.Get("/admin/user-permissions/:uid", a.AdminUserPermissionHandler.GetView)
-	rolePermAdmin.Put("/admin/user-permissions/:uid", a.AdminUserPermissionHandler.Replace)
-	rolePermAdmin.Get("/admin/permission-audit", a.AdminPermissionAuditHandler.List)
+	//
+	// The gate is PER-ROUTE, never `Group("", middleware.RequireAdmin())`: an
+	// empty-prefix group registers its middleware as Use() on the PARENT path
+	// ("/api"), which then runs for every route declared BELOW it — including
+	// the deliberately ungated groups that follow. That is how RequireAdmin
+	// silently swallowed the trust inbox, the galgame submission queue, doc,
+	// website, update-log and friend-link surfaces between 2026-07-21 and
+	// 2026-08-07: moderators held the permission and were refused anyway.
+	rolePermAdmin := authed.Group("")
+	rolePermAdmin.Get("/admin/role-permissions", middleware.RequireAdmin(), a.AdminRolePermissionHandler.GetMatrix)
+	rolePermAdmin.Put("/admin/role-permissions/:role", middleware.RequireAdmin(), a.AdminRolePermissionHandler.Replace)
+	rolePermAdmin.Get("/admin/user-permissions/:uid", middleware.RequireAdmin(), a.AdminUserPermissionHandler.GetView)
+	rolePermAdmin.Put("/admin/user-permissions/:uid", middleware.RequireAdmin(), a.AdminUserPermissionHandler.Replace)
+	rolePermAdmin.Get("/admin/permission-audit", middleware.RequireAdmin(), a.AdminPermissionAuditHandler.List)
 
 	// Trust & Safety moderator inbox (proxied to the trust admin API with the
 	// moderator's own token; site forced to kungal).
@@ -602,11 +616,13 @@ func (a *App) setupRoutes() {
 	// INFRA-PROXY (mirrors infra key `trust.queue_access`, moderator+): the
 	// trust admin API re-checks; RequireModerator here is the fail-fast mirror,
 	// NOT a pkg/perm boundary.
-	trustAdmin := authed.Group("", middleware.RequireModerator())
-	trustAdmin.Get("/admin/trust/review-items", a.TrustHandler.ListReviewItems)
-	trustAdmin.Get("/admin/trust/review-items/:id", a.TrustHandler.GetReviewItem)
-	trustAdmin.Post("/admin/trust/review-items/:id/claim", a.TrustHandler.ClaimReviewItem)
-	trustAdmin.Post("/admin/trust/review-items/:id/decide", a.TrustHandler.DecideReviewItem)
+	//
+	// Per-route for the same reason as rolePermAdmin above — see that comment.
+	trustAdmin := authed.Group("")
+	trustAdmin.Get("/admin/trust/review-items", middleware.RequireModerator(), a.TrustHandler.ListReviewItems)
+	trustAdmin.Get("/admin/trust/review-items/:id", middleware.RequireModerator(), a.TrustHandler.GetReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/claim", middleware.RequireModerator(), a.TrustHandler.ClaimReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/decide", middleware.RequireModerator(), a.TrustHandler.DecideReviewItem)
 
 	// Galgame admin: a MIXED group — the submission-review routes are
 	// INFRA-PROXY (galgame re-checks), the resource-publish ban is PURE-FORUM, so
