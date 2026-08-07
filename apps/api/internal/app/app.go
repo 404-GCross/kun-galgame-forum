@@ -479,13 +479,15 @@ func New(cfg *config.Config) *App {
 	galgameListRepo := galgameRepo.NewGalgameListRepository(db)
 	galgameResourceMetaRepo := galgameRepo.NewGalgameResourceMetaRepository(db)
 	galgameDetailRatingRepo := galgameRepo.NewGalgameDetailRatingRepository(db)
+	galgameContributorRepo := galgameRepo.NewGalgameContributorRepository(db)
 	galgameEnricher := galgameService.NewGalgameEnricher(galgameLocalRepo, galgameResourceMetaRepo, uc)
 	// Core galgame service is built first: the entity (tag/official/engine)
 	// detail services delegate their galgame list to it (shared local
 	// filter/sort/hydrate), so they take it as a dependency.
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
-		galgameResourceMetaRepo, galgameDetailRatingRepo, userStateRepo, gc, uc, catalogCli,
+		galgameResourceMetaRepo, galgameDetailRatingRepo, galgameContributorRepo,
+		userStateRepo, gc, uc, catalogCli,
 		cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL,
 	)
 	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
@@ -515,6 +517,11 @@ func New(cfg *config.Config) *App {
 	// catalog S2S client, not the wiki client: the engine is the author of every
 	// galgame field edit, so its feed is the authoritative source (wave 156 N3).
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
+	// Projects the same engine's work revisions onto galgame_contributor
+	// (migration 069) — the detail page's contributor strip. Unlike the two
+	// crons above it replays the feed from 0 on first run: the table starts
+	// empty and the wiki-era editing history it needs is what the engine holds.
+	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
 
 	// Website
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
@@ -687,7 +694,7 @@ func New(cfg *config.Config) *App {
 		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
 		ToolsetResourceHandler:     toolsetHandler.NewResourceHandler(toolsetResourceSvc),
 		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
-		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run),
+		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run, galgameContributorSync.Run),
 	}
 
 	// Load the runtime permission overrides (BOTH the role and user layers) into

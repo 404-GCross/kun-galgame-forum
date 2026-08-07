@@ -25,7 +25,14 @@ const scheduleTZ = "Asia/Shanghai"
 // claim-state transitions from the registry's claim-event feed. Scheduled
 // every 10 minutes so a reviewer's decision — and the +3 that rides on it —
 // reaches the submitter within a normal page-refresh window.
-func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameClaimSync func(), galgameRevisionSync func()) func() {
+func Start(
+	db *gorm.DB,
+	rdb *redis.Client,
+	imgCli *imageclient.Client,
+	galgameClaimSync func(),
+	galgameRevisionSync func(),
+	galgameContributorSync func(),
+) func() {
 	loc, err := time.LoadLocation(scheduleTZ)
 	if err != nil {
 		slog.Warn("加载定时任务时区失败, 回退到进程本地时区", "tz", scheduleTZ, "error", err)
@@ -82,6 +89,15 @@ func Start(db *gorm.DB, rdb *redis.Client, imgCli *imageclient.Client, galgameCl
 	// galgame_activity timeline source. Same cadence as the message sync.
 	if galgameRevisionSync != nil {
 		c.AddFunc("*/10 * * * *", galgameRevisionSync)
+	}
+
+	// Every 15 min: fold the same engine's work revisions into the contributor
+	// table. A slower beat than the two above on purpose — a contributor strip
+	// is not time-critical, and the first run after deploy replays the whole
+	// feed (see GalgameContributorSync.Run), which is not something to start
+	// twice in quick succession.
+	if galgameContributorSync != nil {
+		c.AddFunc("*/15 * * * *", galgameContributorSync)
 	}
 
 	c.Start()

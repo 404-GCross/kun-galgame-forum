@@ -22,9 +22,12 @@ package client
 //     The per-row user_id that drove the banned-author filter is gone with them
 //     by ruling (doc 126 D6) — these are platform-curated rows now, with no
 //     author to ban.
-//   - contributors are not projected at all: wiki-era contribution froze with
-//     the wiki (D6), and the catalog has no forward contribution feed yet. The
-//     service renders the author alone.
+//   - contributors are not projected at all, and since wave 180 that is a
+//     statement about OWNERSHIP rather than a gap. The catalog records
+//     revisions per entity for every tenant at once; who KUNGAL credits on a
+//     galgame is a local table (galgame_contributor, migration 069), fed by the
+//     wiki's frozen ledger plus a forward sync off the engine's revision feed.
+//     The projection leaves the list empty and the service fills it.
 
 import (
 	"context"
@@ -59,8 +62,9 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		Characters:         catalogRosterToNextMoe(d.Characters),
 		Covers:             catalogCoversToNextMoe(d),
 		Screenshots:        catalogScreenshotsToNextMoe(d),
-		// Wiki-era contribution froze with the wiki (D6). The author still
-		// renders; the contributor strip does not.
+		// Empty here by design, not by omission: the contributor strip is filled
+		// from the forum's own table at the service layer (see the note above).
+		// [] rather than nil — "nobody but the author", not "unknown".
 		Contributor: []dto.NextMoeContributor{},
 	}
 	f.VndbID = f.Refs["vndb"]

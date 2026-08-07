@@ -29,6 +29,7 @@ type GalgameService struct {
 	listRepo         *repository.GalgameListRepository
 	resourceMetaRepo *repository.GalgameResourceMetaRepository
 	detailRatingRepo *repository.GalgameDetailRatingRepository
+	contributorRepo  *repository.GalgameContributorRepository
 	stateRepo        *userRepo.StateRepository
 	galgameClient    *client.GalgameClient
 	userClient       *userclient.Client
@@ -49,6 +50,7 @@ func NewGalgameService(
 	listRepo *repository.GalgameListRepository,
 	resourceMetaRepo *repository.GalgameResourceMetaRepository,
 	detailRatingRepo *repository.GalgameDetailRatingRepository,
+	contributorRepo *repository.GalgameContributorRepository,
 	stateRepo *userRepo.StateRepository,
 	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
@@ -64,6 +66,7 @@ func NewGalgameService(
 		dlsiteLinkTemplate: dlsiteLinkTemplate,
 		dlsiteCouponURL:    dlsiteCouponURL,
 		detailRatingRepo:   detailRatingRepo,
+		contributorRepo:    contributorRepo,
 		stateRepo:          stateRepo,
 		galgameClient:      galgameClient,
 		userClient:         userClient,
@@ -247,6 +250,11 @@ func (s *GalgameService) GetDetail(
 	if owner := s.ownerOf(galgameID); owner > 0 {
 		g.UserID = owner
 	}
+	// The contributor strip comes from the forum's own table (migration 069):
+	// the projection carries an empty list because the CATALOG has no opinion
+	// on who kungal credits. Filled here, before the users map is built, so the
+	// same Hydrate round-trip resolves the author and every contributor.
+	g.Contributor = s.contributorsOf(galgameID)
 	users := s.hydrateDetailUsers(ctx, g)
 	detail := galgameDetailFromNextMoe(g, users)
 	// 正版购买 (DLsite affiliate) — empty unless this galgame carries a DLsite work
@@ -281,6 +289,21 @@ func (s *GalgameService) GetDetail(
 		detail.Tag = withoutSexualTags(detail.Tag)
 	}
 	return &detail, nil
+}
+
+// contributorsOf lists who has edited a galgame, busiest first, capped — the
+// order and the cap are the repository's (see FindContributors).
+//
+// Always a non-nil slice: the detail contract ships `contributor: []`, and a
+// null there is a different statement ("unknown") than an empty list ("nobody
+// but the author").
+func (s *GalgameService) contributorsOf(galgameID int) []dto.NextMoeContributor {
+	rows := s.contributorRepo.FindContributors(galgameID, contributorMaxPerGalgame)
+	out := make([]dto.NextMoeContributor, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, dto.NextMoeContributor{UserID: int(row.UserID)})
+	}
+	return out
 }
 
 // hydrateDetailUsers resolves the author + every contributor from OAuth into the
