@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,14 +12,10 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
+	"kun-galgame-api/internal/testdb"
 	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
-
-	"github.com/joho/godotenv"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // scriptedChecker is a gate.Checker fake returning a fixed decision.
@@ -94,19 +89,11 @@ func TestQuizAuthoringModerationText(t *testing.T) {
 // ──────────────────────────────────────────
 // Rating create: deny blocks (nothing persisted) + allow fires the shadow scan
 // after commit with the galgame_rating kind, the new row id, and the RAW
-// short_summary. DB-gated (mirrors enforce_test.go) — skips without a dev DB.
+// short_summary. DB-gated (mirrors enforce_test.go) — see internal/testdb.
 // ──────────────────────────────────────────
 
 func TestRatingCreateDenyAndScan(t *testing.T) {
-	_ = godotenv.Load("../../../.env")
-	dsn := os.Getenv("KUN_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("KUN_DATABASE_URL not set")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	db := testdb.Open(t)
 
 	// Reserved-high ids so we never collide with a real galgame / user.
 	const gid = 2_000_000_777

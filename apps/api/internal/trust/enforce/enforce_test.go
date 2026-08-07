@@ -2,30 +2,17 @@ package enforce
 
 import (
 	"context"
-	"os"
 	"testing"
 
+	"kun-galgame-api/internal/testdb"
 	"kun-galgame-api/internal/trust/dto"
-
-	"github.com/joho/godotenv"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-// TestApplyIdempotentAndRoutes exercises the dispatcher against the real dev DB
+// TestApplyIdempotentAndRoutes exercises the dispatcher against a real Postgres
 // (trust_disposition_applied): first apply dispatches + records; a replay of the
 // same disposition_id is a no-op. Also checks action → adapter routing.
 func TestApplyIdempotentAndRoutes(t *testing.T) {
-	_ = godotenv.Load("../../../.env")
-	dsn := os.Getenv("KUN_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("KUN_DATABASE_URL not set")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	db := testdb.Open(t)
 
 	const dispID int64 = 2_000_000_777
 	db.Exec("DELETE FROM trust_disposition_applied WHERE disposition_id = ?", dispID)
