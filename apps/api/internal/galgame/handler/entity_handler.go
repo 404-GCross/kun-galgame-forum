@@ -92,6 +92,19 @@ func (h *EntityHandler) GetOfficialDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
+// GetOfficialRelationGraph — GET /galgame-official/:id/relation-graph
+//
+// Separate from the detail route on purpose: the detail payload is refetched
+// whenever the page's games grid is paged or filtered, and the corporate family
+// is unaffected by either. The FE fetches this once, lazily.
+func (h *EntityHandler) GetOfficialRelationGraph(c fiber.Ctx) error {
+	graph, appErr := h.officialService.GetRelationGraph(c.Context(), c.Params("id"))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, graph)
+}
+
 // ──────────────────────────────────────────
 // Engine
 // ──────────────────────────────────────────

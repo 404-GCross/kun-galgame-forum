@@ -218,6 +218,11 @@ func (a *App) setupRoutes() {
 	// redirect shell. Must precede the :id catch-all.
 	api.Get("/galgame-official/legacy/:id", a.GalgameEntityHandler.ResolveLegacyOfficial)
 	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
+	// The 会社's corporate family (parent / brand / spin-off / rename edges).
+	// Deliberately NOT folded into the detail payload above: that one is
+	// refetched on every pagination and filter change of the games grid, and
+	// the family tree is unaffected by both.
+	api.Get("/galgame-official/:id/relation-graph", a.GalgameEntityHandler.GetOfficialRelationGraph)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
 	// One credited name (catalog credit_name id) + a page of its filmography.

@@ -149,6 +149,48 @@ func (s *OfficialService) GetDetail(
 	}, nil
 }
 
+// GetRelationGraph — GET /galgame-official/:id/relation-graph
+//
+// Its own endpoint rather than a block on GetDetail: the detail lane is
+// refetched on every pagination / filter change of the games grid, and the
+// corporate family does not change when the reader turns a page. Paying for a
+// graph walk on each of those would be pure waste.
+//
+// Nothing is recomputed locally here — unlike the games grid, whose rows are
+// forum-local, the family tree is entirely upstream data. The only projection
+// is the logo hash → CDN URL, resolved exactly as the detail's own logo is.
+func (s *OfficialService) GetRelationGraph(ctx context.Context, id string) (*dto.OfficialRelationGraph, *errors.AppError) {
+	graph, found, appErr := s.galgameClient.CatalogLabelRelationGraph(ctx, id)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if !found {
+		return nil, errors.ErrNotFound("未找到该会社")
+	}
+
+	// Always slices, never null: the FE iterates both unguarded.
+	out := &dto.OfficialRelationGraph{
+		Nodes: make([]dto.OfficialRelationNode, 0, len(graph.Nodes)),
+		Edges: make([]dto.OfficialRelationEdge, 0, len(graph.Edges)),
+	}
+	for _, n := range graph.Nodes {
+		out.Nodes = append(out.Nodes, dto.OfficialRelationNode{
+			ID:        int(n.ID),
+			Name:      n.Name,
+			Logo:      s.galgameClient.ImageURLFromHash(n.LogoHash),
+			WorkCount: n.WorkCount,
+		})
+	}
+	for _, e := range graph.Edges {
+		out.Edges = append(out.Edges, dto.OfficialRelationEdge{
+			From:     int(e.From),
+			To:       int(e.To),
+			Relation: e.Relation,
+		})
+	}
+	return out, nil
+}
+
 // officialLinks passes the label's web presences through with their source
 // keys, so the page can name each one instead of labelling an X account
 // "官方网站". Always a slice, never null — the FE iterates it unguarded.

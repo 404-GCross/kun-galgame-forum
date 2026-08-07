@@ -147,6 +147,40 @@ type OfficialDetail struct {
 	MovedTo int `json:"moved_to,omitempty"`
 }
 
+// OfficialRelationNode is one 会社 in the corporate family graph.
+type OfficialRelationNode struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	// Logo — a ready-made absolute CDN URL like OfficialDetail.Logo (the FE
+	// derives the `_mini` variant), "" when the maker has no logo.
+	Logo string `json:"logo"`
+	// WorkCount is the CATALOG-wide count, deliberately not the forum-local
+	// `galgame_count` the detail header shows: the family tree describes the
+	// corporate structure, and a local count per sibling would cost one members
+	// query per node. Named differently so the two can never be confused.
+	WorkCount int `json:"work_count"`
+}
+
+// OfficialRelationEdge reads "To is the Relation of From" — e.g.
+// {from: Key, to: VisualArt's, relation: parent}. Only the canonical
+// orientations arrive (parent / imprint / spawned / succeeded_by); each also
+// implies its mirror read backwards, so the FE must not look for the inverse
+// row.
+type OfficialRelationEdge struct {
+	From     int    `json:"from"`
+	To       int    `json:"to"`
+	Relation string `json:"relation"`
+}
+
+// OfficialRelationGraph is the connected component around one 会社 — capped
+// upstream, cycle-safe, and always including the requested label itself, so a
+// one-node graph means "this maker has no recorded relations" and the FE draws
+// nothing.
+type OfficialRelationGraph struct {
+	Nodes []OfficialRelationNode `json:"nodes"`
+	Edges []OfficialRelationEdge `json:"edges"`
+}
+
 // ──────────────────────────────────────────
 // Engine
 // ──────────────────────────────────────────
