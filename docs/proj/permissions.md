@@ -1,14 +1,15 @@
 # 权限系统：permission-first 授权（2026-07）
 
 > 本仓自有工程笔记（**非** infra 镜像）。记录 kungal 论坛这一层的授权模型：
-> 43 个纯论坛权限、7 个 infra 代理操作、两层运行时覆盖（role / user）与审计。
-> 记录截至 2026-07 的实现状态（commits `2e574ab7` / `e446d9bf` / `93a2fcbf`）。
+> 51 个纯论坛权限、7 个 infra 代理操作、两层运行时覆盖（role / user）与审计。
+> 初版记录 2026-07 的实现状态（commits `2e574ab7` / `e446d9bf` / `93a2fcbf`）；
+> 2026-08 词表随社区原语扩到 51 key，本文档计数已对齐 `perm_test.go` 金表。
 
 ## 一、两类权限：谁说了算
 
 论坛的授权分成两类，边界刻意分明——只有第一类由本仓做最终裁决。
 
-**纯论坛权限（43 个，PURE-FORUM）。** 内容审核与站务管理的能力，真值 **完全在** `apps/api/pkg/perm`。每个执行点调用 `perm.CanUser(uid, roles, p)`（不是判角色字符串），resolver 就是这些操作的真闸。它们是唯一进入覆盖系统的权限。
+**纯论坛权限（51 个，PURE-FORUM）。** 内容审核与站务管理的能力，真值 **完全在** `apps/api/pkg/perm`。每个执行点调用 `perm.CanUser(uid, roles, p)`（不是判角色字符串），resolver 就是这些操作的真闸。它们是唯一进入覆盖系统的权限。
 
 **infra 代理操作（7 个，INFRA-PROXY）。** 论坛只是带着调用者的 token 转发给 infra（编辑引擎 / kun_trust），由 infra 重新判定真正的权限。本地那道门只是 **fail-fast / 可见性镜像**，所以刻意 **停留在 `pkg/role`（`CanModerate` / `CanAdminister`）**、写在 `pkg/perm` 与覆盖系统 **之外**，并在代码里用注释标出它镜像的 infra key。给它们建 `pkg/perm` key 会谎称论坛拥有裁决权——真值在 infra。
 
@@ -32,17 +33,19 @@
 
 > 代码里有两处 7-op 清单：`pkg/perm` 的包注释（权威）与前端 `KUN_PROXY_PERMISSIONS` 只读展示表——后者逐字镜像前者的命名，不得分叉；本表是第三处，三处必须同一个 commit 一起改。`edit.galgame.game.status` 不是第十项：它是「提交审核队列」这一项在状态流转上的又一处镜像门（见表中第 2 行）。
 
-## 二、43-key 目录
+## 二、51-key 目录
 
-标签取自 `apps/web/app/constants/permission.ts`（`KUN_PERMISSION_META`），与 UI 保持一致。除「管理」组两项为 **管理员+**（admin ⊂ ren）外，其余 41 项均为 **版主+**（moderator ⊂ admin ⊂ ren）。声明顺序即目录顺序（`pkg/perm/perm.go`）。
+标签取自 `apps/web/app/constants/permission.ts`（`KUN_PERMISSION_META`），与 UI 保持一致。除「管理」组两项为 **管理员+**（admin ⊂ ren）外，其余 49 项均为 **版主+**（moderator ⊂ admin ⊂ ren）。声明顺序即目录顺序（`pkg/perm/perm.go`）。
 
 | 分组 | key | 标签 | 阈值 |
 |---|---|---|---|
 | 话题 | `topic.edit_any` | 编辑任意话题 | 版主+ |
 | 话题 | `topic.hide` | 隐藏话题 | 版主+ |
 | 话题 | `topic.set_best_answer` | 设置最佳答案 | 版主+ |
+| 回复 | `reply.edit_any` | 编辑任意回复 | 版主+ |
 | 回复 | `reply.delete_any` | 删除任意回复 | 版主+ |
 | 回复 | `reply.pin` | 置顶回复 | 版主+ |
+| 评论 | `comment.topic.edit` | 编辑话题评论 | 版主+ |
 | 评论 | `comment.topic.delete` | 删除话题评论 | 版主+ |
 | 评论 | `comment.galgame.edit` | 编辑 Galgame 评论 | 版主+ |
 | 评论 | `comment.galgame.delete` | 删除 Galgame 评论 | 版主+ |
@@ -52,11 +55,17 @@
 | 评论 | `comment.website.delete` | 删除网站评论 | 版主+ |
 | 评论 | `comment.toolset.edit` | 编辑工具集评论 | 版主+ |
 | 评论 | `comment.toolset.delete` | 删除工具集评论 | 版主+ |
+| 评论 | `comment.resource.edit` | 编辑资源评论 | 版主+ |
+| 评论 | `comment.resource.delete` | 删除资源评论 | 版主+ |
+| 评论 | `comment.quiz.edit` | 编辑题目评论 | 版主+ |
+| 评论 | `comment.quiz.delete` | 删除题目评论 | 版主+ |
 | 投票 | `poll.create_any` | 为任意话题创建投票 | 版主+ |
 | 投票 | `poll.edit_any` | 编辑任意投票 | 版主+ |
 | 投票 | `poll.delete_any` | 删除任意投票 | 版主+ |
 | 投票 | `poll.view_restricted` | 查看受限/匿名投票结果 | 版主+ |
 | Galgame | `galgame.ban_resource_publish` | 禁止游戏资源发布 | 版主+ |
+| 收藏夹 | `collection.edit_any` | 编辑任意收藏夹 | 版主+ |
+| 收藏夹 | `collection.delete_any` | 删除任意收藏夹 | 版主+ |
 | 题目 | `quiz.edit_any` | 编辑任意题目 | 版主+ |
 | 题目 | `quiz.delete_any` | 删除任意题目 | 版主+ |
 | 资源 | `resource.edit_any` | 编辑任意游戏资源 | 版主+ |
@@ -82,7 +91,7 @@
 | 管理 | `admin.dashboard` | 管理总览与统计 | 管理员+ |
 | 管理 | `user.purge_content` | 清除用户全部内容 | 管理员+ |
 
-编译期 bundle（`Bundles`）只列三个可授予的管理角色：`moderator`（41 项）、`admin`/`ren`（43 项，由 `moderatorPerms` 追加两个 admin-only key 组合而来，`moderator ⊂ admin` 结构性成立）。`user` / `creator` 及任何未知角色解析为空。`perm_test.go` 逐格 pin 住这张金表。
+编译期 bundle（`Bundles`）只列三个可授予的管理角色：`moderator`（49 项）、`admin`/`ren`（51 项，由 `moderatorPerms` 追加两个 admin-only key 组合而来，`moderator ⊂ admin` 结构性成立）。`user` / `creator` 及任何未知角色解析为空。`perm_test.go` 逐格 pin 住这张金表。
 
 ## 三、CanUser 解析顺序与不变量
 
@@ -98,7 +107,7 @@
 
 **不变量：**
 
-- **ren 处处 pin 全目录**：写入路径（`validateReplace` 拒绝 `role==ren`、`validateUserReplace` 拒绝 ren 持有者）、应用路径（`applyOverrides` 对 ren 短路到 `fullCatalogSet`；`buildResolver` 恒纳入 ren）、`CanUser`（第 2 步）三处都 pin。`TestCanUserRenImmunity` 证明即使塞入「撤销全部」的个人行，ren 仍持 43 项。
+- **ren 处处 pin 全目录**：写入路径（`validateReplace` 拒绝 `role==ren`、`validateUserReplace` 拒绝 ren 持有者）、应用路径（`applyOverrides` 对 ren 短路到 `fullCatalogSet`；`buildResolver` 恒纳入 ren）、`CanUser`（第 2 步）三处都 pin。`TestCanUserRenImmunity` 证明即使塞入「撤销全部」的个人行，ren 仍持 51 项。
 - **moderator ⊆ admin 在写入时按「拟态」校验**：`validateReplace` 用 `EffectiveSet`（纯函数，不依赖已安装的全局表）对拟提交的状态计算 `effective(moderator)` 与 `effective(admin)`，前者不被后者包含即 400。
 - **`user` 角色隐式且缺席**：OAuth 契约里从不作为 claim 下发，`editableRoles` 不含它，永不可管理。
 - **`creator` 可管理但默认为空**：`editableRoles` 含 `creator`，`EffectiveBundles` 恒返回 `creator`（默认 `[]`）——管理员可给它授予 key，但基线无任何权限。
@@ -122,7 +131,7 @@
 
 ## 六、管理面
 
-`/admin/permission`（`pages/admin/permission.vue`，`middleware: 'admin'`）两个 tab：**权限矩阵**（`Matrix.vue`：43 行 × creator/moderator/admin/ren 四列，勾选即相对基线的 grant/revoke，小圆点标偏离；ren 列锁定只读）与 **变更日志**（`AuditLog.vue`）。矩阵下方另有 `ProxyList.vue` 只读列出 7 个 infra 代理操作（可见但不可覆盖）。保存为「每个脏角色一次 PUT，整体替换该角色覆盖集」。
+`/admin/permission`（`pages/admin/permission.vue`，`middleware: 'admin'`）两个 tab：**权限矩阵**（`Matrix.vue`：51 行 × creator/moderator/admin/ren 四列，勾选即相对基线的 grant/revoke，小圆点标偏离；ren 列锁定只读）与 **变更日志**（`AuditLog.vue`）。矩阵下方另有 `ProxyList.vue` 只读列出 7 个 infra 代理操作（可见但不可覆盖）。保存为「每个脏角色一次 PUT，整体替换该角色覆盖集」。
 
 **每用户「权限调整」面板**（`UserPanel.vue`）挂在 `/admin/user` 的 `UserCard` 上：以 `role_effective`（角色派生集）为偏离参照，PUT 发送工作集相对该参照的 delta 作为个人覆盖全集（replace 语义）；ren 持有者整面板只读。
 
@@ -134,7 +143,7 @@
 
 ## 八、前端镜像契约
 
-- **静态表须与 `pkg/perm` 逐字一致**：`useCan.ts` 的 `MODERATOR_PERMISSIONS`（41）+ `ADMIN_ONLY_PERMISSIONS`（2）是编译期基线的手抄镜像，字符串即 wire 契约，必须与 `pkg/perm` lockstep。`constants/permission.ts` 的标签表按 `ForumPermission` 类型约束，少一个/多一个 key 会在 **构建时** 报错——标签永不会静默漂移。
+- **静态表须与 `pkg/perm` 逐字一致**：`useCan.ts` 的 `MODERATOR_PERMISSIONS`（49）+ `ADMIN_ONLY_PERMISSIONS`（2）是编译期基线的手抄镜像，字符串即 wire 契约，必须与 `pkg/perm` lockstep。`constants/permission.ts` 的标签表按 `ForumPermission` 类型约束，少一个/多一个 key 会在 **构建时** 报错——标签永不会静默漂移。
 - **运行时可见性走 `GET /perm/mine`**：`perm-mine.ts`（universal 插件，非 `.client`）为 **每个登录用户** 各拉一次，写入 `useState('kun-perm-mine')`。因为个人 grant 可能落在无角色账号上，所以不再「roles 为空就跳过」；只有匿名访客跳过。`useCan` 优先读这份已折叠了 role 层 + 个人 delta 的有效表，未就绪/失败时退回静态角色表。`GET /perm/bundles`（**公开**）另供各角色的有效 bundle，只驱动 UI 显隐。
 - **前端 gating 仅 UX**：真正边界是后端（`RequirePermission` → `CanUser`，同样应用覆盖）。组件分支于具名 **能力**，从不判角色 tier。
 - **审核工作台消费投影而非镜像 infra bundle**：编辑提案的评审 UI 读接口下发的 `can_review` / `can_decide` 投影（见特殊判定点），不在前端复刻 infra 的 bundle。
