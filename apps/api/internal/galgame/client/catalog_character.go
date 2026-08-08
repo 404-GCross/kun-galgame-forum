@@ -43,9 +43,15 @@ const catalogCharacterSpoilerCeiling = 2
 
 // CatalogCharacter is one character record with a page of its appearances.
 type CatalogCharacter struct {
-	ID    int64          `json:"id"`
-	Name  catNameBuckets `json:"name"`
-	Latin string         `json:"latin"`
+	ID int64 `json:"id"`
+	// DisplayName / Lang / Localized replace the retired name buckets — see
+	// catLocalizedName. Unlike a credited person, a character's name IS
+	// routinely translated, so Localized is the field that carries most of the
+	// value here: render it through PickCatalogName.
+	DisplayName string                      `json:"display_name"`
+	Lang        string                      `json:"lang"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Latin       string                      `json:"latin"`
 	// Image is the BUST portrait and Figure the FULL-BODY 立绘, both as
 	// complete CDN URLs, either possibly empty. They are DIFFERENT ASSETS and
 	// neither is a fallback for the other: the bust was cover-cropped to

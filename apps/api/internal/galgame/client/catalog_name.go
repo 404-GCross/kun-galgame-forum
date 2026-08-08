@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"kun-galgame-api/pkg/errors"
 )
@@ -30,33 +31,49 @@ import (
 // catalogNameCreditsCap is the face's own offset-list ceiling.
 const catalogNameCreditsCap = 50
 
-// catNameBuckets is the face's per-script name split. It is the shape on the
-// record itself AND on every sibling — a sibling name is not a bare string, and
-// decoding it as one fails the whole response for exactly the people who have
-// siblings, which is to say the ones the page is most interesting for.
-type catNameBuckets struct {
-	JA    string `json:"ja"`
-	ZH    string `json:"zh"`
-	Other string `json:"other"`
+// catLocalizedName is one entry of the face's `localized` map: the name this
+// entity prefers in ONE locale, keyed upstream by a canonically-cased BCP-47
+// tag (`zh-Hans`, `ja`, `pt-BR`).
+//
+// This replaces the retired `name{ja,zh,other}` buckets. Those never held three
+// names — the registry files the ONE name of record into whichever bucket its
+// own language falls in, so at most one was ever populated and this client's
+// old "prefer ja, else zh, else other" scan never actually chose anything. What
+// the buckets could not express is the case that matters: a Japanese name WITH
+// a Chinese rendering on file still published `{"ja": "…"}` and no `zh` key, so
+// the Chinese rendering was unreachable and its absence read as "there is none".
+type catLocalizedName struct {
+	Value string `json:"value"`
+	Kind  string `json:"kind"`
 }
 
-// pick returns the one form to render, Japanese first: this is a Japanese
-// medium and the ja bucket is what the person actually signs with.
-func (b catNameBuckets) pick() string {
-	for _, candidate := range []string{b.JA, b.ZH, b.Other} {
-		if candidate != "" {
-			return candidate
-		}
-	}
-	return ""
-}
+// catalogZhLocales / catalogJaLocales are the tags that answer "the Chinese
+// form" and "the Japanese form" for this site's own name_zh / name_ja fields,
+// most specific first.
+//
+// The API has no per-request locale — nothing reads Accept-Language anywhere in
+// it — so these are fixed site preferences, in the spirit of the chain
+// staffIntro and characterIntros already apply to descriptions. They stay
+// separate from that chain on purpose: an intro and a name are chosen from
+// different tables, and either can move without dragging the other.
+var (
+	catalogZhLocales = []string{"zh-Hans", "zh", "zh-Hant"}
+	catalogJaLocales = []string{"ja"}
+)
 
 // CatalogName is one credited identity with its work list.
 type CatalogName struct {
-	ID       int64          `json:"id"`
-	Name     catNameBuckets `json:"name"`
-	Latin    string         `json:"latin"`
-	PersonID int64          `json:"person_id"`
+	ID int64 `json:"id"`
+	// DisplayName is the name of record and is never empty; Lang is its BCP-47
+	// tag, "" when the source never declared one. Localized is SPARSE — most
+	// names have no entry at all, which is correct rather than missing data
+	// (real people's names are largely not translated), so render
+	// PickCatalogName and never surface the absence as a blank.
+	DisplayName string                      `json:"display_name"`
+	Lang        string                      `json:"lang"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Latin       string                      `json:"latin"`
+	PersonID    int64                       `json:"person_id"`
 	// The five fields below describe the PERSON, not the name, and therefore
 	// ride the same public-link gate `person_id` / `siblings` do: the registry
 	// zeroes every one of them for a name whose link is private. So an absent
@@ -84,10 +101,15 @@ type CatalogName struct {
 	BirthD *int `json:"birth_d"`
 	// Siblings are the other names the SAME person signs under — public links
 	// only, so an empty list means "none published", never "none exist".
+	//
+	// A sibling carries no `localized` and is not meant to: it is a LINK to a
+	// record that publishes its own full map, so a page that needs one in a
+	// particular locale follows the id rather than asking for it inline.
 	Siblings []struct {
-		ID    int64          `json:"id"`
-		Name  catNameBuckets `json:"name"`
-		Latin string         `json:"latin"`
+		ID          int64  `json:"id"`
+		DisplayName string `json:"display_name"`
+		Lang        string `json:"lang"`
+		Latin       string `json:"latin"`
 	} `json:"siblings"`
 	Intros []struct {
 		Lang   string `json:"lang"`
@@ -198,12 +220,62 @@ func (c *GalgameClient) CatalogRowsByCatalogIDs(
 	return out, nil
 }
 
-// PickCatalogName renders one credited name, Japanese first — see
-// catNameBuckets.pick. latin is the last resort, for a western name the
-// registry files under no script bucket at all.
-func PickCatalogName(buckets catNameBuckets, latin string) string {
-	if name := buckets.pick(); name != "" {
-		return name
+// PickCatalogName renders the HEADLINE: the name of record, which is the form
+// the person signs with or the character is credited under.
+//
+// This is byte-identical to what the retired buckets produced. Their scan only
+// ever had one non-empty bucket to find, and that bucket held display_name — so
+// the headline does not move as part of this migration. A translated rendering
+// is a SUBTITLE here, surfaced through CatalogNameByScript, not a replacement
+// for the credited name.
+//
+// latin is the last resort, for the western name the registry holds in no other
+// script; display_name is non-empty on every real record.
+func PickCatalogName(displayName, latin string) string {
+	if displayName != "" {
+		return displayName
 	}
 	return latin
+}
+
+// CatalogNameByScript answers the two questions this site's own StaffDetail and
+// GalgameCharacterDetail ask beside the headline: the Japanese form and the
+// Chinese form. Either is "" when the registry holds no such rendering, which
+// the DTOs' omitempty already expects.
+//
+// The buckets could not answer either one. They filed the SINGLE name of record
+// under its own language, so name_zh was non-empty only when the record was
+// itself Chinese — which is exactly when it equals the headline, and the staff
+// and character pages drop a subtitle part that equals the headline. The slot
+// was therefore structurally dead: a Japanese name with a Chinese rendering on
+// file published an empty zh, and the rendering that existed was unreachable.
+// Reading localized{} is what makes the slot work, and it is why the buckets
+// went.
+func CatalogNameByScript(localized map[string]catLocalizedName, displayName, lang string) (ja, zh string) {
+	switch {
+	case strings.HasPrefix(lang, "ja"):
+		ja = displayName
+	case strings.HasPrefix(lang, "zh"):
+		zh = displayName
+	}
+	if localizedForm := pickLocalized(localized, catalogJaLocales); localizedForm != "" {
+		ja = localizedForm
+	}
+	if localizedForm := pickLocalized(localized, catalogZhLocales); localizedForm != "" {
+		zh = localizedForm
+	}
+	return ja, zh
+}
+
+// pickLocalized returns the first rendering the registry has among locales, ""
+// when it has none. A missing entry is the norm rather than a gap — most
+// credited names are real people's, where a kanji name is not translated at all
+// — so the caller must render its absence as nothing, never as an empty slot.
+func pickLocalized(localized map[string]catLocalizedName, locales []string) string {
+	for _, locale := range locales {
+		if entry, ok := localized[locale]; ok && entry.Value != "" {
+			return entry.Value
+		}
+	}
+	return ""
 }

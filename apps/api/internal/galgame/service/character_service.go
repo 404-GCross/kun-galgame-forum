@@ -84,11 +84,15 @@ func (s *CharacterService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该角色")
 	}
 
+	// The page titles itself with the credited name and offers the other
+	// scripts as a subtitle, so the two are read apart.
+	nameJa, nameZh := client.CatalogNameByScript(ch.Localized, ch.DisplayName, ch.Lang)
+
 	detail := &dto.GalgameCharacterDetail{
 		ID:         int(ch.ID),
-		Name:       client.PickCatalogName(ch.Name, ch.Latin),
-		NameJa:     ch.Name.JA,
-		NameZh:     ch.Name.ZH,
+		Name:       client.PickCatalogName(ch.DisplayName, ch.Latin),
+		NameJa:     nameJa,
+		NameZh:     nameZh,
 		Latin:      ch.Latin,
 		Image:      ch.Image,
 		Figure:     ch.Figure,

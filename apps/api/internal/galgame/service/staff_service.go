@@ -86,11 +86,15 @@ func (s *StaffService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该制作人员")
 	}
 
+	// The page titles itself with the credited name and offers the other
+	// scripts as a subtitle, so the two are read apart.
+	nameJa, nameZh := client.CatalogNameByScript(name.Localized, name.DisplayName, name.Lang)
+
 	detail := &dto.StaffDetail{
 		ID:     int(name.ID),
 		Name:   staffDisplayName(name),
-		NameJa: name.Name.JA,
-		NameZh: name.Name.ZH,
+		NameJa: nameJa,
+		NameZh: nameZh,
 		Latin:  name.Latin,
 		Intro:  staffIntro(name),
 		// Pure passthrough, with no policy of its own: the registry has already
@@ -197,12 +201,12 @@ func (s *StaffService) GetDetail(
 	return detail, nil
 }
 
-// staffDisplayName picks the one name the page is titled with. Japanese first:
-// this is a Japanese-medium registry and the ja bucket is the form the person
-// actually signs with — the zh bucket is a translation and the latin is a
-// transliteration, both useful as subtitles and wrong as the headline.
+// staffDisplayName picks the one name the page is titled with: the name of
+// record, the form the person actually signs with. A Chinese rendering is a
+// translation and the latin is a transliteration — both useful as subtitles and
+// wrong as the headline, which is why this does not consult localized{}.
 func staffDisplayName(n *client.CatalogName) string {
-	return client.PickCatalogName(n.Name, n.Latin)
+	return client.PickCatalogName(n.DisplayName, n.Latin)
 }
 
 // staffIntro picks ONE description. The registry keeps a row per language and
@@ -270,7 +274,7 @@ func staffLinks(n *client.CatalogName) []dto.StaffLink {
 func staffSiblings(n *client.CatalogName) []dto.StaffSibling {
 	out := make([]dto.StaffSibling, 0, len(n.Siblings))
 	for _, sib := range n.Siblings {
-		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: client.PickCatalogName(sib.Name, sib.Latin)})
+		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: client.PickCatalogName(sib.DisplayName, sib.Latin)})
 	}
 	return out
 }
