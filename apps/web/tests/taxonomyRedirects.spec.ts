@@ -155,6 +155,16 @@ describe('merged catalog id hop', () => {
     // current-form URL falls straight through it — no second hop exists.
     expect(resolveRenamedTaxonomyPath(to)).toBeNull()
   })
+
+  // 会社 hops carry the sub-page they were made on, so a merged id hit at the
+  // games browser lands on the survivor's games browser rather than dumping the
+  // reader back on an overview they did not ask for. Still one hop: the base is
+  // the shared builder's final form and the suffix is a literal.
+  it('keeps a 会社 reader on the games sub-page across the hop', () => {
+    const to = `${taxonomyDetailPath('official', 6935)}/game`
+    expect(to).toBe('/galgame/official/6935/game')
+    expect(resolveRenamedTaxonomyPath(to)).toBeNull()
+  })
 })
 
 // The 500 that shipped with the hop (prod: /galgame/official/13323).
@@ -166,33 +176,61 @@ describe('merged catalog id hop', () => {
 // system says "stop here", so the guard is a source-shape invariant: a
 // taxonomy detail page that hops MUST also gate its template on the tombstone.
 describe('merged-id pages stop rendering after the hop', () => {
-  const pageSource = (family: TaxonomyFamily) =>
-    // Vitest runs with apps/web as the cwd; `import.meta.url` is rewritten by
-    // the Nuxt/Vite transform and does not point at this file on disk.
-    readFileSync(
-      resolve(process.cwd(), `app/pages/galgame/${family}/[id].vue`),
-      'utf-8'
-    )
+  // Vitest runs with apps/web as the cwd; `import.meta.url` is rewritten by the
+  // Nuxt/Vite transform and does not point at this file on disk.
+  const read = (path: string) =>
+    readFileSync(resolve(process.cwd(), path), 'utf-8')
 
-  it.each([...TAXONOMY_FAMILIES])(
-    '%s: a navigateTo in setup comes with a template gate',
-    (family) => {
-      const source = pageSource(family)
-      // tag / engine are not merge-capable today, so they have no hop at all —
-      // the day one grows a navigateTo, this assertion starts applying to it.
-      if (!source.includes('navigateTo(')) {
-        expect(source).not.toContain('moved_to')
-        return
-      }
-      const root = source.match(/<template>\s*\n\s*<div ([^>]*)>/)
-      expect(root?.[1]).toContain('!data.moved_to')
+  // 会社 is two pages (identity + the games browser, doc 146 R-split) sharing
+  // one fetch, so a family maps to a LIST of detail pages rather than a single
+  // `[id].vue`.
+  const DETAIL_PAGES: Record<TaxonomyFamily, string[]> = {
+    tag: ['app/pages/galgame/tag/[id].vue'],
+    engine: ['app/pages/galgame/engine/[id].vue'],
+    official: [
+      'app/pages/galgame/official/[id]/index.vue',
+      'app/pages/galgame/official/[id]/game.vue'
+    ]
+  }
+
+  // The hop itself moved into the shared composable when official split in two,
+  // so "does this page hop?" is no longer answered by grepping the page for
+  // navigateTo — calling the composable IS hopping.
+  const HOP_COMPOSABLE = 'app/composables/useGalgameOfficialDetail.ts'
+  const hops = (source: string) =>
+    source.includes('navigateTo(') ||
+    source.includes('useGalgameOfficialDetail(')
+
+  it.each(
+    (Object.keys(DETAIL_PAGES) as TaxonomyFamily[]).flatMap((family) =>
+      DETAIL_PAGES[family].map((path) => [family, path] as const)
+    )
+  )('%s (%s): a hop in setup comes with a template gate', (_family, path) => {
+    const source = read(path)
+    // tag / engine are not merge-capable today, so they have no hop at all —
+    // the day one grows one, this assertion starts applying to it.
+    if (!hops(source)) {
+      expect(source).not.toContain('moved_to')
+      return
+    }
+    const root = source.match(/<template>\s*\n\s*<div ([^>]*)>/)
+    expect(root?.[1]).toContain('!data.moved_to')
+  })
+
+  it('the shared 会社 hop is the one that parks the 301', () => {
+    const source = read(HOP_COMPOSABLE)
+    expect(source).toContain('navigateTo(')
+    expect(source).toContain('taxonomyDetailPath(')
+    expect(source).toContain('redirectCode: 301')
+  })
+
+  it.each(DETAIL_PAGES.official)(
+    '%s: the SEO block is inside the not-moved gate',
+    (path) => {
+      const source = read(path)
+      const gate = source.indexOf('!official.moved_to')
+      expect(gate).toBeGreaterThan(-1)
+      expect(source.indexOf('useKunSeoMeta(')).toBeGreaterThan(gate)
     }
   )
-
-  it('official: the SEO block is inside the not-moved gate', () => {
-    const source = pageSource('official')
-    const gate = source.indexOf('if (!moved) {')
-    expect(gate).toBeGreaterThan(-1)
-    expect(source.indexOf('useKunSeoMeta(')).toBeGreaterThan(gate)
-  })
 })

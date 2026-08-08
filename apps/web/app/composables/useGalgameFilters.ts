@@ -38,6 +38,27 @@ type SortField =
 // BE already parses them via ParseMonthSet / splitCSV, and a CSV string
 // hits useRouteQuery's scalar default-omission cleanly (an empty array
 // would not compare equal to its default by reference).
+// Every query key the browse filters own. Exported because a page can be asked
+// to HAND OFF a filtered view rather than render it: the 会社 overview forwards
+// a pre-split bookmark (`/galgame/official/5?page=3&type=…`) to the games page
+// that still answers those keys. Keep in step with the refs below.
+export const GALGAME_FILTER_QUERY_KEYS = [
+  'page',
+  'type',
+  'language',
+  'platform',
+  'gameType',
+  'sortField',
+  'sortOrder',
+  'releasedFrom',
+  'releasedTo',
+  'releasedMonths',
+  'includeProviders',
+  'excludeOnlyProviders',
+  'minRatingCount',
+  'minRating'
+] as const
+
 export const useGalgameFilters = () => {
   const opts = { mode: 'replace' as const }
 
