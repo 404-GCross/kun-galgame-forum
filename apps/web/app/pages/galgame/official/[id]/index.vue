@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import {
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP,
-  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP,
-  KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP
+  KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
 } from '~/constants/galgameOfficial'
 
 // `id` is a CATALOG LABEL id (A2-3 / doc 106 R1) — a 会社 is a label in the
@@ -68,8 +67,6 @@ const gamePath = computed(
 // bare, so a catalog kind with no Chinese entry rendered an empty chip).
 const categoryText = (category: string) =>
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
-const linkText = (source: string) =>
-  KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP[source] || source
 
 // A 会社's intro runs to several paragraphs for the makers people actually
 // look up, and on a phone that is the whole first screen. So it opens clamped.
@@ -115,10 +112,11 @@ if (official && !official.moved_to) {
               {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[data.lang] || data.lang }}
             </KunChip>
 
-            <!-- The web presences, on the same line as the facts. Each is named
-                 by its own source, so an X account is never dressed up as
-                 官方网站 — and a 会社 reachable only on X still gets a way to
-                 be reached. -->
+            <!-- The web presences, on the same line as the facts. Each carries
+                 its own name from the server, so an X account is never dressed
+                 up as 官方网站, a wikipedia entry says 维基百科 rather than
+                 `web` — and a 会社 reachable only on X still gets a way to be
+                 reached. -->
             <KunLink
               v-for="link in data.links"
               :key="link.url"
@@ -129,7 +127,7 @@ if (official && !official.moved_to) {
               size="sm"
               :to="link.url"
             >
-              {{ linkText(link.source) }}
+              {{ link.name }}
             </KunLink>
           </div>
 

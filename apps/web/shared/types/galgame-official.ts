@@ -37,6 +37,11 @@ export interface GalgameOfficialItem {
 // never rendered as "官方网站".
 export interface GalgameOfficialLink {
   source: string
+  /** Resolved server-side. Most of these arrive under the catch-all source
+   * `web` (wikipedia / youtube / wikidata / …), whose site identity is in the
+   * URL rather than in the key, so naming them takes a host table — and that
+   * table lives once, in Go, shared with the work and person faces. */
+  name: string
   url: string
 }
 

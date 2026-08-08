@@ -53,15 +53,16 @@ export const KUN_GALGAME_OFFICIAL_ROLE_CATEGORY_SYNONYM: Record<
   brand: 'game_brand'
 }
 
-// A 会社's web presences, named by the catalog's source key. The catalog renders
-// exactly these three and skips any source it has no URL template for, so an
-// unmapped key here means the vocabulary grew upstream — fall back to the key
-// rather than dropping the link.
-export const KUN_GALGAME_OFFICIAL_LINK_SOURCE_MAP: Record<string, string> = {
-  official_site: '官方网站',
-  twitter: 'X',
-  cien: 'Ci-en'
-}
+// A 会社's web presences used to be named HERE, by a three-entry source→中文
+// map. That was right when the catalog rendered exactly three related-link
+// kinds and wrong the moment wave 186 widened it: the new rows arrive under the
+// catch-all source `web`, which carries no site identity at all, so ブロッコリー's
+// wikipedia / wikidata / youtube / gamefaqs links all fell through to the same
+// fallback and rendered as four chips reading「web」.
+//
+// Naming them needs the URL and a host table, so it moved server-side
+// (client.LinkDisplayName), where works, 会社 and 人物 share one table instead of
+// keeping three that drift. The page reads `link.name`.
 
 // The corporate-relation vocabulary, read as "X 是本会社的 ___". The catalog
 // stores four mutually inverse pairs and the graph face ships only the

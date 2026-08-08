@@ -94,7 +94,15 @@ type CatalogName struct {
 		Intro  string `json:"intro"`
 		Source string `json:"source"`
 	} `json:"intros"`
-	Refs    []catRef `json:"refs"`
+	Refs []catRef `json:"refs"`
+	// Links is the PERSON's web presence (wave 186): homepage / X / pixiv /
+	// Ci-en, already rendered to absolute URLs upstream. A DIFFERENT lane from
+	// Refs, which are identity anchors carrying a bare external id and no
+	// address — the two never overlap, so the page shows both.
+	//
+	// It rides the same person_id gate the photo and the birthday do: an
+	// orphan name, or one whose person link is withheld, yields [].
+	Links   []catRelatedLink `json:"links"`
 	Credits []struct {
 		Work struct {
 			ID            int64         `json:"id"`

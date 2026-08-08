@@ -21,14 +21,12 @@ import (
 // answers are memoized, so a page pays one upstream call per distinct maker
 // per TTL window and usually none.
 
-// Label link sources. The catalog renders exactly three related-link kinds for
-// a label and skips any source it has no URL template for, so this list is the
-// whole vocabulary — not a prefix of one.
-const (
-	LabelLinkOfficialSite = "official_site"
-	LabelLinkTwitter      = "twitter"
-	LabelLinkCien         = "cien"
-)
+// The one label-link source this file cares about. It is NOT the vocabulary:
+// wave 186 widened the catalog's related-link table to official_site / twitter
+// / cien / steam / pixiv / web, and `web` alone stands in for ~35 whitelisted
+// sites. Naming any of them is LinkDisplayName's job (link_name.go); picking
+// the homepage out of them is this one's.
+const LabelLinkOfficialSite = "official_site"
 
 // PrimaryLabelLink picks the maker's OFFICIAL SITE, and only that.
 //

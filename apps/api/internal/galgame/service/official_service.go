@@ -191,13 +191,17 @@ func (s *OfficialService) GetRelationGraph(ctx context.Context, id string) (*dto
 	return out, nil
 }
 
-// officialLinks passes the label's web presences through with their source
-// keys, so the page can name each one instead of labelling an X account
-// "官方网站". Always a slice, never null — the FE iterates it unguarded.
+// officialLinks passes the label's web presences through, each named here
+// rather than in the browser — see dto.OfficialLink. Always a slice, never
+// null: the FE iterates it unguarded.
 func officialLinks(links []client.CatalogLabelLink) []dto.OfficialLink {
 	out := make([]dto.OfficialLink, 0, len(links))
 	for _, l := range links {
-		out = append(out, dto.OfficialLink{Source: l.Source, URL: l.URL})
+		out = append(out, dto.OfficialLink{
+			Source: l.Source,
+			Name:   client.LinkDisplayName(l.Source, l.URL),
+			URL:    l.URL,
+		})
 	}
 	return out
 }

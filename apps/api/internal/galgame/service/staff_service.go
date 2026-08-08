@@ -49,19 +49,19 @@ func NewStaffService(galgameClient *client.GalgameClient, enricher *GalgameEnric
 // The stored ids are BARE (doc: vndb staff anchors are bare numbers, unlike
 // characters' c-prefix and labels' p-prefix), so the prefix belongs to the
 // template, not to the data.
-var staffPersonPage = map[string]struct {
-	name string
-	url  func(string) string
-}{
-	"vndb": {"VNDB", func(id string) string {
+//
+// URL only: the display NAME of a source is the shared table's business, not
+// this one's, or the same source ends up named twice and drifts.
+var staffPersonPage = map[string]func(string) string{
+	"vndb": func(id string) string {
 		return "https://vndb.org/s" + id
-	}},
-	"bangumi": {"Bangumi", func(id string) string {
+	},
+	"bangumi": func(id string) string {
 		return "https://bgm.tv/person/" + id
-	}},
-	"erogamescape": {"ErogameScape", func(id string) string {
+	},
+	"erogamescape": func(id string) string {
 		return "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/creater.php?creater=" + id
-	}},
+	},
 }
 
 // GetDetail — GET /galgame-staff/:id
@@ -232,14 +232,37 @@ func staffIntro(n *client.CatalogName) string {
 	return ""
 }
 
+// staffLinks merges the two lanes the page shows side by side: the identity
+// anchors (who this person is in another database) and the web presences (where
+// to find them). They are disjoint upstream — an anchor stores a bare external
+// id and no address, a link stores a rendered URL and no id — so neither is a
+// substitute for the other and both are listed.
+//
+// The links lane is wave 186's, and the forum read none of it until now: 14,817
+// imported person links were in the catalog's answer and dropped on the floor
+// here. Anchors keep their local URL templates, since the catalog deliberately
+// publishes no address for them.
+//
+// Every row is named through the shared table, so a template-less anchor reads
+// as DLsite rather than as a bare lowercase `dlsite`.
 func staffLinks(n *client.CatalogName) []dto.StaffLink {
-	out := make([]dto.StaffLink, 0, len(n.Refs))
+	out := make([]dto.StaffLink, 0, len(n.Refs)+len(n.Links))
 	for _, ref := range n.Refs {
-		link := dto.StaffLink{Source: ref.Source, Name: ref.Source}
+		link := dto.StaffLink{
+			Source: ref.Source,
+			Name:   client.LinkDisplayName(ref.Source, ""),
+		}
 		if tpl, ok := staffPersonPage[ref.Source]; ok {
-			link.Name, link.URL = tpl.name, tpl.url(ref.ExternalID)
+			link.URL = tpl(ref.ExternalID)
 		}
 		out = append(out, link)
+	}
+	for _, l := range n.Links {
+		out = append(out, dto.StaffLink{
+			Source: l.Source,
+			Name:   client.LinkDisplayName(l.Source, l.URL),
+			URL:    l.URL,
+		})
 	}
 	return out
 }

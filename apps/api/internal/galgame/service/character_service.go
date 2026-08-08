@@ -47,16 +47,16 @@ func NewCharacterService(galgameClient *client.GalgameClient, enricher *GalgameE
 //
 // The VNDB id arrives WITH its `c` prefix (unlike a staff anchor, which is a
 // bare number), so the prefix belongs to the data here, not to the template.
-var characterPage = map[string]struct {
-	name string
-	url  func(string) string
-}{
-	"vndb": {"VNDB", func(id string) string {
+//
+// URL only: naming a source is the shared table's business (LinkDisplayName),
+// so the two faces cannot drift into calling the same site different things.
+var characterPage = map[string]func(string) string{
+	"vndb": func(id string) string {
 		return "https://vndb.org/" + id
-	}},
-	"bangumi": {"Bangumi", func(id string) string {
+	},
+	"bangumi": func(id string) string {
 		return "https://bgm.tv/character/" + id
-	}},
+	},
 }
 
 // GetDetail — GET /galgame-character/:id
@@ -204,9 +204,15 @@ func characterTraits(ch *client.CatalogCharacter, isSFW bool) []dto.GalgameChara
 func characterLinks(ch *client.CatalogCharacter) []dto.GalgameCharacterLink {
 	out := make([]dto.GalgameCharacterLink, 0, len(ch.Refs))
 	for _, ref := range ch.Refs {
-		link := dto.GalgameCharacterLink{Source: ref.Source, Name: ref.Source}
+		// Anchors only: the catalog publishes a web-presence lane for works,
+		// labels and PERSONS (wave 186), and none for characters — a character
+		// has no homepage of its own to link to.
+		link := dto.GalgameCharacterLink{
+			Source: ref.Source,
+			Name:   client.LinkDisplayName(ref.Source, ""),
+		}
 		if tpl, ok := characterPage[ref.Source]; ok {
-			link.Name, link.URL = tpl.name, tpl.url(ref.ExternalID)
+			link.URL = tpl(ref.ExternalID)
 		}
 		out = append(out, link)
 	}

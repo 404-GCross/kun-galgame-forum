@@ -110,10 +110,16 @@ type OfficialListPage struct {
 	Total     int64              `json:"total"`
 }
 
-// OfficialLink is one of a 会社's web presences, with the source key the FE
-// names it by (official_site / twitter / cien).
+// OfficialLink is one of a 会社's web presences.
+//
+// Name is resolved server-side (client.LinkDisplayName) rather than by a table
+// in the frontend: most of these arrive under the catch-all source `web`, whose
+// site identity is in the URL, so naming them needs the URL and a host table —
+// and there is no reason for that table to exist twice, in two languages. The
+// source key still travels, for a consumer that wants to group or icon by it.
 type OfficialLink struct {
 	Source string `json:"source"`
+	Name   string `json:"name"`
 	URL    string `json:"url"`
 }
 

@@ -55,6 +55,14 @@ type catRef struct {
 	ExternalID string `json:"external_id"`
 }
 
+// catRelatedLink is one web presence, already rendered to an absolute URL by
+// the catalog. The counterpart of catRef: an anchor says WHO this is in another
+// database, a link says WHERE to find them. Same wire shape on every face.
+type catRelatedLink struct {
+	Source string `json:"source"`
+	URL    string `json:"url"`
+}
+
 // catCoverSlot is one filled cover slot of include=covers — a complete CDN URL
 // plus the intrinsic display metadata (absent when image_service has no entry).
 type catCoverSlot struct {

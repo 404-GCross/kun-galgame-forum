@@ -103,8 +103,9 @@ type CatalogLabelDetail struct {
 }
 
 // CatalogLabelLink is one of a label's web presences. Source is the catalog's
-// own key (official_site / twitter / cien — see PrimaryLabelLink), which is
-// what a consumer needs to NAME the link rather than guess at it.
+// own key (official_site / twitter / cien / steam / pixiv / web); `web` is the
+// catch-all whose URL is the only thing that identifies the site, which is why
+// naming a link takes both fields — see LinkDisplayName.
 type CatalogLabelLink struct {
 	Source string `json:"source"`
 	URL    string `json:"url"`

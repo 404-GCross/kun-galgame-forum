@@ -31,7 +31,6 @@ package client
 
 import (
 	"context"
-	"strings"
 
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
@@ -323,18 +322,14 @@ func (c *GalgameClient) CatalogWorkLinks(ctx context.Context, gid int) ([]Galgam
 	return out, nil
 }
 
-// linkDisplayName labels a link row. The source key is the honest label when it
-// is a real source ("official", "twitter"); when it is empty the host is the
-// next best thing a user can recognise.
+// linkDisplayName labels a link row through the shared table (see link_name.go),
+// the same one the 会社 and person faces name their links with.
+//
+// It used to return the raw source key whenever there was one, which meant a
+// game's links rendered to the reader as `official_site` and two identical
+// `web`s — the key is the catalog's word, not a name.
 func linkDisplayName(l catWorkLink) string {
-	if l.Source != "" {
-		return l.Source
-	}
-	trimmed := strings.TrimPrefix(strings.TrimPrefix(l.URL, "https://"), "http://")
-	if i := strings.IndexByte(trimmed, '/'); i > 0 {
-		return trimmed[:i]
-	}
-	return trimmed
+	return LinkDisplayName(l.Source, l.URL)
 }
 
 // appendUniqueStr appends val unless the slice already carries it, and drops
