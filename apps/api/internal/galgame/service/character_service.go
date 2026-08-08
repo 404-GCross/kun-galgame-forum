@@ -191,7 +191,8 @@ func pickCharacterIntro(intros []dto.GalgameCharacterIntro) string {
 
 // characterTraits passes the trait set through, minus the sexual family for a
 // SFW reader — see the file header. Spoiler levels are NOT filtered here: every
-// tier travels so the frontend's reveal costs no second request.
+// tier travels so the frontend's reveal costs no second request. Each name is
+// resolved to Chinese where the catalog has one — see dto.GalgameCharacterTrait.
 func characterTraits(ch *client.CatalogCharacter, isSFW bool) []dto.GalgameCharacterTrait {
 	out := make([]dto.GalgameCharacterTrait, 0, len(ch.Traits))
 	for _, t := range ch.Traits {
@@ -199,10 +200,24 @@ func characterTraits(ch *client.CatalogCharacter, isSFW bool) []dto.GalgameChara
 			continue
 		}
 		out = append(out, dto.GalgameCharacterTrait{
-			ID: int(t.ID), Name: t.Name, Group: t.Group, Spoiler: t.Spoiler, Lie: t.Lie,
+			ID:      int(t.ID),
+			Name:    preferZhTrait(t.NameZh, t.Name),
+			Group:   preferZhTrait(t.GroupZh, t.Group),
+			Spoiler: t.Spoiler,
+			Lie:     t.Lie,
 		})
 	}
 	return out
+}
+
+// preferZhTrait picks the Chinese rendering when the catalog carries one. The
+// catalog omits it for roughly one trait in fifteen, and an empty chip is worse
+// than an English one.
+func preferZhTrait(zh, en string) string {
+	if zh != "" {
+		return zh
+	}
+	return en
 }
 
 func characterLinks(ch *client.CatalogCharacter) []dto.GalgameCharacterLink {

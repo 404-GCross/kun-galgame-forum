@@ -72,7 +72,7 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 		"id":7,"name":{"ja":"雪村杏"},"latin":"Yukimura Anzu",
 		"image":"https://cdn.test/aa/bb/bust.webp",
 		"figure":"https://cdn.test/cc/dd/figure.webp",
-		"traits":[{"id":1,"name":"Blonde","group":"Hair","spoiler":0,"sexual":false,"lie":false},
+		"traits":[{"id":1,"name":"Blonde","name_zh":"金发","group":"Hair","group_zh":"发型","spoiler":0,"sexual":false,"lie":false},
 		          {"id":2,"name":"Dead","group":"Role","spoiler":2,"sexual":false,"lie":true}],
 		"intros":[{"lang":"zh-Hans","intro":"主人公的青梅竹马","source":"bangumi","machine":true}],
 		"refs":[{"source":"vndb","external_id":"c1234"}],
@@ -95,6 +95,14 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 	// whole point of asking for the ceiling.
 	if len(ch.Traits) != 2 || ch.Traits[1].Spoiler != 2 || !ch.Traits[1].Lie {
 		t.Errorf("Traits = %+v, want the spoiler+lie row intact", ch.Traits)
+	}
+	// The Chinese renderings decode; the catalog omits both keys for a trait it
+	// has not rendered, which must stay empty rather than becoming "null".
+	if ch.Traits[0].NameZh != "金发" || ch.Traits[0].GroupZh != "发型" {
+		t.Errorf("zh trait = %q / %q, want 金发 / 发型", ch.Traits[0].NameZh, ch.Traits[0].GroupZh)
+	}
+	if ch.Traits[1].NameZh != "" || ch.Traits[1].GroupZh != "" {
+		t.Errorf("unrendered trait = %q / %q, want both empty", ch.Traits[1].NameZh, ch.Traits[1].GroupZh)
 	}
 	if len(ch.Intros) != 1 || !ch.Intros[0].Machine {
 		t.Errorf("Intros = %+v, want the machine flag carried", ch.Intros)

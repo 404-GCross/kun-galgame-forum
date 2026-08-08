@@ -25,10 +25,16 @@ type GalgameCharacterIntro struct {
 
 // GalgameCharacterTrait is one VNDB trait.
 type GalgameCharacterTrait struct {
-	ID   int    `json:"id"`
+	ID int `json:"id"`
+	// Name and Group are ALREADY RESOLVED to this site's language: the
+	// catalog's curated Chinese rendering when it has one, the English VNDB
+	// name otherwise. The choice is made once here rather than shipping both
+	// forms, because a trait has exactly one chip to render and this API has no
+	// per-request locale — the preference is the site's, not the reader's.
 	Name string `json:"name"`
-	// Group is the trait's root group ("Hair", "Personality" …), "" when the
-	// trait IS a root. The page groups by it.
+	// Group is the trait's root group ("发型", "性格" …), "" when the trait IS a
+	// root. The page groups by it, so it must resolve on the same axis as Name
+	// or one group would split into a Chinese half and an English half.
 	Group string `json:"group"`
 	// Spoiler: 0 = none, 1 = minor, 2 = major. Everything above 0 arrives but
 	// stays hidden until the reader explicitly asks — the full set travels in

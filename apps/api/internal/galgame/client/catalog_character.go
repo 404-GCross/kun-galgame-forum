@@ -71,21 +71,9 @@ type CatalogCharacter struct {
 		Source  string `json:"source"`
 		Machine bool   `json:"machine"`
 	} `json:"intros"`
-	// Traits are VNDB's character trait vocabulary, English as published (the
-	// catalog has no zh localization for it yet). `Sexual` marks the
-	// sexual-family traits, which the catalog serves because it is an R18 face
-	// — gating them is the consumer's job, and this one gates on the reader's
-	// own SFW switch.
-	Traits []struct {
-		ID      int64  `json:"id"`
-		Name    string `json:"name"`
-		Group   string `json:"group"`
-		Spoiler int    `json:"spoiler"`
-		Sexual  bool   `json:"sexual"`
-		Lie     bool   `json:"lie"`
-	} `json:"traits"`
-	Refs  []catRef `json:"refs"`
-	Works []struct {
+	Traits []CatalogCharacterTrait `json:"traits"`
+	Refs   []catRef                `json:"refs"`
+	Works  []struct {
 		Work struct {
 			ID            int64         `json:"id"`
 			DisplayName   string        `json:"display_name"`
@@ -106,6 +94,26 @@ type CatalogCharacter struct {
 	// NextOffset is absent on the last page — the only end-of-list signal the
 	// face gives.
 	NextOffset *int `json:"next_offset"`
+}
+
+// CatalogCharacterTrait is one row of VNDB's character trait vocabulary as the
+// catalog publishes it. `Sexual` marks the sexual-family traits, which the
+// catalog serves because it is an R18 face — gating them is the consumer's job,
+// and this one gates on the reader's own SFW switch.
+//
+// NameZh / GroupZh are the catalog's curated Chinese renderings, absent from
+// the wire when the vocabulary row has none. They are SPARSE and stay that way:
+// a trait with no Chinese name falls back to its English name rather than
+// rendering an empty chip.
+type CatalogCharacterTrait struct {
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	NameZh  string `json:"name_zh"`
+	Group   string `json:"group"`
+	GroupZh string `json:"group_zh"`
+	Spoiler int    `json:"spoiler"`
+	Sexual  bool   `json:"sexual"`
+	Lie     bool   `json:"lie"`
 }
 
 // CatalogCharacterDetail fetches one character with a page of its appearances.
