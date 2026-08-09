@@ -122,12 +122,10 @@ type ImageClientConfig struct {
 }
 
 // NextMoeAPIConfig holds how kungal reaches the NextMoe catalog service's
-// galgame surface. BaseURL is the HOST base (no /api or /internal suffix); the
-// galgame client derives {base}/internal (internal-tier read face, X-API-Key)
-// and {base}/api (legacy face for writes / admin / feeds). APIKey is the
-// internal-tier devapi key sent as X-API-Key on read calls and both feeds. It
-// is REQUIRED — Load() fail-fasts when a base is configured without a key;
-// there is no keyless-fallback valve any more (wave 05).
+// galgame surface. BaseURL is the host base with no path suffix; the galgame
+// client derives {base}/v1 and calls the /catalog public projection. APIKey is
+// the developer API key sent as X-API-Key on every call. It is REQUIRED —
+// Load() fail-fasts when a base is configured without a key.
 type NextMoeAPIConfig struct {
 	BaseURL string
 	APIKey  string
@@ -250,11 +248,11 @@ func Load() (*Config, error) {
 	// (wave 05). A base configured without a key is a misconfiguration: fail
 	// fast at startup, loudly naming the env var, rather than silently 401 on
 	// every read at runtime. No silent degradation.
-	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:19281")
+	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:9281")
 	nextMoeKey := envOrDefault("KUN_NEXTMOE_API_KEY", "")
 	if nextMoeBase != "" && nextMoeKey == "" {
 		return nil, fmt.Errorf(
-			"KUN_NEXTMOE_API_KEY 未设置: catalog galgame 读面 (internal 面) 硬依赖 internal-tier API key; 已配置 KUN_NEXTMOE_API_BASE=%q 但 KUN_NEXTMOE_API_KEY 为空 (keyless 回退阀已在 wave 05 移除, 不做静默降级)",
+			"KUN_NEXTMOE_API_KEY 未设置: catalog /v1 读面硬依赖 developer API key; 已配置 KUN_NEXTMOE_API_BASE=%q 但 KUN_NEXTMOE_API_KEY 为空, 不做静默降级",
 			nextMoeBase,
 		)
 	}
@@ -311,11 +309,11 @@ func Load() (*Config, error) {
 			),
 		},
 		NextMoeAPI: NextMoeAPIConfig{
-			// Host base, no /api suffix; the galgame client derives
-			// {base}/internal (read face + feeds) + {base}/api (legacy face).
-			// Dev default = local catalog dev instance on :19281.
+			// Host base with no path suffix; the galgame client derives
+			// {base}/v1 and calls the /catalog public projection.
+			// Dev default = the local catalog service on :9281.
 			BaseURL: nextMoeBase,
-			// Internal-tier devapi key (X-API-Key) for the read face + feeds.
+			// Developer API key (X-API-Key) for the catalog read face.
 			// REQUIRED — validated above (fail-fast; no keyless fallback).
 			APIKey: nextMoeKey,
 			// Must match the service's KUN_IMAGE_PUBLIC_BASE_URL exactly —

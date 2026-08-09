@@ -65,7 +65,6 @@ const startDrag = (e: MouseEvent | TouchEvent) => {
 
 const onDrag = (e: MouseEvent | TouchEvent) => {
   if (!isDragging.value) return
-  e.preventDefault()
   const currentX =
     e instanceof MouseEvent
       ? e.clientX
@@ -80,7 +79,11 @@ const onDrag = (e: MouseEvent | TouchEvent) => {
 const endDrag = () => {
   if (!isDragging.value) return
   if (Math.abs(dragOffset.value) > DRAG_THRESHOLD) {
-    dragOffset.value > 0 ? prevSlide() : nextSlide()
+    if (dragOffset.value > 0) {
+      prevSlide()
+    } else {
+      nextSlide()
+    }
   }
   isDragging.value = false
   dragOffset.value = 0
@@ -88,12 +91,20 @@ const endDrag = () => {
 }
 
 const manualSlide = (direction: 'next' | 'prev') => {
-  direction === 'next' ? nextSlide() : prevSlide()
+  if (direction === 'next') {
+    nextSlide()
+  } else {
+    prevSlide()
+  }
   startAutoplay()
 }
 
 watch(isOutside, (outside) => {
-  outside ? startAutoplay() : stopAutoplay()
+  if (outside) {
+    startAutoplay()
+  } else {
+    stopAutoplay()
+  }
 })
 
 onMounted(() => startAutoplay())
@@ -101,18 +112,21 @@ onBeforeUnmount(() => stopAutoplay())
 </script>
 
 <template>
-  <KunCard
-    :is-hoverable="false"
+<KunCard :is-hoverable="false" class-name="overflow-hidden p-0">
+  <div
     ref="carouselRef"
+    class="group relative cursor-grab overflow-hidden touch-pan-y"
     @mousedown="startDrag"
     @mousemove="onDrag"
     @mouseup="endDrag"
     @mouseleave="endDrag"
+    @dragstart.prevent
     @touchstart.passive="startDrag"
     @touchmove.passive="onDrag"
     @touchend="endDrag"
-    class-name="group relative cursor-grab overflow-hidden p-0"
+    @touchcancel="endDrag"
   >
+  
     <template v-if="pinnedPosts.length">
       <div
         class="flex"
@@ -184,5 +198,6 @@ onBeforeUnmount(() => stopAutoplay())
     </template>
 
     <KunNull v-else description="暂时没有置顶文档" />
-  </KunCard>
+  </div>
+</KunCard>
 </template>

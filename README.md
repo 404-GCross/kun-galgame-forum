@@ -107,7 +107,7 @@ Start the local shared platform first:
 
 ```bash
 cd /path/to/kun-galgame-infra
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml --profile full up -d
 # Optional: refresh the local databases with real-shaped, desensitized data.
 ./scripts/refresh-dev-db.sh
 ```

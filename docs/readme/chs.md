@@ -107,7 +107,7 @@
 
 ```bash
 cd /path/to/kun-galgame-infra
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml --profile full up -d
 # 可选：使用形状接近真实数据、经过脱敏的内容刷新本地数据库。
 ./scripts/refresh-dev-db.sh
 ```
