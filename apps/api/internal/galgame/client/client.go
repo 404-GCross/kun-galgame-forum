@@ -132,19 +132,12 @@ type GalgameClient struct {
 
 // New builds a galgame client for the NextMoe catalog service.
 //
-// baseURL is the NextMoe host base (e.g. http://catalog:9281, no /api or
-// /internal suffix); the client derives {base}/internal (the internal-tier
-// read face, the two cron feeds, and the user write set, all gated by
-// X-API-Key) and {base}/api (the legacy staff face: taxonomy writes +
-// /admin/* reads).
+// baseURL is the NextMoe host base (e.g. http://catalog:9281, with no path
+// suffix); the client derives {base}/v1 and calls its /catalog projection.
 //
-// apiKey is the internal-tier devapi key sent as X-API-Key on every
-// internal-face call — reads, both feeds, and the user write set. It is
-// REQUIRED: the internal face rejects keyless calls with 401 and there is no
-// keyless-fallback valve any more (config load fail-fasts when a base is
-// configured without a key). The user's Bearer JWT rides Authorization in
-// parallel with X-API-Key on personalized reads / submissions / writes
-// (dual-credential transport).
+// apiKey is the developer API key sent as X-API-Key on every call. It is
+// REQUIRED: the public projection rejects keyless calls with 401 and config
+// loading fails fast when the key is absent.
 //
 // imageCDNBase must match the service's KUN_IMAGE_PUBLIC_BASE_URL so
 // hash-backed banners resolve to the same CDN URLs the service would build.

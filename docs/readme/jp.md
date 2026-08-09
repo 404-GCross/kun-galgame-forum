@@ -107,7 +107,7 @@
 
 ```bash
 cd /path/to/kun-galgame-infra
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml --profile full up -d
 # 任意：本番に近い形で匿名化されたデータを使い、ローカル DB を更新します。
 ./scripts/refresh-dev-db.sh
 ```
