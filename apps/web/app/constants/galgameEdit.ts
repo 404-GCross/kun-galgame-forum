@@ -390,8 +390,9 @@ export const createGalgameEditConfig = (
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadCoverItem,
-    pinFirstLabel: '封面',
-    description: '拖拽排序；第一张为详情页头图，可点“设为封面”置顶'
+    pinItemFlag: { key: 'portrait_pinned', label: '竖版封面' },
+    description:
+      '“竖版封面”是卡片和列表渲染的那一张，由这里的置顶决定，与顺序无关；详情页头图由系统在横版图中自动挑选（近正方形的碟面、盒背等永不入选）。拖拽只调整画廊里的展示次序。'
   },
   [K('screenshots')]: {
     label: '画廊',

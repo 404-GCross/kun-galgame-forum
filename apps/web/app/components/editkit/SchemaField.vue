@@ -302,10 +302,30 @@ useSortable(gridRef, sortItems, {
   draggable: '.ek-image-item'
 })
 
+// The pin is a FLAG ON THE ITEM, never a position. Moving a picture to the
+// front used to stand in for pinning it, which quietly promised something the
+// read face does not honour: the consumer reads the flag, and picks its wide
+// hero by the image's shape rather than by list order.
+const pinItemKey = computed(() => props.config?.pinItemFlag?.key)
+
+const isPinnedItem = (item: unknown) => {
+  const key = pinItemKey.value
+  return !!key && !!(item as Record<string, unknown> | null)?.[key]
+}
+
 const pinImageItem = (index: number) => {
-  const items = [...imageItems.value]
-  const picked = items.splice(index, 1)
-  emitImageItems([...picked, ...items])
+  const key = pinItemKey.value
+  if (!key) {
+    return
+  }
+  // Present-when-true, absent otherwise — the same shape the bootstrap sends,
+  // so pinning shows up in the diff as the one field that actually moved.
+  emitImageItems(
+    imageItems.value.map((item, i) => {
+      const { [key]: _dropped, ...rest } = item as Record<string, unknown>
+      return i === index ? { ...rest, [key]: true } : rest
+    })
+  )
 }
 </script>
 
@@ -514,8 +534,9 @@ const pinImageItem = (index: number) => {
         </p>
       </div>
 
-      <!-- Image list (E3b): upload/append, remove, reorder; item 0 renders
-           the host's pinned badge (e.g. the cover set's banner). -->
+      <!-- Image list (E3b): upload/append, remove, reorder; the item holding
+           the host's pin flag renders its badge (e.g. the cover set's
+           portrait). -->
       <div v-else-if="control === 'image-list'" class="space-y-2">
         <div
           ref="gridRef"
@@ -525,15 +546,15 @@ const pinImageItem = (index: number) => {
             v-for="(item, index) in sortItems"
             :key="resolveImageURL(item) || index"
             class="ek-image-item border-default-200 group relative overflow-hidden rounded border"
-            :class="{
-              'ring-primary border-primary ring-2':
-                config?.pinFirstLabel && index === 0
-            }"
+            :class="{ 'ring-primary border-primary ring-2': isPinnedItem(item) }"
           >
+            <!-- object-contain, not cover: the thumbnail is how an editor
+                 judges the picture's SHAPE, and shape is what decides which
+                 slot it can fill. A 16:9 crop hid exactly that. -->
             <img
               :src="resolveImageURL(item)"
               loading="lazy"
-              class="aspect-video w-full object-cover"
+              class="bg-default-100 aspect-video w-full object-contain"
             />
             <!-- Drag handle: grip to reorder (sortablejs). -->
             <div
@@ -543,22 +564,22 @@ const pinImageItem = (index: number) => {
               <KunIcon name="lucide:grip-vertical" class="h-4 w-4" />
             </div>
             <KunChip
-              v-if="config?.pinFirstLabel && index === 0"
+              v-if="config?.pinItemFlag && isPinnedItem(item)"
               color="primary"
               variant="solid"
               size="sm"
               class="pointer-events-none absolute bottom-1 left-1"
             >
-              {{ config.pinFirstLabel }}
+              {{ config.pinItemFlag.label }}
             </KunChip>
             <div class="absolute top-1 right-1 flex gap-1">
               <KunButton
-                v-if="config?.pinFirstLabel && index > 0"
+                v-if="config?.pinItemFlag && !isPinnedItem(item)"
                 :is-icon-only="true"
                 size="sm"
                 variant="solid"
                 color="default"
-                title="设为封面"
+                :title="`设为${config.pinItemFlag.label}`"
                 @click="pinImageItem(index)"
               >
                 <KunIcon name="lucide:pin" />

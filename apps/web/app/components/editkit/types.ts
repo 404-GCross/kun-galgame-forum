@@ -99,10 +99,12 @@ export interface EditFieldConfig {
   /** image-list: renormalize item-internal order after the list changes
    * (e.g. stamp sort_order = index). Runs on every add/remove/reorder. */
   normalizeItems?: (items: unknown[]) => unknown[]
-  /** image-list: the first item is semantically pinned (e.g. the cover set's
-   * banner). Renders a badge with this label on item 0 plus a pin-to-front
-   * control on the rest. */
-  pinFirstLabel?: string
+  /** image-list: one item may carry a semantic pin that lives IN the item, not
+   * in the ordering (e.g. the cover set's `portrait_pinned`). `key` is the
+   * item's boolean field — at most one item holds it — and `label` names it on
+   * the badge and the set-it control. Pinning rewrites the flag and leaves the
+   * order alone, because order and pin answer different questions. */
+  pinItemFlag?: { key: string; label: string }
   /** entity-picker: the value is an entity id (single) or id array (multiple),
    * but the user searches + sees NAMES. `multiple` picks the shape. */
   multiple?: boolean
