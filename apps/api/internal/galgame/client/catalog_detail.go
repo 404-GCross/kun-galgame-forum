@@ -84,12 +84,12 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	// Effective banner: the wide banner art wins, the portrait pin is the
 	// fallback — the same preference coverFields encodes for the list lane, so a
 	// game's card and its hero resolve to the same image.
-	if c := detailBannerCover(f.Covers); c != nil {
-		f.EffectiveBannerHash = c.ImageHash
-		f.EffectiveBannerURL = c.CDNURL
-		f.EffectiveBannerWidth = c.Width
-		f.EffectiveBannerHeight = c.Height
-		f.EffectiveBannerThumbhash = c.Thumbhash
+	if hash, url, w, h, thumb := detailHero(d.CoverSlots, f.Covers); url != "" {
+		f.EffectiveBannerHash = hash
+		f.EffectiveBannerURL = url
+		f.EffectiveBannerWidth = w
+		f.EffectiveBannerHeight = h
+		f.EffectiveBannerThumbhash = thumb
 	}
 
 	// labels[] is one row per attribution EDGE, so a brand that both developed
@@ -161,27 +161,57 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	return f
 }
 
-// detailBannerCover picks the detail hero out of the projected covers: the
-// first LANDSCAPE row wins, and covers[0] — server-ordered, so the portrait pin
-// — is the fallback for a work that has no wide art at all.
+// detailHero resolves the detail page's hero image: banner slot → portrait slot
+// → covers[0], the server-ordered pin.
 //
-// The detail face ships a flat covers[] rather than the list lane's two slots,
-// so orientation has to be derived here. It cannot come from `kind`: that is
-// the VNDB cover TYPE vocabulary ("main" / "pkgfront" / "dig" / …), which says
-// nothing about shape. The cutoff is the catalog's own portrait rule —
-// height > width × 1.05, written as the exact rational so a near-square cover
-// can never land in one slot on the card and the other on the hero.
-func detailBannerCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {
-	if len(covers) == 0 {
-		return nil
+// The slots are the CATALOG's decision, not ours. The detail face used to ship
+// only a flat covers[], so the hero was derived here by scanning for the first
+// landscape-ish row — a second copy of a policy that already lived upstream for
+// the list lane, and it drifted exactly the way a duplicated policy does: a
+// 1084×1080 disc face passes "wider than 1:1.05" but is not key art, so work
+// 51's hero was a picture of its DVD while its card showed the real cover.
+// Wave 187 publishes `cover_slots` on the detail face precisely so there is one
+// picker; reading it is what keeps the two frames agreeing.
+//
+// Both slots can be null — the work has no cover the catalog will render at all,
+// or SFW mode hid the only one — and then covers[0] still gives the reader an
+// image rather than a blank frame.
+func detailHero(slots *catCoverSlots, covers []dto.NextMoeGalgameCover) (hash, url string, w, h int, thumb string) {
+	if slots != nil {
+		if s := slots.Banner; s != nil {
+			return hashFromURL(s.URL), s.URL, s.Width, s.Height, s.Thumbhash
+		}
+		if s := slots.Portrait; s != nil {
+			return hashFromURL(s.URL), s.URL, s.Width, s.Height, s.Thumbhash
+		}
+	} else if c := legacyLandscapeCover(covers); c != nil {
+		// Transitional: an upstream that predates wave 187 sends no cover_slots
+		// key at all. Without this the hero would fall straight to the portrait
+		// pin for every work on the site during the deploy window. Delete once
+		// the catalog carrying cover_slots is live everywhere.
+		return c.ImageHash, c.CDNURL, c.Width, c.Height, c.Thumbhash
 	}
+	if len(covers) == 0 {
+		return "", "", 0, 0, ""
+	}
+	c := covers[0]
+	return c.ImageHash, c.CDNURL, c.Width, c.Height, c.Thumbhash
+}
+
+// legacyLandscapeCover is the pre-wave-187 local derivation, kept only for the
+// deploy window above: the first row wider than the catalog's portrait cutoff
+// (height > width × 1.05, written as the exact rational). It cannot read
+// `kind` — that is the VNDB cover TYPE vocabulary ("main" / "pkgfront" / "dig"
+// / …), which says nothing about shape — which is the whole reason the disc
+// face fooled it.
+func legacyLandscapeCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {
 	for i := range covers {
 		c := &covers[i]
 		if c.Width > 0 && c.Height > 0 && c.Height*20 <= c.Width*21 {
 			return c
 		}
 	}
-	return &covers[0]
+	return nil
 }
 
 // catalogTagCategory renders the tag's category chip. The wiki's three-value

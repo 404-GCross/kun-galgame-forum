@@ -471,6 +471,12 @@ type catWorkDetail struct {
 		Height    int    `json:"height"`
 		Thumbhash string `json:"thumbhash"`
 	} `json:"covers"`
+	// CoverSlots is the catalog's OWN two-slot pick over the covers above
+	// (wave 187) — same picker, same image meta, same nsfw handling as the list
+	// lane's include=covers, so a work's card and its hero cannot disagree.
+	// Either slot may be null; the whole key is absent against an upstream that
+	// predates the wave, which is what the nil pointer means.
+	CoverSlots  *catCoverSlots `json:"cover_slots"`
 	Screenshots []struct {
 		URL       string `json:"url"`
 		Caption   string `json:"caption"`

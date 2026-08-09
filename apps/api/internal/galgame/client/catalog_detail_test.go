@@ -72,6 +72,10 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 // the card: both must resolve to the wide art. The detail face ships a flat
 // covers[] ordered portrait-pin-first, so taking covers[0] — what this used to
 // do — put a portrait in a landscape hero frame for every work that has both.
+//
+// These bodies carry NO cover_slots, so they now pin the transitional path (an
+// upstream older than wave 187). They go when the fallback does; the slot-fed
+// behaviour is TestCatalogDetail_HeroReadsTheCatalogCoverSlots below.
 func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	t.Run("landscape present", func(t *testing.T) {
 		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
@@ -112,6 +116,66 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/ab/cd/pinned.webp" {
 			t.Errorf("hero = %q, want the pinned cover when no dims are known", f.EffectiveBannerURL)
+		}
+	})
+}
+
+// TestCatalogDetail_HeroReadsTheCatalogCoverSlots pins the wave-187 handover:
+// once the detail face carries cover_slots, the forum stops deciding and reads.
+// The regression case is work 51 — a 1084×1080 DISC FACE, wide enough to pass
+// the old local scan and rejected by the catalog's picker on both counts (not
+// 3:2 wide, and a packaging photo rather than art), so the hero has to come out
+// as the 720×1080 digital cover the card already shows.
+func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
+	t.Run("banner slot wins", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"},
+			{"url":"https://cdn.example/ef/gh/banner.webp","kind":"dig","width":1280,"height":720,"thumbhash":"B"}
+		],"cover_slots":{
+			"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"},
+			"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B"}
+		}}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/ef/gh/banner.webp" ||
+			f.EffectiveBannerWidth != 1280 || f.EffectiveBannerThumbhash != "B" {
+			t.Errorf("hero = %q %dx%d %q, want the banner slot",
+				f.EffectiveBannerURL, f.EffectiveBannerWidth, f.EffectiveBannerHeight, f.EffectiveBannerThumbhash)
+		}
+	})
+
+	t.Run("null banner falls back to the portrait slot, not to the wide disc face", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/11/22/disc.webp","kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"},
+			{"url":"https://cdn.example/33/44/dig.webp","kind":"dig","width":720,"height":1080,"thumbhash":"G"}
+		],"cover_slots":{
+			"portrait":{"url":"https://cdn.example/33/44/dig.webp","width":720,"height":1080,"thumbhash":"G"},
+			"banner":null
+		}}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/33/44/dig.webp" {
+			t.Errorf("hero = %q, want the portrait slot — the disc face is not key art", f.EffectiveBannerURL)
+		}
+		if f.EffectiveBannerWidth != 720 || f.EffectiveBannerHeight != 1080 {
+			t.Errorf("dims = %dx%d, want 720x1080", f.EffectiveBannerWidth, f.EffectiveBannerHeight)
+		}
+	})
+
+	t.Run("both slots null still shows the pin", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/11/22/disc.webp","kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"}
+		],"cover_slots":{"portrait":null,"banner":null}}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "https://cdn.example/11/22/disc.webp" {
+			t.Errorf("hero = %q, want covers[0] rather than a blank frame", f.EffectiveBannerURL)
+		}
+	})
+
+	t.Run("no covers at all leaves the hero empty", func(t *testing.T) {
+		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[],
+			"cover_slots":{"portrait":null,"banner":null}}`
+		f := fullOf(t, body)
+		if f.EffectiveBannerURL != "" {
+			t.Errorf("hero = %q, want empty", f.EffectiveBannerURL)
 		}
 	})
 }
