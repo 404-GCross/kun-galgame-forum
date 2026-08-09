@@ -81,8 +81,7 @@ const LEGEND = [
     :is-transparent="false"
     :is-hoverable="false"
     padding="md"
-    class-name="h-full"
-    content-class="gap-3"
+    content-class="gap-3 justify-start"
   >
     <template v-if="selected">
       <div class="flex items-center gap-2">
@@ -139,7 +138,7 @@ const LEGEND = [
 
     <template v-else>
       <p class="text-default-500 text-sm">
-        点击图中的任意会社查看它的关系, 双击或再次回车前往它的页面。
+        点击图中的任意会社查看它的关系, 双击或再次点击前往它的页面。
       </p>
       <div class="space-y-1.5">
         <div

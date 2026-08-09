@@ -21,18 +21,28 @@ const FIT_PADDING = 28
 /** Below this, brand names stop being readable and "fit everything" stops being
  * a service to anyone. */
 export const OFFICIAL_GRAPH_LEGIBLE_SCALE = 0.62
-/** How much of a node's own size to keep clear when panning it into view. */
-const REVEAL_MARGIN = 24
 
 const clamp = (value: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, value))
 
+interface OfficialGraphViewportOptions {
+  /** Where to look when the whole graph will not fit legibly. */
+  focus?: ComputedRef<{ x: number; y: number } | null>
+  /** Whether a finger may drag the graph VERTICALLY. False inside the page,
+   * where that gesture belongs to the page's own scroll; true in fullscreen,
+   * where the graph owns the screen and there is nothing behind it to scroll. */
+  freeTouchPan?: ComputedRef<boolean>
+  /** Preview mode: nothing here can be panned or zoomed, so the whole shape is
+   * shown at whatever scale that takes, however small. */
+  preview?: ComputedRef<boolean>
+}
+
 export const useOfficialGraphViewport = (
   viewport: Ref<HTMLElement | null>,
   content: ComputedRef<{ width: number; height: number }>,
-  /** Where to look when the whole graph will not fit legibly. */
-  focus?: ComputedRef<{ x: number; y: number } | null>
+  options: OfficialGraphViewportOptions = {}
 ) => {
+  const { focus, freeTouchPan, preview } = options
   const { width: viewW, height: viewH } = useElementSize(viewport)
 
   const scale = ref(1)
@@ -40,27 +50,29 @@ export const useOfficialGraphViewport = (
   const offsetY = ref(0)
   const isPanning = ref(false)
 
-  /** The scale that would show everything. */
-  const fitScale = computed(() => {
+  /** The scale that shows everything, before the interactive floor is applied.
+   * Never above 1: a two-node family blown up to fill the canvas reads as a
+   * mistake, not as emphasis. */
+  const rawFitScale = computed(() => {
     const { width, height } = content.value
     if (!width || !height || !viewW.value || !viewH.value) return 1
-    return clamp(
-      Math.min(
-        (viewW.value - FIT_PADDING * 2) / width,
-        (viewH.value - FIT_PADDING * 2) / height,
-        1
-      ),
-      MIN_SCALE,
-      MAX_SCALE
+    return Math.min(
+      (viewW.value - FIT_PADDING * 2) / width,
+      (viewH.value - FIT_PADDING * 2) / height,
+      1
     )
   })
 
-  /** Frame the whole graph. Never zooms IN past 1 — a two-node family blown up
-   * to fill a 420px canvas reads as a mistake, not as emphasis. */
-  const fit = () => {
+  /** What 适应画布 actually does — floored, because a reader who can pan should
+   * not be able to shrink the graph into a smudge they then have to find. */
+  const fitScale = computed(() =>
+    clamp(rawFitScale.value, MIN_SCALE, MAX_SCALE)
+  )
+
+  const fit = (allowTiny = false) => {
     const { width, height } = content.value
     if (!width || !height || !viewW.value || !viewH.value) return
-    const k = fitScale.value
+    const k = allowTiny ? rawFitScale.value : fitScale.value
     scale.value = k
     offsetX.value = (viewW.value - width * k) / 2
     offsetY.value = (viewH.value - height * k) / 2
@@ -94,30 +106,19 @@ export const useOfficialGraphViewport = (
    * whoever wants the whole shape.
    */
   const frame = () => {
+    // A preview cannot be panned, so it must show the whole thing — a strip
+    // cropped to the middle of a family, on a screen with no way to move it, is
+    // the worst of both.
+    if (preview?.value) {
+      fit(true)
+      return
+    }
     if (fitScale.value >= OFFICIAL_GRAPH_LEGIBLE_SCALE || !focus?.value) {
       fit()
       return
     }
     scale.value = OFFICIAL_GRAPH_LEGIBLE_SCALE
     centerOn(focus.value.x, focus.value.y)
-  }
-
-  /** Pan the minimum distance that brings a content-space box fully on screen —
-   * what keyboard navigation needs, and only that. Recentring on every arrow
-   * key would drag the whole picture under the reader on each step. */
-  const reveal = (x: number, y: number, width: number, height: number) => {
-    const left = offsetX.value + (x - width / 2) * scale.value
-    const top = offsetY.value + (y - height / 2) * scale.value
-    const right = left + width * scale.value
-    const bottom = top + height * scale.value
-
-    if (left < REVEAL_MARGIN) offsetX.value += REVEAL_MARGIN - left
-    else if (right > viewW.value - REVEAL_MARGIN)
-      offsetX.value -= right - (viewW.value - REVEAL_MARGIN)
-
-    if (top < REVEAL_MARGIN) offsetY.value += REVEAL_MARGIN - top
-    else if (bottom > viewH.value - REVEAL_MARGIN)
-      offsetY.value -= bottom - (viewH.value - REVEAL_MARGIN)
   }
 
   // Pointer bookkeeping. Two live pointers is a pinch; one is a drag.
@@ -159,10 +160,11 @@ export const useOfficialGraphViewport = (
     }
 
     offsetX.value += event.clientX - previous.x
-    // A finger dragging up the page is scrolling the page, not the graph:
-    // `touch-action: pan-y` leaves the vertical axis to the browser, so
+    // Inside the page, a finger dragging upward is scrolling the PAGE:
+    // `touch-action: pan-y` hands the vertical axis to the browser, and
     // claiming it here would fight the scroll the reader actually asked for.
-    if (event.pointerType === 'mouse') {
+    // Fullscreen has nothing behind it, so there the finger moves the graph.
+    if (event.pointerType === 'mouse' || freeTouchPan?.value) {
       offsetY.value += event.clientY - previous.y
     }
   }
@@ -204,7 +206,13 @@ export const useOfficialGraphViewport = (
 
   // Re-frame when the graph or the box it lives in changes size — a sidebar
   // opening or a phone rotating must not leave the drawing off screen.
-  watch([() => content.value.width, viewW, viewH], frame, { immediate: true })
+  watch(
+    [() => content.value.width, viewW, viewH, () => preview?.value],
+    frame,
+    {
+      immediate: true
+    }
+  )
 
   return {
     scale,
@@ -217,7 +225,6 @@ export const useOfficialGraphViewport = (
     frame,
     zoomBy,
     centerOn,
-    reveal,
     onPointerDown,
     onPointerMove,
     onPointerUp,

@@ -295,13 +295,27 @@ const ownershipParents = (edges: SemanticEdge[]) => {
 const TARGET_BLOCK_ASPECT = 2.5
 const MAX_BLOCK_ROWS = 4
 
-const wrapLayer = (layer: number[], parentOf: Map<number, number>) => {
-  const blocks: { parent: number | undefined; ids: number[] }[] = []
-  for (const id of layer) {
+const wrapLayer = (
+  layer: number[],
+  parentOf: Map<number, number>,
+  hasChildren: Set<number>
+) => {
+  // What may share a block: true siblings, and the loose ends — makers with no
+  // owner and nothing under them, which arrive in the walk because SOMETHING in
+  // the family touches them and which are otherwise a long thin row of names.
+  // Folding those together implies no relationship a row of them did not.
+  const blockKey = (id: number) => {
     const owner = parentOf.get(id)
+    if (owner !== undefined) return `owned:${owner}`
+    return hasChildren.has(id) ? `root:${id}` : 'loose'
+  }
+
+  const blocks: { key: string; ids: number[] }[] = []
+  for (const id of layer) {
+    const key = blockKey(id)
     const last = blocks.at(-1)
-    if (last && owner !== undefined && last.parent === owner) last.ids.push(id)
-    else blocks.push({ parent: owner, ids: [id] })
+    if (last && last.key === key) last.ids.push(id)
+    else blocks.push({ key, ids: [id] })
   }
 
   const columns: number[][] = []
@@ -474,7 +488,10 @@ export const buildOfficialGraphLayout = (
   groupRenameChains(layers, edges)
 
   const parentOf = ownershipParents(edges)
-  const layerColumns = layers.map((layer) => wrapLayer(layer, parentOf))
+  const hasChildren = new Set([...parentOf.values()])
+  const layerColumns = layers.map((layer) =>
+    wrapLayer(layer, parentOf, hasChildren)
+  )
   const x = assignX(layerColumns, neighbours, layerOf)
 
   // A layer is as tall as its deepest wrapped block, so a layer that needed no

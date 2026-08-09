@@ -77,36 +77,52 @@ const open = (id: number) => {
       </template>
     </KunHeader>
 
-    <!-- The panel is a column beside the canvas on a wide screen and a card
-         under it on a narrow one — never a popover pinned to the node, which on
-         a graph you can pan is a tooltip that walks off the screen. -->
-    <div
-      v-if="view === 'graph'"
-      class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]"
-    >
-      <GalgameOfficialGraphCanvas
-        v-model:selected-id="selectedId"
-        :layout="layout"
-        :current-id="officialId"
-        @open="open"
-        @expand="isFullscreen = true"
-      />
-      <GalgameOfficialGraphInspector
-        :layout="layout"
-        :current-id="officialId"
-        :selected-id="selectedId"
-        @select="selectedId = $event"
-      />
-    </div>
+    <KunTabPanels v-model="view">
+      <!-- The panel is a column beside the canvas on a wide screen and a card
+           under it on a narrow one — never a popover pinned to the node, which
+           on a graph you can pan is a tooltip that walks off the screen. -->
+      <KunTabPanel
+        value="graph"
+        class-name="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]"
+      >
+        <!-- Client only, and not as a workaround: the canvas decides what it is
+             from the VIEWPORT (a narrow screen gets a thumbnail, a wide one an
+             interactive surface) and frames itself from its measured box, and a
+             server has neither. Rendering it twice from different premises is
+             exactly the hydration mismatch. The fallback holds the same space
+             the real thing will take, so nothing jumps. -->
+        <ClientOnly>
+          <GalgameOfficialGraphCanvas
+            v-model:selected-id="selectedId"
+            :layout="layout"
+            :current-id="officialId"
+            @open="open"
+            @expand="isFullscreen = true"
+          />
+          <template #fallback>
+            <div
+              class="border-default-200 bg-default-50 h-48 rounded-xl border sm:h-[32rem]"
+            />
+          </template>
+        </ClientOnly>
 
-    <GalgameOfficialRelationLanes
-      v-else
-      :graph="graph"
-      :official-id="officialId"
-    />
+        <GalgameOfficialGraphInspector
+          :layout="layout"
+          :current-id="officialId"
+          :selected-id="selectedId"
+          @select="selectedId = $event"
+        />
+      </KunTabPanel>
 
-    <!-- Outside the tab branch: it is a view OF the graph, not one of the two
-         tabs, and putting it between them broke the v-if / v-else pair. -->
+      <KunTabPanel value="list">
+        <GalgameOfficialRelationLanes
+          :graph="graph"
+          :official-id="officialId"
+        />
+      </KunTabPanel>
+    </KunTabPanels>
+
+    <!-- Outside the panels: it is a view OF the graph, not a third tab. -->
     <KunModal
       v-model="isFullscreen"
       inner-class-name="w-[96vw] h-[92vh] max-w-none"
@@ -128,7 +144,15 @@ const open = (id: number) => {
             @open="open"
           />
         </div>
-        <div class="lg:w-72 lg:shrink-0">
+        <!-- On a phone the panel is a strip UNDER the canvas and must stay one:
+             capped in VIEWPORT units and scrolling inside itself, so selecting a
+             会社 with six relations cannot push the picture off the screen the
+             modal was opened to fill. Viewport units rather than a percentage on
+             purpose — a percentage silently resolves to "no cap" whenever the
+             chain of parent heights above it is indefinite. -->
+        <div
+          class="max-h-[30vh] shrink-0 overflow-y-auto lg:max-h-none lg:w-72"
+        >
           <GalgameOfficialGraphInspector
             :layout="layout"
             :current-id="officialId"

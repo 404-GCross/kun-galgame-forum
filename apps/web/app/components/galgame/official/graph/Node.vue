@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// One 会社 box on the graph. A real <button>, not a styled div: the graph is
-// navigated with the keyboard as much as with the mouse, and everything that
-// makes that work — focus ring, Enter/Space, being announced as actionable —
-// comes free from the element and has to be rebuilt by hand otherwise.
+// One 会社 box on the graph. A real <button> rather than a styled div for the
+// pointer semantics that come free with it — but kept OUT of the tab order:
+// sixty tab stops in the middle of a page is a wall, not navigation, and the
+// 列表 tab is the keyboard and screen-reader reading of the same family.
 //
 // Sizing is fixed rather than content-driven (the constants the layout placed
 // it by), because the layout computed its coordinates on the server without a
@@ -16,8 +16,6 @@ const props = defineProps<{
   /** Something else is highlighted, so this one steps back. */
   isDimmed: boolean
   isSelected: boolean
-  /** Roving tabindex — exactly one node in the graph is in the tab order. */
-  isTabStop: boolean
 }>()
 
 // The `_mini` (360px) variant: this is a 28px thumbnail and the original is
@@ -31,9 +29,7 @@ const logoSrc = computed(() =>
 const label = computed(() => {
   const { name, work_count } = props.node.official
   const held = work_count > 0 ? `, 收录 ${work_count} 部作品` : ''
-  return props.isCurrent
-    ? `${name}, 当前会社${held}`
-    : `${name}${held}, 按 Enter 前往`
+  return props.isCurrent ? `${name}, 当前会社${held}` : `${name}${held}`
 })
 </script>
 
@@ -46,13 +42,12 @@ const label = computed(() => {
       width: `${OFFICIAL_GRAPH_NODE_WIDTH}px`,
       height: `${OFFICIAL_GRAPH_NODE_HEIGHT}px`
     }"
-    :tabindex="isTabStop ? 0 : -1"
+    tabindex="-1"
     :aria-current="isCurrent ? 'page' : undefined"
     :aria-label="label"
     :class="
       cn(
-        'absolute flex items-center gap-2 rounded-xl border px-2.5 text-left',
-        'focus-visible:ring-primary-500 outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'absolute flex items-center gap-2 rounded-xl border px-2.5 text-left outline-none',
         'transition-[opacity,box-shadow,border-color] duration-200',
         isCurrent
           ? 'border-primary-500 bg-primary-50'
