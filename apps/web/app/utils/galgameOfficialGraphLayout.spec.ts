@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildOfficialGraphLayout,
+  OFFICIAL_GRAPH_HEAD_LENGTH,
   OFFICIAL_GRAPH_NODE_WIDTH
 } from './galgameOfficialGraphLayout'
 
@@ -91,7 +92,49 @@ describe('buildOfficialGraphLayout', () => {
     const wrapped = brands.filter((n) => n.row === 1)
     for (const target of wrapped) {
       const edge = layout.edges.find((e) => e.to === target.official.id)!
-      expect(edge.path).toContain(`L ${target.x - 212 / 2}`)
+      // The vertical run before the turn-in, read off the rounded corner.
+      const spine = Number(edge.path.match(/L (-?[\d.]+) [-\d.]+ Q/)![1])
+      // Inside the free channel: right of the previous column's boxes, left of
+      // this one's.
+      expect(spine).toBeGreaterThan(target.x - 92 - 28)
+      expect(spine).toBeLessThan(target.x - 92)
+      // And far enough out that the turn-in is a line with a head on it, not a
+      // head sprouting from the corner.
+      expect(target.x - 92 - spine).toBeGreaterThanOrEqual(16)
+    }
+  })
+
+  it('stops every line exactly where its arrow head begins', () => {
+    // The seam the eye catches: a line that runs past the tip blunts it, one
+    // that stops short leaves the head floating. Both are invisible in a unit
+    // test unless the meeting point is asserted, so it is.
+    const layout = buildOfficialGraphLayout({
+      nodes: [
+        node(1, 'Owner', 500),
+        ...Array.from({ length: 8 }, (_, i) => node(i + 2, `Brand ${i}`, 8 - i))
+      ],
+      edges: [
+        ...Array.from({ length: 8 }, (_, i) => ({
+          from: 1,
+          to: i + 2,
+          relation: 'imprint' as const
+        })),
+        // A rename, which is drawn laterally — the third of the three routes.
+        { from: 2, to: 3, relation: 'succeeded_by' as const }
+      ]
+    })
+
+    for (const edge of layout.edges) {
+      const numbers = edge.path.split(' ').filter((t) => t !== '' && !isNaN(+t))
+      const endY = Number(numbers.at(-1))
+      const endX = Number(numbers.at(-2))
+      const radians = (edge.head.angle * Math.PI) / 180
+      expect(endX).toBeCloseTo(
+        edge.head.x - Math.cos(radians) * OFFICIAL_GRAPH_HEAD_LENGTH
+      )
+      expect(endY).toBeCloseTo(
+        edge.head.y - Math.sin(radians) * OFFICIAL_GRAPH_HEAD_LENGTH
+      )
     }
   })
 

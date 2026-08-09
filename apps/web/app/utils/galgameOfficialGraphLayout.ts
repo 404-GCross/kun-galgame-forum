@@ -51,8 +51,15 @@ export interface GalgameOfficialGraphEdge {
   kind: GalgameOfficialGraphEdgeKind
   from: number
   to: number
-  /** SVG path, in layout coordinates. */
+  /** SVG path, in layout coordinates. Stops short of the arrow tip — see
+   * {@link GalgameOfficialGraphEdge.head}. */
   path: string
+  /** The arrow, as geometry rather than an SVG `marker`. Two reasons: a marker
+   * is painted with its own edge, so a line drawn later crosses over an earlier
+   * arrow's tip and eats it; and a marker cannot be told to stop the line
+   * before the point, so a thick stroke bleeds out around the tip and blunts
+   * it. Drawn as a shape in a layer of its own, both go away. */
+  head: { x: number; y: number; angle: number }
   labelX: number
   labelY: number
 }
@@ -397,7 +404,20 @@ const NODE_HALF_W = OFFICIAL_GRAPH_NODE_WIDTH / 2
 const NODE_HALF_H = OFFICIAL_GRAPH_NODE_HEIGHT / 2
 /** Arrow heads are drawn at the path end; stopping short of the border keeps
  * the head beside the card rather than on top of its outline. */
-const ARROW_GAP = 6
+const ARROW_GAP = 5
+/** How much of the approach the head occupies. The line is cut back by exactly
+ * this, so the two meet instead of overlapping. */
+export const OFFICIAL_GRAPH_HEAD_LENGTH = 9
+
+/** Cut the last {@link OFFICIAL_GRAPH_HEAD_LENGTH} off an approach and hand
+ * back where the head goes. `ux`/`uy` is the unit vector the line is travelling
+ * along as it arrives — which is also the direction the head points, so a
+ * diagonal arrival gets a diagonal arrow rather than being snapped to an axis. */
+const headAt = (x: number, y: number, ux: number, uy: number) => ({
+  stopX: x - ux * OFFICIAL_GRAPH_HEAD_LENGTH,
+  stopY: y - uy * OFFICIAL_GRAPH_HEAD_LENGTH,
+  head: { x, y, angle: (Math.atan2(uy, ux) * 180) / Math.PI }
+})
 
 const edgeGeometry = (
   a: GalgameOfficialGraphPlacedNode,
@@ -411,12 +431,22 @@ const edgeGeometry = (
   // column keeps at least MIN_STEP from its neighbour, it is always free —
   // and turns in from the side, which is the org-chart comb everyone can read.
   if (b.row > 0 && b.y > a.y) {
-    const spine = b.x - MIN_STEP / 2
+    // Down the FAR side of the channel rather than its middle: the turn-in has
+    // to be long enough to hold an arrow head and still read as a line. At the
+    // centre it was 8px — shorter than the head — so the head grew straight out
+    // of the corner instead of arriving along anything.
+    const spine = b.x - NODE_HALF_W - GAP_X + 4
     const busY = (layerTop[b.layer] ?? b.y) - LAYER_GAP / 3
     const entry = b.x - NODE_HALF_W - ARROW_GAP
     const y1 = a.y + NODE_HALF_H
+    const { stopX, head } = headAt(entry, b.y, 1, 0)
+    // A mitred right angle is the one join on this graph the eye catches; every
+    // other segment meets its neighbour tangentially. Round it — but never past
+    // where the head starts, or the arrow sprouts sideways out of the curve.
+    const r = Math.max(0, Math.min(8, (b.y - busY) / 2, stopX - spine))
     return {
-      path: `M ${a.x} ${y1} C ${a.x} ${(y1 + busY) / 2} ${spine} ${(y1 + busY) / 2} ${spine} ${busY} L ${spine} ${b.y} L ${entry} ${b.y}`,
+      path: `M ${a.x} ${y1} C ${a.x} ${(y1 + busY) / 2} ${spine} ${(y1 + busY) / 2} ${spine} ${busY} L ${spine} ${b.y - r} Q ${spine} ${b.y} ${spine + r} ${b.y} L ${stopX} ${b.y}`,
+      head,
       labelX: spine,
       labelY: (busY + b.y) / 2
     }
@@ -430,8 +460,12 @@ const edgeGeometry = (
     const x1 = a.x + dir * NODE_HALF_W
     const x2 = b.x - dir * (NODE_HALF_W + ARROW_GAP)
     const lift = Math.min(56, Math.abs(x2 - x1) / 3 + 16)
+    // The arc comes in at 45°, so the head does too — the arrival direction is
+    // read off the tangent rather than rounded to the nearest axis.
+    const { stopX, stopY, head } = headAt(x2, b.y, dir / Math.SQRT2, Math.SQRT1_2)
     return {
-      path: `M ${x1} ${a.y} C ${x1 + dir * lift} ${a.y - lift} ${x2 - dir * lift} ${b.y - lift} ${x2} ${b.y}`,
+      path: `M ${x1} ${a.y} C ${x1 + dir * lift} ${a.y - lift} ${x2 - dir * lift} ${b.y - lift} ${stopX} ${stopY}`,
+      head,
       labelX: (x1 + x2) / 2,
       labelY: a.y - lift * 0.72
     }
@@ -441,8 +475,10 @@ const edgeGeometry = (
   const y1 = a.y + down * NODE_HALF_H
   const y2 = b.y - down * (NODE_HALF_H + ARROW_GAP)
   const bend = (y2 - y1) * 0.5
+  const { stopY, head } = headAt(b.x, y2, 0, down)
   return {
-    path: `M ${a.x} ${y1} C ${a.x} ${y1 + bend} ${b.x} ${y2 - bend} ${b.x} ${y2}`,
+    path: `M ${a.x} ${y1} C ${a.x} ${y1 + bend} ${b.x} ${y2 - bend} ${b.x} ${stopY}`,
+    head,
     labelX: (a.x + b.x) / 2,
     labelY: (y1 + y2) / 2
   }

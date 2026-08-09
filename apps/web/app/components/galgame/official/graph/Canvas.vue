@@ -160,6 +160,30 @@ const homeToCurrent = () => {
 const edgeLabel = (edge: GalgameOfficialGraphEdge) =>
   KUN_GALGAME_OFFICIAL_GRAPH_EDGE_MAP[edge.kind] ?? ''
 
+/** One colour per edge, named twice because the line strokes it and the head
+ * fills it — and they are drawn in different layers, so they cannot share a
+ * `<g>` and inherit it. */
+const edgeTone = (edge: GalgameOfficialGraphEdge) => {
+  if (isEdgeLit(edge)) return 'primary-500'
+  if (edge.kind === 'succession') return 'secondary-300'
+  if (edge.kind === 'spawn') return 'warning-300'
+  return 'default-300'
+}
+const edgeStroke = (edge: GalgameOfficialGraphEdge) =>
+  ({
+    'primary-500': 'stroke-primary-500',
+    'secondary-300': 'stroke-secondary-300',
+    'warning-300': 'stroke-warning-300',
+    'default-300': 'stroke-default-300'
+  })[edgeTone(edge)]
+const edgeFill = (edge: GalgameOfficialGraphEdge) =>
+  ({
+    'primary-500': 'fill-primary-500',
+    'secondary-300': 'fill-secondary-300',
+    'warning-300': 'fill-warning-300',
+    'default-300': 'fill-default-300'
+  })[edgeTone(edge)]
+
 // Clicking the empty canvas clears the selection — but only when it was a
 // click and not the end of a drag, which is the difference between dismissing
 // the panel and losing it every time you pan.
@@ -269,80 +293,66 @@ const svgId = (name: string) => `kun-official-graph-${name}-${uid}`
         class="pointer-events-none absolute top-0 left-0 overflow-visible"
         aria-hidden="true"
       >
-        <defs>
-          <!-- One head per edge colour. `context-stroke` would collapse these
-               into one marker but is still uneven across the browsers this
-               site sees, and four ten-line defs cost nothing. -->
-          <marker
-            v-for="head in [
-              { name: 'ownership', klass: 'fill-default-300' },
-              { name: 'succession', klass: 'fill-secondary-300' },
-              { name: 'spawn', klass: 'fill-warning-300' },
-              { name: 'active', klass: 'fill-primary-500' }
-            ]"
-            :id="svgId(head.name)"
-            :key="head.name"
-            viewBox="0 0 10 10"
-            refX="9"
-            refY="5"
-            markerWidth="5"
-            markerHeight="5"
-            orient="auto-start-reverse"
-          >
-            <path d="M 0 0 L 10 5 L 0 10 z" :class="head.klass" />
-          </marker>
-        </defs>
-
-        <g
+        <!-- Three layers, and the order is the point: every line, then every
+             head, then the labels. Drawn edge by edge instead, a line crossing
+             near a box is painted after the arrow that already landed there and
+             takes the tip off it. -->
+        <path
           v-for="edge in layout.edges"
-          :key="edge.id"
+          :key="`line-${edge.id}`"
+          :d="edge.path"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          :stroke-width="isEdgeLit(edge) ? 2.25 : 1.5"
+          :stroke-dasharray="
+            edge.kind === 'succession' || edge.kind === 'spawn'
+              ? '5 4'
+              : undefined
+          "
           :class="
             cn(
-              'transition-opacity duration-200',
+              'transition-[stroke,stroke-width,opacity] duration-200',
+              edgeStroke(edge),
               activeId !== null && !isEdgeLit(edge) && 'opacity-20'
             )
           "
+        />
+
+        <!-- The head as a swept-back chevron rather than a plain triangle: its
+             notch sits exactly where the line stops, so the two read as one
+             stroke that sharpens instead of a wedge parked on the end. -->
+        <path
+          v-for="edge in layout.edges"
+          :key="`head-${edge.id}`"
+          d="M -9 -3.6 L 0 0 L -9 3.6 L -6.4 0 Z"
+          :transform="`translate(${edge.head.x} ${edge.head.y}) rotate(${edge.head.angle})`"
+          :class="
+            cn(
+              'transition-opacity duration-200',
+              edgeFill(edge),
+              activeId !== null && !isEdgeLit(edge) && 'opacity-20'
+            )
+          "
+        />
+
+        <!-- The relation word appears only on the lit path. Printed on every
+             edge at once it is the noise that makes a twelve-brand family
+             unreadable; printed on the two or three edges you are actually
+             looking at it is the whole answer. -->
+        <text
+          v-for="edge in layout.edges.filter(isEdgeLit)"
+          :key="`label-${edge.id}`"
+          :x="edge.labelX"
+          :y="edge.labelY"
+          text-anchor="middle"
+          dominant-baseline="middle"
+          stroke-width="4"
+          paint-order="stroke"
+          class="fill-primary-600 stroke-default-50 text-[11px] font-medium"
         >
-          <path
-            :d="edge.path"
-            fill="none"
-            :stroke-width="isEdgeLit(edge) ? 2.25 : 1.5"
-            :stroke-dasharray="
-              edge.kind === 'succession' || edge.kind === 'spawn'
-                ? '5 4'
-                : undefined
-            "
-            :marker-end="`url(#${svgId(isEdgeLit(edge) ? 'active' : edge.kind === 'succession' ? 'succession' : edge.kind === 'spawn' ? 'spawn' : 'ownership')})`"
-            :class="
-              cn(
-                'transition-[stroke,stroke-width] duration-200',
-                isEdgeLit(edge)
-                  ? 'stroke-primary-500'
-                  : edge.kind === 'succession'
-                    ? 'stroke-secondary-300'
-                    : edge.kind === 'spawn'
-                      ? 'stroke-warning-300'
-                      : 'stroke-default-300'
-              )
-            "
-          />
-          <!-- The relation word appears only on the lit path. Printed on every
-               edge at once it is the noise that makes a twelve-brand family
-               unreadable; printed on the two or three edges you are actually
-               looking at it is the whole answer. -->
-          <text
-            v-if="isEdgeLit(edge)"
-            :x="edge.labelX"
-            :y="edge.labelY"
-            text-anchor="middle"
-            dominant-baseline="middle"
-            stroke-width="4"
-            paint-order="stroke"
-            class="fill-primary-600 stroke-default-50 text-[11px] font-medium"
-          >
-            {{ edgeLabel(edge) }}
-          </text>
-        </g>
+          {{ edgeLabel(edge) }}
+        </text>
       </svg>
 
       <GalgameOfficialGraphNode
