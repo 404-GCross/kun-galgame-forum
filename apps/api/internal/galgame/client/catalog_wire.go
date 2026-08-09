@@ -168,6 +168,22 @@ type CatalogWorkListItem struct {
 	Ratings []catRating    `json:"ratings"`
 	Covers  *catCoverSlots `json:"covers"`
 	Refs    []catRef       `json:"refs"`
+
+	// ViaLabel arrives ONLY on a rolled-up 会社 page (works?label_id=&
+	// label_rollup=1, catalog wave 199) and only on the rows that reached it
+	// through an imprint or subsidiary rather than through the queried label
+	// itself. nil therefore means "this company's own work", not "unknown".
+	ViaLabel *CatalogLabelVia `json:"via_label"`
+}
+
+// CatalogLabelVia names the imprint a rolled-up row actually belongs to. It is
+// the attribution that keeps the roll-up honest: the row is on VISUAL ARTS'
+// page, but the game is Key's, and a page that does not say so has quietly
+// reassigned the publisher — which is the one thing the corporate graph exists
+// to prevent.
+type CatalogLabelVia struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // catWorksListData is the keyset works-list / calendar envelope.

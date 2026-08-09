@@ -433,6 +433,17 @@ func (s *GalgameService) hydrateListCards(
 	return &dto.GalgameListPage{Galgames: cards, Total: total}, nil
 }
 
+// countLocalMembers answers only "how many of these ids survive this filter",
+// paying for the count the list query already computes and for one row of ids
+// it throws away. Used by the 会社 page to split its total into own works and
+// imprint works under whatever filter the reader has applied — a split that has
+// to come from the same repo as the total, or the two halves stop adding up.
+func (s *GalgameService) countLocalMembers(filter model.GalgameListFilter) int64 {
+	filter.Page, filter.Limit = 1, 1
+	_, total := s.listRepo.ListIDs(filter)
+	return total
+}
+
 // HydrateCardsByIDs turns an ORDERED galgame id list into list cards, fusing
 // galgame metadata + OAuth users + local stats/ratings/resource-meta. The output
 // preserves the input order and drops ids the galgame filtered out (NSFW miss /

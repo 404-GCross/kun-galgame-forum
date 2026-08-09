@@ -66,6 +66,14 @@ export interface GalgameOfficialDetail {
   alias: string[]
   galgame: GalgameCard[]
   galgame_count: number
+  /** `galgame_count` split into the works this 会社 is credited with itself and
+   * the works that reached the page through one of its imprints or
+   * subsidiaries. Shown as two numbers and never added together: a holding
+   * company that publishes nothing under its own name reads 0 · 265, and
+   * merging them into one 265 is the reassignment `via_official` exists to
+   * prevent. They sum to `galgame_count` by construction. */
+  own_galgame_count: number
+  imprint_galgame_count: number
   // Set — and alone — when this label id was merged away in the catalog: the
   // identity lives on that id now and the page 301s there in one hop. Absent on
   // a live label, so `if (data.moved_to)` is the whole check.

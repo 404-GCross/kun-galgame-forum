@@ -610,3 +610,57 @@ func TestReleasePrecisionFromPartialISO(t *testing.T) {
 		}
 	}
 }
+
+// TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution pins both
+// halves of catalog wave 199, which fail in opposite directions.
+//
+// Drop `label_rollup=1` and 311 company pages stay empty while their imprints'
+// 10,668 works sit one hop below — the symptom is a page that looks correct and
+// is simply blank. Drop `via_label` and the page fills up, which looks like
+// success, while every one of Key's games is quietly reattributed to VISUAL
+// ARTS. The second failure is the dangerous one, so both are asserted here.
+func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testing.T) {
+	rec := &catalogRecorder{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		rec.record(req)
+		w.Header().Set("Content-Type", "application/json")
+		own := liveRow(4242, 777, "Own")
+		// A row that came up through an imprint carries the imprint's identity.
+		via := strings.TrimSuffix(liveRow(4243, 778, "Imprinted"), "}") +
+			`,"via_label":{"id":24,"name":"Key"}}`
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
+			own + `,` + via + `],"next_cursor":null}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(srv.URL, "nm_test_key", "")
+
+	members, err := c.CatalogLabelRollupMembers(context.Background(), "993", false, 5)
+	if err != nil {
+		t.Fatalf("CatalogLabelRollupMembers: %v", err)
+	}
+
+	q := rec.queryAt(0)
+	if got := q.Get("label_rollup"); got != "1" {
+		t.Errorf("label_rollup = %q, want 1 — without it a holding company's page is empty", got)
+	}
+	if got := q.Get("label_id"); got != "993" {
+		t.Errorf("label_id = %q, want 993", got)
+	}
+	// The roll-up widens the population; it must not widen it past published.
+	if got := q.Get("claim_state"); got != "live" {
+		t.Errorf("claim_state = %q, want live", got)
+	}
+
+	if len(members) != 2 {
+		t.Fatalf("members = %d, want 2", len(members))
+	}
+	if members[0].GID != 777 || members[0].Via != nil {
+		t.Errorf("own work = %+v, want gid 777 with no via — a company's own game must not read as borrowed", members[0])
+	}
+	if members[1].GID != 778 || members[1].Via == nil {
+		t.Fatalf("rolled-up work = %+v, want gid 778 with a via", members[1])
+	}
+	if members[1].Via.ID != 24 || members[1].Via.Name != "Key" {
+		t.Errorf("via = %+v, want {24 Key}", *members[1].Via)
+	}
+}

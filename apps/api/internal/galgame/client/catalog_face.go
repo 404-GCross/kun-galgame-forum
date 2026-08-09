@@ -685,7 +685,46 @@ func (c *GalgameClient) CatalogWorksList(ctx context.Context, q url.Values) (*Ca
 // pageCap bounds the walk; a taxonomy term with more members than that is
 // truncated rather than allowed to fan out unboundedly on a request path.
 func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]int, *errors.AppError) {
-	gids := []int{}
+	members, appErr := c.catalogMembers(ctx, filter, isSFW, pageCap)
+	if appErr != nil {
+		return nil, appErr
+	}
+	gids := make([]int, 0, len(members))
+	for _, m := range members {
+		gids = append(gids, m.GID)
+	}
+	return gids, nil
+}
+
+// CatalogRollupMember is one member of a 会社's ROLLED-UP catalogue: the kungal
+// gid, and — when the work is not the company's own — the imprint it hangs off.
+type CatalogRollupMember struct {
+	GID int
+	// Via is nil for a work the company attributes to itself; otherwise it names
+	// the imprint or subsidiary the row came up through. See CatalogLabelVia.
+	Via *CatalogLabelVia
+}
+
+// CatalogLabelRollupMembers is CatalogMemberGIDs for a 会社, one hop wider.
+//
+// `label_rollup=1` (catalog wave 199) adds the works that hang off the label's
+// imprints and subsidiaries. Without it 311 company pages upstream answer with
+// an empty list while 10,668 works sit one hop below them — VISUAL ARTS owns 19
+// games under its own name and 553 under its 75 imprints.
+//
+// The two populations are disjoint upstream, and the roll-up does NOT follow
+// `spawned` / `succeeded_by`: a company that split off owns its own catalogue.
+// The Via each row carries is what stops the widening from becoming a
+// reassignment, so it travels with the gid rather than being dropped here.
+func (c *GalgameClient) CatalogLabelRollupMembers(ctx context.Context, labelID string, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
+	return c.catalogMembers(ctx,
+		url.Values{"label_id": {labelID}, "label_rollup": {"1"}}, isSFW, pageCap)
+}
+
+// catalogMembers is the walk both of the above share. Via is always read off
+// the row and is simply always nil when the caller did not ask for a roll-up.
+func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
+	members := []CatalogRollupMember{}
 	cursor := ""
 	for page := 0; page < pageCap; page++ {
 		q := url.Values{}
@@ -713,7 +752,10 @@ func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values
 				continue
 			}
 			if gid := res.Items[i].gid(); gid > 0 {
-				gids = append(gids, gid)
+				members = append(members, CatalogRollupMember{
+					GID: gid,
+					Via: res.Items[i].ViaLabel,
+				})
 			}
 		}
 		if res.NextCursor == "" {
@@ -721,7 +763,7 @@ func (c *GalgameClient) CatalogMemberGIDs(ctx context.Context, filter url.Values
 		}
 		cursor = res.NextCursor
 	}
-	return gids, nil
+	return members, nil
 }
 
 // CatalogWorksSearch runs the product search lane (page-paginated, filters

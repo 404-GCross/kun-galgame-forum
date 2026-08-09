@@ -66,10 +66,19 @@ if (official && !official.moved_to) {
       </template>
 
       <template #endContent>
-        <!-- No count chip here: the 作品 tab right below already carries it,
-             and printing the same number twice in adjacent rows reads as two
-             different facts. -->
+        <!-- No TOTAL here: the 作品 tab right below already carries it, and
+             printing the same number twice in adjacent rows reads as two
+             different facts. The split is a different fact — how much of this
+             catalogue the 会社 made itself — and it only appears for the
+             companies that have imprints at all. -->
         <div class="flex flex-wrap items-center gap-2">
+          <template v-if="data.imprint_galgame_count">
+            <KunChip color="primary">自有 {{ data.own_galgame_count }}</KunChip>
+            <KunChip color="secondary">
+              经旗下 {{ data.imprint_galgame_count }}
+            </KunChip>
+          </template>
+
           <KunButton
             class-name="ml-auto"
             variant="flat"
@@ -109,7 +118,14 @@ if (official && !official.moved_to) {
       :is-transparent="false"
       v-if="data.galgame.length"
       :galgames="data.galgame"
-    />
+    >
+      <template #meta="{ galgame }">
+        <GalgameOfficialViaImprint
+          v-if="galgame.via_official"
+          :name="galgame.via_official.name"
+        />
+      </template>
+    </GalgameCard>
 
     <KunPagination
       v-if="data.galgame_count > limit"

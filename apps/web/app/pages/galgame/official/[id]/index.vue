@@ -78,6 +78,22 @@ const categoryText = (category: string) =>
 const INTRO_CLAMP_CHARS = 100
 const isIntroExpanded = ref(false)
 
+// The two halves of the catalogue, said as two numbers rather than one.
+//
+// A 会社 page lists the games of its imprints and subsidiaries as well as its
+// own — for a holding company like VISUAL ARTS that widening is the difference
+// between a page and an empty page. Adding the halves together would undo it:
+// the reader could no longer tell which games the company actually made, which
+// is the whole reason the corporate graph below exists.
+const worksDescription = computed(() => {
+  const detail = data.value
+  if (!detail?.galgame_count) return ''
+  if (!detail.imprint_galgame_count) {
+    return `本站已收录 ${detail.galgame_count} 部, 下面是最近更新的几部。`
+  }
+  return `本站已收录 自有 ${detail.own_galgame_count} 部 · 经旗下厂牌 ${detail.imprint_galgame_count} 部, 下面是最近更新的几部。`
+})
+
 // A tombstone has no name to describe and no URL of its own to be indexed at —
 // the survivor's page owns both.
 const official = data.value
@@ -176,21 +192,20 @@ if (official && !official.moved_to) {
          reader opens a maker's page for, and the family tree is the block that
          used to bury them. -->
     <div class="space-y-3">
-      <KunHeader
-        name="作品"
-        :description="
-          data.galgame_count
-            ? `本站已收录 ${data.galgame_count} 部, 下面是最近更新的几部。`
-            : ''
-        "
-        scale="h3"
-      />
+      <KunHeader name="作品" :description="worksDescription" scale="h3" />
 
       <GalgameCard
         v-if="data.galgame.length"
         :is-transparent="false"
         :galgames="data.galgame"
-      />
+      >
+        <template #meta="{ galgame }">
+          <GalgameOfficialViaImprint
+            v-if="galgame.via_official"
+            :name="galgame.via_official.name"
+          />
+        </template>
+      </GalgameCard>
 
       <KunButton
         v-if="data.galgame_count > GALGAME_PREVIEW_LIMIT"

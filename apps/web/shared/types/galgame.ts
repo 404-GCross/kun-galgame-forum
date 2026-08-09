@@ -248,6 +248,12 @@ export interface GalgameCard {
   effective_banner_width?: number
   effective_banner_height?: number
   effective_banner_thumbhash?: string
+  // Only a 会社 page sends this, and only on the games it does NOT own: the
+  // imprint or subsidiary the game actually belongs to. Its presence is the
+  // sentence "this row is on 母公司's page, but the game is 子厂牌's" — a page
+  // that rolls its imprints up without printing it has silently reassigned the
+  // publisher.
+  via_official?: { id: number; name: string }
 }
 
 // UserClaimItem is one row of GET /api/galgame/mine — a work whose lifecycle

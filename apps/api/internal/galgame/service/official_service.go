@@ -94,6 +94,11 @@ func (s *OfficialService) Search(
 // kungal filters (类型/语言/平台/作品类型) + every sort work. Only the label's
 // metadata comes from upstream; the galgame list is recomputed locally from the
 // member ids below.
+//
+// The membership is ROLLED UP one hop through the company's imprints and
+// subsidiaries, and every row that arrived that way is labelled with the
+// imprint it belongs to. The header carries the two halves separately for the
+// same reason — see dto.OfficialDetail.OwnGalgameCount.
 func (s *OfficialService) GetDetail(
 	ctx context.Context,
 	id string,
@@ -115,14 +120,39 @@ func (s *OfficialService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该会社")
 	}
 
-	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"label_id": {id}}, isSFW, taxonomyMemberPageCap)
+	// Rolled up one hop: without it a holding company answers with an empty
+	// page while its imprints' whole catalogue sits directly below it. Each
+	// rolled-up row remembers which imprint it came from — see attachVia.
+	members, appErr := s.galgameClient.CatalogLabelRollupMembers(ctx, id, isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
+	memberIDs := make([]int, 0, len(members))
+	viaIDs := []int{}
+	viaByGID := make(map[int]*dto.OfficialBrief, len(members))
+	for _, m := range members {
+		memberIDs = append(memberIDs, m.GID)
+		if m.Via == nil {
+			continue
+		}
+		viaIDs = append(viaIDs, m.GID)
+		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name}
+	}
+
 	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
 	if appErr != nil {
 		return nil, appErr
+	}
+	// The imprint half of the header, counted under the SAME filter the rows
+	// are — and skipped entirely for the ordinary 会社 that owns no imprints,
+	// which is almost all of them.
+	var imprintCount int64
+	if len(viaIDs) > 0 {
+		imprintCount = s.galgameSvc.countLocalMembers(buildEntityFilter(rawQuery, viaIDs))
+	}
+	cards := listCardsToEntityCards(page.Galgames)
+	for i := range cards {
+		cards[i].ViaOfficial = viaByGID[cards[i].ID]
 	}
 
 	return &dto.OfficialDetail{
@@ -139,13 +169,15 @@ func (s *OfficialService) GetDetail(
 		Lang:        o.Lang,
 		Description: preferredIntro(o.Intros),
 		Alias:       emptyStrSliceIfNil(o.Aliases),
-		Galgame:     listCardsToEntityCards(page.Galgames),
+		Galgame:     cards,
 		// The header count and the pager MUST come from the same gated page the
-		// rows do. o.WorkCount (upstream, nsfw-aware) is right there and is the
-		// wrong answer: it counts the label's whole catalogue, published or not
-		// and forum-local or not, so using it would put a pager on works this
-		// page cannot list.
-		GalgameCount: page.Total,
+		// rows do. o.WorkCount / o.ImprintWorkCount (upstream, nsfw-aware) are
+		// right there and are the wrong answer: they count the label's whole
+		// catalogue, published or not and forum-local or not, so using them
+		// would put a pager on works this page cannot list.
+		GalgameCount:        page.Total,
+		OwnGalgameCount:     page.Total - imprintCount,
+		ImprintGalgameCount: imprintCount,
 	}, nil
 }
 

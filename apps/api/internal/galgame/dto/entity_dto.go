@@ -42,6 +42,20 @@ type GalgameCard struct {
 	// status=2 as a "未发布" claim card (→ publish wizard) rather than a /galgame
 	// link. omitempty so published (0) cards stay unchanged everywhere else.
 	Status int `json:"status,omitempty"`
+	// ViaOfficial names the imprint this game actually belongs to, on a 会社
+	// page that rolls its imprints up. Absent on every other card source, and
+	// absent on the company's OWN works — so its presence is exactly the
+	// sentence "this is on 母公司's page, but it is 子厂牌's game". Dropping it
+	// would silently reassign the publisher, which is the thing the corporate
+	// graph was built to keep visible.
+	ViaOfficial *OfficialBrief `json:"via_official,omitempty"`
+}
+
+// OfficialBrief is a 会社 reduced to what a link needs: who it is, and where
+// its page is.
+type OfficialBrief struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // GalgameSample is a minimal galgame sample (name + banner) used in list views.
@@ -145,6 +159,19 @@ type OfficialDetail struct {
 	Alias        []string      `json:"alias"`
 	Galgame      []GalgameCard `json:"galgame"`
 	GalgameCount int64         `json:"galgame_count"`
+	// OwnGalgameCount / ImprintGalgameCount split GalgameCount into the works
+	// this 会社 is credited with itself and the works that reached the page
+	// through one of its imprints or subsidiaries. They are the FORUM-LOCAL
+	// halves of the catalog's work_count / imprint_work_count pair — the page
+	// lists local rows, so a header quoting upstream's numbers would put a
+	// pager on works it cannot show.
+	//
+	// Two numbers, never one: a holding company that publishes nothing under
+	// its own name reads 0 · 265, and summing them into a single 265 is exactly
+	// the reassignment ViaOfficial exists to prevent. They add up to
+	// GalgameCount by construction (the two populations are disjoint upstream).
+	OwnGalgameCount     int64 `json:"own_galgame_count"`
+	ImprintGalgameCount int64 `json:"imprint_galgame_count"`
 	// MovedTo is the ONLY field set when this label id was merged away
 	// upstream: the identity now lives on that catalog label id and the page
 	// must 301 to it in a single hop. Everything else stays zero on purpose —
