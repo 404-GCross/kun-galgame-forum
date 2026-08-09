@@ -79,6 +79,20 @@ export const KUN_GALGAME_OFFICIAL_RELATION_MAP: Record<string, string> = {
   formerly: '旧名'
 }
 
+// The relation graph's own four words, read ALONG the arrow: "A —旗下品牌→ B"
+// means B is a brand of A. A separate table from the two above on purpose —
+// this one names an EDGE (a direction between two makers), where
+// KUN_GALGAME_OFFICIAL_RELATION_MAP names what the other end is to you and
+// KUN_GALGAME_OFFICIAL_TREE_ROLE_MAP names what a row is to the row above it.
+// Same vocabulary, three different sentences, and collapsing them produced
+// arrows labelled 母公司 pointing at the child.
+export const KUN_GALGAME_OFFICIAL_GRAPH_EDGE_MAP: Record<string, string> = {
+  subsidiary: '子公司',
+  imprint: '旗下品牌',
+  succession: '更名为',
+  spawn: '拆分出'
+}
+
 // What a node is TO ITS PARENT in the family tree. Only two words can appear:
 // a tree edge is either a parent edge (this node is a subsidiary) or an imprint
 // edge (this node is a brand of the node above). A root that owns others is

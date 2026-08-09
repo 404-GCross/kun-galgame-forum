@@ -1,8 +1,16 @@
 <script setup lang="ts">
-// The 会社关系 section: the corporate family around this 会社, drawn as a tree
-// rather than the flat "Relations" list every other VN database prints — a
-// list tells you VisualArt's is Key's parent, a tree tells you which OTHER
-// eleven brands that makes Key a sibling of.
+import type { KunTabItem } from '@kungal/ui-vue'
+
+// The 会社关系 section: the corporate family around this 会社.
+//
+// Drawn, now, rather than listed. The three text lanes below the tab answer one
+// question each and a publisher of any size has the fourth: how does all of
+// this fit together? VisualArt's owns a dozen brands, two of which were renamed
+// and one of which was split off from a third — as three stacked blocks that is
+// four disconnected facts and a lot of scrolling, and the relationship between
+// them is left for the reader to assemble. One picture is the assembly.
+//
+// The list did not go away (see RelationLanes for why); it is the other tab.
 //
 // Its own fetch, deliberately. The page's detail payload is refetched on every
 // pagination and filter change of the games grid, and none of that can move a
@@ -26,124 +34,109 @@ const graph = computed(() =>
   (data.value?.nodes.length ?? 0) > 1 ? data.value : null
 )
 
-const forest = computed(() =>
-  graph.value ? buildOfficialFamilyForest(graph.value, props.officialId) : []
-)
-const renameChains = computed(() =>
-  graph.value ? buildOfficialRenameChains(graph.value) : []
-)
-
-// A spin-off reads from the CURRENT 会社's point of view where it can — "拆分出
-// X" / "从 Y 拆分而来" — and neutrally when the pair is between two other
-// members of the family, which the capped walk can perfectly well include.
-const spawnRows = computed(() =>
-  (graph.value ? buildOfficialSpawnPairs(graph.value) : []).map((pair) => {
-    if (pair.parent.id === props.officialId) {
-      return { prefix: '拆分出', official: pair.child, suffix: '' }
-    }
-    if (pair.child.id === props.officialId) {
-      return { prefix: '从', official: pair.parent, suffix: '拆分而来' }
-    }
-    return {
-      prefix: `${pair.parent.name} 拆分出`,
-      official: pair.child,
-      suffix: ''
-    }
-  })
+// Laid out once per payload, not per render: the arithmetic is pure and the
+// payload cannot change without a navigation.
+const layout = computed(() =>
+  graph.value ? buildOfficialGraphLayout(graph.value) : null
 )
 
-// A graph of several nodes joined by nothing this section can draw (only
-// relation words outside the three lanes) still renders nothing.
-const hasContent = computed(
-  () =>
-    forest.value.length > 0 ||
-    renameChains.value.length > 0 ||
-    spawnRows.value.length > 0
-)
+// Several nodes joined by nothing drawable is still nothing to draw.
+const hasContent = computed(() => (layout.value?.edges.length ?? 0) > 0)
+
+const view = ref('graph')
+const tabs: KunTabItem[] = [
+  { value: 'graph', textValue: '关系图', icon: 'lucide:git-fork' },
+  { value: 'list', textValue: '列表', icon: 'lucide:list-tree' }
+]
+
+// Starts on the 会社 the reader came for, so the panel is answering about
+// something from the first frame rather than showing an empty state next to a
+// full picture.
+const selectedId = ref<number | null>(props.officialId)
+
+// The fullscreen view is the SAME canvas in a bigger box, sharing the selection
+// — not a second graph. A big family only becomes readable when it has the
+// screen, and the inline strip is the preview that gets you there.
+const isFullscreen = ref(false)
+
+const open = (id: number) => {
+  isFullscreen.value = false
+  return navigateTo(taxonomyDetailPath('official', id))
+}
 </script>
 
 <template>
-  <div v-if="hasContent" class="space-y-4">
+  <div v-if="hasContent && graph && layout" class="space-y-4">
     <KunHeader
       name="会社关系"
       description="该会社所属的企业家族: 母公司、旗下品牌、更名沿革与拆分出的公司。资料来自 NextMoe 目录。"
       scale="h3"
-    />
+    >
+      <template #headerEndContent>
+        <KunTab v-model="view" :items="tabs" variant="light" size="sm" />
+      </template>
+    </KunHeader>
 
-    <div v-if="forest.length" class="space-y-3">
-      <h4 class="text-default-500 text-sm">企业家族</h4>
-      <!-- Several roots is normal, not an error: the component is connected
-           through rename and spin-off edges too, so one graph can hold two
-           ownership trees joined only by "A was renamed to B". -->
-      <GalgameOfficialRelationTree
-        v-for="root in forest"
-        :key="root.official.id"
-        :nodes="[root]"
+    <!-- The panel is a column beside the canvas on a wide screen and a card
+         under it on a narrow one — never a popover pinned to the node, which on
+         a graph you can pan is a tooltip that walks off the screen. -->
+    <div
+      v-if="view === 'graph'"
+      class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]"
+    >
+      <GalgameOfficialGraphCanvas
+        v-model:selected-id="selectedId"
+        :layout="layout"
         :current-id="officialId"
+        @open="open"
+        @expand="isFullscreen = true"
+      />
+      <GalgameOfficialGraphInspector
+        :layout="layout"
+        :current-id="officialId"
+        :selected-id="selectedId"
+        @select="selectedId = $event"
       />
     </div>
 
-    <div v-if="renameChains.length" class="space-y-3">
-      <h4 class="text-default-500 text-sm">更名沿革</h4>
-      <!-- Horizontal and scrollable: a rename chain is a sequence in TIME, and
-           stacking it vertically would read as a hierarchy — which is exactly
-           what the block above it is. -->
-      <div
-        v-for="(chain, index) in renameChains"
-        :key="index"
-        class="flex items-center gap-2 overflow-x-auto pb-1"
-      >
-        <template v-for="(item, step) in chain" :key="item.id">
-          <KunIcon
-            v-if="step"
-            name="lucide:arrow-right"
-            class-name="text-default-400 shrink-0"
-          />
-          <span
-            v-if="item.id === officialId"
-            class="border-primary-500 bg-primary-50 text-primary-600 shrink-0 rounded-md border px-2 py-1 text-sm font-medium"
-          >
-            {{ item.name }}
-          </span>
-          <KunButton
-            v-else
-            variant="flat"
-            color="default"
-            size="sm"
-            class-name="shrink-0"
-            :href="taxonomyDetailPath('official', item.id)"
-          >
-            {{ item.name }}
-          </KunButton>
-        </template>
-      </div>
-    </div>
+    <GalgameOfficialRelationLanes
+      v-else
+      :graph="graph"
+      :official-id="officialId"
+    />
 
-    <div v-if="spawnRows.length" class="space-y-3">
-      <h4 class="text-default-500 text-sm">衍生</h4>
+    <!-- Outside the tab branch: it is a view OF the graph, not one of the two
+         tabs, and putting it between them broke the v-if / v-else pair. -->
+    <KunModal
+      v-model="isFullscreen"
+      inner-class-name="w-[96vw] h-[92vh] max-w-none"
+      aria-label="会社关系图"
+    >
+      <!-- Mounted only while open, so the fullscreen canvas measures its real
+           box on the first frame and frames the graph to THAT rather than to
+           the strip it came from. -->
       <div
-        v-for="(row, index) in spawnRows"
-        :key="index"
-        class="text-default-600 flex flex-wrap items-center gap-2 text-sm"
+        v-if="isFullscreen"
+        class="flex h-full flex-col gap-3 lg:flex-row lg:gap-4"
       >
-        <KunIcon name="lucide:git-branch" class-name="text-default-400" />
-        <span>{{ row.prefix }}</span>
-        <span
-          v-if="row.official.id === officialId"
-          class="text-primary-600 font-medium"
-        >
-          {{ row.official.name }}
-        </span>
-        <KunLink
-          v-else
-          size="sm"
-          underline="hover"
-          :to="taxonomyDetailPath('official', row.official.id)"
-        >
-          {{ row.official.name }}
-        </KunLink>
-        <span v-if="row.suffix">{{ row.suffix }}</span>
+        <div class="min-h-0 flex-1">
+          <GalgameOfficialGraphCanvas
+            v-model:selected-id="selectedId"
+            :layout="layout"
+            :current-id="officialId"
+            :is-fullscreen="true"
+            @open="open"
+          />
+        </div>
+        <div class="lg:w-72 lg:shrink-0">
+          <GalgameOfficialGraphInspector
+            :layout="layout"
+            :current-id="officialId"
+            :selected-id="selectedId"
+            @select="selectedId = $event"
+          />
+        </div>
       </div>
-    </div>
+    </KunModal>
   </div>
 </template>
