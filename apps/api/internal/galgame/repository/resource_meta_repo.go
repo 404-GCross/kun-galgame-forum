@@ -6,8 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// GalgameResourceMetaRepository owns DISTINCT aggregates across
-// galgame_resource (platform/language/type) for detail pages and list cards.
 type GalgameResourceMetaRepository struct {
 	db *gorm.DB
 }
@@ -18,7 +16,6 @@ func NewGalgameResourceMetaRepository(db *gorm.DB) *GalgameResourceMetaRepositor
 
 func (r *GalgameResourceMetaRepository) DB() *gorm.DB { return r.db }
 
-// FindResourceMetaByGalgame aggregates DISTINCT platform/language/type for one galgame.
 func (r *GalgameResourceMetaRepository) FindResourceMetaByGalgame(galgameID int) (platforms, languages, types []string) {
 	type row struct {
 		Platform string `gorm:"column:platform"`
@@ -45,8 +42,6 @@ func (r *GalgameResourceMetaRepository) FindResourceMetaByGalgame(galgameID int)
 	return mapKeys(pSet), mapKeys(lSet), mapKeys(tSet)
 }
 
-// FindResourceMetaBatch aggregates DISTINCT (galgame_id, platform, language)
-// tuples for a batch of galgame IDs.
 func (r *GalgameResourceMetaRepository) FindResourceMetaBatch(galgameIDs []int) []model.GalgameResourceMeta {
 	if len(galgameIDs) == 0 {
 		return nil

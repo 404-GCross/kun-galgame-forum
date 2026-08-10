@@ -2,11 +2,6 @@ package repository
 
 import "gorm.io/gorm"
 
-// GalgameDetailRatingRepository serves the ratings block on the galgame
-// detail page (joined rows + the user's liked-rating set).
-//
-// NOTE: full CRUD for ratings lives in RatingRepository (rating_repo.go);
-// this repo is read-only for the detail page.
 type GalgameDetailRatingRepository struct {
 	db *gorm.DB
 }
@@ -17,7 +12,6 @@ func NewGalgameDetailRatingRepository(db *gorm.DB) *GalgameDetailRatingRepositor
 
 func (r *GalgameDetailRatingRepository) DB() *gorm.DB { return r.db }
 
-// GalgameDetailRatingRow is a joined rating row used by galgame detail.
 type GalgameDetailRatingRow struct {
 	ID           int    `gorm:"column:id"`
 	Recommend    string `gorm:"column:recommend"`
@@ -41,7 +35,6 @@ type GalgameDetailRatingRow struct {
 	UserID       int    `gorm:"column:user_id"`
 }
 
-// FindRatingsByGalgame returns all ratings for a galgame, ordered by created DESC.
 func (r *GalgameDetailRatingRepository) FindRatingsByGalgame(galgameID int) []GalgameDetailRatingRow {
 	var rows []GalgameDetailRatingRow
 	r.db.Table("galgame_rating").
@@ -51,8 +44,6 @@ func (r *GalgameDetailRatingRepository) FindRatingsByGalgame(galgameID int) []Ga
 	return rows
 }
 
-// FindLikedRatingIDs returns the set of rating IDs the user has liked, from a
-// given candidate list.
 func (r *GalgameDetailRatingRepository) FindLikedRatingIDs(userID int, ratingIDs []int) map[int]bool {
 	out := map[int]bool{}
 	if userID <= 0 || len(ratingIDs) == 0 {

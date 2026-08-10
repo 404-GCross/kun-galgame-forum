@@ -17,32 +17,14 @@ func NewImageHandler(imageService *service.ImageService) *ImageHandler {
 	return &ImageHandler{imageService: imageService}
 }
 
-// allowedGalgamePresets restricts which image_service presets the galgame
-// upload proxy can request. Keeps the proxy from doubling as a generic
-// image-service tunnel; presets here MUST also be in this site's
-// image_allowed_presets on the image_service side.
-//
-// Cover uploads use `galgame_banner` (pinned sort_order=0; generates the
-// 460x259 `mini` variant). Screenshot uploads use the dedicated
-// `galgame_screenshot` preset (main image only, no unused variants) — added
-// to galgame's image_presets.yaml 2026-06; Screenshots.vue now routes to it.
-// Both ride the same global pipeline (fit 1920x1080 webp@77).
+// Keeps the upload proxy from doubling as a generic image-service tunnel.
+// Every preset here MUST also be in this site's image_allowed_presets on the
+// image_service side, or the upload 403s there instead of here.
 var allowedGalgamePresets = map[string]struct{}{
-	"galgame_banner":     {}, // cover (sort_order=0 pinned)
-	"galgame_screenshot": {}, // gallery screenshots
+	"galgame_banner":     {},
+	"galgame_screenshot": {},
 }
 
-// UploadGalgameImage handles cover/screenshot upload (U2). Multipart form:
-//   - file:   image binary (required)
-//   - preset: "galgame_banner" (cover) or "galgame_screenshot"
-//     (screenshot) — see allowedGalgamePresets above
-//
-// Returns the image_service {hash, url, ...} payload so the FE can
-// immediately add a new cover/screenshot row referencing the hash and
-// submit it on the next PUT /galgame/:gid or POST /galgame/:gid/prs
-// (presence-replace arrays — see GalgameEditStoreTemp note).
-//
-// POST /api/image/galgame
 func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -68,9 +50,6 @@ func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	}
 	defer f.Close()
 
-	// The session's own access token, not user.ID: the catalog reads the
-	// uploader off the token now (wave 180). MustGetUser above stays as the
-	// route's auth requirement — a token has to exist to be forwarded.
 	res, sErr := h.imageService.UploadGalgameImage(
 		c.Context(), middleware.GetAccessToken(c), f, file.Filename, preset,
 	)
@@ -80,10 +59,6 @@ func (h *ImageHandler) UploadGalgameImage(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// UploadCoverImage handles a cover/banner/icon upload (doc / friend-link /
-// website). Multipart form: file (required). Returns {hash, url, width, height,
-// thumbhash} — the caller stores the hash and previews via url.
-// POST /api/image/cover
 func (h *ImageHandler) UploadCoverImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -111,8 +86,6 @@ func (h *ImageHandler) UploadCoverImage(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// UploadTopicImage handles topic image upload.
-// POST /api/image/topic
 func (h *ImageHandler) UploadTopicImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -140,10 +113,6 @@ func (h *ImageHandler) UploadTopicImage(c fiber.Ctx) error {
 	return response.OK(c, key)
 }
 
-// POST /api/image/message
-// Uploads a chat / private-message inline image and returns its CDN URL, which
-// the client inserts into the message as `![name](url)`. Mirror of
-// UploadTopicImage but under the `message` preset.
 func (h *ImageHandler) UploadMessageImage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

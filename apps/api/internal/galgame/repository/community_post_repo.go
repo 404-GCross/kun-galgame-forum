@@ -7,11 +7,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// CommunityPostRepository owns the LOCAL bookkeeping for community-backed galgame
-// comments: the galgame_post_like table (display like count + "我赞过") and the
-// read side of the legacy-id → community map (deep-link continuity). The
-// community primitive owns the post content itself over S2S; this repo never
-// writes it. All methods target tables created by migration 057.
 type CommunityPostRepository struct {
 	db *gorm.DB
 }
@@ -22,22 +17,16 @@ func NewCommunityPostRepository(db *gorm.DB) *CommunityPostRepository {
 
 func (r *CommunityPostRepository) DB() *gorm.DB { return r.db }
 
-// EnsureLike inserts a like row (idempotent — ON CONFLICT DO NOTHING on the
-// unique (post_id, user_id)). Driven by the community toggle's added=true.
 func (r *CommunityPostRepository) EnsureLike(postID int64, userID int) error {
 	return r.db.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&model.GalgamePostLike{PostID: postID, UserID: userID}).Error
 }
 
-// RemoveLike deletes a like row (idempotent — a missing row is a no-op). Driven
-// by the community toggle's added=false.
 func (r *CommunityPostRepository) RemoveLike(postID int64, userID int) error {
 	return r.db.Where("post_id = ? AND user_id = ?", postID, userID).
 		Delete(&model.GalgamePostLike{}).Error
 }
 
-// CountLikes returns like counts for the given post ids in one grouped query
-// (0 for a post with no likes — absent from the map). Empty input → empty map.
 func (r *CommunityPostRepository) CountLikes(postIDs []int64) map[int64]int {
 	out := make(map[int64]int, len(postIDs))
 	if len(postIDs) == 0 {
@@ -58,8 +47,6 @@ func (r *CommunityPostRepository) CountLikes(postIDs []int64) map[int64]int {
 	return out
 }
 
-// LikedSet returns the subset of postIDs the viewer has liked. Anonymous
-// (userID<=0) or empty input → empty set without a DB hit.
 func (r *CommunityPostRepository) LikedSet(userID int, postIDs []int64) map[int64]bool {
 	out := make(map[int64]bool, len(postIDs))
 	if userID <= 0 || len(postIDs) == 0 {
@@ -78,9 +65,6 @@ func (r *CommunityPostRepository) LikedSet(userID int, postIDs []int64) map[int6
 	return out
 }
 
-// FindMapByLegacyID resolves an OLD galgame_comment id to its migrated community
-// (thread, post). Returns nil (no error) when the id was never migrated, so the
-// locate endpoint can answer 404.
 func (r *CommunityPostRepository) FindMapByLegacyID(legacyID int) (*model.GalgameCommentCommunityMap, error) {
 	var row model.GalgameCommentCommunityMap
 	err := r.db.Where("old_comment_id = ?", legacyID).First(&row).Error

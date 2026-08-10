@@ -1,12 +1,5 @@
 package catalogclient
 
-// Contract tests for the user-token write plane (wave 176). The axes are the
-// ones a wrong implementation would get wrong SILENTLY: which credential is
-// attached (a Basic header here would defeat the whole posture), which path and
-// method are used, and the error mapping the BFF branches on — above all the
-// scope denial, which is the difference between telling a user to re-login and
-// telling them they are not allowed.
-
 import (
 	"context"
 	"errors"
@@ -35,8 +28,6 @@ func TestVoteCover_ForwardsBearerAndParsesEnvelope(t *testing.T) {
 	if gotPath != "/api/v1/user/catalog/works/1000/covers/88/vote" {
 		t.Fatalf("bad path %q", gotPath)
 	}
-	// The user plane authenticates AS THE USER: a Basic header here would let
-	// the service fall back to the S2S posture.
 	if gotAuth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", gotAuth)
 	}
@@ -69,9 +60,6 @@ func TestUnvoteCover_UsesDelete(t *testing.T) {
 	}
 }
 
-// TestCoverVoteErrorMapping pins the branches the handler acts on. The two 403s
-// are the point: a missing scope is the user's own stale grant (fixable by
-// re-login), anything else is an operator problem the user cannot act on.
 func TestCoverVoteErrorMapping(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -100,9 +88,6 @@ func TestCoverVoteErrorMapping(t *testing.T) {
 	}
 }
 
-// A 403 that is NOT about scope must stay a generic denial: telling a user to
-// re-login when the CLIENT is misconfigured sends them round a loop that cannot
-// fix anything.
 func TestCoverVoteForbiddenWithoutScopeIsGeneric(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -120,8 +105,6 @@ func TestCoverVoteForbiddenWithoutScopeIsGeneric(t *testing.T) {
 	}
 }
 
-// No token, no call: an empty access token is the caller's own dead session,
-// not something to ask the catalog about.
 func TestCoverVoteWithoutTokenNeverCalls(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
@@ -141,8 +124,6 @@ func TestCoverVoteUnconfigured(t *testing.T) {
 	}
 }
 
-// The READ half rides the S2S face: Basic, plus the viewer uid as a query
-// parameter, and only the covers block is decoded.
 func TestWorkCoverVotes(t *testing.T) {
 	var gotAuth, gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +151,6 @@ func TestWorkCoverVotes(t *testing.T) {
 	}
 }
 
-// An anonymous read still wants the counts, so it must not invent a uid=0
-// viewer — upstream reads 0 as "nobody asking", and sending it is noise.
 func TestWorkCoverVotesAnonymousSendsNoUID(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

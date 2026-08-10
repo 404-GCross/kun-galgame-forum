@@ -9,8 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// TopicListRepository serves the paginated topic list on the home page
-// (general + resource-sections variants) with sort/NSFW/category filters.
 type TopicListRepository struct {
 	db *gorm.DB
 }
@@ -21,7 +19,6 @@ func NewTopicListRepository(db *gorm.DB) *TopicListRepository {
 
 func (r *TopicListRepository) DB() *gorm.DB { return r.db }
 
-// TopicCardRow is the joined topic + author row used by list pages.
 type TopicCardRow struct {
 	ID               int
 	Title            string
@@ -41,7 +38,6 @@ type TopicCardRow struct {
 	UserAvatar       string
 }
 
-// FindList returns the generic topic list page matching the given filters.
 func (r *TopicListRepository) FindList(
 	page, limit int,
 	sortField, sortOrder, category string,
@@ -75,9 +71,6 @@ func (r *TopicListRepository) FindList(
 	return rows, total, err
 }
 
-// topicOrderCol resolves a sort field to its ORDER BY expression. view_1d has no
-// column — it's a live sum of today's view bucket (COALESCE→0 when none), which
-// is functionally dependent on the PK topic.id so it composes with GROUP BY.
 func topicOrderCol(sortField string) string {
 	if sortField == "view_1d" {
 		return "COALESCE((SELECT SUM(d.count) FROM topic_view_daily d " +
@@ -92,8 +85,6 @@ func topicOrderCol(sortField string) string {
 	return "topic.created"
 }
 
-// FindResourceList returns topics that belong to resource sections
-// (g-seeking, g-other, t-help).
 func (r *TopicListRepository) FindResourceList(
 	page, limit int,
 	sortField, sortOrder, category string,

@@ -1,11 +1,5 @@
 package client
 
-// The 会社 logo lane (wave 170 P3). The catalog stores a label's brand mark as
-// a bare content hash on all three label faces — detail, browse list and entity
-// search — and this repo turns it into a CDN URL itself, because the banner
-// walker only fires on rows carrying `sort_order` and a logo has no such
-// sibling. Hermetic: an httptest server plays the catalog.
-
 import (
 	"context"
 	"net/http"
@@ -24,8 +18,6 @@ func logoCatalog(t *testing.T) *GalgameClient {
 		case "/v1/catalog/labels/107":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":107,` +
 				`"display_name":"Purple SOFTWARE","logo_hash":"abcd1234ef"}}`))
-		// A maker with no logo, and a catalog that predates the field: both
-		// must read as "" rather than as an error or a broken URL.
 		case "/v1/catalog/labels/309":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":309,"display_name":"无标社","logo_hash":""}}`))
 		case "/v1/catalog/labels/409":
@@ -54,16 +46,12 @@ func TestImageURLFromHashFansOut(t *testing.T) {
 	if got := c.ImageURLFromHash("abcd1234ef"); got != want {
 		t.Fatalf("logo URL = %q, want %q", got, want)
 	}
-	// "" in, "" out — the caller passes the field through unchecked, so the
-	// no-logo answer must never become a URL pointing at nothing.
 	if got := c.ImageURLFromHash(""); got != "" {
 		t.Fatalf("empty hash resolved to %q, want empty", got)
 	}
-	// A hash too short to fan out is the same non-answer, not a malformed path.
 	if got := c.ImageURLFromHash("ab"); got != "" {
 		t.Fatalf("short hash resolved to %q, want empty", got)
 	}
-	// No configured CDN base = no URLs at all (mirrors the banner walker).
 	if got := New("http://unused", "k", "").ImageURLFromHash("abcd1234ef"); got != "" {
 		t.Fatalf("unconfigured CDN resolved to %q, want empty", got)
 	}
@@ -77,8 +65,6 @@ func TestCatalogLabelCarriesLogoHash(t *testing.T) {
 	}{
 		{"107", "abcd1234ef"},
 		{"309", ""},
-		// Absent field on an older catalog — additive contract, so this is a
-		// label without a logo, never a decode failure.
 		{"409", ""},
 	} {
 		rec, found, movedTo, appErr := c.CatalogLabel(context.Background(), tc.id)

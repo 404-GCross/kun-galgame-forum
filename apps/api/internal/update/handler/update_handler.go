@@ -14,9 +14,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// UpdateHandler handles update log + todo list routes.
-// No service layer — these endpoints are pure admin CRUD with
-// no business logic beyond straight DB ops.
 type UpdateHandler struct {
 	repo *repository.UpdateRepository
 }
@@ -25,10 +22,6 @@ func NewUpdateHandler(repo *repository.UpdateRepository) *UpdateHandler {
 	return &UpdateHandler{repo: repo}
 }
 
-// ── History ─────────────────────────────
-
-// GetHistory returns paginated update logs.
-// GET /api/update/history
 func (h *UpdateHandler) GetHistory(c fiber.Ctx) error {
 	var req dto.ListQuery
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -44,8 +37,6 @@ func (h *UpdateHandler) GetHistory(c fiber.Ctx) error {
 	})
 }
 
-// CreateHistory creates an update log.
-// POST /api/update/history
 func (h *UpdateHandler) CreateHistory(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -69,8 +60,6 @@ func (h *UpdateHandler) CreateHistory(c fiber.Ctx) error {
 	return response.OKMessage(c, "更新日志已创建")
 }
 
-// UpdateHistory patches an update log entry.
-// PUT /api/update/history
 func (h *UpdateHandler) UpdateHistory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -95,8 +84,6 @@ func (h *UpdateHandler) UpdateHistory(c fiber.Ctx) error {
 	return response.OKMessage(c, "更新日志已更新")
 }
 
-// DeleteHistory deletes an update log.
-// DELETE /api/update/history
 func (h *UpdateHandler) DeleteHistory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -110,10 +97,6 @@ func (h *UpdateHandler) DeleteHistory(c fiber.Ctx) error {
 	return response.OKMessage(c, "更新日志已删除")
 }
 
-// ── Todo ────────────────────────────────
-
-// GetTodos returns paginated todo list.
-// GET /api/update/todo
 func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
 	var req dto.ListQuery
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -129,8 +112,6 @@ func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
 	})
 }
 
-// CreateTodo creates a todo item.
-// POST /api/update/todo
 func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -154,8 +135,6 @@ func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 	return response.OKMessage(c, "待办已创建")
 }
 
-// UpdateTodo patches a todo item, also setting completed_time when status=2.
-// PUT /api/update/todo
 func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -185,8 +164,6 @@ func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	return response.OKMessage(c, "待办已更新")
 }
 
-// DeleteTodo deletes a todo item.
-// DELETE /api/update/todo
 func (h *UpdateHandler) DeleteTodo(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

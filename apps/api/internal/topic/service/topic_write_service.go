@@ -56,23 +56,14 @@ func NewTopicWriteService(
 	}
 }
 
-// topicModerationText composes the RAW text the trust check + scan see for a
-// topic: title + blank line + body (onboarding §3.1 convention for titled
-// content). Sent RAW, never rendered HTML.
 func topicModerationText(title, content string) string {
 	return title + "\n\n" + content
 }
 
-// errContentBlocked is the 422-class, user-visible response when the synchronous
-// trust word-list gate DENIES a write (a banned term). Nothing is persisted.
-// Delegates to gate.ErrContentBlocked so every write surface (wave 1 + 2) shares
-// one copy of the deliberately vague message.
 func errContentBlocked() *errors.AppError {
 	return gate.ErrContentBlocked()
 }
 
-// anyConsumeSection reports whether any section name is a paid
-// (moemoepoint-consuming) one — see constants.TopicSectionConsume.
 func anyConsumeSection(sections []string) bool {
 	for _, sec := range sections {
 		if constants.TopicSectionConsume[sec] {
@@ -82,12 +73,6 @@ func anyConsumeSection(sections []string) bool {
 	return false
 }
 
-// topicSectionFootprint is a topic's moemoepoint outcome given whether it sits
-// in a paid section, mirroring Create: a paid section is a net deduction
-// (−CostConsumeSection) and forfeits the +RewardCreateTopic base reward a free
-// section earns. Update applies the DIFFERENCE between the old and new footprint
-// so moving a topic between section tiers leaves the author exactly where a
-// fresh post in the new tier would — charging on move-in, refunding on move-out.
 func topicSectionFootprint(consume bool) int {
 	if consume {
 		return -constants.CostConsumeSection
@@ -95,13 +80,8 @@ func topicSectionFootprint(consume bool) int {
 	return constants.RewardCreateTopic
 }
 
-// coverImageTokenRe matches a single /image/<64hex> content token — the only
-// shape a topic cover may take (see model.ImageTokens / migration 029).
 var coverImageTokenRe = regexp.MustCompile(`^/image/[0-9a-f]{64}$`)
 
-// normalizeCoverImages validates the incoming cover tokens, drops duplicates
-// (keeping first-seen order), and returns them ready to persist. A malformed
-// token or a list longer than 9 is a bad request. Empty in → nil (no covers).
 func normalizeCoverImages(in []string) (topicModel.ImageTokens, *errors.AppError) {
 	if len(in) == 0 {
 		return nil, nil
@@ -124,10 +104,6 @@ func normalizeCoverImages(in []string) (topicModel.ImageTokens, *errors.AppError
 	return out, nil
 }
 
-// ──────────────────────────────────────────
-// Create — all checks inside transaction
-// ──────────────────────────────────────────
-
 func (s *TopicWriteService) Create(
 	ctx context.Context,
 	userID int,
@@ -135,9 +111,6 @@ func (s *TopicWriteService) Create(
 ) (int, *errors.AppError) {
 	hasConsumeSection := anyConsumeSection(req.Sections)
 
-	// No banner set but the body has images → auto-pick up to 9 of them as the
-	// cover (same cap as a self-uploaded banner). Publish-time only; re-edit keeps
-	// whatever the author has.
 	coverInput := req.CoverImages
 	if len(coverInput) == 0 {
 		coverInput = markdown.ExtractContentImages(req.Content, 9)
@@ -147,10 +120,6 @@ func (s *TopicWriteService) Create(
 		return 0, coverErr
 	}
 
-	// Synchronous Tier0 word-list gate (trust wave 1), strictly BEFORE the tx —
-	// the HTTP check never runs inside a transaction. deny blocks the write
-	// outright (nothing persisted); hold publishes normally + logs (below). A
-	// disabled gate / any error / timeout is a fail-open allow.
 	moderationText := topicModerationText(req.Title, req.Content)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -202,17 +171,12 @@ func (s *TopicWriteService) Create(
 			}
 		}
 
-		// Posting in a paid section is a net deduction (cost > reward); a free
-		// section earns the base reward. topicSectionFootprint owns this rule so
-		// Update's section-change adjustment stays in lock-step.
 		pointsDelta := topicSectionFootprint(hasConsumeSection)
 		mpReason := moemoepoint.ReasonContentApproved
 		if hasConsumeSection {
 			mpReason = moemoepoint.ReasonContentRemoved
 		}
 		s.helpers.AdjustMoemoepoint(tx, userID, pointsDelta, mpReason, moemoepoint.Ref("topic", topic.ID))
-		// @mentions in the topic body → "mentioned" notifications (deduped, self
-		// skip). Topic-level target (0/0) — links to the topic root.
 		s.helpers.NotifyMentions(tx, userID, topic.ID, 0, 0, req.Content)
 		return nil
 	})
@@ -227,9 +191,6 @@ func (s *TopicWriteService) Create(
 		return 0, errors.ErrInternal("创建话题失败")
 	}
 
-	// Published. A suspect hold publishes normally but leaves one greppable audit
-	// line (v1 builds no local queue entry — scan records it). Then feed the RAW
-	// text into the async shadow scan, off the request path, after commit.
 	if decision == gate.DecisionHold {
 		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopic, "subject_id", newTopicID, "author_id", userID, "matched", matched)
 	}
@@ -237,10 +198,6 @@ func (s *TopicWriteService) Create(
 
 	return newTopicID, nil
 }
-
-// ──────────────────────────────────────────
-// Update
-// ──────────────────────────────────────────
 
 func (s *TopicWriteService) Update(
 	ctx context.Context,
@@ -257,12 +214,6 @@ func (s *TopicWriteService) Update(
 		return errors.ErrForbidden("您没有权限编辑此话题")
 	}
 
-	// Snapshot the current sections BEFORE the replace below so we can tell
-	// whether this edit moves the topic between the free/paid section tiers.
-	// Create only charged at publish time; changing the section afterwards
-	// (e.g. an admin moving someone else's topic into a paid section) must
-	// charge/refund the AUTHOR too — otherwise a paid section is free if you
-	// publish elsewhere first and get moved in.
 	oldSections, err := s.taxonomyRepo.FindSectionNamesByTopicID(topicID)
 	if err != nil {
 		return errors.ErrInternal("更新话题失败")
@@ -275,8 +226,6 @@ func (s *TopicWriteService) Update(
 		return coverErr
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (topic.UserID), not the editor.
 	moderationText := topicModerationText(req.Title, req.Content)
 	authorID := int64(topic.UserID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -310,12 +259,6 @@ func (s *TopicWriteService) Update(
 			return err
 		}
 
-		// Charge/refund the AUTHOR (not the editor) when this edit crosses the
-		// free/paid section tier. delta is the footprint difference; its sign
-		// picks the audit reason, mirroring Create. No-op when the tier is
-		// unchanged. Like Create, the award is async/best-effort and not gated
-		// on the author's balance here — an admin moderating a topic shouldn't
-		// be blocked by, or have to reason about, someone else's wallet.
 		if delta := topicSectionFootprint(newConsume) - topicSectionFootprint(oldConsume); delta != 0 {
 			mpReason := moemoepoint.ReasonContentApproved
 			if delta < 0 {
@@ -324,8 +267,6 @@ func (s *TopicWriteService) Update(
 			s.helpers.AdjustMoemoepoint(tx, topic.UserID, delta, mpReason, moemoepoint.Ref("topic", topicID))
 		}
 
-		// @mentions in the edited topic body → notify newly mentioned users
-		// (deduped, so existing mentions aren't re-notified on edit). Topic-level.
 		s.helpers.NotifyMentions(tx, userID, topicID, 0, 0, req.Content)
 
 		return nil
@@ -343,12 +284,6 @@ func (s *TopicWriteService) Update(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Interactions — all checks inside transaction
-// ──────────────────────────────────────────
-
-// reactionKeys is the allowlist of valid reaction keys: the two effectful ones
-// (like/dislike) + the emoji set (kept in sync with the FE picker / assets).
 var reactionKeys = map[string]bool{
 	"like": true, "dislike": true,
 	"heart": true, "fire": true, "party": true, "love": true,
@@ -362,8 +297,6 @@ var reactionKeys = map[string]bool{
 	"whale": true,
 }
 
-// ToggleLike / ToggleDislike are kept as thin aliases (the legacy endpoints still
-// call them) — both now route through the unified reaction path.
 func (s *TopicWriteService) ToggleLike(ctx context.Context, userID, topicID int) *errors.AppError {
 	return s.ToggleReaction(ctx, userID, topicID, "like")
 }
@@ -372,11 +305,6 @@ func (s *TopicWriteService) ToggleDislike(ctx context.Context, userID, topicID i
 	return s.ToggleReaction(ctx, userID, topicID, "dislike")
 }
 
-// ToggleReaction adds/removes a reaction on a topic. like/dislike are effectful
-// (like → ±1 moemoepoint to the owner + a "liked" notification) and mutually
-// exclusive; emoji reactions are plain. Only 'like' is blocked on one's own
-// topic (it grants the owner moemoepoint). like/dislike counts stay denormalized
-// on the topic row.
 func (s *TopicWriteService) ToggleReaction(ctx context.Context, userID, topicID int, reaction string) *errors.AppError {
 	if !reactionKeys[reaction] {
 		return errors.ErrBadRequest("无效的 reaction")
@@ -461,8 +389,6 @@ func (s *TopicWriteService) ToggleReaction(ctx context.Context, userID, topicID 
 	}
 }
 
-// clearTopicReaction removes the user's `reaction` if present (for like⇄dislike
-// exclusion), reversing the like count + moemoepoint when it was a 'like'.
 func (s *TopicWriteService) clearTopicReaction(tx *gorm.DB, topicID, userID int, reaction string, ownerID int) error {
 	has, err := s.topicRepo.HasReaction(tx, topicID, userID, reaction)
 	if err != nil || !has {
@@ -504,9 +430,6 @@ func (s *TopicWriteService) Upvote(ctx context.Context, userID, topicID int, des
 		if err != nil {
 			return err
 		}
-		// Repeat upvotes ARE allowed: a topic can be pushed again and again. Each
-		// push costs the sender afresh (the FOR UPDATE lock serializes the balance)
-		// and credits the owner again — self-limited by the 10-萌萌点 cost.
 		if state.Moemoepoint < constants.CostUpvoteSender {
 			return gorm.ErrCheckConstraintViolated
 		}
@@ -520,10 +443,6 @@ func (s *TopicWriteService) Upvote(ctx context.Context, userID, topicID int, des
 			return err
 		}
 
-		// Distinct ref-kind ("topic_upvote") so the moemoepoint ledger renders
-		// 推话题消耗 / 话题被推荐 — NOT 话题被移除 / 话题被采纳, which the bare "topic"
-		// kind composes. The reason enum is OAuth's (content_removed is the only
-		// debit reason a downstream may use), so the ref is what disambiguates.
 		s.helpers.AdjustMoemoepoint(tx, userID, -constants.CostUpvoteSender,
 			moemoepoint.ReasonContentRemoved, moemoepoint.Ref("topic_upvote", topicID))
 		s.helpers.AdjustMoemoepoint(tx, topic.UserID, constants.RewardUpvoteOwner,
@@ -618,10 +537,6 @@ func (s *TopicWriteService) ToggleHide(ctx context.Context, userID int, canModer
 	return nil
 }
 
-// SetBestAnswer toggles the best answer for a topic: if the given reply is
-// already the current best answer it is cleared, otherwise it becomes the
-// best answer. The reply author's moemoepoint is adjusted by ±7 to match
-// the legacy Nitro behavior.
 func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID int, canModerate bool, topicID, replyID int) *errors.AppError {
 	topic, err := s.topicRepo.FindByID(topicID)
 	if err != nil {
@@ -652,9 +567,6 @@ func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID int, canMo
 				return err
 			}
 		} else {
-			// best_answer_id always sets; only the status_update_time bump is gated
-			// on the bump window (necro-bump prevention) via an in-SQL CASE so the
-			// pair stays one race-free statement.
 			now := time.Now()
 			if err := tx.Model(&topicModel.Topic{}).Where("id = ?", topicID).
 				Updates(map[string]any{
@@ -666,16 +578,11 @@ func (s *TopicWriteService) SetBestAnswer(ctx context.Context, userID int, canMo
 				return err
 			}
 		}
-		// Use the helper (kungal_user_state) instead of raw `UPDATE "user"
-		// SET moemoepoint = ...` — migration 007 dropped that column from
-		// the identity table, so the legacy SQL was PG-erroring out and
-		// silently rolling back the entire set-best-answer transaction.
 		bestReason := moemoepoint.ReasonContentApproved
 		if delta < 0 {
 			bestReason = moemoepoint.ReasonContentRemoved
 		}
 		s.helpers.AdjustMoemoepoint(tx, reply.UserID, delta, bestReason, moemoepoint.Ref("topic_reply", reply.ID))
-		// Only notify on set (not on clear) — matches legacy Nitro.
 		if !isCurrentBest {
 			return s.notifier.Emit(tx, msgService.Spec{
 				SenderID:   userID,

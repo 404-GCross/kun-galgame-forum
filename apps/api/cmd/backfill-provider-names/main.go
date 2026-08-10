@@ -1,17 +1,3 @@
-// Backfill galgame_resource.provider_name for every existing resource.
-//
-// For each resource row, joins galgame_resource_link to collect every URL,
-// runs the same DetectProviderNamesFromURLs classifier used by the live API,
-// and writes the deduped display names into the new jsonb column.
-//
-// Idempotent: re-running overwrites with the latest computation, so it can
-// also be used to refresh names after the classifier table is extended.
-//
-// Usage:
-//
-//	go run ./cmd/backfill-provider-names              # do it
-//	go run ./cmd/backfill-provider-names --dry-run    # report-only, no writes
-//	go run ./cmd/backfill-provider-names --batch=500  # tune batch size
 package main
 
 import (

@@ -18,8 +18,6 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 	return &CategoryHandler{categoryService: categoryService}
 }
 
-// GetCategories returns doc category list.
-// GET /api/doc/category
 func (h *CategoryHandler) GetCategories(c fiber.Ctx) error {
 	var req dto.GetCategoriesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -30,8 +28,6 @@ func (h *CategoryHandler) GetCategories(c fiber.Ctx) error {
 	return response.Paginated(c, result.Items, result.Total)
 }
 
-// CreateCategory creates a doc category.
-// POST /api/doc/category
 func (h *CategoryHandler) CreateCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -48,8 +44,6 @@ func (h *CategoryHandler) CreateCategory(c fiber.Ctx) error {
 	return response.OK(c, created)
 }
 
-// UpdateCategory updates a doc category.
-// PUT /api/doc/category
 func (h *CategoryHandler) UpdateCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -65,8 +59,6 @@ func (h *CategoryHandler) UpdateCategory(c fiber.Ctx) error {
 	return response.OKMessage(c, "分类更新成功")
 }
 
-// DeleteCategory deletes a doc category.
-// DELETE /api/doc/category
 func (h *CategoryHandler) DeleteCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

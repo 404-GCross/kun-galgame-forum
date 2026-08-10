@@ -13,24 +13,9 @@ import (
 	"kun-galgame-api/pkg/catalogclient"
 )
 
-// Filing a submission is the one flow with no id to start from, and how that id
-// is resolved is the whole design: kungal names none, the registry mints the
-// work and the claim ADOPTS that work's own key, and the response carries it
-// back as the gid.
-//
-// The alternative this replaces — a local sequence allocating ids alongside the
-// registry's — is correct only while somebody keeps reseeding the follower, and
-// its failure is silent: a collision surfaces as "you already submitted this".
-// So both halves are pinned here.
-
 type submitRecorder struct {
-	mu   sync.Mutex
-	body map[string]any
-	// submitPath / submitAuth record WHICH plane the MINT took. Until wave 179
-	// it was the asserted-actor S2S face sitting next to a Bearer banner edit —
-	// two planes for one gesture, and the only one that let kungal name a
-	// submitter who was not the one logged in. Both halves are the user's token
-	// now, and a silent fall back to Basic would still work while undoing that.
+	mu         sync.Mutex
+	body       map[string]any
 	submitPath string
 	submitAuth string
 	editBody   map[string]any
@@ -61,12 +46,10 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case strings.HasSuffix(req.URL.Path, "/catalog/works/submit"):
-			// The registry-issued identity: product_work_id ADOPTS work_id.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{` +
 				`"work_id":90210,"product_work_id":90210,` +
 				`"claim_state":"pending","event_id":5}}`))
 		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
-			// A freshly minted work has NO external_ref anchor.
 			var body struct {
 				Items []struct {
 					ExternalID string `json:"external_id"`
@@ -107,13 +90,9 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	// Sending an id here would reintroduce the second allocator. `omitempty` is
-	// what makes its absence expressible at all.
 	if _, present := rec.body["product_work_id"]; present {
 		t.Errorf("request carried product_work_id %v — kungal must name no id", rec.body["product_work_id"])
 	}
-	// The mint speaks as the user: the tenant and the actor are the token's, so
-	// neither may appear in the body.
 	if rec.submitPath != "/api/v1/user/catalog/works/submit" {
 		t.Errorf("mint hit %q, want the user plane", rec.submitPath)
 	}
@@ -126,7 +105,6 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	if _, ok := rec.body["actor"]; ok {
 		t.Errorf("the mint must assert no actor: %v", rec.body)
 	}
-	// The gid is the ADOPTED id off the response, not anything local.
 	if res.GID != 90210 {
 		t.Errorf("gid = %d, want the registry-issued 90210", res.GID)
 	}
@@ -135,9 +113,6 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	}
 }
 
-// The banner cannot ride the mint (a cover REFERENCES bytes that must already
-// exist), so it becomes the submission's first edit — against the registry work
-// id, which is what the editing engine keys on.
 func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
@@ -158,9 +133,6 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	if rec.editBody["entity_id"] != float64(90210) {
 		t.Errorf("entity_id = %v, want the registry work id 90210", rec.editBody["entity_id"])
 	}
-	// The banner is an ordinary edit, so it takes the ordinary edit plane: the
-	// submitter's own token, no asserted actor and no site — the same plane the
-	// mint above now takes.
 	if rec.editPath != "/api/v1/user/catalog/edit/proposals" {
 		t.Errorf("banner edit hit %q, want the user plane", rec.editPath)
 	}
@@ -175,13 +147,6 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	}
 }
 
-// The round trip that the whole switchover rests on: file a submission, take
-// the id the registry issued, and reach the same work by it.
-//
-// It is a separate test because the two halves are answered by DIFFERENT
-// mechanisms — the mint adopts the work's own key, and the read has to fall
-// through to identity because no anchor was ever written. Either half working
-// alone still leaves every new entry 404ing on its own page, silently.
 func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
@@ -201,8 +166,6 @@ func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
 	}
 }
 
-// A submission with no title is refused before any registry call: the mint
-// requires a display name and a 422 round-trip would say the same thing later.
 func TestSubmitRefusesATitlelessForm(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)

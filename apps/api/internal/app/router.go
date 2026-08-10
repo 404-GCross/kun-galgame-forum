@@ -9,18 +9,16 @@ import (
 )
 
 // Fiber matches routes in REGISTRATION ORDER, and an empty-prefix Group
-// registers its middleware as Use() on the parent path — so it applies to every
-// route declared below it, not just its own. Both facts are load-bearing
-// throughout this file; the comments that remain mark the places where getting
-// them wrong already shipped a bug.
+// registers its middleware as Use() on the parent path, applying it to every
+// route below. Both facts are load-bearing throughout this file; see
+// router_gate_test.go for the outage that proved it.
 func (a *App) setupRoutes() {
 	middleware.SecureCookies = a.Config.Server.Mode == "prod"
 
 	a.Fiber.Use(fiberCors.New(middleware.CORS(a.Config.CORS.AllowOrigins)))
 
-	// Deliberately does not touch DB/Redis: the container HEALTHCHECK and
-	// compose depends_on gates read this, and a transient backing-store blip
-	// must not flap the container as unhealthy.
+	// Deliberately touches neither DB nor Redis: the container HEALTHCHECK reads
+	// this, and a transient backing-store blip must not flap the container.
 	a.Fiber.Get("/healthz", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
@@ -29,8 +27,6 @@ func (a *App) setupRoutes() {
 
 	api.Get("/home", a.HomeHandler.GetHome)
 
-	// Authenticated by the HMAC X-Trust-Signature over the raw body, not a
-	// session — hence public. Idempotent.
 	api.Post("/trust/callback", a.TrustHandler.Callback)
 
 	auth := api.Group("/auth")
@@ -38,15 +34,14 @@ func (a *App) setupRoutes() {
 	auth.Post("/logout", a.OAuthHandler.Logout)
 
 	userAuth := middleware.Auth(a.Redis, a.OAuthClient)
-	// No rate limiter here on purpose. The once-per-day gate is the
-	// `daily_check_in` flag reset at calendar midnight by the daily cron and
-	// enforced atomically in StateRepository.CheckIn. A 24h-rolling limiter
+	// No rate limiter on purpose. The once-per-day gate is the `daily_check_in`
+	// flag reset at calendar midnight by the daily cron. A 24h-rolling limiter
 	// spilled past midnight, blocked legitimate next-day check-ins, and masked
 	// "已签到" with a generic "操作过于频繁" 400.
 	api.Post("/user/check-in", userAuth, a.UserHandler.CheckIn)
 	api.Get("/user/status", userAuth, a.UserHandler.GetStatus)
-	// Every fixed /user/* path below must stay ahead of /user/:id, or the
-	// literal segment binds as :id.
+	// Every fixed /user/* path must stay ahead of /user/:id, or the literal
+	// segment binds as :id.
 	api.Get("/user/notification-preferences", userAuth, a.UserHandler.GetNotificationPreferences)
 	api.Put("/user/notification-preferences", userAuth, a.UserHandler.UpdateNotificationPreferences)
 	api.Get("/user/moemoepoint/log", userAuth, a.UserHandler.GetMoemoepointLog)
@@ -91,8 +86,6 @@ func (a *App) setupRoutes() {
 
 	api.Get("/friend-link", a.FriendLinkHandler.List)
 
-	// Public because it grants nothing: it only tells the FE which capabilities
-	// a role holds so it can show or hide affordances.
 	api.Get("/perm/bundles", a.AdminRolePermissionHandler.GetBundles)
 
 	api.Get("/activity", a.ActivityHandler.GetActivity)
@@ -109,17 +102,15 @@ func (a *App) setupRoutes() {
 	api.Get("/toolset/:id/resource/detail", a.ToolsetResourceHandler.GetResourceDetail)
 
 	api.Get("/galgame", a.GalgameHandler.GetList)
-	// Every literal /galgame/<segment> route below must precede /galgame/:gid:
-	// the catch-all happily binds "mine" / "calendar" / "drafts" as a gid and
-	// then fails inside GetDetail with Atoi("mine").
+	// Every literal /galgame/<segment> route must precede /galgame/:gid: the
+	// catch-all binds "mine" / "calendar" / "drafts" as a gid and then fails
+	// inside GetDetail with Atoi("mine").
 	api.Get("/galgame/mine", userAuth, a.GalgameSubmissionHandler.ListMine)
 	api.Get(
 		"/galgame/search/wizard",
 		userAuth,
 		a.GalgameSubmissionHandler.SearchWithPending,
 	)
-	// Lives on the quiz handler for historical reasons; it is the shared
-	// associate-galgame picker search, not a quiz endpoint.
 	api.Get("/galgame/search/picker", a.GalgameQuizHandler.SearchGalgames)
 	api.Get("/galgame/calendar", a.GalgameCalendarHandler.GetMonth)
 	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
@@ -131,19 +122,11 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-tag", a.GalgameEntityHandler.GetTagList)
 	api.Get("/galgame-tag/search", a.GalgameEntityHandler.SearchTags)
 	api.Get("/galgame-tag/multi", a.GalgameEntityHandler.GetMultiTagGalgames)
-	// Taxonomy detail :id is a CATALOG id (doc 106 R1). This kebab-case API
-	// space deliberately did NOT follow the frontend's /galgame/{tag,official,
-	// engine}/ rename (doc 146): moving it would drop these under /galgame/:gid
-	// and make them order-dependent against it, for no gain — no client
-	// addresses the API by the frontend's URL shape.
 	api.Get("/galgame-tag/:id", a.GalgameEntityHandler.GetTagDetail)
 	api.Get("/galgame-official", a.GalgameEntityHandler.GetOfficialList)
 	api.Get("/galgame-official/search", a.GalgameEntityHandler.SearchOfficials)
 	api.Get("/galgame-official/legacy/:id", a.GalgameEntityHandler.ResolveLegacyOfficial)
 	api.Get("/galgame-official/:id", a.GalgameEntityHandler.GetOfficialDetail)
-	// Kept out of the detail payload: detail is refetched on every pagination
-	// and filter change of the games grid, and the family tree is unaffected by
-	// both.
 	api.Get("/galgame-official/:id/relation-graph", a.GalgameEntityHandler.GetOfficialRelationGraph)
 	api.Get("/galgame-engine", a.GalgameEntityHandler.GetEngineList)
 	api.Get("/galgame-engine/:id", a.GalgameEntityHandler.GetEngineDetail)
@@ -152,12 +135,7 @@ func (a *App) setupRoutes() {
 	api.Get("/galgame-series", a.GalgameEntityHandler.GetSeriesList)
 	api.Get("/galgame-series/cards", a.GalgameEntityHandler.GetSeriesCards)
 	api.Get("/galgame-series/:id", a.GalgameEntityHandler.GetSeriesDetail)
-	// Stays public rather than optAuth: rating Card.vue renders no like toggle,
-	// so optAuth would be dead-weight middleware on a high-traffic list.
 	api.Get("/galgame-rating/all", a.GalgameRatingHandler.GetAllRatings)
-	// A viewer who has answered (or authored) also gets each answerer's
-	// submitted answer; a non-answerer gets who answered plus grade only,
-	// because `submitted` leaks the answer.
 	api.Get(
 		"/galgame-quiz/:id/answers",
 		middleware.OptionalAuth(a.Redis, a.OAuthClient),
@@ -165,10 +143,10 @@ func (a *App) setupRoutes() {
 	)
 
 	optAuth := api.Group("", middleware.OptionalAuth(a.Redis, a.OAuthClient))
-	// The galgame rating and resource families sit here, not in the public
-	// group above: leaving them there made optionalUID return 0 unconditionally
-	// and silently broke the FindLikedSet batch fix, so every row rendered as
-	// not-liked for logged-in viewers.
+	// The rating and resource families sit here, not in the public group above:
+	// leaving them there made optionalUID return 0 unconditionally and silently
+	// broke the FindLikedSet batch fix, so every row rendered as not-liked for
+	// logged-in viewers.
 	optAuth.Get("/galgame-resource", a.GalgameResourceHandler.GetResourceList)
 	optAuth.Get("/galgame-resource/:id/detail", a.GalgameResourceHandler.GetResourceDownloadDetail)
 	optAuth.Get("/galgame-resource/:id", a.GalgameResourceHandler.GetResourceDetail)
@@ -179,8 +157,7 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/galgame-quiz/:id", a.GalgameQuizHandler.GetQuizPlay)
 
 	// On `api` with an explicit middleware, and BEFORE /topic/:tid: a later
-	// static /topic/draft would be captured by the earlier param route
-	// (tid="draft" → 400).
+	// static /topic/draft is captured by the earlier param route (tid="draft").
 	topicDraftAuth := middleware.Auth(a.Redis, a.OAuthClient)
 	api.Get("/topic/draft", topicDraftAuth, a.TopicDraftHandler.List)
 	api.Post("/topic/draft", topicDraftAuth, a.TopicDraftHandler.Save)
@@ -199,13 +176,11 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/topic/:tid/poll/log", a.PollHandler.GetVoteLog)
 
 	optAuth.Get("/galgame/:gid/resource/all", a.GalgameResourceHandler.GetGalgameResources)
-	// Both comment READ halves must mount before the mandatory-auth boundary
-	// below, or anonymous reads start demanding a session. Their write halves
-	// mount after it.
+	// Both comment READ halves must mount before the auth boundary below, or
+	// anonymous reads start demanding a session. Their writes mount after it.
 	a.GalgameCommunityCommentHandler.RegisterReads(optAuth)
 	a.ResourceCommentHandler.RegisterReads(optAuth)
 	optAuth.Get("/galgame/:gid/link/all", a.GalgameProxyHandler.GetGalgameLinks)
-	// Public read, but a logged-in reviewer additionally gets can_revert.
 	optAuth.Get("/galgame/:gid/edit/revisions", a.GalgameEditHandler.Revisions)
 	optAuth.Get("/galgame/:gid", a.GalgameHandler.GetDetail)
 
@@ -220,9 +195,8 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/toolset/:id/practicality", a.ToolsetPracticalityHandler.GetPracticality)
 
 	// THE AUTH BOUNDARY. This empty-prefix group registers Auth as Use() on
-	// "/api", so it applies to EVERY route declared below this line. Nothing
-	// public or optAuth may be registered after this point or it silently
-	// starts demanding a session.
+	// "/api", so it applies to EVERY route below this line. Nothing public or
+	// optAuth may be registered after this point.
 	authed := api.Group("", middleware.Auth(a.Redis, a.OAuthClient))
 	authed.Get("/auth/me", a.OAuthHandler.Me)
 
@@ -283,15 +257,13 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame/submit", a.GalgameSubmissionHandler.Submit)
 	authed.Post("/galgame/:gid/claim", a.GalgameSubmissionHandler.Claim)
 	authed.Post("/galgame/:gid/resubmit", a.GalgameSubmissionHandler.Resubmit)
-	// 撤回, not deletion: the claim returns to draft and the registry row — an
-	// identity other products and the edit history point at — survives.
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
 
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
 	authed.Put("/galgame/:gid/like", a.GalgameHandler.ToggleLike)
-	// Unlike every other catalog write in this file, this one travels as the
-	// USER: kungal forwards the session's OAuth access token as a Bearer and the
-	// registry derives the actor from it.
+	// Unlike every other catalog write here, this one travels as the USER: the
+	// session's OAuth token goes out as a Bearer and the registry derives the
+	// actor from it.
 	authed.Put("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Vote)
 	authed.Delete("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Unvote)
 	authed.Post("/galgame/collection", a.GalgameCollectionHandler.Create)
@@ -302,8 +274,6 @@ func (a *App) setupRoutes() {
 
 	a.GalgameCommunityCommentHandler.RegisterWrites(authed)
 
-	// Post-addressed edit / like / flag are NOT re-registered here: those reuse
-	// the region-agnostic galgame /galgame/comments/:postId* routes.
 	a.ResourceCommentHandler.RegisterWrites(authed)
 
 	authed.Post("/galgame/:gid/resource", a.GalgameResourceHandler.CreateResource)
@@ -328,9 +298,6 @@ func (a *App) setupRoutes() {
 	authed.Get("/galgame-quiz/:id/edit", a.GalgameQuizHandler.GetQuizForEdit)
 	authed.Put("/galgame-quiz/:id", a.GalgameQuizHandler.UpdateQuiz)
 
-	// Every editing-engine write travels on the caller's OWN OAuth token and
-	// infra authorizes it. The forum keeps no mirrored permission gate here: all
-	// that is required locally is a session, so there is a token to forward.
 	authed.Get("/galgame/:gid/edit/bootstrap", a.GalgameEditHandler.Bootstrap)
 	authed.Post("/galgame/:gid/edit/proposals", a.GalgameEditHandler.Submit)
 	authed.Get("/galgame-edit/mine", a.GalgameEditHandler.Mine)
@@ -354,32 +321,20 @@ func (a *App) setupRoutes() {
 	authed.Post("/toolset/:id/upload/resume", a.ToolsetUploadHandler.UploadResume)
 	authed.Post("/toolset/:id/upload/abort", a.ToolsetUploadHandler.UploadAbort)
 
-	// Every admin gate below is PER-ROUTE, never Group("", middleware.X()).
-	// An empty-prefix group registers its middleware as Use() on "/api", which
-	// then runs for every route declared BELOW it — including the deliberately
-	// ungated groups that follow. That is how RequireAdmin silently swallowed
-	// the trust inbox, the galgame submission queue, doc, website, update-log
-	// and friend-link surfaces between 2026-07-21 and 2026-08-07: moderators
-	// held the permission and were refused anyway.
-	//
-	// Where a route proxies infra, the local RequireModerator is a VIEW gate
+	// Every admin gate below is PER-ROUTE, never Group("", middleware.X()) — see
+	// router_gate_test.go for the 2026-07-21..2026-08-07 outage that rule
+	// encodes. Where a route proxies infra, the local Require* is a VIEW gate
 	// deciding which page opens; infra re-checks and owns the outcome. Never
-	// "tighten" one into a second answer that can disagree with the engine — a
-	// grant made in the permission console must take effect on the next token
-	// without a forum deploy.
+	// tighten one into a second answer that can disagree with the engine.
 	admin := authed.Group("")
 	admin.Get("/admin/overview/all", middleware.RequirePermission(perm.AdminDashboard), a.AdminOverviewHandler.GetOverview)
 	admin.Get("/admin/overview/stats", middleware.RequirePermission(perm.AdminDashboard), a.AdminOverviewHandler.GetStats)
 
-	// kungal no longer brokers identity (ban / delete / register live in the
-	// OAuth admin UI) but it does own every piece of content published here, so
-	// an admin can preview and one-shot purge a spam user's whole footprint.
 	admin.Get("/admin/user/:id/content-stats", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.GetUserContentStats)
 	admin.Delete("/admin/user/:id/content", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.PurgeUserContent)
 
-	// RequireAdmin, not RequirePermission, on purpose: overrides must never be
-	// able to lock admins out of the surface that repairs overrides, so this
-	// meta-surface sits outside the overridable system.
+	// RequireAdmin, not RequirePermission: overrides must never be able to lock
+	// admins out of the surface that repairs overrides.
 	rolePermAdmin := authed.Group("")
 	rolePermAdmin.Get("/admin/role-permissions", middleware.RequireAdmin(), a.AdminRolePermissionHandler.GetMatrix)
 	rolePermAdmin.Put("/admin/role-permissions/:role", middleware.RequireAdmin(), a.AdminRolePermissionHandler.Replace)
@@ -400,8 +355,6 @@ func (a *App) setupRoutes() {
 		middleware.RequireModerator(),
 		a.GalgameClaimReviewHandler.Review,
 	)
-	// Enforced entirely by the forum (migration 061), so this one is a real
-	// permission boundary rather than a view gate.
 	galgameAdmin.Put(
 		"/admin/galgame/:gid/resource-publish-ban",
 		middleware.RequirePermission(perm.GalgameBanResourcePublish),

@@ -18,7 +18,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Check column types
 	type ColInfo struct {
 		TableName  string `gorm:"column:table_name"`
 		ColumnName string `gorm:"column:column_name"`
@@ -38,7 +37,6 @@ func main() {
 		fmt.Printf("  %-30s %-20s %s\n", c.TableName, c.ColumnName, c.DataType)
 	}
 
-	// Check migration records
 	type Migration struct {
 		Name      string `gorm:"column:name"`
 		AppliedAt string `gorm:"column:applied_at"`

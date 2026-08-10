@@ -1,20 +1,5 @@
 package client
 
-// Contract tests for the catalog re-anchoring (A2-3). Hermetic: every test
-// drives a httptest server, so nothing here needs a running catalog service.
-//
-// What they pin, and why each one is worth a test rather than a comment:
-//
-//   - the TWO-HOP id bridge actually happens, in order, with the right bodies
-//     (a regression here silently returns an empty batch, which every caller
-//     renders as "this game vanished");
-//   - a withdrawn claim (state=hidden) NEVER reaches a caller — the single
-//     sharpest finding of the A2-2 report was that re-anchoring on claimed_by
-//     without this check republishes banned entries;
-//   - a catalog id is never mistaken for a gid (the two key spaces overlap, so
-//     this failure attaches another game's stats rather than erroring);
-//   - the NSFW gate travels as a request parameter, never as a post-filter.
-
 import (
 	"context"
 	"encoding/json"
@@ -27,7 +12,6 @@ import (
 	"testing"
 )
 
-// catalogRecorder captures every request a fake catalog service received.
 type catalogRecorder struct {
 	mu    sync.Mutex
 	paths []string
@@ -72,8 +56,6 @@ func (r *catalogRecorder) count() int {
 	return len(r.paths)
 }
 
-// catalogStub serves the two bridge endpoints from canned data. lookup maps a
-// gid to a catalog id; works maps a catalog id to a list-item JSON fragment.
 func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, works map[int64]string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -144,8 +126,6 @@ func atoi64(s string) int64 {
 	return out
 }
 
-// liveRow builds a claimed, live catalog row whose gid differs from its catalog
-// id — the shape that catches a catalog-id/gid mix-up.
 func liveRow(catalogID int64, gid int, name string) string {
 	return `{"id":` + itoa(catalogID) + `,"medium":"galgame","display_name":"` + name +
 		`","content_rating":"all_ages","olang":"ja","release_date":"2024-06-14",` +
@@ -168,23 +148,19 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 		t.Fatalf("GetBatch: %v", err)
 	}
 
-	// Hop 1 is the batch lookup, hop 2 is the works fetch — in that order.
 	if p := rec.pathAt(0); p != "/v1/catalog/lookup/batch" {
 		t.Errorf("first call = %q, want /v1/catalog/lookup/batch", p)
 	}
 	if p := rec.pathAt(1); p != "/v1/catalog/works" {
 		t.Errorf("second call = %q, want /v1/catalog/works", p)
 	}
-	// The works fetch must ask for the CATALOG id, not the gid.
 	if ids := rec.queryAt(1).Get("ids"); ids != "4242" {
 		t.Errorf("works ids = %q, want 4242 (the catalog id, not the gid)", ids)
 	}
-	// Default limit is 20; a 100-id request would silently truncate without this.
 	if lim := rec.queryAt(1).Get("limit"); lim != "100" {
 		t.Errorf("works limit = %q, want 100", lim)
 	}
 
-	// The result is keyed by the GID, and the brief's own ID is the gid too.
 	b, ok := got[777]
 	if !ok {
 		t.Fatalf("result not keyed by gid 777: %#v", got)
@@ -198,8 +174,6 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 	if b.NameJaJp != "Kun" || b.NameZhCn != "KunCN" {
 		t.Errorf("names not projected: %+v", b)
 	}
-	// This fixture has no banner slot, so the portrait fallback is what renders
-	// (slot preference itself is pinned by TestCoverSlots_BannerWinsPortraitFallsBack).
 	if b.EffectiveBannerURL != "https://cdn.example/ab/cd/abcdef.webp" || b.EffectiveBannerThumbhash != "TH" {
 		t.Errorf("cover slot not projected: %+v", b)
 	}
@@ -250,22 +224,11 @@ func TestCatalogBridge_UnresolvedGIDIsAbsentNotAnError(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("got %#v, want empty", got)
 	}
-	// A gid the anchors do not know now gets the IDENTITY attempt before it is
-	// given up on — that is the route every registry-issued id arrives by, and
-	// skipping it would 404 every entry submitted after the switchover. What
-	// must survive that extra hop is this test's actual subject: a gid nothing
-	// claims is still ABSENT rather than an error, and is never resolved to
-	// whatever work happens to carry its number.
 	if rec.count() != 2 {
 		t.Errorf("made %d calls, want 2 (anchor lookup, then the identity attempt)", rec.count())
 	}
 }
 
-// TestCatalogBridge_GatesAreParametersNotPostFilters pins the caliber the whole
-// A2-R5 wave exists for (doc 106 §38): kungal's SFW setting rides the EDITORIAL
-// axis (content_limit=), never the AGE axis (nsfw=). Closing the age gate for an
-// SFW caller was the incident — 94.5% of the registry is r18, so it deleted the
-// catalogue instead of filtering adult presentation.
 func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	rec := &catalogRecorder{}
 	srv := catalogStub(t, rec,
@@ -274,8 +237,6 @@ func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	)
 	c := New(srv.URL, "nm_test_key", "")
 
-	// SFW caller: the age gate is OPEN, and the SFW preference travels as the
-	// editorial gate instead.
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, true); err != nil {
 		t.Fatalf("GetBatchPublic sfw: %v", err)
 	}
@@ -285,14 +246,10 @@ func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	if v := rec.queryAt(1).Get("content_limit"); v != "sfw" {
 		t.Errorf("sfw caller sent content_limit=%q, want sfw — the setting must reach the wire as the editorial gate", v)
 	}
-	// The IDENTITY lookup always runs with nsfw=1 too, or an r18 game becomes
-	// unresolvable rather than merely invisible.
 	if v := rec.queryAt(0).Get("nsfw"); v != "1" {
 		t.Errorf("lookup sent nsfw=%q, want 1 (identity resolution is not content)", v)
 	}
 
-	// NSFW caller: a different cache key, so a fresh pair of calls. The age gate
-	// is open for them too, and no editorial filter is sent at all.
 	before := rec.count()
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, false); err != nil {
 		t.Fatalf("GetBatchPublic nsfw: %v", err)
@@ -305,11 +262,6 @@ func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	}
 }
 
-// TestCatalogDisplayLimit_ReadsTheEditorialAxis is the projection half of the
-// same fix. The fixture is the exact shape that broke: an r18 GAME whose kungal
-// entry an editor graded sfw. Reading content_rating there marked it nsfw, which
-// noindexed the page and blurred the card; reading claimed_by.content_limit
-// keeps the age chip (r18) while the display axis stays sfw.
 func TestCatalogDisplayLimit_ReadsTheEditorialAxis(t *testing.T) {
 	r18SfwEntry := strings.Replace(
 		strings.Replace(liveRow(4242, 777, "Kun"), `"content_rating":"all_ages"`, `"content_rating":"r18"`, 1),
@@ -330,20 +282,14 @@ func TestCatalogDisplayLimit_ReadsTheEditorialAxis(t *testing.T) {
 	if b.ContentLimit != "sfw" {
 		t.Errorf("content_limit = %q, want sfw — the editorial verdict wins over the age rating", b.ContentLimit)
 	}
-	// The age axis is untouched: the R18 chip and the age-gated UI still read it.
 	if b.AgeLimit != "r18" {
 		t.Errorf("age_limit = %q, want r18 — the two axes are independent", b.AgeLimit)
 	}
 }
 
-// TestCatalogDisplayLimit_FallsBackToTheAgeAxis pins the pre-deployment window
-// and the unclaimed case: with no editorial verdict on the wire the projection
-// must keep the old, conservative reading rather than defaulting to sfw.
 func TestCatalogDisplayLimit_FallsBackToTheAgeAxis(t *testing.T) {
 	for name, claim := range map[string]string{
-		// The supplying wave is not deployed: claimed_by carries no content_limit.
-		"claim without the key": `"state":"live"`,
-		// An unrecognised value is an anomaly, not a verdict — never passed through.
+		"claim without the key":      `"state":"live"`,
 		"claim with a garbage value": `"state":"live","content_limit":"ssfw"`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -377,8 +323,6 @@ func TestCatalogBridge_LookupIsMemoized(t *testing.T) {
 	if _, err := c.GetBatch(ctx, []int{777}); err != nil {
 		t.Fatalf("first GetBatch: %v", err)
 	}
-	// GetBatch does not use the brief cache, so a second call re-fetches the
-	// ROW — but the identity lookup must be served from the memo.
 	if _, err := c.GetBatch(ctx, []int{777}); err != nil {
 		t.Fatalf("second GetBatch: %v", err)
 	}
@@ -393,8 +337,6 @@ func TestCatalogBridge_LookupIsMemoized(t *testing.T) {
 	}
 }
 
-// faceRecorder captures the last request a fake service received (single-shot
-// sibling of catalogRecorder, kept for the path/credential pins below).
 type faceRecorder struct {
 	mu     sync.Mutex
 	path   string
@@ -417,9 +359,6 @@ func (r *faceRecorder) server(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// TestCatalogFace_PathsAndCredentials pins that every re-anchored lane talks to
-// the catalog face under /v1 with the service key. (The wiki bases these lanes
-// once shared retired with the wiki; the client is single-faced since wave 169.)
 func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	rec := &faceRecorder{}
 	srv := rec.server(t)
@@ -473,12 +412,6 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 
 }
 
-// TestCatalogMemberGIDs_PublishedMembersOnly pins the entity-page member walk's
-// outgoing query, one pin per taxonomy family. The regression it guards is
-// invisible from this side — the 词条 page's list quietly WIDENS to include
-// entries the wiki claimed but never published (state=draft), which then render
-// as 未发布 cards on a public browse page (doc 106 §37, extended to the entity
-// pages by R4). `claimed=true` alone does not exclude them.
 func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 	for family, filter := range map[string]string{
 		"tag":    "tag_id",
@@ -501,19 +434,12 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 			if got := q.Get("claim_state"); got != "live" {
 				t.Errorf("claim_state = %q, want live — without it the %s page lists unpublished works", got, family)
 			}
-			// The face-side claim_state gate is LIVE (A2-R4), so the assertion
-			// above pins a filter that really narrows the population rather than
-			// one the face ignores. `claimed=true` rides along as the explicit
-			// statement of the other requirement — only a claimed work has a
-			// kungal gid — which a live claim now implies.
 			if got := q.Get("claimed"); got != "true" {
 				t.Errorf("claimed = %q, want true", got)
 			}
 			if got := q.Get(filter); got != "5" {
 				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
 			}
-			// The member walk carries both gates, and an SFW caller's gate is the
-			// EDITORIAL one: closing the age gate here emptied every 词条 page.
 			if got := q.Get("nsfw"); got != "1" {
 				t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
 			}
@@ -524,10 +450,6 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 	}
 }
 
-// TestCoverSlots_BannerWinsPortraitFallsBack pins the card key art. kungal's
-// card and hero frames are landscape, so the wide banner is the one the user
-// ruled for; a portrait-only work must still get an image rather than a blank
-// card, which is what makes this two assertions and not one.
 func TestCoverSlots_BannerWinsPortraitFallsBack(t *testing.T) {
 	const (
 		portraitSlot = `"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"}`
@@ -565,8 +487,6 @@ func TestCoverSlots_BannerWinsPortraitFallsBack(t *testing.T) {
 			if b.EffectiveBannerURL != tc.wantURL {
 				t.Errorf("effective banner = %q, want %q", b.EffectiveBannerURL, tc.wantURL)
 			}
-			// The dims + thumbhash must come from the SAME slot, or the no-CLS box
-			// is reserved for one image and filled with another.
 			if b.EffectiveBannerWidth != tc.wantW || b.EffectiveBannerHeight != tc.wantH ||
 				b.EffectiveBannerThumbhash != tc.wantHash {
 				t.Errorf("dims/thumbhash = %dx%d %q, want %dx%d %q — they must ride with the chosen slot",
@@ -577,16 +497,12 @@ func TestCoverSlots_BannerWinsPortraitFallsBack(t *testing.T) {
 	}
 }
 
-// TestProductLocaleProjection pins the D7 language table — the mapping a card's
-// `original_language` label rides on.
 func TestProductLocaleProjection(t *testing.T) {
 	cases := map[string]string{
 		"ja": "ja-jp", "ja-JP": "ja-jp",
 		"zh": "zh-cn", "zh-Hans": "zh-cn",
 		"zh-Hant": "zh-tw", "zh-TW": "zh-tw", "zh-HK": "zh-tw",
 		"en": "en-us", "en-GB": "en-us",
-		// Outside the four product locales the tag passes through verbatim:
-		// showing "ko" is honest, showing "" is a silent loss.
 		"ko": "ko", "": "",
 	}
 	for in, want := range cases {
@@ -596,10 +512,6 @@ func TestProductLocaleProjection(t *testing.T) {
 	}
 }
 
-// TestReleasePrecisionFromPartialISO pins D7 table ②: the catalog's date is
-// partial ISO and its LENGTH is the precision. Reading it with a date parser
-// would turn "2021" into January 1st, which is exactly the failure the table
-// exists to prevent.
 func TestReleasePrecisionFromPartialISO(t *testing.T) {
 	day, month, year := "2021-06-04", "2021-06", "2021"
 	for date, want := range map[*string]string{
@@ -611,21 +523,12 @@ func TestReleasePrecisionFromPartialISO(t *testing.T) {
 	}
 }
 
-// TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution pins both
-// halves of catalog wave 199, which fail in opposite directions.
-//
-// Drop `label_rollup=1` and 311 company pages stay empty while their imprints'
-// 10,668 works sit one hop below — the symptom is a page that looks correct and
-// is simply blank. Drop `via_label` and the page fills up, which looks like
-// success, while every one of Key's games is quietly reattributed to VISUAL
-// ARTS. The second failure is the dangerous one, so both are asserted here.
 func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testing.T) {
 	rec := &catalogRecorder{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		rec.record(req)
 		w.Header().Set("Content-Type", "application/json")
 		own := liveRow(4242, 777, "Own")
-		// A row that came up through an imprint carries the imprint's identity.
 		via := strings.TrimSuffix(liveRow(4243, 778, "Imprinted"), "}") +
 			`,"via_label":{"id":24,"name":"Key"}}`
 		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
@@ -646,7 +549,6 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	if got := q.Get("label_id"); got != "993" {
 		t.Errorf("label_id = %q, want 993", got)
 	}
-	// The roll-up widens the population; it must not widen it past published.
 	if got := q.Get("claim_state"); got != "live" {
 		t.Errorf("claim_state = %q, want live", got)
 	}

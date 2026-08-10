@@ -2,12 +2,6 @@ package model
 
 import "time"
 
-// RolePermissionOverride is a single DEVIATION from the compiled permission
-// baseline (pkg/perm): for one (role, permission) pair, effect 'grant' adds a key
-// the role's baseline lacks and 'revoke' removes one it holds. The table stores
-// ONLY deltas — an empty table means every role holds exactly its compiled
-// baseline, so effective(role) = (baseline ∪ grants) − revokes. `ren` is pinned
-// to the full catalog and is never stored here.
 type RolePermissionOverride struct {
 	Role       string    `gorm:"column:role;primaryKey" json:"role"`
 	Permission string    `gorm:"column:permission;primaryKey" json:"permission"`

@@ -18,8 +18,6 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 	return &CategoryHandler{categoryService: categoryService}
 }
 
-// GetWebsiteCategory returns a category with its websites.
-// GET /api/website-category/:name
 func (h *CategoryHandler) GetWebsiteCategory(c fiber.Ctx) error {
 	name := c.Params("name")
 	detail, appErr := h.categoryService.GetDetail(name, utils.IsSFW(c))
@@ -29,8 +27,6 @@ func (h *CategoryHandler) GetWebsiteCategory(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// UpdateWebsiteCategory updates a website category.
-// PUT /api/website-category
 func (h *CategoryHandler) UpdateWebsiteCategory(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

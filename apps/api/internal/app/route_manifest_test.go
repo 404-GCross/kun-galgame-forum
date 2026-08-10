@@ -17,22 +17,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// The route table is the ONLY place where a middleware's blast radius is
-// visible. Reading router.go top-to-bottom does not show it: Fiber resolves a
-// group's middleware against its PATH, so `parent.Group("", mw)` — an empty
-// prefix — becomes `Use("/api", mw)` and silently attaches mw to every route
-// registered after it, group handle notwithstanding. That is how a
-// RequireAdmin gate meant for five routes ended up on ninety.
-//
-// So we build the real router and read the real chains back out. Handler
-// identity comes from the function pointer, which for a closure returned by a
-// constructor is named after the constructor ("middleware.Auth.func1") — i.e.
-// the chain prints as the middleware names actually applied.
-//
-// Every handler field on App is a POINTER, and route registration only takes
-// method VALUES (never calls them), so a zero App registers the whole table
-// without a database, Redis or OAuth.
-
 var updateGolden = flag.Bool("update-routes", false, "rewrite testdata/routes.golden")
 
 const goldenPath = "testdata/routes.golden"
@@ -49,47 +33,34 @@ func buildManifest(t *testing.T) []string {
 	return lines
 }
 
-// route pairs a registered route with the chain a request to it ACTUALLY
-// runs. Fiber does not store the inherited half on the route — it walks the
-// per-method stack at match time and runs every Use() entry it passes whose
-// prefix matches — which is precisely why a leak is invisible in both the
-// source and a naive dump of Route.Handlers.
 type route struct {
 	fiber.Route
 	chain []string
 }
 
-// resolveRoutes replays Fiber's own matching to fold each route's inherited
-// middleware into it. GetRoutes walks app.stack method by method in
-// REGISTRATION order, so a Use entry affects exactly the routes that come
-// after it in the same method's stack — the ordering the whole hazard turns on.
 func resolveRoutes(t *testing.T) []route {
 	t.Helper()
 
 	a := &App{Fiber: fiber.New(), Config: testConfig()}
 	a.setupRoutes()
 
-	// GetRoutes(true) is the same stack with the Use entries removed, so
-	// walking the two in lockstep identifies them by position — no reflection
-	// into Fiber's unexported state.
 	all, endpoints := a.Fiber.GetRoutes(), a.Fiber.GetRoutes(true)
 
 	var (
 		out     []route
-		pending []fiber.Route // Use entries seen so far, this method's stack
+		pending []fiber.Route
 		method  string
-		next    int // cursor into endpoints
+		next    int
 	)
 	for _, r := range all {
-		if r.Method != method { // GetRoutes emits one method's stack at a time
+		if r.Method != method {
 			method, pending = r.Method, nil
 		}
 		if next >= len(endpoints) || !sameRoute(r, endpoints[next]) {
-			pending = append(pending, r) // absent from the filtered list ⇒ a Use entry
+			pending = append(pending, r)
 			continue
 		}
 		next++
-		// HEAD is Fiber's automatic mirror of GET; one entry per real route.
 		if r.Method == fiber.MethodHead {
 			continue
 		}
@@ -106,8 +77,6 @@ func resolveRoutes(t *testing.T) []route {
 		}
 		out = append(out, route{Route: r, chain: chain})
 	}
-	// Every endpoint must have been consumed exactly once; anything else means
-	// the lockstep walk desynchronised and the chains below it are fiction.
 	if next != len(endpoints) {
 		t.Fatalf("resolved %d of %d endpoints — the Use/endpoint lockstep broke",
 			next, len(endpoints))
@@ -118,9 +87,6 @@ func resolveRoutes(t *testing.T) []route {
 	return out
 }
 
-// sameRoute identifies a stack entry across the two GetRoutes views. Path and
-// method are not enough on their own (a Use entry sits on a path some route
-// may also occupy), so the handler pointers decide.
 func sameRoute(a, b fiber.Route) bool {
 	if a.Method != b.Method || a.Path != b.Path || len(a.Handlers) != len(b.Handlers) {
 		return false
@@ -133,26 +99,18 @@ func sameRoute(a, b fiber.Route) bool {
 	return true
 }
 
-// handlerName renders a handler as "Auth", "RequirePermission" or
-// "UpdateHandler.CreateTodo" — the package path and Go's closure/method-value
-// suffixes carry no information here and only make the golden file noisy.
 func handlerName(h fiber.Handler) string {
 	full := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	if i := strings.LastIndex(full, "/"); i >= 0 {
 		full = full[i+1:]
 	}
 	full = strings.TrimSuffix(full, "-fm")
-	// "middleware.RequireAdmin.func1" → "RequireAdmin"
 	if i := strings.Index(full, ".func"); i >= 0 {
 		full = full[:i]
 	}
 	full = strings.NewReplacer("(", "", ")", "", "*", "").Replace(full)
 	parts := strings.Split(full, ".")
 	last := parts[len(parts)-1]
-	// A middleware constructor whose closure got inlined into its caller is
-	// named after the CALL SITE ("app.App.setupRoutes.RequirePermission"), not
-	// the defining package — so key off the constructor name, which is the last
-	// segment either way.
 	if strings.HasPrefix(last, "Require") || last == "Auth" || last == "OptionalAuth" {
 		return last
 	}
@@ -162,10 +120,6 @@ func handlerName(h fiber.Handler) string {
 	return strings.Join(parts, ".")
 }
 
-// TestRouteManifest pins the full route table WITH its middleware chains. A
-// new route adds one line; a middleware that escapes its group rewrites
-// dozens — which is exactly the diff that must not pass review unnoticed.
-// Regenerate deliberately: `go test ./internal/app/ -run TestRouteManifest -update-routes`.
 func TestRouteManifest(t *testing.T) {
 	got := strings.Join(buildManifest(t), "\n") + "\n"
 
@@ -224,12 +178,11 @@ func diffLines(want, got []string) []string {
 	return out
 }
 
-// TestNoRouteCarriesTwoAuthorizationGates is the churn-free half of the guard:
-// it needs no golden file and fails on the exact shape of the 2026-07 outage.
-// A gate that escapes its group lands on routes that already carry their own,
-// so a second Require* in one chain means one of them was never meant to be
-// there. (A route legitimately needing two different capabilities should say
-// so in ONE gate, not stack two — stacked gates AND together silently.)
+// Fails on the exact shape of the 2026-07 gate leak. A gate that escapes its
+// group lands on routes that already carry their own, so a second Require* in
+// one chain means one of them was never meant to be there. A route legitimately
+// needing two capabilities must say so in ONE gate — stacked gates AND together
+// silently.
 func TestNoRouteCarriesTwoAuthorizationGates(t *testing.T) {
 	for _, r := range resolveRoutes(t) {
 		var gates []string
@@ -246,9 +199,6 @@ func TestNoRouteCarriesTwoAuthorizationGates(t *testing.T) {
 	}
 }
 
-// TestAuthorizationSitsBehindAuthentication: a Require* gate reads the caller
-// from the request locals, so a gate in front of an unauthenticated route
-// judges a caller nobody established. Every gate must sit behind Auth.
 func TestAuthorizationSitsBehindAuthentication(t *testing.T) {
 	for _, r := range resolveRoutes(t) {
 		gated, authed := false, false
@@ -267,19 +217,16 @@ func TestAuthorizationSitsBehindAuthentication(t *testing.T) {
 	}
 }
 
-// publicWrites are the only mutating endpoints allowed to run without a
-// session, each authenticated by something other than the cookie.
 var publicWrites = map[string]string{
 	"POST /api/trust/callback":      "HMAC X-Trust-Signature over the raw body",
 	"POST /api/auth/oauth/callback": "the OAuth authorization code itself",
 	"POST /api/auth/logout":         "destroys a session; nothing to protect",
 }
 
-// TestEveryWriteIsAuthenticated is the invariant the boundary exists to
-// uphold, checked against the resolved table rather than against where the
-// line happens to sit in the file. A write registered above the boundary —
-// the mirror-image of the 2026-07 leak, and the dangerous direction — fails
-// here even though it looks perfectly ordinary in router.go.
+// Checked against the RESOLVED table, not against where the line happens to sit
+// in router.go. A write registered above the auth boundary — the mirror image of
+// the 2026-07 leak, and the dangerous direction — fails here even though it
+// looks perfectly ordinary in the source.
 func TestEveryWriteIsAuthenticated(t *testing.T) {
 	for _, r := range resolveRoutes(t) {
 		if r.Method == fiber.MethodGet || !strings.HasPrefix(r.Path, "/api") {
@@ -296,8 +243,6 @@ func TestEveryWriteIsAuthenticated(t *testing.T) {
 	}
 }
 
-// testConfig supplies the only two settings setupRoutes reads: the CORS
-// origin list (the middleware panics on an empty one) and the server mode.
 func testConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.CORS.AllowOrigins = "https://www.kungal.com"
@@ -305,12 +250,6 @@ func testConfig() *config.Config {
 	return cfg
 }
 
-// TestNoRouteIsShadowed guards the OTHER order-sensitive thing about Fiber:
-// it matches routes in REGISTRATION order, not by specificity. A param route
-// registered first swallows every later static route it can match, so
-// `/topic/:tid` before `/topic/draft` makes the draft endpoint unreachable —
-// it answers with the topic handler and a tid of "draft". router.go is full of
-// comments pleading with future readers to preserve the order; this checks it.
 func TestNoRouteIsShadowed(t *testing.T) {
 	byMethod := map[string][]route{}
 	for _, r := range resolveRoutes(t) {
@@ -334,13 +273,10 @@ func TestNoRouteIsShadowed(t *testing.T) {
 	}
 }
 
-// patternMatches reports whether the route pattern `pat` would capture a
-// request for the pattern `path`. A param segment in `path` is a literal that
-// varies, so it can only be captured by a param segment in `pat`.
 func patternMatches(t *testing.T, pat, path string) bool {
 	p, q := strings.Split(pat, "/"), strings.Split(path, "/")
 	if len(p) != len(q) {
-		return false // no wildcards in this router, so length must agree
+		return false
 	}
 	for i := range p {
 		if strings.HasSuffix(p[i], "?") || strings.Contains(p[i], "*") {
@@ -348,7 +284,7 @@ func patternMatches(t *testing.T, pat, path string) bool {
 				"assumes neither exists in the router", pat)
 		}
 		if strings.HasPrefix(p[i], ":") {
-			continue // a param segment captures anything, literal or not
+			continue
 		}
 		if p[i] != q[i] {
 			return false

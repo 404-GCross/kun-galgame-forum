@@ -1,15 +1,3 @@
-// Seed galgame_contributor (migration 069) from the frozen wiki contributor
-// ledger — the 17,966-row TSV cut before the wiki tables were dropped, which is
-// the only surviving record of who edited what in the wiki era.
-//
-// Insert-only in spirit: an existing pair keeps its revision_count and its
-// source, and only moves first_at EARLIER. The forward revision sync owns the
-// counting, so a pair this seed meets again must not have its history rewritten
-// by a re-run — which is why a second --apply reports zero inserts and is the
-// acceptance check for the run.
-//
-//	seed-contributors --file wiki-contributors.tsv            # dry run (default)
-//	seed-contributors --file wiki-contributors.tsv --apply     # write
 package main
 
 import (
@@ -27,8 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// chunkSize bounds one statement's VALUES list. Large enough that 18k rows are
-// a few dozen round-trips, small enough to stay well under the parameter cap.
 const chunkSize = 500
 
 func main() {
@@ -92,9 +78,6 @@ func main() {
 		inserted, updated, gids)
 }
 
-// countPresent reports how many of the parsed pairs the table already holds —
-// the dry run's whole content, and the number a second run expects to equal the
-// total.
 func countPresent(db *gorm.DB, rows []seedRow) (int, error) {
 	present := 0
 	for _, chunk := range chunks(rows) {
@@ -117,9 +100,6 @@ func countPresent(db *gorm.DB, rows []seedRow) (int, error) {
 	return present, nil
 }
 
-// seed writes the ledger. `xmax = 0` on the RETURNING row distinguishes an
-// INSERT from a conflict-update, which is what makes "a second run inserts
-// nothing" checkable rather than assumed.
 func seed(db *gorm.DB, rows []seedRow) (inserted, updated int, err error) {
 	for _, chunk := range chunks(rows) {
 		args := make([]any, 0, len(chunk)*3)
@@ -150,9 +130,6 @@ func seed(db *gorm.DB, rows []seedRow) (inserted, updated int, err error) {
 	return inserted, updated, nil
 }
 
-// refreshCounts recomputes galgame.contributor_count for every gid the seed
-// touched. Derived from the table, so it is the same statement the forward sync
-// runs and the two can never disagree.
 func refreshCounts(db *gorm.DB, rows []seedRow) (int, error) {
 	seen := map[int64]bool{}
 	gids := make([]int64, 0, len(rows))

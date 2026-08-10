@@ -22,8 +22,6 @@ func NewReplyHandler(replyService *service.ReplyService) *ReplyHandler {
 	return &ReplyHandler{replyService: replyService}
 }
 
-// GetReplies returns paginated reply list for a topic.
-// GET /api/topic/:tid/reply
 func (h *ReplyHandler) GetReplies(c fiber.Ctx) error {
 	var req dto.ListRepliesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -40,8 +38,6 @@ func (h *ReplyHandler) GetReplies(c fiber.Ctx) error {
 	return response.OK(c, replies)
 }
 
-// GetReplyDetail returns a single reply with full details.
-// GET /api/topic/:tid/reply/detail
 func (h *ReplyHandler) GetReplyDetail(c fiber.Ctx) error {
 	replyID, err := strconv.Atoi(c.Query("replyId"))
 	if err != nil {
@@ -58,10 +54,6 @@ func (h *ReplyHandler) GetReplyDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// GetReplyLocate resolves a deep-link target (a reply floor or a comment id) to
-// the reply-stream page it lives on, so the frontend can load that page directly
-// and scroll to it.
-// GET /api/topic/:tid/reply/locate?reply=<floor> | ?comment=<commentId>
 func (h *ReplyHandler) GetReplyLocate(c fiber.Ctx) error {
 	topicID, err := strconv.Atoi(c.Params("tid"))
 	if err != nil {
@@ -81,8 +73,6 @@ func (h *ReplyHandler) GetReplyLocate(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// CreateReply creates a new reply to a topic.
-// POST /api/topic/:tid/reply
 func (h *ReplyHandler) CreateReply(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -102,8 +92,6 @@ func (h *ReplyHandler) CreateReply(c fiber.Ctx) error {
 	return response.OK(c, reply)
 }
 
-// UpdateReply edits an existing reply.
-// PUT /api/topic/:tid/reply
 func (h *ReplyHandler) UpdateReply(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -122,8 +110,6 @@ func (h *ReplyHandler) UpdateReply(c fiber.Ctx) error {
 	return response.OKMessage(c, "回复更新成功")
 }
 
-// DeleteReply deletes a reply with cascade.
-// DELETE /api/topic/:tid/reply
 func (h *ReplyHandler) DeleteReply(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -142,8 +128,6 @@ func (h *ReplyHandler) DeleteReply(c fiber.Ctx) error {
 	return response.OKMessage(c, "回复已删除")
 }
 
-// ToggleReplyLike toggles like on a reply.
-// PUT /api/topic/:tid/reply/like
 func (h *ReplyHandler) ToggleReplyLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -162,8 +146,6 @@ func (h *ReplyHandler) ToggleReplyLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// ToggleReplyDislike toggles dislike on a reply.
-// PUT /api/topic/:tid/reply/dislike
 func (h *ReplyHandler) ToggleReplyDislike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -182,8 +164,6 @@ func (h *ReplyHandler) ToggleReplyDislike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// ToggleReplyReaction adds/removes a reaction (like/dislike/emoji) on a reply.
-// PUT /api/topic/:tid/reply/reaction
 func (h *ReplyHandler) ToggleReplyReaction(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -202,9 +182,6 @@ func (h *ReplyHandler) ToggleReplyReaction(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// GetReplyReactionHistory lists a reply's reaction events (newest first) for the
-// 查看历史 modal — the reply-level twin of TopicHandler.GetTopicReactionHistory.
-// GET /api/topic/:tid/reply/reaction/history?reply_id=<id>
 func (h *ReplyHandler) GetReplyReactionHistory(c fiber.Ctx) error {
 	replyID, err := strconv.Atoi(c.Query("reply_id"))
 	if err != nil {
@@ -219,8 +196,6 @@ func (h *ReplyHandler) GetReplyReactionHistory(c fiber.Ctx) error {
 	return response.OK(c, records)
 }
 
-// PinReply toggles pinning a reply.
-// PUT /api/topic/:tid/reply/pin
 func (h *ReplyHandler) PinReply(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

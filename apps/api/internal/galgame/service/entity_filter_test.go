@@ -7,9 +7,6 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-// buildEntityFilter must read the FE's camelCase browse keys straight through
-// (the entity pages filter the forum-LOCAL subset with the same vocabulary as
-// /galgame), and scope the whole list to the entity's members via RestrictIDs.
 func TestBuildEntityFilter(t *testing.T) {
 	q := url.Values{}
 	q.Set("type", "patch")
@@ -56,17 +53,11 @@ func TestBuildEntityFilterDefaults(t *testing.T) {
 	if f.ShowNoResource {
 		t.Error("ShowNoResource default should be false")
 	}
-	// A non-nil but EMPTY RestrictIDs must stay non-nil: list_repo reads nil as
-	// "no restriction" (whole catalogue) and non-nil as "restrict to this set".
-	// An entity with zero members must render empty, never the full catalogue —
-	// EntityGalgameIDs guarantees non-nil, and buildEntityFilter must preserve it.
 	if f.RestrictIDs == nil {
 		t.Error("RestrictIDs must stay non-nil so an empty entity restricts to nothing")
 	}
 }
 
-// Local-subset cards are always on-forum (a game with no local row can't survive
-// the list_repo filter), so no card renders as a galgame-only "未收录" entry.
 func TestListCardsToEntityCardsIsOnForum(t *testing.T) {
 	out := listCardsToEntityCards([]dto.GalgameListCard{{ID: 1, View: 10}})
 	if len(out) != 1 || out[0].ID != 1 || out[0].View != 10 {

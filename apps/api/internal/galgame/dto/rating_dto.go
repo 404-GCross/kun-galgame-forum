@@ -2,10 +2,6 @@ package dto
 
 import "encoding/json"
 
-// ──────────────────────────────────────────
-// Requests
-// ──────────────────────────────────────────
-
 type RatingListRequest struct {
 	Page         int    `query:"page" validate:"min=1"`
 	Limit        int    `query:"limit" validate:"min=1,max=50"`
@@ -16,8 +12,6 @@ type RatingListRequest struct {
 	GalgameType  string `query:"galgame_type"`
 }
 
-// CreateRatingRequest is the body of POST /galgame-rating.
-// short_summary length drives the moemoepoint reward tier.
 type CreateRatingRequest struct {
 	GalgameID    int      `json:"galgame_id" validate:"required,min=1"`
 	Recommend    string   `json:"recommend" validate:"required"`
@@ -36,7 +30,6 @@ type CreateRatingRequest struct {
 	ReplayValue  int      `json:"replay_value" validate:"min=0,max=10"`
 }
 
-// UpdateRatingRequest is the body of PUT /galgame-rating/:id.
 type UpdateRatingRequest struct {
 	GalgameRatingID int      `json:"galgame_rating_id" validate:"required,min=1"`
 	Recommend       string   `json:"recommend" validate:"required"`
@@ -55,46 +48,32 @@ type UpdateRatingRequest struct {
 	ReplayValue     int      `json:"replay_value" validate:"min=0,max=10"`
 }
 
-// DeleteRatingRequest is the query for DELETE /galgame-rating/:id.
 type DeleteRatingRequest struct {
 	GalgameRatingID int `query:"galgame_rating_id" validate:"required,min=1"`
 }
 
-// ToggleRatingLikeRequest is the body of PUT /galgame-rating/:id/like.
 type ToggleRatingLikeRequest struct {
 	GalgameRatingID int `json:"galgame_rating_id" validate:"required,min=1"`
 }
 
-// The rating comment CRUD (POST/PUT/DELETE /galgame-rating/:id/comment) was
-// retired in charter step 06a — comments moved to the community primitive and
-// the galgame_rating_comment table was dropped (migration 060).
-
-// CreatedRating is the response shape for POST /galgame-rating — matches
-// GalgameRatingCardOnGalgamePage in the frontend types.
 type CreatedRating struct {
-	ID           int                `json:"id"`
-	User         UserBrief          `json:"user"`
-	Recommend    string             `json:"recommend"`
-	Overall      int                `json:"overall"`
-	View         int                `json:"view"`
-	GalgameType  json.RawMessage    `json:"galgame_type"`
-	PlayStatus   string             `json:"play_status"`
-	ShortSummary string             `json:"short_summary"`
-	SpoilerLevel string             `json:"spoiler_level"`
-	RatingScores                    // embedded scores
-	LikeCount    int                `json:"like_count"`
-	IsLiked      bool               `json:"is_liked"`
-	Created      string             `json:"created"`
-	Updated      string             `json:"updated"`
-	Galgame      RatingGalgameBrief `json:"galgame"`
+	ID           int             `json:"id"`
+	User         UserBrief       `json:"user"`
+	Recommend    string          `json:"recommend"`
+	Overall      int             `json:"overall"`
+	View         int             `json:"view"`
+	GalgameType  json.RawMessage `json:"galgame_type"`
+	PlayStatus   string          `json:"play_status"`
+	ShortSummary string          `json:"short_summary"`
+	SpoilerLevel string          `json:"spoiler_level"`
+	RatingScores
+	LikeCount int                `json:"like_count"`
+	IsLiked   bool               `json:"is_liked"`
+	Created   string             `json:"created"`
+	Updated   string             `json:"updated"`
+	Galgame   RatingGalgameBrief `json:"galgame"`
 }
 
-// ──────────────────────────────────────────
-// Shared scores embed
-// ──────────────────────────────────────────
-
-// RatingScores holds the per-axis rating scores.
-// Spread into rating card + detail to match the frontend shape.
 type RatingScores struct {
 	Art         int `json:"art"`
 	Story       int `json:"story"`
@@ -106,33 +85,27 @@ type RatingScores struct {
 	ReplayValue int `json:"replay_value"`
 }
 
-// ──────────────────────────────────────────
-// Responses — list
-// ──────────────────────────────────────────
-
-// RatingGalgameBrief is the lightweight galgame info in rating lists.
 type RatingGalgameBrief struct {
 	ID           int         `json:"id"`
 	ContentLimit string      `json:"content_limit"`
 	Name         KunLanguage `json:"name"`
 }
 
-// RatingCard is a single entry in the rating list response.
 type RatingCard struct {
-	ID           int                `json:"id"`
-	User         UserBrief          `json:"user"`
-	Recommend    string             `json:"recommend"`
-	Overall      int                `json:"overall"`
-	View         int                `json:"view"`
-	GalgameType  json.RawMessage    `json:"galgame_type"`
-	PlayStatus   string             `json:"play_status"`
-	ShortSummary string             `json:"short_summary"`
-	SpoilerLevel string             `json:"spoiler_level"`
-	RatingScores                    // embedded fields art/story/music/...
-	LikeCount    int                `json:"like_count"`
-	Created      string             `json:"created"`
-	Updated      string             `json:"updated"`
-	Galgame      RatingGalgameBrief `json:"galgame"`
+	ID           int             `json:"id"`
+	User         UserBrief       `json:"user"`
+	Recommend    string          `json:"recommend"`
+	Overall      int             `json:"overall"`
+	View         int             `json:"view"`
+	GalgameType  json.RawMessage `json:"galgame_type"`
+	PlayStatus   string          `json:"play_status"`
+	ShortSummary string          `json:"short_summary"`
+	SpoilerLevel string          `json:"spoiler_level"`
+	RatingScores
+	LikeCount int                `json:"like_count"`
+	Created   string             `json:"created"`
+	Updated   string             `json:"updated"`
+	Galgame   RatingGalgameBrief `json:"galgame"`
 }
 
 type RatingListPage struct {
@@ -140,11 +113,6 @@ type RatingListPage struct {
 	Total      int64        `json:"total"`
 }
 
-// ──────────────────────────────────────────
-// Responses — detail
-// ──────────────────────────────────────────
-
-// RatingOfficial is a single official/company entry shown in rating detail.
 type RatingOfficial struct {
 	ID           int      `json:"id"`
 	Name         string   `json:"name"`
@@ -155,15 +123,10 @@ type RatingOfficial struct {
 	GalgameCount int      `json:"galgame_count"`
 }
 
-// RatingGalgameDetail is the full galgame panel on the rating detail page.
 type RatingGalgameDetail struct {
-	ID           int    `json:"id"`
-	ContentLimit string `json:"content_limit"`
-	Banner       string `json:"banner"`
-	// U2 banner pair — FE getEffectiveBanner reads these first and only
-	// falls back to legacy `banner` when both are empty. New
-	// covers-only galgames (post galgame PR5) have empty `banner`, so
-	// omitting these here renders an empty hero on the rating page.
+	ID                       int              `json:"id"`
+	ContentLimit             string           `json:"content_limit"`
+	Banner                   string           `json:"banner"`
 	EffectiveBannerHash      string           `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string           `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int              `json:"effective_banner_width,omitempty"`
@@ -177,22 +140,21 @@ type RatingGalgameDetail struct {
 	Name                     KunLanguage      `json:"name"`
 }
 
-// RatingDetail is the full response for GET /galgame-rating/:id.
 type RatingDetail struct {
-	ID           int                 `json:"id"`
-	User         UserBrief           `json:"user"`
-	Recommend    string              `json:"recommend"`
-	Overall      int                 `json:"overall"`
-	View         int                 `json:"view"`
-	GalgameType  json.RawMessage     `json:"galgame_type"`
-	PlayStatus   string              `json:"play_status"`
-	ShortSummary string              `json:"short_summary"`
-	SpoilerLevel string              `json:"spoiler_level"`
-	RatingScores                     // embedded art/story/music/...
-	LikeCount    int                 `json:"like_count"`
-	IsLiked      bool                `json:"is_liked"`
-	LikedUsers   []UserBrief         `json:"liked_users"`
-	Created      string              `json:"created"`
-	Updated      string              `json:"updated"`
-	Galgame      RatingGalgameDetail `json:"galgame"`
+	ID           int             `json:"id"`
+	User         UserBrief       `json:"user"`
+	Recommend    string          `json:"recommend"`
+	Overall      int             `json:"overall"`
+	View         int             `json:"view"`
+	GalgameType  json.RawMessage `json:"galgame_type"`
+	PlayStatus   string          `json:"play_status"`
+	ShortSummary string          `json:"short_summary"`
+	SpoilerLevel string          `json:"spoiler_level"`
+	RatingScores
+	LikeCount  int                 `json:"like_count"`
+	IsLiked    bool                `json:"is_liked"`
+	LikedUsers []UserBrief         `json:"liked_users"`
+	Created    string              `json:"created"`
+	Updated    string              `json:"updated"`
+	Galgame    RatingGalgameDetail `json:"galgame"`
 }

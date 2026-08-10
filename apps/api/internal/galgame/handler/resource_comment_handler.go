@@ -11,18 +11,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// ResourceCommentHandler serves the community-backed comment routes for the FIVE
-// resource areas — rating / website / toolset / galgame-resource / quiz (the
-// `/comments` plural prefix).
-// Community is now the unconditional comment backend (the legacy singular
-// `/comment` routes were retired in charter step 06a); an unconfigured client
-// degrades reads to empty pages and writes to 503. Reads are anonymous (optAuth,
-// registered BEFORE the mandatory-auth boundary); creates + the region-aware
-// delete are authenticated. Post-addressed edit / like / flag are NOT here — they
-// reuse the galgame `/galgame/comments/:postId*` routes verbatim (region-
-// agnostic; charter deliverable C). Only DELETE is region-specific (owner
-// authority + the website counter), so it carries the resource id in its path
-// and decides authority server-side.
 type ResourceCommentHandler struct {
 	service *service.ResourceCommentService
 }
@@ -31,23 +19,14 @@ func NewResourceCommentHandler(svc *service.ResourceCommentService) *ResourceCom
 	return &ResourceCommentHandler{service: svc}
 }
 
-// RegisterReads mounts the three anonymous list routes. MUST be mounted on the
-// optAuth (pre-auth-boundary) side: Fiber middleware is stack-ordered, so a read
-// registered after the mandatory-auth `Use` would be silently login-gated (the
-// step-03 7e7e3af6 lesson).
 func (h *ResourceCommentHandler) RegisterReads(optAuth fiber.Router) {
 	optAuth.Get("/galgame-rating/:id/comments", h.RatingList)
 	optAuth.Get("/website/:domain/comments", h.WebsiteList)
 	optAuth.Get("/toolset/:id/comments", h.ToolsetList)
-	// These two must be registered BEFORE the 2-segment /galgame-resource/:id and
-	// /galgame-quiz/:id detail reads (router.go does this) — Fiber matches in
-	// registration order.
 	optAuth.Get("/galgame-resource/:id/comments", h.ResourceList)
 	optAuth.Get("/galgame-quiz/:id/comments", h.QuizList)
 }
 
-// RegisterWrites mounts the create + region-delete routes. These sit AFTER the
-// mandatory-auth boundary.
 func (h *ResourceCommentHandler) RegisterWrites(authed fiber.Router) {
 	authed.Post("/galgame-rating/:id/comments", h.RatingCreate)
 	authed.Delete("/galgame-rating/:id/comments/:postId", h.RatingDelete)
@@ -61,11 +40,6 @@ func (h *ResourceCommentHandler) RegisterWrites(authed fiber.Router) {
 	authed.Delete("/galgame-quiz/:id/comments/:postId", h.QuizDelete)
 }
 
-// ──────────────────────────────────────────
-// Shared plumbing
-// ──────────────────────────────────────────
-
-// list is the shared read handler for a resolved (source, resourceID).
 func (h *ResourceCommentHandler) list(c fiber.Ctx, src service.CommentSource, resourceID int) error {
 	var req struct {
 		Cursor string `query:"cursor"`
@@ -81,10 +55,6 @@ func (h *ResourceCommentHandler) list(c fiber.Ctx, src service.CommentSource, re
 	return response.OK(c, page)
 }
 
-// remove is the shared region-delete handler for a resolved (source,
-// resourceID). The caller passes the surface's own moderation permission
-// (comment.rating/website/toolset.delete) — the route already resolved the
-// surface, so no anchor lookup is needed here.
 func (h *ResourceCommentHandler) remove(c fiber.Ctx, src service.CommentSource, resourceID int, modPerm perm.Permission) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -100,10 +70,6 @@ func (h *ResourceCommentHandler) remove(c fiber.Ctx, src service.CommentSource, 
 	return response.OKMessage(c, "评论已删除")
 }
 
-// ──────────────────────────────────────────
-// Rating (flat, explicit target_user_id)
-// ──────────────────────────────────────────
-
 func (h *ResourceCommentHandler) RatingList(c fiber.Ctx) error {
 	id, ok := parsePositive(c.Params("id"))
 	if !ok {
@@ -112,7 +78,6 @@ func (h *ResourceCommentHandler) RatingList(c fiber.Ctx) error {
 	return h.list(c, service.SourceRating(), id)
 }
 
-// RatingCreate posts a flat rating comment. target_user_id is required (parity).
 func (h *ResourceCommentHandler) RatingCreate(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -144,10 +109,6 @@ func (h *ResourceCommentHandler) RatingDelete(c fiber.Ctx) error {
 	}
 	return h.remove(c, service.SourceRating(), id, perm.CommentRatingDelete)
 }
-
-// ──────────────────────────────────────────
-// Website (tree; addressed by website_id, :domain is decorative)
-// ──────────────────────────────────────────
 
 func (h *ResourceCommentHandler) WebsiteList(c fiber.Ctx) error {
 	id, ok := websiteID(c)
@@ -185,15 +146,9 @@ func (h *ResourceCommentHandler) WebsiteDelete(c fiber.Ctx) error {
 	return h.remove(c, service.SourceWebsite(), id, perm.CommentWebsiteDelete)
 }
 
-// websiteID reads the addressing website_id from the query (the :domain path
-// segment is decorative; the API has always keyed on the numeric id).
 func websiteID(c fiber.Ctx) (int, bool) {
 	return parsePositive(c.Query("website_id"))
 }
-
-// ──────────────────────────────────────────
-// Toolset (tree; addressed by :id)
-// ──────────────────────────────────────────
 
 func (h *ResourceCommentHandler) ToolsetList(c fiber.Ctx) error {
 	id, ok := parsePositive(c.Params("id"))
@@ -234,10 +189,6 @@ func (h *ResourceCommentHandler) ToolsetDelete(c fiber.Ctx) error {
 	return h.remove(c, service.SourceToolset(), id, perm.CommentToolsetDelete)
 }
 
-// ──────────────────────────────────────────
-// Galgame resource (tree; addressed by :id)
-// ──────────────────────────────────────────
-
 func (h *ResourceCommentHandler) ResourceList(c fiber.Ctx) error {
 	id, ok := parsePositive(c.Params("id"))
 	if !ok {
@@ -276,10 +227,6 @@ func (h *ResourceCommentHandler) ResourceDelete(c fiber.Ctx) error {
 	}
 	return h.remove(c, service.SourceResource(), id, perm.CommentResourceDelete)
 }
-
-// ──────────────────────────────────────────
-// Galgame quiz (tree; addressed by :id, spoiler-gated)
-// ──────────────────────────────────────────
 
 func (h *ResourceCommentHandler) QuizList(c fiber.Ctx) error {
 	id, ok := parsePositive(c.Params("id"))

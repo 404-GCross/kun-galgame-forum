@@ -15,19 +15,16 @@ func NewTagService(tagRepo *repository.TagRepository) *TagService {
 	return &TagService{tagRepo: tagRepo}
 }
 
-// TagListResult carries the list + total for paginated handler responses.
 type TagListResult struct {
 	Items []model.DocTag
 	Total int64
 }
 
-// GetList — GET /doc/tag
 func (s *TagService) GetList(req *dto.GetTagsRequest) *TagListResult {
 	items, total := s.tagRepo.FindPaginated(req.Keyword, req.Page, req.Limit)
 	return &TagListResult{Items: items, Total: total}
 }
 
-// Create — POST /doc/tag
 func (s *TagService) Create(req *dto.CreateTagRequest) (*model.DocTag, *errors.AppError) {
 	tag := &model.DocTag{
 		Slug:        req.Slug,
@@ -40,7 +37,6 @@ func (s *TagService) Create(req *dto.CreateTagRequest) (*model.DocTag, *errors.A
 	return tag, nil
 }
 
-// Delete — DELETE /doc/tag
 func (s *TagService) Delete(tagID int) *errors.AppError {
 	if err := s.tagRepo.DeleteByID(tagID); err != nil {
 		return errors.ErrInternal("删除标签失败")
@@ -48,7 +44,6 @@ func (s *TagService) Delete(tagID int) *errors.AppError {
 	return nil
 }
 
-// Update — PUT /doc/tag (moderator+ enforced at the route level).
 func (s *TagService) Update(req *dto.UpdateTagRequest) (*model.DocTag, *errors.AppError) {
 	tag, err := s.tagRepo.Update(req.TagID, map[string]any{
 		"slug":        req.Slug,

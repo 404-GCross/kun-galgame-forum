@@ -1,13 +1,5 @@
 package service
 
-// The series page's unpublished bucket rides one upstream query, and that
-// query is load-bearing the same way the drafts funnel's is: widen it to
-// `hidden` and the page relists entries the site took DOWN; narrow it to
-// `none` and a draft-claimed member vanishes from both halves of the page,
-// which is the "one-work series" reading the bucket exists to kill. So the
-// query is pinned here, drafts_query_test.go-style — the upstream answers
-// empty, ToCards short-circuits, no fixtures needed.
-
 import (
 	"context"
 	"net/http"
@@ -59,13 +51,9 @@ func TestSeriesUnpublished_AsksForTheUnpublishedStatesOnly(t *testing.T) {
 	if got := rec.get("series_id"); got != "594" {
 		t.Errorf("series_id = %q, want 594 — without the scope every series lists the global pool", got)
 	}
-	// draft + pending + none and NOTHING else: `live` would double-list the
-	// published half, `hidden` would republish a takedown.
 	if got := rec.get("claim_state"); got != seriesUnpublishedStates {
 		t.Errorf("claim_state = %q, want %q", got, seriesUnpublishedStates)
 	}
-	// The age gate is open like every lane; the reader's editorial gate came in
-	// as isSFW=false here, and the gate's "all" convention is to send nothing.
 	if got := rec.get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
 	}
@@ -74,10 +62,6 @@ func TestSeriesUnpublished_AsksForTheUnpublishedStatesOnly(t *testing.T) {
 	}
 }
 
-// The SFW reader's bucket is gated on the SAME axis as the page above it —
-// content_limit, which every works doc carries (an unclaimed row's value is
-// projected off its age rating). An ungated bucket would render the covers the
-// list half just hid.
 func TestSeriesUnpublished_SFWReaderGetsTheGatedBucket(t *testing.T) {
 	rec := &unpublishedRecorder{}
 	svc := rec.service(t)
@@ -88,8 +72,6 @@ func TestSeriesUnpublished_SFWReaderGetsTheGatedBucket(t *testing.T) {
 	}
 }
 
-// No enricher wired (the taxonomy-only tests): the bucket degrades to empty
-// instead of dereferencing its way down.
 func TestSeriesUnpublished_NilEnricherMeansEmptyBucket(t *testing.T) {
 	svc := NewSeriesService(client.New("http://127.0.0.1:1", "nm_test_key", ""), nil, nil)
 	if cards := svc.unpublishedMembers(context.Background(), "1", false); len(cards) != 0 {

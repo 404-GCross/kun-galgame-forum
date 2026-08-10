@@ -14,8 +14,6 @@ func NewRSSRepository(db *gorm.DB) *RSSRepository {
 	return &RSSRepository{db: db}
 }
 
-// FindRecentSFWTopics returns the 10 most recent SFW topics for the RSS feed.
-// Identity (UserName) is hydrated by the handler/service via userclient.
 func (r *RSSRepository) FindRecentSFWTopics() []dto.TopicRSSItem {
 	var topics []dto.TopicRSSItem
 	r.db.Table("topic t").
@@ -28,26 +26,16 @@ func (r *RSSRepository) FindRecentSFWTopics() []dto.TopicRSSItem {
 	return topics
 }
 
-// RecentGalgameRow is the local-only projection used to seed the galgame RSS:
-// IDs and creation timestamp; metadata is fetched from galgame separately.
 type RecentGalgameRow struct {
-	ID      int    `gorm:"column:id"`
-	Created string `gorm:"column:created"`
-	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
-	// feed author's only source, since the catalog face carries no submitter.
-	// NULL = unknown, which the item renders with an empty author.
-	CreatorUserID *int `gorm:"column:creator_user_id"`
+	ID            int    `gorm:"column:id"`
+	Created       string `gorm:"column:created"`
+	CreatorUserID *int   `gorm:"column:creator_user_id"`
 }
 
-// FindRecentGalgameIDs returns the most recent local galgame stub IDs, plus the
-// frozen creator the feed's author field needs. Name and banner are resolved via
-// the galgame client; the author is NOT — the catalog face carries none.
 func (r *RSSRepository) FindRecentGalgameIDs(limit int) []RecentGalgameRow {
 	var rows []RecentGalgameRow
 	r.db.Table("galgame").
 		Select("id, created, creator_user_id").
-		// See migration 068: row existence is not publication, and a feed is
-		// the one surface a mistaken entry cannot be taken back from.
 		Where("published").
 		Order("created DESC").
 		Limit(limit).

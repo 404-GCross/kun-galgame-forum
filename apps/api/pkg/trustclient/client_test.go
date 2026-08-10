@@ -85,7 +85,6 @@ func TestListReportReasons(t *testing.T) {
 		t.Fatalf("expected Basic auth, got %q", gotAuth)
 	}
 
-	// Not configured → error (service falls back to the local constant).
 	if _, err := New(Config{}).ListReportReasons(context.Background()); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("want ErrNotConfigured, got %v", err)
 	}

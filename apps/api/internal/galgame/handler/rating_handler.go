@@ -22,12 +22,6 @@ func NewRatingHandler(ratingService *service.RatingService) *RatingHandler {
 	return &RatingHandler{ratingService: ratingService}
 }
 
-// GetAllRatings returns paginated galgame ratings.
-// GET /api/galgame-rating/all
-// GetAllRatings — GET /api/galgame-rating/all
-//
-// SFW-default: anonymous + cookie-less requests get only ratings whose
-// galgame is content_limit=sfw.
 func (h *RatingHandler) GetAllRatings(c fiber.Ctx) error {
 	var req dto.RatingListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -41,8 +35,6 @@ func (h *RatingHandler) GetAllRatings(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// GetRatingDetail returns a single rating with comments, liked users, and galgame.
-// GET /api/galgame-rating/:id
 func (h *RatingHandler) GetRatingDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -57,7 +49,6 @@ func (h *RatingHandler) GetRatingDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// CreateRating — POST /api/galgame-rating
 func (h *RatingHandler) CreateRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -74,7 +65,6 @@ func (h *RatingHandler) CreateRating(c fiber.Ctx) error {
 	return response.OK(c, created)
 }
 
-// UpdateRating — PUT /api/galgame-rating/:id
 func (h *RatingHandler) UpdateRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -90,7 +80,6 @@ func (h *RatingHandler) UpdateRating(c fiber.Ctx) error {
 	return response.OKMessage(c, "评分更新成功")
 }
 
-// DeleteRating — DELETE /api/galgame-rating/:id
 func (h *RatingHandler) DeleteRating(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -106,7 +95,6 @@ func (h *RatingHandler) DeleteRating(c fiber.Ctx) error {
 	return response.OKMessage(c, "评分已删除")
 }
 
-// ToggleLike — PUT /api/galgame-rating/:id/like
 func (h *RatingHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -121,10 +109,3 @@ func (h *RatingHandler) ToggleLike(c fiber.Ctx) error {
 	}
 	return response.OKMessage(c, "操作成功")
 }
-
-// The rating comment WRITE routes (POST/PUT/DELETE /galgame-rating/:id/comment)
-// were retired when the resource comment areas moved onto the community
-// primitive (charter step 06a). Comments are now created via the community-
-// backed /galgame-rating/:id/comments routes (ResourceCommentHandler); the
-// rating DETAIL response still embeds the legacy comment list for now (a later
-// wave adapts that reader).

@@ -2,7 +2,6 @@ package model
 
 import "time"
 
-// UpdateLog records system update changelogs with multi-language content.
 type UpdateLog struct {
 	ID            int    `gorm:"primaryKey;autoIncrement" json:"id"`
 	Type          string `gorm:"not null" json:"type"`
@@ -20,10 +19,9 @@ type UpdateLog struct {
 
 func (UpdateLog) TableName() string { return "update_log" }
 
-// Todo is an admin-only task item with multi-language content.
 type Todo struct {
 	ID            int        `gorm:"primaryKey;autoIncrement" json:"id"`
-	Type          string     `gorm:"default:'forum'" json:"type"` // forum, patch
+	Type          string     `gorm:"default:'forum'" json:"type"`
 	Status        int        `gorm:"default:0" json:"status"`
 	ContentEnUS   string     `gorm:"column:content_en_us;type:text;default:''" json:"content_en_us"`
 	ContentJaJP   string     `gorm:"column:content_ja_jp;type:text;default:''" json:"content_ja_jp"`

@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// The real ledger's shape, including the two things a naive split gets wrong:
-// column 2 is the catalog work id (not the key), and a person can appear on the
-// same game more than once.
 func TestParseContributorTSV(t *testing.T) {
 	in := strings.Join([]string{
 		"1\t1\t2\t2025-07-20 21:58:23.086+00",
@@ -35,15 +32,11 @@ func TestParseContributorTSV(t *testing.T) {
 	if !rows[0].Created.Equal(want) {
 		t.Errorf("folded created = %v, want the EARLIER %v", rows[0].Created.UTC(), want)
 	}
-	// An unmapped catalog work id (column 2 = 0) is still a real contribution:
-	// the seed is keyed in gid space, which column 1 always carries.
 	if rows[2].GalgameID != 9682 || rows[2].UserID != 112505 {
 		t.Errorf("last pair = (%d, %d), want (9682, 112505)", rows[2].GalgameID, rows[2].UserID)
 	}
 }
 
-// A row that cannot name a game AND a person is dropped, never repaired: user 0
-// is the wiki's "unknown", and the strip must not credit it.
 func TestParseContributorTSVSkipsUnusableRows(t *testing.T) {
 	in := strings.Join([]string{
 		"1\t1\t0\t2025-07-20 21:58:23.086+00",

@@ -70,7 +70,6 @@ func (s *S3Client) Delete(ctx context.Context, key string) error {
 	return err
 }
 
-// PresignPutObject generates a presigned PUT URL for direct upload.
 func (s *S3Client) PresignPutObject(ctx context.Context, key, contentType string, expires time.Duration) (string, error) {
 	presigner := s3.NewPresignClient(s.client)
 	req, err := presigner.PresignPutObject(ctx, &s3.PutObjectInput{
@@ -84,7 +83,6 @@ func (s *S3Client) PresignPutObject(ctx context.Context, key, contentType string
 	return req.URL, nil
 }
 
-// CreateMultipartUpload initiates a multipart upload and returns the upload ID.
 func (s *S3Client) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
 	out, err := s.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket:      &s.bucket,
@@ -97,7 +95,6 @@ func (s *S3Client) CreateMultipartUpload(ctx context.Context, key, contentType s
 	return *out.UploadId, nil
 }
 
-// PresignUploadPart generates a presigned URL for uploading a single part.
 func (s *S3Client) PresignUploadPart(ctx context.Context, key, uploadID string, partNumber int32, expires time.Duration) (string, error) {
 	presigner := s3.NewPresignClient(s.client)
 	req, err := presigner.PresignUploadPart(ctx, &s3.UploadPartInput{
@@ -112,7 +109,6 @@ func (s *S3Client) PresignUploadPart(ctx context.Context, key, uploadID string, 
 	return req.URL, nil
 }
 
-// CompleteMultipartUpload finalizes a multipart upload with the given ETags.
 func (s *S3Client) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []types.CompletedPart) error {
 	_, err := s.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
 		Bucket:   &s.bucket,
@@ -125,7 +121,6 @@ func (s *S3Client) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	return err
 }
 
-// AbortMultipartUpload cancels a multipart upload.
 func (s *S3Client) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
 	_, err := s.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
 		Bucket:   &s.bucket,
@@ -135,7 +130,6 @@ func (s *S3Client) AbortMultipartUpload(ctx context.Context, key, uploadID strin
 	return err
 }
 
-// HeadObject returns the content length of an object.
 func (s *S3Client) HeadObject(ctx context.Context, key string) (int64, error) {
 	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: &s.bucket,

@@ -17,8 +17,6 @@ func NewSectionHandler(sectionService *service.SectionService) *SectionHandler {
 	return &SectionHandler{sectionService: sectionService}
 }
 
-// GetSectionTopics returns topics filtered by section.
-// GET /api/section
 func (h *SectionHandler) GetSectionTopics(c fiber.Ctx) error {
 	var req dto.SectionTopicsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -35,8 +33,6 @@ func (h *SectionHandler) GetSectionTopics(c fiber.Ctx) error {
 	})
 }
 
-// GetCategories returns topic category stats.
-// GET /api/category
 func (h *SectionHandler) GetCategories(c fiber.Ctx) error {
 	var req dto.CategoriesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {

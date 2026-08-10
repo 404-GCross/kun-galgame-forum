@@ -5,14 +5,6 @@ import (
 	"testing"
 )
 
-// The person web-presence lane (wave 186) arrives on the names face as its own
-// `links[]`, DISJOINT from `refs[]`: a ref is an identity anchor with a bare
-// external id, a link is a rendered address. The forum decoded only refs, so
-// every one of these rows was dropped on the floor — this pins that they are
-// read, and that each one has a name a reader can recognise.
-//
-// The fixture is a real /v1/catalog/names/{id} payload, trimmed to the two
-// lanes.
 const nameLinksFixture = `{
   "id": 900,
   "refs": [
@@ -53,8 +45,6 @@ func TestCatalogNameDecodesThePersonLinkLane(t *testing.T) {
 }
 
 func TestCatalogNameWithNoPersonLinksDecodesEmpty(t *testing.T) {
-	// An orphan name — or one whose person link the registry withholds — sends
-	// []. It must not become a nil the caller has to special-case.
 	var n CatalogName
 	if err := json.Unmarshal([]byte(`{"id": 1, "links": []}`), &n); err != nil {
 		t.Fatalf("unmarshal: %v", err)

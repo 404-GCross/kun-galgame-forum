@@ -6,8 +6,6 @@ import (
 	"kun-galgame-api/internal/admin/model"
 )
 
-// TestBuildAuditRowReplace proves a non-empty new set is classified 'replace' and
-// the before/after delta sets are captured verbatim.
 func TestBuildAuditRowReplace(t *testing.T) {
 	before := []model.AuditDelta{{Permission: "topic.hide", Effect: "grant"}}
 	after := []model.AuditDelta{{Permission: "topic.hide", Effect: "revoke"}}
@@ -27,8 +25,6 @@ func TestBuildAuditRowReplace(t *testing.T) {
 	}
 }
 
-// TestBuildAuditRowReset proves an EMPTY new set is classified 'reset' and a nil
-// before slice is stored as a non-nil empty slice (jsonb [] not null).
 func TestBuildAuditRowReset(t *testing.T) {
 	row := buildAuditRow(1, "role", "moderator", nil, nil)
 	if row.Action != "reset" {
@@ -42,8 +38,6 @@ func TestBuildAuditRowReset(t *testing.T) {
 	}
 }
 
-// TestRowsToDeltas proves both projections drop timestamps and keep only
-// {permission, effect}.
 func TestRowsToDeltas(t *testing.T) {
 	roleDeltas := roleRowsToDeltas([]model.RolePermissionOverride{
 		{Role: "admin", Permission: "user.purge_content", Effect: "revoke"},
@@ -57,7 +51,6 @@ func TestRowsToDeltas(t *testing.T) {
 	if len(userDeltas) != 1 || userDeltas[0].Permission != "topic.hide" || userDeltas[0].Effect != "grant" {
 		t.Errorf("userRowsToDeltas = %+v", userDeltas)
 	}
-	// Empty input yields a non-nil empty slice.
 	if got := userRowsToDeltas(nil); got == nil {
 		t.Error("userRowsToDeltas(nil) should be non-nil empty")
 	}

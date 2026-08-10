@@ -1,13 +1,5 @@
 package client
 
-// A catalog work carries EVERY exact identity anchor it has, and vndb is the
-// one source that emits more than one kind: the release anchor (r…) and the
-// work anchor (v…). kungal's `vndb_id` means the work anchor — it is what the
-// publish wizard prints and what every VNDB link is built from — but the
-// anchors arrive in the catalog's own order, and on real rows the release one
-// comes first (prod: work 7662 → r69531 before v27920). First-wins therefore
-// published a release id as the VNDB id.
-
 import "testing"
 
 func TestRefsMap_VndbWorkAnchorWinsRegardlessOfOrder(t *testing.T) {
@@ -24,8 +16,6 @@ func TestRefsMap_VndbWorkAnchorWinsRegardlessOfOrder(t *testing.T) {
 }
 
 func TestRefsMap_KeepsFirstWinsForEveryOtherSource(t *testing.T) {
-	// dlsite digital + physical editions are interchangeable for the purchase
-	// link, so the ordering the catalog chose is respected.
 	got := refsMap([]catRef{
 		{Source: "dlsite", ExternalID: "RJ249792"},
 		{Source: "dlsite", ExternalID: "RJ249793"},
@@ -40,8 +30,6 @@ func TestRefsMap_KeepsFirstWinsForEveryOtherSource(t *testing.T) {
 }
 
 func TestRefsMap_ReleaseOnlyWorkHasNoWorkAnchorToPromote(t *testing.T) {
-	// Nothing to upgrade to: the release id is carried rather than dropped, so
-	// `refs` stays a faithful copy of what the registry holds.
 	if got := refsMap([]catRef{{Source: "vndb", ExternalID: "r69531"}})["vndb"]; got != "r69531" {
 		t.Errorf("vndb = %q, want the release anchor carried as-is", got)
 	}

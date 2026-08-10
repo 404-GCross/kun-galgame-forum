@@ -8,12 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// CommentRepository owns TopicComment rows (comments attached to a reply):
-// CRUD, like interactions + counts, and the batch lookup used when building
-// a reply's comment list.
-//
-// It piggy-backs on ReplyRepository.LockUserForUpdate via the parent service —
-// a user row lock is still taken through the reply repo (see CommentService).
 type CommentRepository struct {
 	db *gorm.DB
 }
@@ -24,22 +18,17 @@ func NewCommentRepository(db *gorm.DB) *CommentRepository {
 
 func (r *CommentRepository) DB() *gorm.DB { return r.db }
 
-// ──────────────────────────────────────────
-// Comment rows attached to replies (batch fetch)
-// ──────────────────────────────────────────
-
 type CommentRow struct {
-	ID             int
-	TopicReplyID   int
-	TopicID        int
-	Content        string
-	UserID         int
-	UserName       string
-	UserAvatar     string
-	TargetUserID   int
-	TargetUserName string
-	TargetAvatar   string
-	// ParentCommentID is the comment this one replies to (nil = top-level).
+	ID              int
+	TopicReplyID    int
+	TopicID         int
+	Content         string
+	UserID          int
+	UserName        string
+	UserAvatar      string
+	TargetUserID    int
+	TargetUserName  string
+	TargetAvatar    string
 	ParentCommentID *int
 	LikeCount       int
 	CreatedAt       time.Time
@@ -57,7 +46,6 @@ func (r *CommentRepository) FindCommentsByReplyIDs(replyIDs []int) (map[int][]Co
 			(SELECT COUNT(*) FROM topic_comment_like WHERE topic_comment_id = tc.id) AS like_count,
 			tc.created AS created_at, tc.edited`).
 		Where("tc.topic_reply_id IN ?", replyIDs).
-		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
 		Where("tc.status = ?", 0).
 		Order("tc.created ASC").
 		Find(&rows).Error
@@ -72,14 +60,9 @@ func (r *CommentRepository) FindCommentsByReplyIDs(replyIDs []int) (map[int][]Co
 	return result, nil
 }
 
-// FindCommentLikeStatus reports which of the given comment IDs the user has liked.
 func (r *CommentRepository) FindCommentLikeStatus(userID int, commentIDs []int) (map[int]bool, error) {
 	return findInteractionStatus(r.db, "topic_comment_like", "topic_comment_id", userID, commentIDs)
 }
-
-// ──────────────────────────────────────────
-// Comment CRUD
-// ──────────────────────────────────────────
 
 func (r *CommentRepository) FindCommentByID(id int) (*model.TopicComment, error) {
 	var comment model.TopicComment
@@ -93,53 +76,42 @@ func (r *CommentRepository) CountCommentLikes(commentID int) (int64, error) {
 	return count, err
 }
 
-// CreateComment inserts a TopicComment inside the caller tx.
 func (r *CommentRepository) CreateComment(tx *gorm.DB, c *model.TopicComment) error {
 	return tx.Create(c).Error
 }
 
-// UpdateCommentContent updates content + edited timestamp for a comment
-// (mirrors ReplyRepository.UpdateReplyContent).
 func (r *CommentRepository) UpdateCommentContent(tx *gorm.DB, commentID int, fields map[string]any) error {
 	return tx.Model(&model.TopicComment{}).Where("id = ?", commentID).Updates(fields).Error
 }
 
-// FindCommentByIDTx loads a TopicComment inside a transaction.
 func (r *CommentRepository) FindCommentByIDTx(tx *gorm.DB, commentID int) (*model.TopicComment, error) {
 	var comment model.TopicComment
 	err := tx.First(&comment, commentID).Error
 	return &comment, err
 }
 
-// FindCommentLike looks up an existing comment like row.
 func (r *CommentRepository) FindCommentLike(tx *gorm.DB, userID, commentID int) (*model.TopicCommentLike, error) {
 	var existing model.TopicCommentLike
 	err := tx.Where("user_id = ? AND topic_comment_id = ?", userID, commentID).First(&existing).Error
 	return &existing, err
 }
 
-// CreateCommentLike inserts a comment like row.
 func (r *CommentRepository) CreateCommentLike(tx *gorm.DB, userID, commentID int) error {
 	return tx.Create(&model.TopicCommentLike{UserID: userID, TopicCommentID: commentID}).Error
 }
 
-// DeleteCommentLike removes a previously fetched comment like row.
 func (r *CommentRepository) DeleteCommentLike(tx *gorm.DB, like *model.TopicCommentLike) error {
 	return tx.Delete(like).Error
 }
 
-// DeleteCommentLikesForComment removes all likes targeting a given comment.
 func (r *CommentRepository) DeleteCommentLikesForComment(tx *gorm.DB, commentID int) error {
 	return tx.Where("topic_comment_id = ?", commentID).Delete(&model.TopicCommentLike{}).Error
 }
 
-// DeleteCommentByID removes a single TopicComment row by primary key.
 func (r *CommentRepository) DeleteCommentByID(tx *gorm.DB, commentID int) error {
 	return tx.Delete(&model.TopicComment{}, commentID).Error
 }
 
-// SetStatus flips a comment's moderation status (0=normal, 1=hidden), used by
-// the T&S enforcement dispatcher (migration 055). Idempotent.
 func (r *CommentRepository) SetStatus(id, status int) error {
 	return r.db.Model(&model.TopicComment{}).Where("id = ?", id).Update("status", status).Error
 }

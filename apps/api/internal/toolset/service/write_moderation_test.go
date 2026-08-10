@@ -9,17 +9,12 @@ import (
 	"kun-galgame-api/pkg/trustclient"
 )
 
-// scriptedChecker is a gate.Checker fake returning a fixed decision.
 type scriptedChecker struct{ decision string }
 
 func (c scriptedChecker) Check(_ context.Context, _ trustclient.CheckRequest) (*trustclient.CheckResult, error) {
 	return &trustclient.CheckResult{Decision: c.decision, Matched: []string{"坏词"}}, nil
 }
 
-// A denied toolset create (trust wave 2) returns the 422-class blocked error and
-// touches no DB: the word-list gate is the very first thing Create does, before
-// any repo/tx, so nil repos are never dereferenced (an allow would have panicked
-// dialing the repo — proof the write was never reached).
 func TestCreateToolsetDeniedNothingPersisted(t *testing.T) {
 	svc := NewToolsetService(
 		nil, nil, nil, nil, nil, nil, nil,

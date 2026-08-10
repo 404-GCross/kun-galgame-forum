@@ -1,18 +1,5 @@
 package service
 
-// The publish wizard is the site's only defence against duplicate submissions,
-// so both halves of its query are pinned here:
-//
-//   - the ITEMS half must hit the catalog search with claim_state=live,draft,
-//     pending. Narrowing that to `live` hides every unpublished entry, which is
-//     the shape of the 52k incident: what the wizard cannot see gets submitted
-//     again.
-//   - the PENDING half must hit the registry's PER-USER claim face — on the
-//     BEARER plane since wave 179, where "mine" means the token's holder and no
-//     uid or site is sent at all. It used to ride the wiki search's
-//     include_pending merge, which is why it could only be asked as part of a
-//     search; it is now a question in its own right.
-
 import (
 	"net/http"
 	"net/http/httptest"
@@ -26,13 +13,9 @@ import (
 )
 
 type wizardRecorder struct {
-	mu       sync.Mutex
-	catalogQ url.Values
-	claimsQ  url.Values
-	// claimsPath / claimsAuth record WHICH plane the pending half took. A
-	// silent fall back onto the S2S face would still return rows — somebody
-	// else's, keyed off a uid the forum chose — which is the failure the Bearer
-	// migration exists to make impossible.
+	mu         sync.Mutex
+	catalogQ   url.Values
+	claimsQ    url.Values
 	claimsPath string
 	claimsAuth string
 	claimsHit  int
@@ -98,10 +81,6 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	// `pending` is asked for BEFORE the projector produces it, so the wizard and
-	// the projector fix need not ship together. Dropping it here would mean a
-	// second coordinated deploy the day the projector starts separating "nobody
-	// has claimed this" from "somebody is waiting on a review".
 	if got := rec.catalogQ.Get("claim_state"); got != "live,draft,pending" {
 		t.Errorf("claim_state = %q, want live,draft,pending — `live` alone hides every unpublished entry", got)
 	}
@@ -114,8 +93,6 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	if got := rec.catalogQ.Get("limit"); got != "12" {
 		t.Errorf("limit = %q, want 12", got)
 	}
-	// The age gate is open and the EDITORIAL gate is absent: the wizard is a
-	// dedup tool for a submitter, not a browse lane.
 	if got := rec.catalogQ.Get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want 1", got)
 	}
@@ -137,17 +114,12 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	if len(page.Items) != 2 {
 		t.Fatalf("items = %d, want 2 (hidden claim and unclaimed row are not actionable)", len(page.Items))
 	}
-	// Never the catalog id: the two key spaces overlap and every wizard action
-	// (claim POST, /galgame/:gid link, draft link) is keyed by gid.
 	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 {
 		t.Errorf("ids = %d,%d, want the gids 292,9978", page.Items[0].ID, page.Items[1].ID)
 	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)
 	}
-	// The card reads `banner`; the catalog delivers the art as the derived
-	// effective banner, so the field must be filled from it or every row on the
-	// wizard loses its cover.
 	if page.Items[0].Banner == "" || page.Items[0].Banner != page.Items[0].EffectiveBannerURL {
 		t.Errorf("banner = %q, want it mirrored from effective_banner_url %q",
 			page.Items[0].Banner, page.Items[0].EffectiveBannerURL)
@@ -164,8 +136,6 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	if rec.wikiHits != 0 {
 		t.Errorf("wiki face hits = %d, want 0 — the pending half is terminal now", rec.wikiHits)
 	}
-	// The tenant is the token's now, so sending one would be either redundant
-	// or a claim about somebody else's product.
 	if rec.claimsPath != "/api/v1/user/catalog/claims/mine" {
 		t.Errorf("pending half hit %q, want the user plane's own-claims face", rec.claimsPath)
 	}
@@ -175,16 +145,12 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	if got := rec.claimsQ.Get("site"); got != "" {
 		t.Errorf("site = %q, want it absent — the acting tenant rides the token", got)
 	}
-	// Narrowed to the states a submitter is waiting on: including `live` would
-	// put finished entries back into "还没通过".
 	if got := rec.claimsQ.Get("claim_state"); got != "pending,declined" {
 		t.Errorf("claim_state = %q, want pending,declined", got)
 	}
 	if len(page.Pending) != 1 || page.Pending[0].WorkID != 64689 {
 		t.Fatalf("pending = %+v, want the caller's own pending claim", page.Pending)
 	}
-	// The row carries the LATEST transition by anyone — which is how a decline
-	// reason reaches the submitter without a second query.
 	if page.Pending[0].ClaimState != "pending" || page.Pending[0].LastToState != "pending" {
 		t.Errorf("pending row = %+v, want the current state and its last transition", page.Pending[0])
 	}
@@ -203,8 +169,6 @@ func TestWizard_PendingIsAnEmptyArrayWhenTheUserHasNone(t *testing.T) {
 	)
 
 	page := wizardSearch(t, svc)
-	// `null` would make the FE's `pending.length` read throw on some paths; an
-	// empty array is the shape the component already handles.
 	if page.Pending == nil || len(page.Pending) != 0 {
 		t.Errorf("pending = %v, want an empty array", page.Pending)
 	}

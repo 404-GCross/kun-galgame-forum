@@ -11,7 +11,7 @@ type Config struct {
 	Database       DatabaseConfig
 	Redis          RedisConfig
 	OAuth          OAuthConfig
-	FileStorage    S3Config // file storage (B2) — toolset archive uploads
+	FileStorage    S3Config
 	Mail           MailConfig
 	Search         SearchConfig
 	CORS           CORSConfig
@@ -25,160 +25,74 @@ type Config struct {
 	Dlsite         DlsiteConfig
 }
 
-// CommunityConfig holds what kungal needs to reach the infra community primitive
-// (kun-galgame-infra cmd/community :9282) — the unconditional backend for the
-// galgame + resource (rating / website / toolset) comment areas since the legacy
-// in-forum comment routes were retired (charter step 06a). Auth is HTTP Basic
-// reusing the OAuth client_id/secret; the community service reads
-// oauth_clients.catalog_site to derive kungal's tenant (never on the wire).
-// ClientID/ClientSecret default to the OAuth credentials when unset (filled in
-// app.go), so a single OAuth client works. An empty BaseURL (or OAuth creds)
-// leaves the client unconfigured: comment reads degrade to empty pages and
-// writes to 503, so a dev box without a community service still boots.
 type CommunityConfig struct {
-	BaseURL      string // community S2S base, e.g. http://127.0.0.1:9282/api/v1/community
-	ClientID     string // OAuth client id (Basic auth); defaults to OAuth.ClientID
-	ClientSecret string // OAuth client secret; defaults to OAuth.ClientSecret
+	BaseURL      string
+	ClientID     string
+	ClientSecret string
 }
 
-// CatalogClientConfig holds what kungal needs to reach the infra Catalog service
-// (kun-galgame-infra cmd/catalog :9281): the base URL for the S2S editing-engine
-// face (staff/owner writes + the whole review chain). Auth is HTTP Basic reusing
-// the OAuth client_id/secret (wired in app.go). Empty BaseURL (or OAuth creds) =
-// the integration is inert (those endpoints degrade to 503) so a dev box without
-// a catalog service is harmless.
 type CatalogClientConfig struct {
-	BaseURL string // catalog service base, e.g. http://127.0.0.1:9281
+	BaseURL string
 }
 
-// TrustConfig holds what kungal needs to integrate the infra Trust & Safety
-// service (kun-galgame-infra :9283): the base URL for submitting reports S2S,
-// and the HMAC secret for verifying inbound enforcement callbacks. The S2S
-// Basic-auth credentials reuse the OAuth client_id/secret (wired in app.go) —
-// the trust service reads oauth_clients.catalog_site to derive kungal's site.
-// Empty BaseURL / CallbackSecret = the integration is inert (reports degrade,
-// callbacks are rejected) so a dev box without a trust service is harmless.
 type TrustConfig struct {
-	BaseURL        string // trust service base, e.g. http://127.0.0.1:9283
-	CallbackSecret string // HMAC secret shared with the trust subject-kind registry
-	// Site is kungal's catalog_site key. Used ONLY to scope the moderator inbox
-	// proxy (Phase 3) so kungal moderators see kungal's review items, not other
-	// sites'. Must match the oauth_clients.catalog_site binding; a wrong value
-	// yields an empty (but safe) inbox.
-	Site string
-	// CheckEnabled / ScanEnabled are the TWO INDEPENDENT wave-1 moderation
-	// switches (topic + reply create/edit), both default OFF. CheckEnabled gates
-	// the SYNCHRONOUS pre-write word-list gate (deny blocks, hold publishes+logs,
-	// fail-open); ScanEnabled gates the ASYNC post-commit shadow scan. Each is
-	// keyed off its own env var, NEVER off client presence — so a reports-
-	// configured production forum does not auto-enable check/scan on deploy. Both
-	// additionally require the trust client to be configured (wired in app.go).
-	CheckEnabled bool // KUN_TRUST_CHECK_ENABLED
-	ScanEnabled  bool // KUN_TRUST_SCAN_ENABLED
+	BaseURL        string
+	CallbackSecret string
+	Site           string
+	CheckEnabled   bool
+	ScanEnabled    bool
 }
 
-// ArtifactClientConfig holds the credentials kungal uses to call the centralized
-// artifact service (kun-galgame-infra :9279) for large-file (toolset archive)
-// upload/download. Auth is HTTP Basic with an OAuth client_id/secret — the
-// artifact service reuses the oauth_client table as its site registry (gated by
-// artifact_enabled + artifact_site_key infra-side), so kungal's OAuth client IS
-// its artifact site. ClientID/ClientSecret default to the OAuth credentials when
-// unset (filled in app.go), so a single OAuth client works for both.
 type ArtifactClientConfig struct {
-	BaseURL      string // artifact service base, e.g. http://127.0.0.1:9279
-	ClientID     string // OAuth client id (Basic auth); defaults to OAuth.ClientID
-	ClientSecret string // OAuth client secret; defaults to OAuth.ClientSecret
+	BaseURL      string
+	ClientID     string
+	ClientSecret string
 }
 
-// LinkCheckerConfig holds the s2s credentials kungal uses to call the
-// kungal-link-live-checker service — the "report expired" gate that returns a
-// conservative alive/dead/unknown verdict for a netdisk share link. When
-// BaseURL/APIKey are unset the gate is skipped and a report falls back to the
-// legacy single-report-expires behavior (see resource_service.MarkExpired).
 type LinkCheckerConfig struct {
-	BaseURL string // checker base, e.g. https://link-checker-kungal.nextmoe.dev
-	APIKey  string // service Bearer key (one of the checker's LLC_API_KEYS)
-	// Cloudflare Access service-token headers. The checker sits behind CF Access
-	// (zero public anonymous exposure), so every request must carry
-	// CF-Access-Client-Id / -Secret on top of the Bearer key. Leave both empty
-	// when reaching a checker NOT behind CF Access (e.g. a local dev instance).
+	BaseURL              string
+	APIKey               string
 	CFAccessClientID     string
 	CFAccessClientSecret string
 }
 
-// ImageClientConfig holds the credentials kungal uses to call the image
-// service directly (multi-image upload paths for galgame covers /
-// screenshots — U2). Distinct from NextMoeAPIConfig.ImageCDNBase which
-// is just the public URL prefix for the response-rewrite walker.
-//
-// Set the three env vars below; the public CDN prefix is shared with
-// the walker (NextMoeAPIConfig.ImageCDNBase) so it isn't duplicated.
-// When ClientID/ClientSecret are unset, kungal's upload endpoints
-// return a clear error (no silent fallback to a misconfigured client).
 type ImageClientConfig struct {
-	BaseURL      string // image service base, e.g. http://127.0.0.1:9278
-	ClientID     string // OAuth client id (Basic auth)
-	ClientSecret string // OAuth client secret
+	BaseURL      string
+	ClientID     string
+	ClientSecret string
 }
 
-// NextMoeAPIConfig holds how kungal reaches the NextMoe catalog service's
-// galgame surface. BaseURL is the host base with no path suffix; the galgame
-// client derives {base}/v1 and calls the /catalog public projection. APIKey is
-// the developer API key sent as X-API-Key on every call. It is REQUIRED —
-// Load() fail-fasts when a base is configured without a key.
 type NextMoeAPIConfig struct {
-	BaseURL string
-	APIKey  string
-	// ImageCDNBase is the image_service public CDN prefix (no trailing
-	// slash), identical to the service's KUN_IMAGE_PUBLIC_BASE_URL. The
-	// service returns image_service-backed banners as banner="" + a
-	// hash; kungal resolves the hash → CDN URL server-side (in the galgame
-	// client) so every downstream banner stays a plain usable URL. See
-	// docs/galgame_wiki/07-submission.md §banner and
-	// docs/image_service/06-integration-guide.md.
+	BaseURL      string
+	APIKey       string
 	ImageCDNBase string
 }
 
-// DlsiteConfig holds the DLsite affiliate wiring for the 补票 (buy-legit) prompt.
-// kungal has an affiliate partnership; where a galgame resolves to a DLsite work
-// number, the prompt offers a direct purchase link instead of only pointing at the
-// 制作商 section.
+// The affiliate link is assembled SERVER-side and shipped as a ready URL: the
+// affiliate id stays out of the browser bundle, and this project's frontend
+// build cannot be trusted with env vars (NUXT_PUBLIC_* / process.env.* come out
+// undefined in the generic prod image), so a template baked into the frontend
+// would silently produce broken links in production.
 //
-// The whole link is assembled SERVER-side and shipped as a ready URL. Two reasons:
-// the affiliate id / template stay out of the browser bundle, and this project's
-// frontend build cannot be trusted with env vars (NUXT_PUBLIC_* / process.env.*
-// come out undefined in the generic prod image — the same trap that bit the web
-// build before), so a template baked into the frontend would silently produce
-// broken links in production.
-//
-// LinkTemplate carries a `{workno}` placeholder and is deliberately a whole
-// template rather than assembled parts: DLsite's affiliate path may differ per
-// site segment (`/soft/` is the pro/VJ path; doujin/RJ may need another), so a
-// path change stays an env edit instead of a code change.
+// LinkTemplate is a whole template, not assembled parts: DLsite's affiliate path
+// differs per site segment, so a path change stays an env edit.
 type DlsiteConfig struct {
-	// LinkTemplate is the per-work affiliate deep link, e.g.
-	// https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/locale/zh_CN/id/{workno}.html/?locale=zh_CN
-	// Empty = the feature is off and no link is ever emitted.
 	LinkTemplate string
-	// CouponURL is the partnership's coupon landing page. It MUST be a shortened
-	// URL — the partner's requirement, so the raw domain does not get blocked by
-	// network censorship. Empty = no coupon entry rendered.
-	CouponURL string
+	CouponURL    string
 }
 
-// Configured reports whether per-work purchase links can be built.
 func (c DlsiteConfig) Configured() bool { return c.LinkTemplate != "" }
 
 type ServerConfig struct {
 	Port string
-	Mode string // "dev" or "prod"
+	Mode string
 }
 
 type DatabaseConfig struct {
 	URL             string
 	MaxOpenConns    int
 	MaxIdleConns    int
-	ConnMaxLifetime int // seconds
+	ConnMaxLifetime int
 }
 
 type RedisConfig struct {
@@ -243,11 +157,6 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	// The catalog galgame read face (the internal face) hard-depends on an
-	// internal-tier API key — there is no keyless-fallback valve any more
-	// (wave 05). A base configured without a key is a misconfiguration: fail
-	// fast at startup, loudly naming the env var, rather than silently 401 on
-	// every read at runtime. No silent degradation.
 	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:9281")
 	nextMoeKey := envOrDefault("KUN_NEXTMOE_API_KEY", "")
 	if nextMoeBase != "" && nextMoeKey == "" {
@@ -281,9 +190,6 @@ func Load() (*Config, error) {
 			RedirectURI:  oauthRedirectURI,
 			JWTSecret:    envOrDefault("JWT_SECRET", ""),
 		},
-		// Archive uploads (Backblaze B2 in production): toolset .7z/.zip/.rar
-		// files. This is the only S3-API bucket the forum still uses — inline /
-		// content images all go through image_service now, not a local bucket.
 		FileStorage: S3Config{
 			Endpoint:  envOrDefault("FILE_STORAGE_ENDPOINT", ""),
 			Region:    envOrDefault("FILE_STORAGE_REGION", ""),
@@ -309,15 +215,8 @@ func Load() (*Config, error) {
 			),
 		},
 		NextMoeAPI: NextMoeAPIConfig{
-			// Host base with no path suffix; the galgame client derives
-			// {base}/v1 and calls the /catalog public projection.
-			// Dev default = the local catalog service on :9281.
-			BaseURL: nextMoeBase,
-			// Developer API key (X-API-Key) for the catalog read face.
-			// REQUIRED — validated above (fail-fast; no keyless fallback).
-			APIKey: nextMoeKey,
-			// Must match the service's KUN_IMAGE_PUBLIC_BASE_URL exactly —
-			// both build the same {base}/{hh}/{hh}/{hash}.webp layout.
+			BaseURL:      nextMoeBase,
+			APIKey:       nextMoeKey,
 			ImageCDNBase: envOrDefault("KUN_IMAGE_PUBLIC_BASE_URL", "https://image.kungal.iloveren.link"),
 		},
 		ImageClient: ImageClientConfig{
@@ -347,16 +246,11 @@ func Load() (*Config, error) {
 			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:9281"),
 		},
 		Community: CommunityConfig{
-			// Empty base URL by default: the client's Configured() gate then
-			// stays false on a dev box without a community service, so comment
-			// reads degrade to empty pages and writes to 503.
 			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),
 			ClientID:     envOrDefault("KUN_COMMUNITY_CLIENT_ID", ""),
 			ClientSecret: envOrDefault("KUN_COMMUNITY_CLIENT_SECRET", ""),
 		},
 		Dlsite: DlsiteConfig{
-			// Both empty by default: no template = no purchase link is emitted, so
-			// an unconfigured deployment simply keeps today's 补票 prompt.
 			LinkTemplate: envOrDefault("KUN_DLSITE_LINK_TEMPLATE", ""),
 			CouponURL:    envOrDefault("KUN_DLSITE_COUPON_URL", ""),
 		},

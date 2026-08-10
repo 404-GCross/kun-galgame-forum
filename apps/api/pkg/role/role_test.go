@@ -5,13 +5,6 @@ import (
 	"testing"
 )
 
-// Golden tests for the site-role union (contract docs/oauth/12-site-roles.md).
-// The whole integration is "effective = roles ∪ site_roles, fed to the EXISTING
-// capability functions" (§5.1); these lock in that a site grant lands on the
-// right capability and, critically, can NEVER reach an admin-only one (§5.3).
-
-// A site moderator (site_roles: ["moderator"], no global roles) gains the
-// moderation capability but MUST NOT reach admin — the core safety property.
 func TestSiteModeratorModeratesButNotAdminister(t *testing.T) {
 	eff := Union(nil, []string{"moderator"})
 	if !CanModerate(eff) {
@@ -25,7 +18,6 @@ func TestSiteModeratorModeratesButNotAdminister(t *testing.T) {
 	}
 }
 
-// A site creator gains only the orthogonal publishing capability.
 func TestSiteCreatorIsOrthogonal(t *testing.T) {
 	eff := Union([]string{}, []string{"creator"})
 	if !IsCreator(eff) {
@@ -36,8 +28,6 @@ func TestSiteCreatorIsOrthogonal(t *testing.T) {
 	}
 }
 
-// A site custom bundle name (e.g. event_organizer) fails closed: it maps to no
-// built-in capability — the site defines its own meaning (contract §3/§5.4).
 func TestSiteCustomNameFailsClosed(t *testing.T) {
 	eff := Union(nil, []string{"event_organizer"})
 	if CanModerate(eff) || CanAdminister(eff) || IsCreator(eff) {
@@ -45,11 +35,9 @@ func TestSiteCustomNameFailsClosed(t *testing.T) {
 	}
 }
 
-// Global + site roles combine; the union dedups, is order-stable, and leaves
-// the input slices untouched.
 func TestUnionDedupAndImmutability(t *testing.T) {
 	global := []string{"creator"}
-	site := []string{"creator", "moderator"} // 'creator' overlaps global
+	site := []string{"creator", "moderator"}
 	eff := Union(global, site)
 
 	if want := []string{"creator", "moderator"}; !slices.Equal(eff, want) {
@@ -66,8 +54,6 @@ func TestUnionDedupAndImmutability(t *testing.T) {
 	}
 }
 
-// A global admin is unaffected by an empty site set, and Union returns the
-// global slice as-is (no allocation churn on the empty-site hot path).
 func TestGlobalAdminUnaffectedByEmptySite(t *testing.T) {
 	eff := Union([]string{"admin"}, nil)
 	if !CanAdminister(eff) || !CanModerate(eff) {

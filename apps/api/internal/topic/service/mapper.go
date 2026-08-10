@@ -12,18 +12,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// ──────────────────────────────────────────
-// Poll mappers
-// ──────────────────────────────────────────
-
-// buildPollResponse assembles a TopicPollResponse from a poll model and the
-// associated option/voter data loaded via the repository. It does not perform
-// any DB writes; callers pass in the logged-in user context via userID plus the
-// caller's moderation capability. Identity for voters/creator is hydrated from
-// OAuth via userclient.
-// The bool return is false when the poll's creator is banned, so the caller
-// drops the poll from the list (a placeholder for a merely not-found creator
-// stays renderable).
 func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.TopicPoll, userID int, canModerate bool) (dto.TopicPollResponse, bool) {
 	options, _ := s.pollRepo.FindOptionsByPollID(poll.ID)
 	hasVoted, _ := s.pollRepo.HasUserVoted(poll.ID, userID)
@@ -82,7 +70,6 @@ func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.To
 	if creatorU.ID == 0 {
 		creatorU = userclient.Placeholder(poll.UserID)
 	}
-	// A banned creator's poll is hidden entirely (its content is theirs).
 	if !userclient.IsRenderable(creatorU) {
 		return dto.TopicPollResponse{}, false
 	}
@@ -101,8 +88,6 @@ func (s *PollService) buildPollResponse(ctx context.Context, poll *topicModel.To
 	}, true
 }
 
-// canViewResults returns true if the caller is allowed to see vote counts /
-// voter identities according to the poll's result_visibility setting.
 func canViewResults(poll *topicModel.TopicPoll, userID int, canModerate, hasVoted bool) bool {
 	if userID == poll.UserID || canModerate {
 		return true
@@ -122,14 +107,6 @@ func canViewResults(poll *topicModel.TopicPoll, userID int, canModerate, hasVote
 	}
 }
 
-// ──────────────────────────────────────────
-// Reply mappers
-// ──────────────────────────────────────────
-
-// buildReplyResponses turns a batch of ReplyRow into TopicReplyResponse DTOs.
-// Fetches targets/comments/like-status via the repository in bulk. Identity
-// (name/avatar/moemoepoint) is hydrated from OAuth+kungal_user_state since
-// the repo no longer joins on the user table.
 func (s *ReplyService) buildReplyResponses(
 	ctx context.Context,
 	rows []repository.ReplyRow,
@@ -165,8 +142,6 @@ func (s *ReplyService) buildReplyResponses(
 		commentLikeMap, _ = s.commentRepo.FindCommentLikeStatus(userInfo.ID, commentIDs)
 	}
 
-	// Collect every userID we'll render: reply authors + target authors + comment
-	// authors + comment target authors. Hydrate in one batch.
 	uidSet := make(map[int]struct{})
 	for _, r := range rows {
 		uidSet[r.UserID] = struct{}{}
@@ -194,7 +169,6 @@ func (s *ReplyService) buildReplyResponses(
 	userMap := s.userClient.Hydrate(ctx, uids)
 	repliesReactions := buildRepliesReactions(reactionRows, mineReactions, userMap)
 
-	// moemoepoint comes from kungal_user_state, not OAuth.
 	moeMap := make(map[int]int, len(rows))
 	for _, r := range rows {
 		if _, seen := moeMap[r.UserID]; seen {
@@ -210,9 +184,6 @@ func (s *ReplyService) buildReplyResponses(
 		return dto.KunUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
 	}
 
-	// Mention name resolution: render the body, then swap each @mention's text to
-	// the author's CURRENT name (mentioned ids were batched into userMap above),
-	// so a renamed user shows their new name without the stored post changing.
 	mentionNames := make(map[int]string, len(userMap))
 	for id, u := range userMap {
 		mentionNames[id] = u.Name
@@ -223,7 +194,6 @@ func (s *ReplyService) buildReplyResponses(
 
 	responses := make([]dto.TopicReplyResponse, 0, len(rows))
 	for _, r := range rows {
-		// Drop banned authors entirely.
 		if u, ok := userMap[r.UserID]; ok && !userclient.IsRenderable(u) {
 			continue
 		}
@@ -234,10 +204,6 @@ func (s *ReplyService) buildReplyResponses(
 				if commentLikeMap != nil {
 					isLiked = commentLikeMap[c.ID]
 				}
-				// Banned comment author: tombstone the node (placeholder
-				// identity + blank content) rather than drop it — comments
-				// nest via ParentCommentID, so removing one with child
-				// comments would orphan them in the FE tree.
 				commentUser := kunUser(c.UserID)
 				content := c.Content
 				if cu, ok := userMap[c.UserID]; ok && !userclient.IsRenderable(cu) {
@@ -295,12 +261,6 @@ func (s *ReplyService) buildReplyResponses(
 	return responses
 }
 
-// ──────────────────────────────────────────
-// Topic mappers
-// ──────────────────────────────────────────
-
-// toTopicCard maps a TopicCardRow with its section slice to a TopicCard DTO.
-// Shared by GetList and GetResourceList.
 func toTopicCard(r repository.TopicCardRow, sections []string, isPollTopic bool) dto.TopicCard {
 	if sections == nil {
 		sections = []string{}
@@ -310,12 +270,11 @@ func toTopicCard(r repository.TopicCardRow, sections []string, isPollTopic bool)
 		covers = []string{}
 	}
 	return dto.TopicCard{
-		ID:          r.ID,
-		Title:       r.Title,
-		View:        r.View,
-		Sections:    sections,
-		CoverImages: covers,
-		// Reserve each cover's aspect ratio (no CLS) + blur-up on the FE.
+		ID:             r.ID,
+		Title:          r.Title,
+		View:           r.View,
+		Sections:       sections,
+		CoverImages:    covers,
 		CoverImageMeta: markdown.ResolveContentImageMeta(covers),
 		User: dto.KunUser{
 			ID:     r.UserID,

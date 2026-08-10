@@ -16,7 +16,6 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 
 func (r *CategoryRepository) DB() *gorm.DB { return r.db }
 
-// FindByName returns a category by unique name.
 func (r *CategoryRepository) FindByName(name string) (*model.GalgameWebsiteCategory, error) {
 	var cat model.GalgameWebsiteCategory
 	if err := r.db.Where("name = ?", name).First(&cat).Error; err != nil {
@@ -25,7 +24,6 @@ func (r *CategoryRepository) FindByName(name string) (*model.GalgameWebsiteCateg
 	return &cat, nil
 }
 
-// FindByID returns a category by ID.
 func (r *CategoryRepository) FindByID(id int) (*model.GalgameWebsiteCategory, error) {
 	var cat model.GalgameWebsiteCategory
 	if err := r.db.First(&cat, id).Error; err != nil {
@@ -34,7 +32,6 @@ func (r *CategoryRepository) FindByID(id int) (*model.GalgameWebsiteCategory, er
 	return &cat, nil
 }
 
-// FindNamesByIDs returns a map[id]name for the given category IDs.
 func (r *CategoryRepository) FindNamesByIDs(ids []int) map[int]string {
 	if len(ids) == 0 {
 		return map[int]string{}
@@ -54,7 +51,6 @@ func (r *CategoryRepository) FindNamesByIDs(ids []int) map[int]string {
 	return out
 }
 
-// UpdateFields updates arbitrary fields on a category row.
 func (r *CategoryRepository) UpdateFields(id int, updates map[string]any) {
 	r.db.Model(&model.GalgameWebsiteCategory{}).Where("id = ?", id).Updates(updates)
 }

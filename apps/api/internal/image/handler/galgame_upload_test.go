@@ -1,16 +1,5 @@
 package handler
 
-// galgame_upload_test.go — boundary tests for /image/galgame.
-//
-// Scope (handler-level, no image_service round-trip):
-//   - preset allowlist enforcement (must be galgame_banner / galgame_screenshot)
-//   - file presence / size limit
-//
-// Successful upload is exercised end-to-end against a real image_service
-// in deployment smoke tests, not here — we don't mock the entire SDK
-// just to assert it forwards. The contract that matters at this layer
-// is "kungal rejects junk before we even talk to image_service".
-
 import (
 	"bytes"
 	"io"
@@ -29,22 +18,9 @@ import (
 	"kun-galgame-api/pkg/catalogclient"
 )
 
-// newTestApp wires a Fiber app with the upload handler + a session stub
-// so MustGetUser succeeds for UID=1. ImageService is constructed without a
-// galgame client (galgameClient=nil) — galgame uploads now proxy to the galgame's
-// /galgame/image — the handler boundary checks (preset / file / size) run
-// before the service touches the client, so the missing client only matters
-// once those pass.
 func newTestApp(t *testing.T) *fiber.App {
 	t.Helper()
-	// BodyLimit 20 MiB so the oversized test can reach our handler's
-	// MaxImageSize check (Fiber's default 4 MiB would pre-reject before
-	// the handler sees the body, which makes the test exercise the
-	// framework instead of our contract).
 	app := fiber.New(fiber.Config{BodyLimit: 20 * 1024 * 1024})
-	// Stub auth middleware: every request is UID=1. Real middleware
-	// stores a *UserInfo (pointer) — see middleware.MustGetUser's type
-	// assertion — so we match that here.
 	app.Use(func(c fiber.Ctx) error {
 		c.Locals(string(middleware.UserInfoKey), &middleware.UserInfo{ID: 1})
 		return c.Next()
@@ -55,7 +31,6 @@ func newTestApp(t *testing.T) *fiber.App {
 	return app
 }
 
-// makeMultipart builds a multipart form body with the given fields.
 func makeMultipart(t *testing.T, fields map[string]string, fileName string, fileBytes []byte) (*bytes.Buffer, string) {
 	t.Helper()
 	body := &bytes.Buffer{}
@@ -109,10 +84,6 @@ func TestUploadGalgameImage_RejectsMissingFile(t *testing.T) {
 }
 
 func TestUploadGalgameImage_AcceptsAllowedPresets(t *testing.T) {
-	// Both gated presets must pass the boundary and reach the service. With
-	// galgameClient=nil the service returns "未配置" — that's how we confirm the
-	// boundary checks all passed (preset OK, file OK, size OK) without a real
-	// galgame round-trip.
 	for _, preset := range []string{"galgame_banner", "galgame_screenshot"} {
 		t.Run(preset, func(t *testing.T) {
 			app := newTestApp(t)
@@ -133,17 +104,12 @@ func TestUploadGalgameImage_AcceptsAllowedPresets(t *testing.T) {
 	}
 }
 
-// MaxImageSize boundary — fabricate a body claiming a large file via
-// Content-Length doesn't actually trigger the check (Fiber reads body).
-// Instead build a body larger than the limit and confirm rejection.
 func TestUploadGalgameImage_RejectsOversized(t *testing.T) {
 	app := newTestApp(t)
 	big := bytes.Repeat([]byte("a"), int(service.MaxImageSize)+1)
 	body, ct := makeMultipart(t, map[string]string{"preset": "galgame_banner"}, "big.png", big)
 	req := httptest.NewRequest("POST", "/image/galgame", body)
 	req.Header.Set("Content-Type", ct)
-	// Timeout: 0 disables the test client timeout (v2 passed -1); the oversized
-	// body can take longer than the 1s default to stream in.
 	resp, err := app.Test(req, fiber.TestConfig{Timeout: 0})
 	if err != nil {
 		t.Fatalf("app.Test: %v", err)
@@ -155,12 +121,6 @@ func TestUploadGalgameImage_RejectsOversized(t *testing.T) {
 	}
 }
 
-// TestUploadGalgameImage_ForwardsTheUploadersToken pins wave 180's half of the
-// U2 lane: the upload was the last edit-face WRITE that named its actor in a
-// form field, honoured upstream on the forum's word alone. It now travels on
-// the uploader's own token, and the failure it replaces is silent — an
-// `actor_uid` left in place keeps working while attributing the image to
-// whoever the forum said, so the absence of the field is the assertion.
 func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
 	var (
 		gotAuth   string

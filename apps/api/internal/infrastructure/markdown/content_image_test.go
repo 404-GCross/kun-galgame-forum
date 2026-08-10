@@ -7,12 +7,9 @@ import (
 	"kun-galgame-api/pkg/imageclient"
 )
 
-// A real 64-hex content hash (from prod): aa=78, bb=35.
 const testHash = "7835f792543f8564cf95e7f84d4828f2a3ef735293f0844bf8ddf8f39371171d"
 
 func TestResolveContentImageRef(t *testing.T) {
-	// image.kungal.iloveren.link is what the inline allow-list accepts, so the
-	// same base works for both the unit cases here and the RenderInline test.
 	SetContentImageCDNBase("https://image.kungal.iloveren.link/")
 	defer SetContentImageCDNBase("")
 
@@ -40,10 +37,6 @@ func TestResolveContentImageRef(t *testing.T) {
 	}
 }
 
-// The content-image meta transformer must stamp width/height (aspect-ratio
-// reservation, no CLS) + data-thumbhash (blur-up) onto the rendered <img>, and
-// the sanitizer must keep them. A hash the resolver doesn't know stays a plain
-// <img> (graceful — e.g. before the image_service thumbhash backfill runs).
 func TestRenderInjectsContentImageMeta(t *testing.T) {
 	SetContentImageCDNBase("https://image.kungal.iloveren.link")
 	defer SetContentImageCDNBase("")
@@ -66,7 +59,6 @@ func TestRenderInjectsContentImageMeta(t *testing.T) {
 		}
 	}
 
-	// An unknown hash (resolver returns nothing) must NOT gain meta attrs.
 	const otherHash = "0000000000000000000000000000000000000000000000000000000000000000"
 	if got := Render("![x](/image/" + otherHash + ")"); strings.Contains(got, "width=") {
 		t.Errorf("unknown hash must not gain width attr\n got: %s", got)
@@ -80,9 +72,6 @@ func TestResolveContentImageRef_EmptyBaseDisables(t *testing.T) {
 	}
 }
 
-// The token must be resolved to the absolute CDN URL in BOTH the block (topic)
-// and inline (chat/PM) renderers — and in the inline case, resolving BEFORE
-// sanitization is what lets it survive the strict img-src host allow-list.
 func TestRenderResolvesContentImageToken(t *testing.T) {
 	SetContentImageCDNBase("https://image.kungal.iloveren.link")
 	defer SetContentImageCDNBase("")
@@ -102,7 +91,6 @@ func TestRenderResolvesContentImageToken(t *testing.T) {
 			if !strings.Contains(out, wantSrc) {
 				t.Errorf("%s: want resolved src %q in output\n got: %s", r.name, wantSrc, out)
 			}
-			// The raw token must NOT survive into the rendered HTML.
 			if strings.Contains(out, `src="/image/`) {
 				t.Errorf("%s: raw /image/<hash> token leaked unresolved\n got: %s", r.name, out)
 			}

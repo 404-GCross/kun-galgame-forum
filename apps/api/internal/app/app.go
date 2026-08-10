@@ -95,7 +95,6 @@ type App struct {
 	UserState   *repository.StateRepository
 	UserClient  *userclient.Client
 
-	// Handlers
 	OAuthHandler                   *handler.OAuthHandler
 	UserHandler                    *handler.UserHandler
 	UserProfileHandler             *handler.ProfileHandler
@@ -152,67 +151,39 @@ type App struct {
 }
 
 func New(cfg *config.Config) *App {
-	// Infrastructure
 	db := database.NewPostgres(cfg.Database, cfg.Server.Mode)
 	rdb := cache.NewRedis(cfg.Redis)
-	// fileStorageClient: archive storage (B2). Toolset .7z/.zip/.rar uploads
-	// via presigned URLs, configured via FILE_STORAGE_* env vars. This is the
-	// only S3-API bucket left — inline / content images all go through
-	// image_service now, so there is no separate image bed (R2) client.
 	fileStorageClient := storage.NewS3(cfg.FileStorage)
 	if fileStorageClient == nil {
 		slog.Warn("FILE_STORAGE_* 未配置, 工具集上传将不可用")
 	}
 	mailer := mail.NewMailer(cfg.Mail)
 
-	// Resolve /image/<hash> content refs to absolute CDN URLs at render time.
-	// Same CDN base the image client / galgame banner walker use.
 	markdown.SetContentImageCDNBase(cfg.NextMoeAPI.ImageCDNBase)
 
-	// Repositories
 	userStateRepo := repository.NewStateRepository(db)
 	userStatsRepo := repository.NewUserStatsRepository(db)
 	userContentRepo := repository.NewUserContentRepository(db)
 	messageRepository := msgRepo.NewMessageRepository(db)
 	chatRepository := msgRepo.NewChatRepository(db)
 
-	// Galgame catalog client (shared — user service needs it too). Single
-	// /v1 face with the service X-API-Key since wave 169 (the wiki's
-	// internal/legacy bases retired with it).
 	gc := client.New(
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
 	)
 
-	// OAuth client (used by auth service).
 	oauthClient := oauth.NewClient(cfg.OAuth)
 
-	// OAuth user-info client. Identity (name/avatar/bio/status/roles) is
-	// owned by OAuth post-migration; mappers call this for batch enrichment.
 	uc := userclient.New(userclient.Config{
 		BaseURL:      cfg.OAuth.ServerURL,
 		ClientID:     cfg.OAuth.ClientID,
 		ClientSecret: cfg.OAuth.ClientSecret,
-		// Same image_service CDN base the galgame client uses — lets userclient
-		// resolve users' avatar_image_hash into URLs (new avatars store only the
-		// hash; the legacy `avatar` field is empty).
 		ImageCDNBase: cfg.NextMoeAPI.ImageCDNBase,
 	})
 
-	// Install the process-wide moemoepoint Awarder: OAuth is the single source
-	// of truth; every change goes through it and the returned authoritative
-	// balance is mirrored into the local kungal_user_state cache (no local +=).
-	// See internal/moemoepoint + docs/oauth/06-moemoepoint.md.
 	moemoepoint.SetDefault(moemoepoint.NewAwarder(uc, db))
 
-	// image_service client — covers/screenshots multi-image upload path
-	// (U2 / K-PR3a). ONLY construct when credentials are present, so the
-	// downstream service-level `imgCli == nil` guard actually fires when
-	// the operator forgot to set KUN_IMAGE_CLIENT_ID/SECRET — and
-	// surfaces "图片上传服务未配置" instead of a misleading image_service
-	// 401 when the user tries to upload. Mirrors the galgame side's same
-	// guard pattern. A loud warn-on-startup so ops notices early.
 	var imgCli *imageclient.Client
 	if cfg.ImageClient.ClientID != "" && cfg.ImageClient.ClientSecret != "" {
 		imgCli = imageclient.New(imageclient.Config{
@@ -223,33 +194,14 @@ func New(cfg *config.Config) *App {
 		})
 		slog.Info("image_service client configured", "base_url", cfg.ImageClient.BaseURL)
 
-		// Enrich server-rendered content <img> tags with intrinsic dims +
-		// ThumbHash (no-CLS aspect-ratio reservation + blur-up). The resolver
-		// caches forever and the markdown renderer calls it synchronously, so
-		// warm renders touch no network. Only wired when image_service is
-		// configured; otherwise content images render as plain lazy <img>.
-		//
-		// ONE resolver for both consumers below: metadata is immutable per
-		// content hash, so a shared cache means a character sized on a game
-		// page is already sized when her own page opens — and an image that
-		// appears both in a topic body and on a detail page is looked up once
-		// for the life of the process.
 		imageMeta := imgCli.NewMetaResolver(0)
 		markdown.SetContentImageMetaResolver(imageMeta.Resolve)
 
-		// The catalog's ENTITY artwork (character busts and 立绘) arrives as
-		// bare CDN URLs with no shape attached — unlike covers and screenshots,
-		// whose dimensions the catalog aggregates for us.
 		gc.SetImageMetaResolver(imageMeta.Resolve)
 	} else {
 		slog.Warn("image_service client NOT configured; /image/galgame upload will return 未配置 — set KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET")
 	}
 
-	// artifact service client (toolset archive upload/download). kungal's OAuth
-	// client IS its artifact "site", so credentials default to the OAuth client
-	// when KUN_ARTIFACT_CLIENT_ID/SECRET are unset. New() degrades to a no-op
-	// (calls return ErrNotConfigured) when neither is set, so a dev box without
-	// artifact creds still boots.
 	artClientID := cfg.ArtifactClient.ClientID
 	if artClientID == "" {
 		artClientID = cfg.OAuth.ClientID
@@ -269,10 +221,6 @@ func New(cfg *config.Config) *App {
 		slog.Warn("artifact service client NOT configured; toolset upload will return 未配置 — set KUN_ARTIFACT_CLIENT_BASE_URL + OAuth creds")
 	}
 
-	// Trust & Safety client — report intake (Phase 1) + moderator inbox proxy
-	// (Phase 3). Basic auth reuses the OAuth client_id/secret; the trust service
-	// reads oauth_clients.catalog_site to derive kungal's site. Degrades to a
-	// no-op when KUN_TRUST_BASE_URL / OAuth creds are unset.
 	trustCli := trustclient.New(trustclient.Config{
 		BaseURL:      cfg.Trust.BaseURL,
 		ClientID:     cfg.OAuth.ClientID,
@@ -284,14 +232,6 @@ func New(cfg *config.Config) *App {
 		slog.Warn("trust service client NOT configured; reporting returns 未启用 — set KUN_TRUST_BASE_URL + OAuth creds")
 	}
 
-	// Best-effort declarative subject-kind registration (onboarding §5). The
-	// forum's COMPLETE kind universe is declared in code (gate.CanonicalSubjectKinds)
-	// and self-reported to the trust registry on boot — key-only + idempotent, so
-	// a re-run converges to all-`unchanged` and never clobbers admin-configured
-	// callbacks. This is registration hygiene, NOT a moderation feature, so it is
-	// deliberately NOT gated on KUN_TRUST_CHECK/SCAN_ENABLED — only on the client
-	// being wired. Fire-and-forget in a goroutine with a short timeout: any
-	// failure warns and moves on, never blocking boot.
 	if trustCli.Configured() {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -301,7 +241,6 @@ func New(cfg *config.Config) *App {
 				slog.Warn("trust subject-kind ensure failed (non-fatal)", "err", err)
 				return
 			}
-			// Steady state is quiet: surface only the kinds that actually changed.
 			changed := make([]string, 0, len(results))
 			for _, r := range results {
 				if r.Result != "unchanged" {
@@ -316,17 +255,6 @@ func New(cfg *config.Config) *App {
 		}()
 	}
 
-	// Trust moderation gates for the forum write surface. Wave 1 = topic + reply
-	// create/edit; wave 2 = the remaining user-text writes (topic comment/poll,
-	// galgame rating/resource/collection/quiz/quiz-answer, toolset + its
-	// resources). TWO INDEPENDENT switches, both default OFF
-	// (KUN_TRUST_CHECK_ENABLED / KUN_TRUST_SCAN_ENABLED) AND gated on the trust
-	// client being configured — never keyed off client presence alone, so a
-	// reports-configured production forum does not auto-enable check/scan on
-	// deploy. Assign the concrete client to the interface only when live, to
-	// avoid a typed-nil interface. check = synchronous pre-write word-list gate
-	// (deny blocks, hold publishes+logs, fail-open ≤500ms); scan = async
-	// post-commit shadow scan (best-effort, no retry).
 	var trustChecker gate.Checker
 	if cfg.Trust.CheckEnabled && trustCli.Configured() {
 		trustChecker = trustCli
@@ -349,11 +277,6 @@ func New(cfg *config.Config) *App {
 		slog.Info("trust shadow scan disabled (KUN_TRUST_SCAN_ENABLED off or trust client unconfigured)")
 	}
 
-	// Catalog S2S client — the editing engine's actor-assertion face (staff/owner
-	// writes + the whole review chain). Basic auth reuses the OAuth
-	// client_id/secret. Degrades to a no-op (calls return ErrNotConfigured → 503)
-	// when KUN_CATALOG_API_BASE / OAuth creds are unset, so a dev box without a
-	// catalog service still boots.
 	catalogCli := catalogclient.New(catalogclient.Config{
 		BaseURL:      cfg.Catalog.BaseURL,
 		ClientID:     cfg.OAuth.ClientID,
@@ -365,13 +288,6 @@ func New(cfg *config.Config) *App {
 		slog.Warn("catalog service client NOT configured; galgame edit review returns 未启用 — set KUN_CATALOG_API_BASE + OAuth creds")
 	}
 
-	// Community primitive client — the galgame comment area reroute (charter step
-	// 03; kun-galgame-infra cmd/community :9282). Basic auth reuses the OAuth
-	// client_id/secret (the community service derives kungal's tenant from
-	// oauth_clients.catalog_site), so the S2S creds default to the OAuth client
-	// when KUN_COMMUNITY_CLIENT_ID/SECRET are unset. Degrades to a no-op (calls
-	// return ErrNotConfigured) when the base URL/creds are unset, so a dev box
-	// without a community service boots even with the flag flipped on.
 	commClientID := cfg.Community.ClientID
 	if commClientID == "" {
 		commClientID = cfg.OAuth.ClientID
@@ -385,19 +301,12 @@ func New(cfg *config.Config) *App {
 		ClientID:     commClientID,
 		ClientSecret: commClientSecret,
 	})
-	// Community is now the unconditional comment backend (galgame + the three
-	// resource areas). When the client is unconfigured, comment reads degrade to
-	// empty pages and writes to 503 — a dev box without a community service still
-	// boots.
 	if communityCli.Configured() {
 		slog.Info("community comment backend configured", "base_url", cfg.Community.BaseURL)
 	} else {
 		slog.Warn("community comment backend NOT configured; comments degrade (reads empty / writes 503) — set KUN_COMMUNITY_API_BASE + OAuth creds")
 	}
 
-	// DLsite affiliate 补票 link. The vendored whitelist count is logged so a
-	// mis-vendored (empty / truncated) verified.tsv shows up at boot instead of
-	// silently dropping the purchase button on ~1,400 games.
 	if cfg.Dlsite.Configured() {
 		slog.Info("dlsite affiliate link configured",
 			"verified_whitelist", dlsite.VerifiedCount(),
@@ -405,14 +314,8 @@ func New(cfg *config.Config) *App {
 	} else {
 		slog.Info("dlsite affiliate link off (KUN_DLSITE_LINK_TEMPLATE unset); 补票提示 renders its plain form")
 	}
-	// Login-time trust Boost reporter (staff/veteran). Self-gates on client
-	// config, so no Boost fires when the community client is unconfigured.
 	communityBooster := communitytrust.New(communityCli, rdb, db)
 
-	// kungal-link-live-checker client — the "report resource expired" gate.
-	// Only construct when BOTH base URL + API key are set; otherwise the gate is
-	// nil and MarkExpired falls back to the legacy single-report-expires flow
-	// (so the feature degrades safely when the checker isn't deployed).
 	var linkChecker *linkcheck.Client
 	if cfg.LinkChecker.BaseURL != "" && cfg.LinkChecker.APIKey != "" {
 		linkChecker = linkcheck.New(linkcheck.Config{
@@ -428,12 +331,8 @@ func New(cfg *config.Config) *App {
 		slog.Warn("link-live-checker NOT configured; resource 报告失效 falls back to legacy single-report-expires — set LINK_CHECKER_BASE_URL / LINK_CHECKER_API_KEY")
 	}
 
-	// Per-user contribution stats, derived from the registry's claim log and the
-	// engine's merged proposals — the wiki stats endpoint they replace counted
-	// rows in tables that are going away.
 	galgameUserStatsSvc := galgameService.NewGalgameUserStatsService(catalogCli, gc)
 
-	// Services
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
 	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, galgameUserStatsSvc, uc, communityCli)
 	userContentService := service.NewUserContentService(userContentRepo, gc, galgameUserStatsSvc, uc, communityCli)
@@ -441,7 +340,6 @@ func New(cfg *config.Config) *App {
 	chatSvc := msgService.NewChatService(chatRepository, uc)
 	notifier := msgService.NewNotifier(messageRepository)
 
-	// Topic
 	topicRepository := topicRepo.NewTopicRepository(db)
 	topicListRepo := topicRepo.NewTopicListRepository(db)
 	topicTaxonomyRepo := topicRepo.NewTopicTaxonomyRepository(db)
@@ -456,16 +354,8 @@ func New(cfg *config.Config) *App {
 	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
 	draftSvc := topicService.NewDraftService(draftRepository)
 
-	// Galgame
-	// Community-backed comment BFF (charter step 03) — the unconditional galgame
-	// comment backend on the `/comments` routes (router.go). The local repo owns
-	// galgame_post_like + the legacy-id map (migration 057).
 	galgameCommunityPostRepo := galgameRepo.NewCommunityPostRepository(db)
 	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
-	// Resource comment BFF (charter step 07) — the unconditional rating / website /
-	// toolset comment backend on the `/comments` routes (router.go). Reuses the SAME
-	// community client + local galgame_post_like repo (post-addressed likes are
-	// region-agnostic).
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
 	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker, trustCheck, trustScan, cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL)
@@ -481,17 +371,12 @@ func New(cfg *config.Config) *App {
 	galgameDetailRatingRepo := galgameRepo.NewGalgameDetailRatingRepository(db)
 	galgameContributorRepo := galgameRepo.NewGalgameContributorRepository(db)
 	galgameEnricher := galgameService.NewGalgameEnricher(galgameLocalRepo, galgameResourceMetaRepo, uc)
-	// Core galgame service is built first: the entity (tag/official/engine)
-	// detail services delegate their galgame list to it (shared local
-	// filter/sort/hydrate), so they take it as a dependency.
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, galgameContributorRepo,
 		userStateRepo, gc, uc, catalogCli,
 		cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL,
 	)
-	// Galgame collections (收藏夹): CRUD + membership. Delegates card hydration +
-	// owner-name lookup to galgameCoreSvc so nothing is duplicated.
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
 	galgameOfficialSvc := galgameService.NewOfficialService(gc, galgameCoreSvc)
@@ -503,27 +388,12 @@ func New(cfg *config.Config) *App {
 	galgameCalendarSvc := galgameService.NewCalendarService(gc, galgameEnricher)
 	galgameDraftsSvc := galgameService.NewDraftsService(gc, galgameEnricher)
 	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)
-	// Submission flow: submit / claim / patch-draft / delete-draft proxies
-	// + local moemoepoint side effects. Per docs/galgame_wiki/07-submission.md.
 	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, catalogCli, galgameLocalRepo)
-	// Submission moderation: the pending-claim queue + the four verdicts.
 	galgameClaimReviewSvc := galgameService.NewClaimReviewService(gc, catalogCli)
-	// Cron-driven ingestion of claim-state transitions: local stub lifecycle
-	// plus the publication reward. Reads the registry's claim-event feed over
-	// S2S — the wiki message feed it replaces retires with the wiki tables.
 	galgameClaimSync := galgameService.NewGalgameClaimEventSync(catalogCli, galgameLocalRepo, rdb)
-	// Mirrors editing-engine revisions into galgame_activity so the forum
-	// activity timeline can show galgame edits (migrations 021 + 067). Reads the
-	// catalog S2S client, not the wiki client: the engine is the author of every
-	// galgame field edit, so its feed is the authoritative source (wave 156 N3).
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
-	// Projects the same engine's work revisions onto galgame_contributor
-	// (migration 069) — the detail page's contributor strip. Unlike the two
-	// crons above it replays the feed from 0 on first run: the table starts
-	// empty and the wiki-era editing history it needs is what the engine holds.
 	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
 
-	// Website
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
 	websiteTagRepo := websiteRepo.NewTagRepository(db)
@@ -533,15 +403,9 @@ func New(cfg *config.Config) *App {
 	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.NextMoeAPI.ImageCDNBase)
 	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.NextMoeAPI.ImageCDNBase)
 
-	// Admin
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo)
 	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
-	// Runtime permission overrides (permission-first authz, Phase 2 role layer +
-	// Phase 3 user layer). PermissionOverrideSync owns the SINGLE Load path that
-	// refreshes BOTH pkg/perm layers; boot, the 60s refresher, and every
-	// write-through (role or user replace) go through it. The audit service serves
-	// the append-only override change log (migration 064).
 	adminRolePermRepo := adminRepo.NewRolePermissionRepository(db)
 	adminUserPermRepo := adminRepo.NewUserPermissionRepository(db)
 	adminPermSync := adminService.NewPermissionOverrideSync(adminRolePermRepo, adminUserPermRepo)
@@ -549,7 +413,6 @@ func New(cfg *config.Config) *App {
 	adminUserPermSvc := adminService.NewUserPermissionService(adminUserPermRepo, uc, adminPermSync)
 	adminPermAuditSvc := adminService.NewPermissionAuditService(adminRepo.NewPermissionAuditRepository(db), uc)
 
-	// Doc
 	docArticleRepo := docRepo.NewArticleRepository(db)
 	docCategoryRepo := docRepo.NewCategoryRepository(db)
 	docTagRepo := docRepo.NewTagRepository(db)
@@ -557,13 +420,10 @@ func New(cfg *config.Config) *App {
 	docCategorySvc := docService.NewCategoryService(docCategoryRepo)
 	docTagSvc := docService.NewTagService(docTagRepo)
 
-	// Toolset
 	toolsetRepository := toolsetRepo.NewToolsetRepository(db)
 	toolsetResourceRepo := toolsetRepo.NewResourceRepository(db)
 	toolsetPracticalityRepo := toolsetRepo.NewPracticalityRepository(db)
 	toolsetPracticalitySvc := toolsetService.NewPracticalityService(toolsetPracticalityRepo)
-	// Detail-page comment preview reads the community primitive (charter step 06a);
-	// the full toolset comment area is served by the shared resource-comment BFF.
 	toolsetCommentSvc := toolsetService.NewCommentService(uc, communityCli)
 	toolsetResourceSvc := toolsetService.NewResourceService(toolsetResourceRepo, toolsetRepository, fileStorageClient, artCli, uc, trustCheck, trustScan)
 	toolsetUploadSvc := toolsetService.NewUploadService(artCli, rdb, db)
@@ -573,19 +433,9 @@ func New(cfg *config.Config) *App {
 		trustCheck, trustScan,
 	)
 
-	// Trust & Safety enforcement adapters — the "thin adapter" half of the
-	// pipeline: each subject_kind wires hide/remove/author-lookup to existing
-	// services/repos. galgame + user are ABSENT (human-only: galgame moderation
-	// is galgame-side, user bans are IdP-side), so their callbacks no-op locally.
-	//
-	// galgame_comment is a legacy subject_kind: its rows migrated to community
-	// posts (charter step 06a), so enforcement resolves the legacy id through the
-	// map and tombstones the migrated post (hide == remove == tombstone; the
-	// primitive has no S2S hide).
 	galgameCommentEnforcer := galgameService.NewGalgameCommentEnforcer(communityCli, galgameCommunityPostRepo)
 	trustRegistry := enforce.Registry{
 		"forum_topic": {
-			// No hard delete exists for topics → hide == remove (status=1).
 			Hide: func(_ context.Context, id int) error {
 				return topicRepository.UpdateFields(id, map[string]any{"status": 1})
 			},
@@ -623,17 +473,13 @@ func New(cfg *config.Config) *App {
 			},
 		},
 		"galgame_comment": {
-			// hide == remove == tombstone the migrated community post (via the map).
 			Hide:     galgameCommentEnforcer.Tombstone,
 			Remove:   galgameCommentEnforcer.Tombstone,
 			AuthorID: galgameCommentEnforcer.AuthorID,
 		},
 	}
-	// warn_user is record-only for now (no system-sender user for a targeted
-	// notice) — pass nil; the dispatcher no-ops warn gracefully.
 	trustEnforce := enforce.NewService(db, trustRegistry, nil)
 
-	// Handlers
 	app := &App{
 		DB: db, Redis: rdb, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
 		UserState:                      userStateRepo,
@@ -684,8 +530,6 @@ func New(cfg *config.Config) *App {
 		GalgameSubmissionHandler:   galgameHandler.NewSubmissionHandler(galgameSubmissionSvc),
 		GalgameClaimReviewHandler:  galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
 		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
-		// The best-cover vote face — the one write that travels as the USER
-		// (Bearer), not as kungal asserting them (wave 176).
 		GalgameCoverVoteHandler: galgameHandler.NewCoverVoteHandler(catalogCli, gc),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
@@ -697,30 +541,11 @@ func New(cfg *config.Config) *App {
 		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run, galgameContributorSync.Run),
 	}
 
-	// Load the runtime permission overrides (BOTH the role and user layers) into
-	// pkg/perm and keep them fresh. A boot-load failure warns and leaves the
-	// compiled baseline in place — the override tables being unreachable must never
-	// block startup or degrade requests (the compiled baseline is the safe known
-	// state).
 	if err := adminPermSync.Load(context.Background()); err != nil {
 		slog.Warn("加载权限覆盖失败, 暂时沿用编译期基线", "error", err)
 	}
 	app.RolePermStop = adminPermSync.StartRefresher(60 * time.Second)
 
-	// Fiber
-	//
-	// ReadBufferSize bumped to 16KB. Fiber's default is 4KB which is too
-	// tight for our SSR request flow: the Nuxt server forwards the
-	// authenticated user's cookies to /api, and once
-	// pinia-plugin-persistedstate has spread several stores (user,
-	// settings, sidebar, etc.) plus the OAuth session cookie across a
-	// long-lived session, the Cookie header alone can creep past 4KB and
-	// surface as the rather uninformative
-	// "Request Header Fields Too Large" (which silently empties pages
-	// because the SSR fetch fails). The frontend kunFetch only forwards
-	// the session cookie now to keep things tight, but the bump here is
-	// defense in depth for real-world browsers that accumulate
-	// third-party cookies.
 	fiberApp := fiber.New(fiber.Config{
 		ErrorHandler:   globalErrorHandler,
 		BodyLimit:      10 * 1024 * 1024,

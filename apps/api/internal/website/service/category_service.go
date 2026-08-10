@@ -27,10 +27,6 @@ func NewCategoryService(
 	}
 }
 
-// ──────────────────────────────────────────
-// GetDetail — GET /website-category/:name
-// ──────────────────────────────────────────
-
 func (s *CategoryService) GetDetail(name string, isSFW bool) (*dto.WebsiteCategoryDetailResponse, *errors.AppError) {
 	category, err := s.categoryRepo.FindByName(name)
 	if err != nil {
@@ -53,10 +49,6 @@ func (s *CategoryService) GetDetail(name string, isSFW bool) (*dto.WebsiteCatego
 		Updated:      category.UpdatedAt,
 	}, nil
 }
-
-// ──────────────────────────────────────────
-// Update — PUT /website-category
-// ──────────────────────────────────────────
 
 func (s *CategoryService) Update(req *dto.UpdateWebsiteCategoryRequest) *errors.AppError {
 	s.categoryRepo.UpdateFields(req.CategoryID, map[string]any{

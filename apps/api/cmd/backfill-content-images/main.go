@@ -1,41 +1,3 @@
-// Backfill legacy content images: rehost every `https://image.kungal.com/...`
-// image embedded in user content onto image_service, then rewrite the stored
-// content to the domain-independent `/image/<hash>` token (resolved to the CDN
-// URL at render time — never a hardcoded domain in content).
-//
-// Background: before image_service, kungal's image uploader put files at the
-// PATH-based legacy host `image.kungal.com/topic/user_<id>/<name>-<ts>.webp`.
-// image_service (image.kungal.iloveren.link/{aa}/{bb}/{hash}.webp) replaced it,
-// but old posts still reference the legacy host. This command migrates those.
-// (Avatars are NOT here — OAuth owns them; kungal doesn't store avatars.)
-//
-// Scope (content columns that can embed `image.kungal.com` URLs):
-//
-//	topic.content · topic_reply.content · chat_message.content
-//
-// galgame cover/screenshot already moved to image_service (image_hash); doc
-// banners are repo static assets; website icons are external favicons — none here.
-// Stickers (sticker.kungal.com) are a separate service and intentionally NOT touched.
-//
-// Per distinct old URL: HTTP-fetch the original from `-base` (default the public
-// legacy host, confirmed reachable via Cloudflare) → upload to image_service under
-// the `topic` preset → cache the new URL → string-replace every occurrence in each
-// row's content. The same image referenced by many rows is uploaded once
-// (cross-table cache). A URL that 404s / fails is logged and SKIPPED (its rows keep
-// the old URL — safe, and a re-run retries). Content is the ONLY column written —
-// we deliberately do NOT touch `updated`, so topics aren't bounced to "recently updated".
-//
-// SAFE BY DEFAULT: -dry-run defaults to TRUE — it scans + reports the distinct-file
-// workload per table, with NO network and NO DB writes. Pass -dry-run=false to run.
-// Idempotent: once rewritten, content no longer matches `%image.kungal.com%`, so a
-// re-run skips it (and re-tries only the previously-dead URLs). The job logs are the
-// audit trail: every old→new mapping, every dead URL, and every rewritten row.
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  backfill-content-images                       # dry-run: report distinct-file workload
-//	  backfill-content-images -dry-run=false        # actually rehost + rewrite (~5.4k files, sequential)
-//	  backfill-content-images -dry-run=false -limit=20   # smoke-test 20 rows/table first
-//	  backfill-content-images -base=http://legacy-image:80   # fetch originals elsewhere
 package main
 
 import (
@@ -61,27 +23,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Matches a legacy image URL up to the first markdown/whitespace/quote delimiter.
-// Filenames may contain non-ASCII (e.g. 茅羽耶-...webp), which these bytes allow.
 var legacyImageRe = regexp.MustCompile(`https://image\.kungal\.com/[^\s)"'>\]\\]+`)
 
-// Trailing prose punctuation that can cling to a bare URL ("…见 x.webp。"). Stripped
-// so the captured URL is exactly the file (a ".webp" tail is never affected).
 const trailingPunct = `.,;!?，。、）】>`
 
-// table + its content column to scan/rewrite.
 type target struct {
 	table string
 	col   string
 }
 
-// Every string column that can embed a legacy image.kungal.com image. The first
-// run covered the four primary content columns; the rest were found by a full
-// information_schema sweep (2026-06-16) — doc bodies, toolset descriptions, and
-// two snapshot columns (notifications + quoted-reply targets) that copy content
-// containing images. This is a one-off migration tool, run with -dry-run first so
-// the column set is eyeballed each time. (cron.RunReferencePing no longer needs to
-// mirror this list — it is schema-derived, scanning every text column for tokens.)
 var targets = []target{
 	{"topic", "content"},
 	{"topic_reply", "content"},
@@ -122,10 +72,10 @@ func main() {
 	httpClient := &http.Client{Timeout: 60 * time.Second}
 	ctx := context.Background()
 
-	migrated := map[string]string{} // oldURL -> new image_service URL (uploaded this run)
-	dead := map[string]bool{}       // oldURL that failed to fetch/upload (skipped)
-	seen := map[string]bool{}       // distinct oldURL seen across all tables
-	deadList := []string{}          // ordered dead URLs, for the end-of-run report
+	migrated := map[string]string{}
+	dead := map[string]bool{}
+	seen := map[string]bool{}
+	deadList := []string{}
 	perTableRows := map[string]int{}
 
 	var rowsUpdated, rowsSkipped, replacements, uploads int
@@ -163,7 +113,7 @@ func main() {
 					continue
 				}
 				if *dryRun {
-					continue // dry-run = pure accounting; no fetch/upload/rewrite
+					continue
 				}
 				newURL, done := migrated[old]
 				if !done {
@@ -181,10 +131,6 @@ func main() {
 						deadList = append(deadList, old)
 						continue
 					}
-					// Store the domain-independent token, NOT res.URL (absolute).
-					// A hardcoded CDN domain in content is the exact failure mode
-					// this migration exists to kill — resolved at render time +
-					// /image/:hash 302 (image_service contract).
 					newURL = "/image/" + res.Hash
 					migrated[old] = newURL
 					uploads++
@@ -202,7 +148,7 @@ func main() {
 
 			if *dryRun || rowReplaced == 0 {
 				if !*dryRun {
-					rowsSkipped++ // had only dead URLs → nothing rewritten this pass
+					rowsSkipped++
 				}
 				continue
 			}
@@ -240,8 +186,6 @@ func main() {
 		len(migrated), rowsUpdated, replacements, rowsSkipped, len(dead))
 }
 
-// extractLegacyURLs pulls every legacy image URL out of one content string,
-// strips clinging prose punctuation, and de-dups (a row may repeat the same image).
 func extractLegacyURLs(content string) []string {
 	raw := legacyImageRe.FindAllString(content, -1)
 	out := make([]string, 0, len(raw))
@@ -251,8 +195,6 @@ func extractLegacyURLs(content string) []string {
 	return dedupe(out)
 }
 
-// rewriteHost swaps the legacy host for -base so originals can be fetched from
-// an internal mirror when image.kungal.com isn't reachable from the job.
 func rewriteHost(url, base string) string {
 	if base == "" || base == "https://image.kungal.com" {
 		return url
@@ -286,5 +228,5 @@ func fetch(ctx context.Context, c *http.Client, url string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, 32<<20)) // 32MB guard
+	return io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 }

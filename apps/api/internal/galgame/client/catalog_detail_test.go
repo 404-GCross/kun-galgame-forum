@@ -1,23 +1,5 @@
 package client
 
-// Contract tests for the detail projection (A2-R2). Hermetic: the aggregate is
-// served by a httptest catalog, so the whole path — wire decode plus projection
-// — is under test rather than a hand-built struct.
-//
-// What they pin, and why each is a test rather than a comment:
-//
-//   - labels[] is one row per attribution EDGE. A brand credited as developer
-//     AND publisher AND brand arrives three times, and the un-deduped strip
-//     rendered the same 会社 three times on the live detail page;
-//   - the chip's category must be the label's OWN kind (label_kind), because
-//     that is the vocabulary the 会社 index page's map speaks — the per-edge
-//     role leaked raw English words like "developer" onto the page;
-//   - work_count reaches all three chip families. The projection used to leave
-//     galgame_count at its zero value, so every chip on the site read "+ 0";
-//   - a MISSING work_count key is 0, not an error and not a guess. Two real
-//     cases produce one: the window before the supplying wave is deployed, and
-//     an unmapped source tag, which never gets a count at all.
-
 import (
 	"context"
 	"net/http"
@@ -28,9 +10,6 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-// detailStub serves the two hops CatalogWorkDetail makes: the gid→catalog id
-// lookup, then the aggregate itself. body is the `data` object of the detail
-// response, so a test writes only the blocks it cares about.
 func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -51,7 +30,6 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.S
 	return srv
 }
 
-// fullOf drives the real two-hop fetch and returns the projected detail.
 func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	t.Helper()
 	const gid, catalogID = 777, 4242
@@ -68,14 +46,6 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	return CatalogDetailToFull(d, gid)
 }
 
-// TestCatalogDetail_HeroPrefersTheLandscapeCover pins the detail hero against
-// the card: both must resolve to the wide art. The detail face ships a flat
-// covers[] ordered portrait-pin-first, so taking covers[0] — what this used to
-// do — put a portrait in a landscape hero frame for every work that has both.
-//
-// These bodies carry NO cover_slots, so they now pin the transitional path (an
-// upstream older than wave 187). They go when the fallback does; the slot-fed
-// behaviour is TestCatalogDetail_HeroReadsTheCatalogCoverSlots below.
 func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	t.Run("landscape present", func(t *testing.T) {
 		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
@@ -90,7 +60,6 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 			t.Errorf("dims/thumbhash = %dx%d %q, want 1280x720 B",
 				f.EffectiveBannerWidth, f.EffectiveBannerHeight, f.EffectiveBannerThumbhash)
 		}
-		// The gallery itself is untouched — only the derived hero moved.
 		if len(f.Covers) != 2 || f.Covers[0].CDNURL != "https://cdn.example/ab/cd/portrait.webp" {
 			t.Errorf("covers[] order changed: %+v", f.Covers)
 		}
@@ -107,8 +76,6 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	})
 
 	t.Run("dims unknown falls back to the pin", func(t *testing.T) {
-		// image_service has no entry for either cover, so orientation is
-		// unknowable — the server-ordered pin is the honest choice.
 		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
 			{"url":"https://cdn.example/ab/cd/pinned.webp","kind":"main"},
 			{"url":"https://cdn.example/ef/gh/other.webp","kind":"dig"}
@@ -120,12 +87,6 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	})
 }
 
-// TestCatalogDetail_HeroReadsTheCatalogCoverSlots pins the wave-187 handover:
-// once the detail face carries cover_slots, the forum stops deciding and reads.
-// The regression case is work 51 — a 1084×1080 DISC FACE, wide enough to pass
-// the old local scan and rejected by the catalog's picker on both counts (not
-// 3:2 wide, and a packaging photo rather than art), so the hero has to come out
-// as the 720×1080 digital cover the card already shows.
 func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 	t.Run("banner slot wins", func(t *testing.T) {
 		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
@@ -181,8 +142,6 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 }
 
 func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
-	// The same brand on three edges, plus a second label — the shape a doujin
-	// work with a circle and a publisher actually has.
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","labels":[
 		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja","work_count":42},
 		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"publisher","lang":"ja","work_count":42},
@@ -195,14 +154,10 @@ func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
 		t.Fatalf("projected %d 制作方 rows, want 2 — one per LABEL, not one per attribution edge: %+v",
 			len(f.Official), f.Official)
 	}
-	// First-seen order survives: the face orders edges by kind, so the winner
-	// must be stable rather than map-ordered.
 	if f.Official[0].Official.ID != 11 || f.Official[1].Official.ID != 22 {
 		t.Errorf("row order = [%d %d], want [11 22] (first occurrence wins)",
 			f.Official[0].Official.ID, f.Official[1].Official.ID)
 	}
-	// The chip's category is the label's own kind — the vocabulary the 会社
-	// index page's map speaks. The per-edge role would print "developer".
 	if got := f.Official[0].Official.Category; got != "game_brand" {
 		t.Errorf("category = %q, want game_brand (label_kind, not the edge kind)", got)
 	}
@@ -236,9 +191,6 @@ func TestCatalogDetail_WorkCountReachesAllThreeChipFamilies(t *testing.T) {
 }
 
 func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
-	// Exactly the pre-deployment aggregate: no work_count key anywhere. The
-	// unmapped tag is the permanent version of the same case (it is dropped
-	// from the strip entirely, so only the mapped one is asserted on).
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja",
 		"labels":[{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja"}],
 		"engines":[{"id":31,"name":"KiriKiri"}],
@@ -258,26 +210,11 @@ func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
 	if f.Tag[0].Tag.GalgameCount != 0 {
 		t.Errorf("missing tag work_count must decode to 0, got %+v", f.Tag[0])
 	}
-	// The rows themselves must still render — a missing count hides the badge,
-	// never the 会社/引擎/标签 itself.
 	if f.Official[0].Official.Name != "戯画" || f.Engine[0].Engine.Name != "KiriKiri" {
 		t.Errorf("rows dropped along with their counts: %+v %+v", f.Official, f.Engine)
 	}
 }
 
-// TestCatalogDetail_RosterKeepsBothArtsApart pins the 登场角色 projection.
-//
-// The one thing that must not drift here is that `image` and `figure` are
-// separate assets rather than two sizes of one. The bust is cover-cropped
-// upstream and belongs in a portrait box; the full-body 立绘 has to keep its own
-// ratio, and the renderer can only know which is which if the projection keeps
-// them in their own fields. Collapsing them to a single "art" URL — the obvious
-// simplification — is exactly the bug: half the roster would then be cropped to
-// a midriff.
-//
-// It also pins that a roster row survives with NO art at all. Character-image
-// coverage is partial and always will be, and dropping the pictureless rows
-// would silently delete most of the cast of most games.
 func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","characters":[
 		{"id":11,"name":"藤田 佳奈","latin":"Fujita Kana","kind":"main","spoiler":0,
@@ -306,8 +243,6 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 		t.Errorf("voices = %+v, want both credited names with their staff-page ids", lead.Voices)
 	}
 
-	// "unknown" is a real billing the catalog publishes, not a parse failure,
-	// and the spoiler level is what the panel withholds the row on.
 	bare := f.Characters[1]
 	if bare.Kind != "unknown" || bare.Spoiler != 2 {
 		t.Errorf("kind/spoiler = %q/%d, want unknown/2", bare.Kind, bare.Spoiler)
@@ -315,7 +250,6 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 	if bare.Image != "" || bare.Figure != "" {
 		t.Errorf("a character with no art must not acquire any: %+v", bare)
 	}
-	// Never nil: the FE iterates it unguarded, and JSON null is not an array.
 	if bare.Voices == nil {
 		t.Error("voices serialized as null, want []")
 	}

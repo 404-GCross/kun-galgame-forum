@@ -18,8 +18,6 @@ func NewTagHandler(tagService *service.TagService) *TagHandler {
 	return &TagHandler{tagService: tagService}
 }
 
-// GetTags returns doc tag list.
-// GET /api/doc/tag
 func (h *TagHandler) GetTags(c fiber.Ctx) error {
 	var req dto.GetTagsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -30,8 +28,6 @@ func (h *TagHandler) GetTags(c fiber.Ctx) error {
 	return response.Paginated(c, result.Items, result.Total)
 }
 
-// CreateTag creates a doc tag.
-// POST /api/doc/tag
 func (h *TagHandler) CreateTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -48,8 +44,6 @@ func (h *TagHandler) CreateTag(c fiber.Ctx) error {
 	return response.OK(c, created)
 }
 
-// UpdateTag updates an existing doc tag.
-// PUT /api/doc/tag
 func (h *TagHandler) UpdateTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -66,8 +60,6 @@ func (h *TagHandler) UpdateTag(c fiber.Ctx) error {
 	return response.OK(c, tag)
 }
 
-// DeleteTag deletes a doc tag.
-// DELETE /api/doc/tag
 func (h *TagHandler) DeleteTag(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

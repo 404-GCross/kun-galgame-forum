@@ -28,17 +28,9 @@ func NewTagService(
 	}
 }
 
-// ──────────────────────────────────────────
-// GetAll — GET /website-tag
-// ──────────────────────────────────────────
-
 func (s *TagService) GetAll() []model.GalgameWebsiteTag {
 	return s.tagRepo.FindAll()
 }
-
-// ──────────────────────────────────────────
-// GetDetail — GET /website-tag/:name
-// ──────────────────────────────────────────
 
 func (s *TagService) GetDetail(name string, isSFW bool) (*dto.WebsiteTagDetailResponse, *errors.AppError) {
 	tag, err := s.tagRepo.FindByName(name)
@@ -70,10 +62,6 @@ func (s *TagService) GetDetail(name string, isSFW bool) (*dto.WebsiteTagDetailRe
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// Create — POST /website-tag
-// ──────────────────────────────────────────
-
 func (s *TagService) Create(req *dto.CreateWebsiteTagRequest) *errors.AppError {
 	tag := &model.GalgameWebsiteTag{
 		Name:        req.Name,
@@ -87,10 +75,6 @@ func (s *TagService) Create(req *dto.CreateWebsiteTagRequest) *errors.AppError {
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Update — PUT /website-tag
-// ──────────────────────────────────────────
-
 func (s *TagService) Update(req *dto.UpdateWebsiteTagRequest) *errors.AppError {
 	s.tagRepo.UpdateFields(req.TagID, map[string]any{
 		"name":        req.Name,
@@ -100,10 +84,6 @@ func (s *TagService) Update(req *dto.UpdateWebsiteTagRequest) *errors.AppError {
 	})
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Delete — DELETE /website-tag
-// ──────────────────────────────────────────
 
 func (s *TagService) Delete(id int) *errors.AppError {
 	s.tagRepo.DeleteByID(id)

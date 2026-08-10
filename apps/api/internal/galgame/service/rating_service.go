@@ -46,8 +46,6 @@ func NewRatingService(
 	}
 }
 
-// ratingReward applies the documented thresholds (architecture-patterns spec):
-// summary < 233 → +3, < 666 → +5, ≥ 666 → +10.
 func ratingReward(summaryLen int) int {
 	switch {
 	case summaryLen >= constants.RatingLenThresholdHigh:
@@ -59,21 +57,11 @@ func ratingReward(summaryLen int) int {
 	}
 }
 
-// ──────────────────────────────────────────
-// GetAllRatings — GET /galgame-rating/all
-// ──────────────────────────────────────────
-
-// GetAllRatings returns the public rating list. SFW filter is applied
-// at the service layer against each rating's galgame brief (content_limit
-// lives only on galgame, not on the local galgame_rating row), so `total`
-// over-reports in SFW mode — same SEO-safe trade-off as
-// galgame_service.GetList.
 func (s *RatingService) GetAllRatings(
 	ctx context.Context,
 	req *dto.RatingListRequest,
 	isSFW bool,
 ) (*dto.RatingListPage, *errors.AppError) {
-	// Normalise sort order
 	sortOrder := req.SortOrder
 	if sortOrder == "" {
 		sortOrder = "desc"
@@ -89,7 +77,6 @@ func (s *RatingService) GetAllRatings(
 		Limit:        req.Limit,
 	})
 
-	// Batch resolve users and galgames
 	userIDs := make([]int, len(rows))
 	galgameIDs := make([]int, len(rows))
 	for i, r := range rows {
@@ -97,9 +84,6 @@ func (s *RatingService) GetAllRatings(
 		galgameIDs[i] = r.GalgameID
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
-	// Galgame-side SFW filter (content_limit) per
-	// docs/galgame_wiki/00-handbook §16. Rows whose galgame is filtered
-	// come back as "no brief returned" and get dropped below.
 	briefMap := s.fetchGalgameBriefsPublic(ctx, galgameIDs, isSFW)
 
 	cards := make([]dto.RatingCard, 0, len(rows))
@@ -118,13 +102,6 @@ func (s *RatingService) GetAllRatings(
 	return &dto.RatingListPage{RatingData: cards, Total: total}, nil
 }
 
-// ──────────────────────────────────────────
-// GetRatingDetail — GET /galgame-rating/:id
-// ──────────────────────────────────────────
-
-// GetRatingDetail — NSFW gate intentionally absent here; mirrors the
-// galgame/topic detail policy. FE decides UX based on the embedded
-// galgame.contentLimit and the caller's cookie+login state.
 func (s *RatingService) GetRatingDetail(
 	ctx context.Context,
 	ratingID, currentUserID int,
@@ -134,24 +111,16 @@ func (s *RatingService) GetRatingDetail(
 		return nil, errors.ErrNotFound("评分不存在")
 	}
 
-	// A banned author's rating is hidden even by direct link — 404 before
-	// counting a view. (Cached; the batch hydrate below reuses it.)
 	if author, _, _ := s.userClient.User(ctx, row.UserID); !userclient.IsRenderable(author) {
 		return nil, errors.ErrNotFound("评分不存在")
 	}
 
-	// Fire-and-forget view increment; reflect it in response too.
 	s.ratingRepo.IncrementView(ratingID)
 	row.View++
 
-	// Liked users
 	likerIDs := s.ratingRepo.FindLikerIDs(ratingID)
 	isLiked := containsInt(likerIDs, currentUserID)
 
-	// Author + likers — collect uids and hydrate in one batch. The rating
-	// comment embed was dropped in charter step 06a: the comment area now reads
-	// from the community primitive via /galgame-rating/:id/comments, and the FE
-	// no longer consumes a `comments` field on the detail response.
 	uidSet := map[int]struct{}{row.UserID: {}}
 	for _, id := range likerIDs {
 		uidSet[id] = struct{}{}
@@ -162,10 +131,8 @@ func (s *RatingService) GetRatingDetail(
 	}
 	userMap := s.userClient.Hydrate(ctx, uids)
 
-	// Galgame detail from galgame + (when present) its parent series.
 	galgame := s.buildRatingGalgame(ctx, row.GalgameID)
 
-	// Author projection of liked users (preserve liker order).
 	authorBriefs := make([]dto.UserBrief, 0, len(likerIDs))
 	for _, id := range likerIDs {
 		u := userMap[id]
@@ -196,11 +163,6 @@ func (s *RatingService) GetRatingDetail(
 	return detail, nil
 }
 
-// ──────────────────────────────────────────
-// CreateRating — POST /galgame-rating
-// One rating per user per galgame. Reward tier follows summary length.
-// ──────────────────────────────────────────
-
 func (s *RatingService) CreateRating(
 	ctx context.Context,
 	userID int,
@@ -210,9 +172,6 @@ func (s *RatingService) CreateRating(
 		return nil, errors.ErrBadRequest("您已经发布过该 Galgame 的评分了")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): the rating's free
-	// text is its short_summary. deny blocks (nothing persisted); hold publishes+
-	// logs; fail-open on any error/timeout.
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, req.ShortSummary, &authorID)
 	if decision == gate.DecisionDeny {
@@ -235,11 +194,6 @@ func (s *RatingService) CreateRating(
 	reward := ratingReward(len(req.ShortSummary))
 
 	txErr := s.ratingRepo.DB().Transaction(func(tx *gorm.DB) error {
-		// Lazy-create the local stub before the rating INSERT. galgame_rating
-		// has an ON DELETE RESTRICT FK to the local galgame stub table, which
-		// is sparse (only created on interactions); rating a galgame nobody
-		// has otherwise touched would FK-violate → opaque 500. Matches the
-		// comment / resource / like / favorite paths.
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).
 			Create(&model.GalgameLocal{ID: req.GalgameID}).Error; err != nil {
 			return err
@@ -294,12 +248,6 @@ func (s *RatingService) CreateRating(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// UpdateRating — PUT /galgame-rating/:id
-// Author-only. Adjusts moemoepoint by the reward-tier delta when the summary
-// length crosses a threshold.
-// ──────────────────────────────────────────
-
 func (s *RatingService) UpdateRating(
 	ctx context.Context,
 	userID int,
@@ -313,8 +261,6 @@ func (s *RatingService) UpdateRating(
 		return errors.ErrForbidden("您无权限修改他人评分")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (rating.UserID).
 	authorID := int64(rating.UserID)
 	decision, matched := s.check.Decision(ctx, req.ShortSummary, &authorID)
 	if decision == gate.DecisionDeny {
@@ -354,11 +300,6 @@ func (s *RatingService) UpdateRating(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// DeleteRating — DELETE /galgame-rating/:id
-// Allowed by author, by galgame owner, or admin. Refunds the original reward.
-// ──────────────────────────────────────────
-
 func (s *RatingService) DeleteRating(
 	userID int, canModerate bool, ratingID int,
 ) *errors.AppError {
@@ -385,12 +326,6 @@ func (s *RatingService) DeleteRating(
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// ToggleRatingLike — PUT /galgame-rating/:id/like
-// Self-like is rejected. Like grants +1 to the rating author; unlike reverses.
-// Sends a deduped 'liked' notification with the summary preview as content.
-// ──────────────────────────────────────────
 
 func (s *RatingService) ToggleRatingLike(
 	userID int,
@@ -435,15 +370,6 @@ func (s *RatingService) ToggleRatingLike(
 	return nil
 }
 
-// The rating comment area moved to the infra community primitive (charter step
-// 06a): the /galgame-rating/:id/comment CRUD was retired, its DTOs + repo methods
-// removed, and the galgame_rating_comment table dropped (migration 060). Comments
-// are now served by the shared resource-comment BFF on the `/comments` routes.
-
-// ──────────────────────────────────────────
-// Internal helpers
-// ──────────────────────────────────────────
-
 func (s *RatingService) fetchGalgameBriefs(
 	ctx context.Context,
 	galgameIDs []int,
@@ -458,8 +384,6 @@ func (s *RatingService) fetchGalgameBriefs(
 	return m
 }
 
-// fetchGalgameBriefsPublic is the SFW-aware variant — for public list paths
-// that must honour content_limit per docs/galgame_wiki/00-handbook §16.
 func (s *RatingService) fetchGalgameBriefsPublic(
 	ctx context.Context,
 	galgameIDs []int,
@@ -475,12 +399,6 @@ func (s *RatingService) fetchGalgameBriefsPublic(
 	return m
 }
 
-// buildRatingGalgame fetches the rated work's catalog aggregate and fuses in
-// the local rating stats.
-//
-// The "所属系列" panel and the Review JSON-LD `isPartOf` clause are gone with
-// the wiki series vocabulary (P3): 146 wiki series, only 6 with any catalog
-// counterpart, so there was nothing to re-anchor them to.
 func (s *RatingService) buildRatingGalgame(
 	ctx context.Context,
 	galgameID int,
@@ -489,12 +407,8 @@ func (s *RatingService) buildRatingGalgame(
 		ID:       galgameID,
 		Official: []dto.RatingOfficial{},
 	}
-	// content_limit=all (permissive): the rating page doesn't gate NSFW here (FE
-	// confirm card). Best-effort — an unreachable / not-found galgame leaves the
-	// summary at its zero-ish defaults + local rating stats below.
 	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID); appErr == nil && found {
 		g := client.CatalogDetailToFull(d, galgameID)
-		// Same 制作方 block as the detail page, so the same 官网 hydration.
 		s.galgameClient.HydrateOfficialLinks(ctx, &g)
 		summary.ID = g.ID
 		summary.Banner = g.Banner

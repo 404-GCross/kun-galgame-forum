@@ -8,9 +8,6 @@ import (
 	"kun-galgame-api/internal/trust/dto"
 )
 
-// TestApplyIdempotentAndRoutes exercises the dispatcher against a real Postgres
-// (trust_disposition_applied): first apply dispatches + records; a replay of the
-// same disposition_id is a no-op. Also checks action → adapter routing.
 func TestApplyIdempotentAndRoutes(t *testing.T) {
 	db := testdb.Open(t)
 
@@ -42,7 +39,6 @@ func TestApplyIdempotentAndRoutes(t *testing.T) {
 		t.Fatal("disposition not recorded")
 	}
 
-	// Replay: same disposition_id → no-op (no second hide call).
 	if err := svc.Apply(context.Background(), cb); err != nil {
 		t.Fatalf("replay apply: %v", err)
 	}
@@ -50,7 +46,6 @@ func TestApplyIdempotentAndRoutes(t *testing.T) {
 		t.Fatalf("replay must not re-dispatch; hide calls = %d", hideCalls)
 	}
 
-	// An unknown subject_kind (no adapter) is a safe no-op, still recorded.
 	const dispID2 int64 = 2_000_000_778
 	db.Exec("DELETE FROM trust_disposition_applied WHERE disposition_id = ?", dispID2)
 	defer db.Exec("DELETE FROM trust_disposition_applied WHERE disposition_id = ?", dispID2)

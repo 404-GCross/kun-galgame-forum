@@ -16,14 +16,11 @@ func NewPracticalityRepository(db *gorm.DB) *PracticalityRepository {
 
 func (r *PracticalityRepository) DB() *gorm.DB { return r.db }
 
-// RateCount holds a row from `SELECT rate, COUNT(*) GROUP BY rate`.
 type RateCount struct {
 	Rate  int   `json:"rate"`
 	Count int64 `json:"count"`
 }
 
-// CountsByToolset returns the per-rate distribution for a toolset.
-// The returned slice only contains rates with count > 0.
 func (r *PracticalityRepository) CountsByToolset(toolsetID int) []RateCount {
 	var counts []RateCount
 	r.db.Model(&model.GalgameToolsetPracticality{}).
@@ -34,7 +31,6 @@ func (r *PracticalityRepository) CountsByToolset(toolsetID int) []RateCount {
 	return counts
 }
 
-// AverageRate returns the average rating (0 if none exist).
 func (r *PracticalityRepository) AverageRate(toolsetID int) float64 {
 	var avg float64
 	r.db.Model(&model.GalgameToolsetPracticality{}).
@@ -43,7 +39,6 @@ func (r *PracticalityRepository) AverageRate(toolsetID int) float64 {
 	return avg
 }
 
-// AveragesForToolsets returns a map[toolsetID]avg for a batch of toolsets.
 func (r *PracticalityRepository) AveragesForToolsets(toolsetIDs []int) map[int]float64 {
 	if len(toolsetIDs) == 0 {
 		return map[int]float64{}
@@ -65,8 +60,6 @@ func (r *PracticalityRepository) AveragesForToolsets(toolsetIDs []int) map[int]f
 	return out
 }
 
-// FindUserRating returns the user's rating for a toolset, if any.
-// Returns (nil, nil) when the user has not rated.
 func (r *PracticalityRepository) FindUserRating(toolsetID, userID int) (*model.GalgameToolsetPracticality, error) {
 	var p model.GalgameToolsetPracticality
 	err := r.db.Where("toolset_id = ? AND user_id = ?", toolsetID, userID).First(&p).Error
@@ -79,7 +72,6 @@ func (r *PracticalityRepository) FindUserRating(toolsetID, userID int) (*model.G
 	return &p, nil
 }
 
-// Upsert creates or updates the user's rating for a toolset.
 func (r *PracticalityRepository) Upsert(toolsetID, userID, rate int) error {
 	existing, err := r.FindUserRating(toolsetID, userID)
 	if err != nil {

@@ -1,10 +1,5 @@
 package client
 
-// The 制作方 block's 官网. A work detail's labels[] rows carry no links, so the
-// maker's site is a second lookup against the label record; before it existed
-// every galgame page said 暂无官网 even for a maker whose own 会社 page had
-// linked its homepage for years. Hermetic: an httptest server plays the catalog.
-
 import (
 	"context"
 	"net/http"
@@ -15,12 +10,6 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-// labelCatalog plays a catalog with three labels: one with an official site
-// listed after another presence, one reachable only on X, one with no links at
-// all. The source keys are the catalog's real vocabulary (official_site /
-// twitter / cien) — the bug this file guards was a preference written against
-// key names that do not exist, which silently made "the first link" the rule.
-// It counts the requests per path, which is how the memo is asserted.
 func labelCatalog(t *testing.T) (*GalgameClient, func(string) int) {
 	t.Helper()
 	var mu sync.Mutex
@@ -73,10 +62,10 @@ func TestHydrateOfficialLinksPrefersTheOfficialSite(t *testing.T) {
 	c.HydrateOfficialLinks(context.Background(), &g)
 
 	want := []string{
-		"https://www.purplesoftware.jp", // official_site wins over the earlier twitter row
-		"",                              // X + Ci-en but no site: 暂无官网 is the honest answer, not the X account
-		"",                              // no links at all
-		"",                              // unknown id: a 404 must cost the link, not the page
+		"https://www.purplesoftware.jp",
+		"",
+		"",
+		"",
 	}
 	for i, w := range want {
 		if got := g.Official[i].Official.Link; got != w {
@@ -87,9 +76,6 @@ func TestHydrateOfficialLinksPrefersTheOfficialSite(t *testing.T) {
 
 func TestHydrateOfficialLinksMemoizesPerLabel(t *testing.T) {
 	c, hits := labelCatalog(t)
-	// Two page views of two different works that share a maker, plus a maker
-	// with no site — the negative must be remembered too, or a linkless label
-	// would be re-asked on every single page view.
 	for range 2 {
 		g := detailWithLabels(107, 309)
 		c.HydrateOfficialLinks(context.Background(), &g)

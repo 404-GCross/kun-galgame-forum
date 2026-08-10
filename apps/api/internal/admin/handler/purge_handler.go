@@ -19,8 +19,6 @@ func NewPurgeHandler(purgeService *service.PurgeService) *PurgeHandler {
 	return &PurgeHandler{purgeService: purgeService}
 }
 
-// GetUserContentStats previews how much content a user has (for the purge
-// confirmation). GET /api/admin/user/:id/content-stats
 func (h *PurgeHandler) GetUserContentStats(c fiber.Ctx) error {
 	userID, appErr := parseUserID(c)
 	if appErr != nil {
@@ -29,8 +27,6 @@ func (h *PurgeHandler) GetUserContentStats(c fiber.Ctx) error {
 	return response.OK(c, h.purgeService.GetUserContentStats(c.Context(), userID))
 }
 
-// PurgeUserContent hard-deletes all of a user's kungal content + interactions.
-// DELETE /api/admin/user/:id/content
 func (h *PurgeHandler) PurgeUserContent(c fiber.Ctx) error {
 	operator, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

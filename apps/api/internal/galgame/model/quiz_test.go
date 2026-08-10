@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-// TestQuizBumpCutoff pins the quiz necro-bump window: the cutoff is exactly 3
-// days before the reference instant, and answering bumps a quiz iff its
-// `created` is strictly after that cutoff (the gate applied in SQL as
-// `created > QuizBumpCutoff(now)`).
 func TestQuizBumpCutoff(t *testing.T) {
 	now := time.Date(2026, time.July, 16, 12, 0, 0, 0, time.UTC)
 
@@ -30,7 +26,7 @@ func TestQuizBumpCutoff(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			bumps := c.created.After(got) // mirrors `created > cutoff`
+			bumps := c.created.After(got)
 			if bumps != c.wantBumps {
 				t.Errorf("created=%v bumps=%v, want %v", c.created, bumps, c.wantBumps)
 			}

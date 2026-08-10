@@ -10,8 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// NotifyKind is the discrete value persisted in message.type. It mirrors the
-// set the frontend renders in the notification center.
 type NotifyKind string
 
 const (
@@ -30,22 +28,15 @@ const (
 	NotifyDeclined  NotifyKind = "declined"
 )
 
-// notifyContentLimit matches the varchar(233) column width on message.content.
 const notifyContentLimit = 233
 
-// Spec describes a single notification to emit. Link is built from the first
-// non-zero target among TopicID, GalgameID, ToolsetID, WebsiteURL (in that
-// order) to mirror the legacy Nitro helper.
 type Spec struct {
 	SenderID   int
 	ReceiverID int
 	Kind       NotifyKind
 	Content    string
 
-	TopicID int
-	// ReplyFloor / CommentID deep-link a topic notification to the exact reply
-	// (?reply=<floor>) or comment (?comment=<id>) rather than the topic root.
-	// Only meaningful alongside TopicID; comment takes precedence (BuildTopicLink).
+	TopicID    int
 	ReplyFloor int
 	CommentID  int
 	GalgameID  int
@@ -53,9 +44,6 @@ type Spec struct {
 	WebsiteURL string
 }
 
-// Notifier emits user-to-user notifications. Implementations MUST swallow
-// self-notifications and dedup identical (sender, receiver, type, content,
-// link) rows so toggling like→unlike→like doesn't spam the receiver.
 type Notifier interface {
 	Emit(tx *gorm.DB, spec Spec) error
 	EmitMany(tx *gorm.DB, specs []Spec) error
@@ -65,7 +53,6 @@ type notifier struct {
 	repo *msgRepo.MessageRepository
 }
 
-// NewNotifier wires a Notifier that writes into the project's message table.
 func NewNotifier(repo *msgRepo.MessageRepository) Notifier {
 	return &notifier{repo: repo}
 }
@@ -76,7 +63,6 @@ func (n *notifier) Emit(tx *gorm.DB, spec Spec) error {
 	}
 	link := buildNotifyLink(spec)
 	if link == "" {
-		// No target = nothing actionable to surface in the UI.
 		return nil
 	}
 	content := truncateNotifyContent(spec.Content)
@@ -115,10 +101,6 @@ func (n *notifier) EmitMany(tx *gorm.DB, specs []Spec) error {
 	return nil
 }
 
-// BuildTopicLink renders a topic notification/feed link, deep-linking to a
-// specific post when given one: a comment (?comment=<id>) takes precedence over
-// a reply (?reply=<floor>); with neither it's the bare topic root. The query-param
-// form matches the reply/comment permalinks the topic page resolves via /locate.
 func BuildTopicLink(topicID, replyFloor, commentID int) string {
 	switch {
 	case commentID > 0:

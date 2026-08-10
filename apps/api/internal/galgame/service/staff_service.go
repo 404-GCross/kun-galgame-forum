@@ -1,21 +1,5 @@
 package service
 
-// The 制作人员 page: one credited name, everything the registry publishes about
-// it, and the games it signed.
-//
-// Two upstream calls, never more. The credits list arrives with each work
-// already identified by catalog id but described only by its registry display
-// name — no localized title, no cover — so the whole page's worth of ids is
-// hydrated in one batch through the works lane. That lane is also where the
-// EDITORIAL content gate lives, which is the second reason to route through it:
-// a SFW visitor's filmography must not be assembled from rows the site would
-// refuse to render anywhere else.
-//
-// A work the gate drops simply does not appear. That is the same bargain every
-// list on the site makes, and it is why this page never prints a total: the
-// catalog publishes none for a credits list, and the number we could compute
-// would describe one page after filtering rather than a career.
-
 import (
 	"context"
 	"slices"
@@ -27,31 +11,15 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// StaffService serves the credited-name detail lane.
 type StaffService struct {
 	galgameClient *client.GalgameClient
-	// enricher fuses the catalog rows with the forum's own view/like counts,
-	// platform badges and frozen author — the same overlay the entity detail
-	// pages and the calendar use, so a filmography card is the site's ordinary
-	// galgame card rather than a lookalike.
-	enricher *GalgameEnricher
+	enricher      *GalgameEnricher
 }
 
 func NewStaffService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *StaffService {
 	return &StaffService{galgameClient: galgameClient, enricher: enricher}
 }
 
-// staffPersonPage renders one source's person page URL from the identity anchor
-// the registry stores. Only templates verified against a live record are here:
-// a wrong external link is a worse answer than no link, so an unlisted source
-// renders as plain text (see dto.StaffLink.URL).
-//
-// The stored ids are BARE (doc: vndb staff anchors are bare numbers, unlike
-// characters' c-prefix and labels' p-prefix), so the prefix belongs to the
-// template, not to the data.
-//
-// URL only: the display NAME of a source is the shared table's business, not
-// this one's, or the same source ends up named twice and drifts.
 var staffPersonPage = map[string]func(string) string{
 	"vndb": func(id string) string {
 		return "https://vndb.org/s" + id
@@ -64,7 +32,6 @@ var staffPersonPage = map[string]func(string) string{
 	},
 }
 
-// GetDetail — GET /galgame-staff/:id
 func (s *StaffService) GetDetail(
 	ctx context.Context, rawID string, offset, limit int, isSFW bool,
 ) (*dto.StaffDetail, *errors.AppError) {
@@ -76,9 +43,6 @@ func (s *StaffService) GetDetail(
 	if appErr != nil {
 		return nil, appErr
 	}
-	// A folded name (wave 171) keeps its old id addressable as a 301: moved_to
-	// arrives instead of the record, never alongside it, so nothing of the
-	// survivor is ever painted under the dead id.
 	if movedTo != 0 {
 		return &dto.StaffDetail{MovedTo: int(movedTo)}, nil
 	}
@@ -86,21 +50,15 @@ func (s *StaffService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该制作人员")
 	}
 
-	// The page titles itself with the credited name and offers the other
-	// scripts as a subtitle, so the two are read apart.
 	nameJa, nameZh := client.CatalogNameByScript(name.Localized, name.DisplayName, name.Lang)
 
 	detail := &dto.StaffDetail{
-		ID:     int(name.ID),
-		Name:   staffDisplayName(name),
-		NameJa: nameJa,
-		NameZh: nameZh,
-		Latin:  name.Latin,
-		Intro:  staffIntro(name),
-		// Pure passthrough, with no policy of its own: the registry has already
-		// applied the person-link visibility gate, and a name whose link is
-		// private arrives with all five zeroed. Re-deciding anything here could
-		// only ever loosen a deliberate decision made upstream.
+		ID:         int(name.ID),
+		Name:       staffDisplayName(name),
+		NameJa:     nameJa,
+		NameZh:     nameZh,
+		Latin:      name.Latin,
+		Intro:      staffIntro(name),
 		Photo:      s.galgameClient.ImageURLFromHash(name.PhotoHash),
 		Gender:     name.Gender,
 		BirthY:     name.BirthY,
@@ -126,39 +84,23 @@ func (s *StaffService) GetDetail(
 		return nil, appErr
 	}
 
-	// Roles are accumulated as canonical KEYS and rendered at the end: the
-	// display order is defined over keys, and only four roles carry a pinned
-	// label to map back from.
 	var roleKeys []string
 	labelOf := map[string]string{}
-	// The cards are built in one batch at the end rather than row by row: the
-	// filmography renders through the SHARED galgame card, and the local
-	// enrichment behind it (views, likes, platform badges, the frozen author)
-	// is a set of batch lookups that must see the whole page at once.
 	items := make([]dto.NextMoeGalgameItem, 0, len(name.Credits))
 	for _, c := range name.Credits {
 		row, ok := rows[c.Work.ID]
 		if !ok {
-			continue // dropped by the editorial gate, or gone from the registry
+			continue
 		}
 		var onThisWork, characters []string
 		for _, r := range c.Roles {
 			key := client.StaffRoleCanonicalKey(r.RoleKey)
 			labelOf[key] = client.StaffRoleLabel(r.RoleKey, r.RoleName)
 			onThisWork = appendUniqueStr(onThisWork, key)
-			// One credit per character voiced, so a VA arrives several times on
-			// the same work. Collect the cast onto the one card rather than
-			// repeating the 声优 chip — for a voice actor this IS the credit.
 			if r.Character != "" {
 				characters = appendUniqueStr(characters, r.Character)
 			}
 		}
-		// The same display policy as the game page's 制作人员 panel: every
-		// source parks unclassifiable credits in 其他, and routinely parks
-		// people who already carry a classified credit on the same work. A
-		// 其他 chip beside a 脚本 chip says nothing, so it renders only when
-		// it is the sole thing known about this work. The header roles are
-		// accumulated AFTER the drop for the same reason.
 		if len(onThisWork) > 1 {
 			onThisWork = slices.DeleteFunc(onThisWork, func(key string) bool {
 				return key == client.StaffRoleOtherKey
@@ -167,9 +109,6 @@ func (s *StaffService) GetDetail(
 		for _, key := range onThisWork {
 			roleKeys = appendUniqueStr(roleKeys, key)
 		}
-		// Sorted per card too, not just in the header: unordered, every card led
-		// with 其他 — the unmapped bucket is the one role nearly every credit
-		// carries, and it was burying the 脚本 the reader is here for.
 		labels := make([]string, 0, len(onThisWork))
 		for _, key := range client.SortStaffRoleKeys(onThisWork) {
 			labels = append(labels, labelOf[key])
@@ -182,15 +121,8 @@ func (s *StaffService) GetDetail(
 		})
 	}
 
-	// ToCards answers one card per item, in order, so the overlays built above
-	// line up index for index.
 	for i, card := range s.enricher.ToCards(ctx, items) {
 		detail.Works[i].GalgameCard = card
-		// The claim funnel is the calendar's, not this page's. Left alone, every
-		// unclaimed work would paint itself as a 未在论坛发布 call to action —
-		// and a filmography is mostly decades-old games, so the whole grid would
-		// shout it and bury the works the forum actually has. Those rows stay
-		// the neutral 未收录 card that this page has always shown.
 		detail.Works[i].Status = 0
 	}
 
@@ -201,18 +133,10 @@ func (s *StaffService) GetDetail(
 	return detail, nil
 }
 
-// staffDisplayName picks the one name the page is titled with: the name of
-// record, the form the person actually signs with. A Chinese rendering is a
-// translation and the latin is a transliteration — both useful as subtitles and
-// wrong as the headline, which is why this does not consult localized{}.
 func staffDisplayName(n *client.CatalogName) string {
 	return client.PickCatalogName(n.DisplayName, n.Latin)
 }
 
-// staffIntro picks ONE description. The registry keeps a row per language and
-// stacking them under a name reads as a bug — the same call the series page
-// already made. Chinese first here (unlike the display name): a description is
-// read, not identified by.
 func staffIntro(n *client.CatalogName) string {
 	byLang := make(map[string]string, len(n.Intros))
 	for _, i := range n.Intros {
@@ -236,19 +160,6 @@ func staffIntro(n *client.CatalogName) string {
 	return ""
 }
 
-// staffLinks merges the two lanes the page shows side by side: the identity
-// anchors (who this person is in another database) and the web presences (where
-// to find them). They are disjoint upstream — an anchor stores a bare external
-// id and no address, a link stores a rendered URL and no id — so neither is a
-// substitute for the other and both are listed.
-//
-// The links lane is wave 186's, and the forum read none of it until now: 14,817
-// imported person links were in the catalog's answer and dropped on the floor
-// here. Anchors keep their local URL templates, since the catalog deliberately
-// publishes no address for them.
-//
-// Every row is named through the shared table, so a template-less anchor reads
-// as DLsite rather than as a bare lowercase `dlsite`.
 func staffLinks(n *client.CatalogName) []dto.StaffLink {
 	out := make([]dto.StaffLink, 0, len(n.Refs)+len(n.Links))
 	for _, ref := range n.Refs {

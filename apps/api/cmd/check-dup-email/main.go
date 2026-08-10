@@ -25,8 +25,8 @@ type userRow struct {
 }
 
 var keepIDs = map[int]bool{
-	18640: true, // Yamasune
-	17592: true, // momoda
+	18640: true,
+	17592: true,
 }
 
 func main() {

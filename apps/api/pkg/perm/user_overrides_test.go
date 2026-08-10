@@ -2,9 +2,6 @@ package perm
 
 import "testing"
 
-// resetUserOverrides restores BOTH override layers (role + user) after a per-user
-// override test, so it can never leak state into the golden matrix or Phase 2
-// tests.
 func resetUserOverrides(t *testing.T) {
 	t.Helper()
 	t.Cleanup(func() {
@@ -13,8 +10,6 @@ func resetUserOverrides(t *testing.T) {
 	})
 }
 
-// TestCanUserGrantToRolelessUser proves a personal grant lets a plain (roleless)
-// user hold a permission — the whole point of Plan A.
 func TestCanUserGrantToRolelessUser(t *testing.T) {
 	resetUserOverrides(t)
 	SetUserOverrides(map[int][]Override{
@@ -24,24 +19,19 @@ func TestCanUserGrantToRolelessUser(t *testing.T) {
 	if !CanUser(42, nil, TopicHide) {
 		t.Error("granted user 42 topic.hide but CanUser = false")
 	}
-	// The grant is scoped to that one user and that one key.
 	if CanUser(42, nil, TopicEditAny) {
 		t.Error("user 42 should only hold the single granted key")
 	}
 	if CanUser(43, nil, TopicHide) {
 		t.Error("the grant must not leak to a different user")
 	}
-	// The role layer is untouched: Can (no uid) still sees only role decisions.
 	if Can(nil, TopicHide) {
 		t.Error("a personal grant must not change the role-level Can")
 	}
 }
 
-// TestCanUserRevokeBeatsRoleGrant proves a personal revoke removes a permission
-// the user's role would otherwise grant.
 func TestCanUserRevokeBeatsRoleGrant(t *testing.T) {
 	resetUserOverrides(t)
-	// A moderator holds topic.hide by baseline.
 	if !CanUser(7, []string{"moderator"}, TopicHide) {
 		t.Fatal("precondition: moderator should hold topic.hide")
 	}
@@ -51,14 +41,11 @@ func TestCanUserRevokeBeatsRoleGrant(t *testing.T) {
 	if CanUser(7, []string{"moderator"}, TopicHide) {
 		t.Error("personal revoke must beat the moderator role grant")
 	}
-	// Other baseline keys of the role are unaffected.
 	if !CanUser(7, []string{"moderator"}, TopicEditAny) {
 		t.Error("revoking one key must not drop the role's other baseline keys")
 	}
 }
 
-// TestCanUserRenImmunity proves a ren-holder always holds the full catalog, even
-// with a personal revoke of every key — the defensive pin.
 func TestCanUserRenImmunity(t *testing.T) {
 	resetUserOverrides(t)
 	renRevokeAll := make([]Override, 0, len(allPerms))
@@ -77,11 +64,8 @@ func TestCanUserRenImmunity(t *testing.T) {
 	}
 }
 
-// TestCanUserUIDZeroPassthrough proves uid <= 0 is a plain role decision — no
-// personal layer is consulted (anonymous callers carry no identity).
 func TestCanUserUIDZeroPassthrough(t *testing.T) {
 	resetUserOverrides(t)
-	// A stray override keyed at 0 must never be stored and never apply.
 	SetUserOverrides(map[int][]Override{
 		0: {{Permission: TopicHide, Effect: EffectGrant}},
 	})
@@ -93,8 +77,6 @@ func TestCanUserUIDZeroPassthrough(t *testing.T) {
 	}
 }
 
-// TestCanUserUnknownKeyFiltered proves a personal override naming an
-// out-of-catalog key is silently dropped (never granted, never panics).
 func TestCanUserUnknownKeyFiltered(t *testing.T) {
 	resetUserOverrides(t)
 	SetUserOverrides(map[int][]Override{
@@ -108,7 +90,6 @@ func TestCanUserUnknownKeyFiltered(t *testing.T) {
 	}
 }
 
-// TestCanUserReset proves SetUserOverrides(nil) clears every personal delta.
 func TestCanUserReset(t *testing.T) {
 	resetUserOverrides(t)
 	SetUserOverrides(map[int][]Override{
@@ -125,18 +106,15 @@ func TestCanUserReset(t *testing.T) {
 	}
 }
 
-// TestEffectiveForUserComposition proves EffectiveForUser applies personal
-// deltas on top of the role set, in catalog order.
 func TestEffectiveForUserComposition(t *testing.T) {
 	resetUserOverrides(t)
 	SetUserOverrides(map[int][]Override{
 		7: {
-			{Permission: TopicHide, Effect: EffectRevoke},     // drop one baseline key
-			{Permission: AdminDashboard, Effect: EffectGrant}, // add one admin-only key
+			{Permission: TopicHide, Effect: EffectRevoke},
+			{Permission: AdminDashboard, Effect: EffectGrant},
 		},
 	})
 	eff := EffectiveForUser(7, []string{"moderator"})
-	// moderator baseline is 41; minus topic.hide, plus admin.dashboard = 41.
 	if len(eff) != modPerms {
 		t.Errorf("effective has %d keys, want %d", len(eff), modPerms)
 	}

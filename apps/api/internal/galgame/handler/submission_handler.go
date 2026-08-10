@@ -11,21 +11,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// SubmissionHandler exposes the user submission endpoints: file a submission,
-// publish a claimable draft, resubmit, withdraw, list your own, and the wizard
-// search.
-//
-// The identity model: every lane here forwards the SESSION'S OWN OAuth access
-// token and asserts nothing. Wave 179 finished that move — the claims face used
-// to take an actor kungal built out of its session (uid, roles, trust tier) over
-// the Basic-authed S2S channel, which meant the forum was the authority on who
-// was submitting and who counted as staff. The registry now derives the subject
-// and the tenant from the token, checks work ownership against it, and reads
-// catalog.claim.review off the token's roles.
-//
-// (The doc that stood here until wave 179 said the token "is no longer
-// forwarded anywhere". That stopped being true in wave 178, when the banner
-// edit started riding it, and is now the exact opposite of the truth.)
 type SubmissionHandler struct {
 	svc *service.SubmissionService
 }
@@ -42,7 +27,6 @@ func submissionGID(c fiber.Ctx) (int, *errors.AppError) {
 	return gid, nil
 }
 
-// Submit — POST /api/galgame/submit
 func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
@@ -59,8 +43,6 @@ func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// Claim — POST /api/galgame/:gid/claim. Publishes a draft the registry already
-// holds under kungal's id.
 func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
@@ -70,8 +52,6 @@ func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	// The uid is the moemoepoint payee, a purely local ledger key — the registry
-	// learns who claimed from the token.
 	user := middleware.GetUser(c)
 	if user == nil {
 		return response.Error(c, errors.ErrAuthExpired())
@@ -83,9 +63,6 @@ func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// Resubmit — POST /api/galgame/:gid/resubmit. Sends a draft or a declined
-// submission back to the review queue. The CONTENT of a draft is edited through
-// the ordinary editing face, so this endpoint moves state and nothing else.
 func (h *SubmissionHandler) Resubmit(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
@@ -102,12 +79,6 @@ func (h *SubmissionHandler) Resubmit(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-// Withdraw — DELETE /api/galgame/:gid.
-//
-// The verb stays DELETE because that is what the action means to the user
-// ("撤回我的投稿"), but the registry row survives: an identity is not destroyed
-// because a product withdrew its claim. The claim returns to draft and the
-// entry can be resubmitted.
 func (h *SubmissionHandler) Withdraw(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
@@ -123,7 +94,6 @@ func (h *SubmissionHandler) Withdraw(c fiber.Ctx) error {
 	return response.OKMessage(c, "撤回成功")
 }
 
-// ListMine — GET /api/galgame/mine
 func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
@@ -136,14 +106,6 @@ func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// SearchWithPending — GET /api/galgame/search/wizard
-//
-// Dedicated endpoint for the 发布向导 flow: one half answers "does this game
-// already exist", the other "…and did YOU already submit it". Both are the
-// registry's now; the session is what makes the second one personal.
-//
-// Default search (/api/galgame/search) stays anonymous-only — first-time
-// visitors and SSR don't want "突然在首页看到自己的 pending" UX.
 func (h *SubmissionHandler) SearchWithPending(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {

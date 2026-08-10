@@ -23,8 +23,6 @@ func event(id int64, from *string, to string, productWorkID *int64) *catalogclie
 	}
 }
 
-// The local effect is decided by the DESTINATION state, and two states that
-// look like they should tidy up deliberately do not.
 func TestEffectOfTransition(t *testing.T) {
 	gid := ptr(int64(4321))
 	cases := []struct {
@@ -36,14 +34,8 @@ func TestEffectOfTransition(t *testing.T) {
 		{"approval seeds the stub", event(2, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid), claimEffectSeedStub},
 		{"ban drops the stub", event(3, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateHidden, gid), claimEffectDropStub},
 		{"submit remembers the submitter", event(4, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStatePending, gid), claimEffectRememberSubmitter},
-		// A withdrawal unpublishes and KEEPS the row: it is reversible, and the
-		// row carries the user content collected while the entry was up.
 		{"withdrawal unpublishes, never deletes", event(5, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateDraft, gid), claimEffectUnpublish},
-		// A decline can land on an entry that was live earlier in its life
-		// (live → withdraw → submit → decline), so it takes the entry down too.
 		{"decline unpublishes", event(6, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid), claimEffectUnpublish},
-		// Without an anchor there is no row in kungal's key space to touch, and
-		// the work id must never stand in for a gid.
 		{"no product anchor is inert", event(7, nil, catalogclient.ClaimStateLive, nil), claimEffectNone},
 		{"zero product anchor is inert", event(8, nil, catalogclient.ClaimStateLive, ptr(int64(0))), claimEffectNone},
 		{"an unknown state is reported, not guessed", event(9, nil, "archived", gid), claimEffectUnknownState},
@@ -57,8 +49,6 @@ func TestEffectOfTransition(t *testing.T) {
 	}
 }
 
-// Only ONE of the two routes into `live` pays the +3 here; the other is paid in
-// the request path, and matching on the destination alone would pay twice.
 func TestOnlyApprovalAwardsFromTheFeed(t *testing.T) {
 	gid := ptr(int64(11))
 	if !isApproval(event(1, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)) {
@@ -75,14 +65,8 @@ func TestOnlyApprovalAwardsFromTheFeed(t *testing.T) {
 	}
 }
 
-// The author chip must credit the CLAIMANT: on the owner-publish route the
-// event's own actor, on the approval route never the actor — that is the
-// reviewer, and the submitter comes from the redis memo instead (an expired
-// memo yields 0 = no chip, not a mis-credit).
 func TestClaimantAttribution(t *testing.T) {
 	gid := ptr(int64(11))
-	// An unroutable redis stands in for "the memo is unreachable": submitterOf
-	// must degrade to 0, and the non-approval routes must never consult it.
 	s := NewGalgameClaimEventSync(nil, nil, redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1}))
 
 	publish := event(1, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStateLive, gid)
@@ -97,8 +81,6 @@ func TestClaimantAttribution(t *testing.T) {
 		t.Errorf("born live: claimant = %d, want the event's actor 7", got)
 	}
 
-	// Approval with no reachable memo (nil redis → submitterOf returns 0):
-	// the reviewer's uid must NOT leak into the attribution.
 	approval := event(3, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)
 	approval.ActorUID = 2
 	if got := s.claimantOf(t.Context(), approval); got != 0 {
@@ -106,8 +88,6 @@ func TestClaimantAttribution(t *testing.T) {
 	}
 }
 
-// claimFeedStub serves the claim-event feed as a paginated, ascending,
-// exclusive-cursor stream, recording every cursor and site it was asked for.
 type claimFeedStub struct {
 	mu    sync.Mutex
 	total int64
@@ -143,9 +123,6 @@ func (f *claimFeedStub) client(t *testing.T) *catalogclient.Client {
 	})
 }
 
-// A fresh cursor must land on the feed's CURRENT last id. Starting from 0 would
-// replay the re-site backfill — one event per existing claim — and seed a local
-// stub for the entire registry, which is the browse list's population.
 func TestFeedHeadWalksToTheLastEvent(t *testing.T) {
 	stub := &claimFeedStub{total: 250, page: 100}
 	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
@@ -168,8 +145,6 @@ func TestFeedHeadWalksToTheLastEvent(t *testing.T) {
 	}
 }
 
-// An empty feed leaves the cursor at 0 rather than erroring, so the very first
-// deploy (no transitions yet) seeds cleanly.
 func TestClaimFeedHeadOnEmptyFeed(t *testing.T) {
 	stub := &claimFeedStub{total: 0, page: 100}
 	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
@@ -184,11 +159,6 @@ func TestClaimFeedHeadOnEmptyFeed(t *testing.T) {
 	}
 }
 
-// The two cursor id spaces are disjoint small integers, so the keys must not be
-// either. This is pinned because the failure mode is silent: pointing the new
-// feed at the wiki cursor starts it at an arbitrary offset in a foreign
-// sequence, and reusing the award key prefix lets wiki message 42 suppress the
-// reward for claim event 42.
 func TestClaimNamespacesAreDistinctFromTheWikiFeed(t *testing.T) {
 	if strings.Contains(claimCursorKey, "wiki:") {
 		t.Errorf("cursor key %q reuses the wiki namespace", claimCursorKey)

@@ -21,8 +21,6 @@ func NewMessageHandler(messageService *service.MessageService) *MessageHandler {
 	return &MessageHandler{messageService: messageService}
 }
 
-// GetMessages returns paginated notification messages.
-// GET /api/message
 func (h *MessageHandler) GetMessages(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -41,9 +39,6 @@ func (h *MessageHandler) GetMessages(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// GetMutedMessages returns messages of muted categories (the "已静音的消息"
-// view). Optional ?type= narrows to a single currently-muted category.
-// GET /api/message/muted
 func (h *MessageHandler) GetMutedMessages(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -62,8 +57,6 @@ func (h *MessageHandler) GetMutedMessages(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// DeleteMessage deletes a single notification message.
-// DELETE /api/message/:id
 func (h *MessageHandler) DeleteMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -81,12 +74,6 @@ func (h *MessageHandler) DeleteMessage(c fiber.Ctx) error {
 	return response.OKMessage(c, "消息已删除")
 }
 
-// GetSystemMessages returns admin broadcast messages with this user's
-// per-user `isRead` flag (computed against the HWM cursor in
-// system_message_read_state — see migration 012).
-//
-// Requires auth: unread/read is meaningful only with a known user.
-// GET /api/message/admin
 func (h *MessageHandler) GetSystemMessages(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -100,10 +87,6 @@ func (h *MessageHandler) GetSystemMessages(c fiber.Ctx) error {
 	return response.OK(c, messages)
 }
 
-// MarkAdminRead advances the caller's HWM cursor to MAX(system_message.id)
-// so every existing broadcast becomes read for this user only — no fan-out
-// to other users, fixed in migration 012.
-// PUT /api/message/admin/read
 func (h *MessageHandler) MarkAdminRead(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -116,8 +99,6 @@ func (h *MessageHandler) MarkAdminRead(c fiber.Ctx) error {
 	return response.OKMessage(c, "已标记全部已读")
 }
 
-// GetNavSummary returns nav-bar summary [notice, system].
-// GET /api/message/nav/system
 func (h *MessageHandler) GetNavSummary(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -131,8 +112,6 @@ func (h *MessageHandler) GetNavSummary(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// MarkAllRead marks all user notification messages as read.
-// PUT /api/message/system/read
 func (h *MessageHandler) MarkAllRead(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

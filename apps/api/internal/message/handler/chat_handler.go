@@ -19,8 +19,6 @@ func NewChatHandler(chatService *service.ChatService) *ChatHandler {
 	return &ChatHandler{chatService: chatService}
 }
 
-// GetNavContact returns the chat room list for the message sidebar.
-// GET /api/message/nav/contact
 func (h *ChatHandler) GetNavContact(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -34,8 +32,6 @@ func (h *ChatHandler) GetNavContact(c fiber.Ctx) error {
 	return response.OK(c, items)
 }
 
-// GetChatHistory returns chat message history with a user, chronological ASC.
-// GET /api/message/chat/history
 func (h *ChatHandler) GetChatHistory(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -54,8 +50,6 @@ func (h *ChatHandler) GetChatHistory(c fiber.Ctx) error {
 	return response.OK(c, items)
 }
 
-// SendChatMessage sends a private chat message (replaces socket.io path).
-// POST /api/message/chat/send
 func (h *ChatHandler) SendChatMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -73,8 +67,6 @@ func (h *ChatHandler) SendChatMessage(c fiber.Ctx) error {
 	return response.OKMessage(c, "发送成功")
 }
 
-// RecallChatMessage marks a sent chat message as recalled (sender-only).
-// POST /api/message/chat/recall
 func (h *ChatHandler) RecallChatMessage(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

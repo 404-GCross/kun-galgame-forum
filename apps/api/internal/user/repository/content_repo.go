@@ -8,9 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// UserContentRepository owns the paginated list queries for a user's
-// published / liked / favorited / commented content across topics,
-// replies, comments, resources, ratings and galgame IDs.
 type UserContentRepository struct {
 	db *gorm.DB
 }
@@ -21,17 +18,10 @@ func NewUserContentRepository(db *gorm.DB) *UserContentRepository {
 
 func (r *UserContentRepository) DB() *gorm.DB { return r.db }
 
-// ──────────────────────────────────────────
-// Galgame IDs
-// ──────────────────────────────────────────
-
 func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string, page, limit int, showNoResource bool) ([]int, int64, error) {
 	offset := (page - 1) * limit
 	var total int64
 
-	// Migration 068: a profile tab is a public listing like any other, so an
-	// entry the owner has since withdrawn drops out of the liked/favorited
-	// lists — the interaction row survives, only the card stops rendering.
 	baseQuery := r.db.Table("galgame").Select("galgame.id").Where("galgame.published")
 
 	switch queryType {
@@ -43,16 +33,10 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_favorite ON galgame_favorite.galgame_id = galgame.id").
 			Where("galgame_favorite.user_id = ?", userID)
-	// NOTE: galgame_comment / galgame_comment_like are NOT card-list types
-	// anymore. The comment tabs render comment-cards from the community
-	// primitive via GetUserGalgameComments (charter step 06a), so those legacy-
-	// table JOINs were removed here.
 	default:
 		return []int{}, 0, nil
 	}
 
-	// Hide galgames with no download resource unless the global
-	// "显示没有下载资源的 Galgame" toggle is on.
 	if !showNoResource {
 		baseQuery = baseQuery.Where("EXISTS (SELECT 1 FROM galgame_resource gr WHERE gr.galgame_id = galgame.id)")
 	}
@@ -78,24 +62,11 @@ func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string,
 	return ids, total, nil
 }
 
-// ──────────────────────────────────────────
-// Liked galgame comments (点赞评论 tab on /user/:id/galgame/)
-// ──────────────────────────────────────────
-
-// LikedPostRow is one row of the local galgame_post_like table (charter ruling
-// 8): the like-row id (keyset cursor) + the community post id it points at. The
-// post content itself lives in the primitive — the service hydrates it via
-// ResolvePosts.
 type LikedPostRow struct {
 	ID     int64 `gorm:"column:id"`
 	PostID int64 `gorm:"column:post_id"`
 }
 
-// FindUserLikedPostIDs returns a keyset page of the community post ids a user
-// has liked, newest-like-first (descending like-row id). It reads the LIVE local
-// galgame_post_like table (NOT a frozen legacy table). `after` is the previous
-// page's cursor (the last like-row id, "" = first page); it fetches limit+1 rows
-// so the caller can tell whether a next page exists.
 func (r *UserContentRepository) FindUserLikedPostIDs(userID int, after string, limit int) ([]LikedPostRow, error) {
 	q := r.db.Table("galgame_post_like").
 		Select("id, post_id").
@@ -110,14 +81,6 @@ func (r *UserContentRepository) FindUserLikedPostIDs(userID int, after string, l
 	return rows, err
 }
 
-// ──────────────────────────────────────────
-// Topics
-// ──────────────────────────────────────────
-
-// FindUserTopics applies the user's NSFW preference. In SFW mode every
-// query (regardless of type — created, liked, upvoted, favorited) hides
-// rows where topic.is_nsfw=true so a SFW crawler never indexes someone's
-// NSFW topic via their profile.
 func (r *UserContentRepository) FindUserTopics(userID int, queryType string, page, limit int, isSFW bool) ([]dto.UserTopic, int64, error) {
 	offset := (page - 1) * limit
 	var results []dto.UserTopic
@@ -158,36 +121,23 @@ func (r *UserContentRepository) FindUserTopics(userID int, queryType string, pag
 	return results, total, err
 }
 
-// ──────────────────────────────────────────
-// Replies
-// ──────────────────────────────────────────
-
 type UserReply struct {
-	TopicID int `gorm:"column:topic_id" json:"topic_id"`
-	// Floor anchors the deep-link to this reply (/topic/:id?reply=<floor>).
+	TopicID int    `gorm:"column:topic_id" json:"topic_id"`
 	Floor   int    `gorm:"column:floor" json:"floor"`
 	Content string `gorm:"column:content" json:"content"`
 	Created string `gorm:"column:created" json:"created"`
 }
 
-// FindUserReplies applies the SFW gate by joining topic and filtering
-// out replies whose parent topic is_nsfw=true. Replies link back to the
-// topic detail (which is itself SFW-gated), so without this filter the
-// profile page would show "ghost" replies pointing at 404 URLs and would
-// also surface raw NSFW-context reply text to crawlers.
 func (r *UserContentRepository) FindUserReplies(userID int, queryType string, page, limit int, isSFW bool) ([]UserReply, int64, error) {
 	offset := (page - 1) * limit
 	var results []UserReply
 	var total int64
 
-	// A reply's text is in topic_reply.content (legacy multi-target rows were
-	// folded into it by the Phase-4 migration).
 	baseQuery := r.db.Table("topic_reply").
 		Select(`topic_reply.topic_id,
 			topic_reply.floor,
 			COALESCE(topic_reply.content, '') AS content,
 			topic_reply.created`).
-		// Exclude moderation-hidden replies (T&S `hide`, migration 055).
 		Where("topic_reply.status = 0")
 
 	switch queryType {
@@ -198,7 +148,7 @@ func (r *UserContentRepository) FindUserReplies(userID int, queryType string, pa
 		baseQuery = baseQuery.
 			Joins("JOIN topic_reply_reaction ON topic_reply_reaction.topic_reply_id = topic_reply.id AND topic_reply_reaction.reaction = 'like'").
 			Where("topic_reply_reaction.user_id = ?", userID)
-	default: // reply_created
+	default:
 		baseQuery = baseQuery.Where("topic_reply.user_id = ?", userID)
 	}
 
@@ -215,19 +165,13 @@ func (r *UserContentRepository) FindUserReplies(userID int, queryType string, pa
 	return results, total, err
 }
 
-// ──────────────────────────────────────────
-// Comments
-// ──────────────────────────────────────────
-
 type UserComment struct {
-	// ID anchors the deep-link to this comment (/topic/:id?comment=<id>).
 	ID      int    `gorm:"column:id" json:"id"`
 	TopicID int    `gorm:"column:topic_id" json:"topic_id"`
 	Content string `gorm:"column:content" json:"content"`
 	Created string `gorm:"column:created" json:"created"`
 }
 
-// FindUserComments — same SFW JOIN-on-topic gate as FindUserReplies.
 func (r *UserContentRepository) FindUserComments(userID int, queryType string, page, limit int, isSFW bool) ([]UserComment, int64, error) {
 	offset := (page - 1) * limit
 	var results []UserComment
@@ -235,7 +179,6 @@ func (r *UserContentRepository) FindUserComments(userID int, queryType string, p
 
 	baseQuery := r.db.Table("topic_comment").
 		Select("topic_comment.id, topic_comment.topic_id, topic_comment.content, topic_comment.created").
-		// Exclude moderation-hidden comments (T&S `hide`, migration 055).
 		Where("topic_comment.status = 0")
 
 	switch queryType {
@@ -246,7 +189,7 @@ func (r *UserContentRepository) FindUserComments(userID int, queryType string, p
 		baseQuery = baseQuery.
 			Joins("JOIN topic_comment_like ON topic_comment_like.topic_comment_id = topic_comment.id").
 			Where("topic_comment_like.user_id = ?", userID)
-	default: // comment_created
+	default:
 		baseQuery = baseQuery.Where("topic_comment.user_id = ?", userID)
 	}
 
@@ -262,10 +205,6 @@ func (r *UserContentRepository) FindUserComments(userID int, queryType string, p
 	err := baseQuery.Order("topic_comment.created DESC").Offset(offset).Limit(limit).Find(&results).Error
 	return results, total, err
 }
-
-// ──────────────────────────────────────────
-// Galgame resources
-// ──────────────────────────────────────────
 
 type UserResource struct {
 	ID        int    `gorm:"column:id" json:"id"`
@@ -301,7 +240,7 @@ func (r *UserContentRepository) FindUserResources(userID int, queryType string, 
 		baseQuery = baseQuery.
 			Joins("JOIN galgame_resource_like ON galgame_resource_like.galgame_resource_id = galgame_resource.id").
 			Where("galgame_resource_like.user_id = ?", userID)
-	default: // valid
+	default:
 		baseQuery = baseQuery.Where("galgame_resource.user_id = ? AND galgame_resource.status = 0", userID)
 	}
 
@@ -329,12 +268,6 @@ func (r *UserContentRepository) FindResourceLinks(resourceIDs []int) (map[int][]
 	return result, nil
 }
 
-// ──────────────────────────────────────────
-// Galgame ratings
-// ──────────────────────────────────────────
-
-// UserRating is one rating row. Identity (UserName/UserAvatar) is hydrated
-// at the service layer via userclient.
 type UserRating struct {
 	ID           int    `gorm:"column:id" json:"id"`
 	GalgameID    int    `gorm:"column:galgame_id" json:"galgame_id"`
@@ -349,7 +282,7 @@ type UserRating struct {
 	System       int    `gorm:"column:system" json:"system"`
 	Voice        int    `gorm:"column:voice" json:"voice"`
 	ReplayValue  int    `gorm:"column:replay_value" json:"replay_value"`
-	GalgameType  string `gorm:"column:galgame_type" json:"-"` // raw JSON
+	GalgameType  string `gorm:"column:galgame_type" json:"-"`
 	PlayStatus   string `gorm:"column:play_status" json:"play_status"`
 	ShortSummary string `gorm:"column:short_summary" json:"short_summary"`
 	SpoilerLevel string `gorm:"column:spoiler_level" json:"spoiler_level"`
@@ -380,23 +313,13 @@ func (r *UserContentRepository) FindUserRatings(userID int, page, limit int) ([]
 	return results, total, err
 }
 
-// ──────────────────────────────────────────
-// Galgame local stats + resource meta (enrichment for user galgame list)
-// ──────────────────────────────────────────
-
-// GalgameLocalStats is a lightweight (view, like_count) row for a galgame.
 type GalgameLocalStats struct {
-	ID        int `gorm:"column:id"`
-	View      int `gorm:"column:view"`
-	LikeCount int `gorm:"column:like_count"`
-	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
-	// card's author chip has no other source, since the catalog face carries
-	// no submitter. NULL = unknown, rendered as no chip.
+	ID            int  `gorm:"column:id"`
+	View          int  `gorm:"column:view"`
+	LikeCount     int  `gorm:"column:like_count"`
 	CreatorUserID *int `gorm:"column:creator_user_id"`
 }
 
-// FindGalgameLocalStats batch-loads local (view, like_count, creator) for
-// galgame IDs.
 func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]GalgameLocalStats {
 	if len(ids) == 0 {
 		return map[int]GalgameLocalStats{}
@@ -411,17 +334,12 @@ func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]Galgame
 	return out
 }
 
-// GalgameResourceMeta is a (galgame_id, platform, language) tuple distilled
-// from galgame_resource rows — used to derive per-galgame platform/language
-// sets on the user galgame list.
 type GalgameResourceMeta struct {
 	GalgameID int    `gorm:"column:galgame_id"`
 	Platform  string `gorm:"column:platform"`
 	Language  string `gorm:"column:language"`
 }
 
-// FindResourceMetaByGalgameIDs loads distinct (platform, language) tuples
-// across galgame_resource for the given galgame IDs.
 func (r *UserContentRepository) FindResourceMetaByGalgameIDs(ids []int) []GalgameResourceMeta {
 	if len(ids) == 0 {
 		return nil

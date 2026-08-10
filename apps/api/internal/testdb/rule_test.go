@@ -7,12 +7,6 @@ import (
 	"testing"
 )
 
-// forbidden is what a test must never do to find a database, and why. The two
-// tests that used to load ../../../.env and read the application's own
-// KUN_DATABASE_URL would silently connect to whichever database the developer
-// happened to have configured — writing real rows into it, and leaving
-// residue behind when they failed. A test gets exactly the database it was
-// handed, through testdb.Open, or it skips.
 var forbidden = map[string]string{
 	"godotenv":          "a test must not load .env; the DSN comes from " + envVar + " alone",
 	"KUN_DATABASE_URL":  "that is the application's DSN, not a test's; use " + envVar,
@@ -24,17 +18,12 @@ var forbidden = map[string]string{
 
 const envVar = "TEST_DATABASE_DSN"
 
-// TestNoTestFindsItsOwnDatabase walks every test file in the module. The rule
-// it enforces is a project invariant, not a style preference, so it is checked
-// mechanically rather than left to review.
 func TestNoTestFindsItsOwnDatabase(t *testing.T) {
-	root, err := filepath.Abs("../..") // apps/api
+	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatalf("resolve module root: %v", err)
 	}
 
-	// This file necessarily names every forbidden token; so does the package
-	// doc. Both live in internal/testdb, which is the one place allowed to.
 	selfDir := filepath.Join(root, "internal", "testdb")
 
 	count := 0

@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-// ──────────────────────────────────────────
-// Toolset core
-// ──────────────────────────────────────────
-
 type GalgameToolset struct {
 	ID                 int             `gorm:"primaryKey;autoIncrement" json:"id"`
 	Name               string          `gorm:"type:varchar(500);default:''" json:"name"`
@@ -18,15 +14,11 @@ type GalgameToolset struct {
 	Type               string          `gorm:"default:''" json:"type"`
 	Language           string          `gorm:"default:''" json:"language"`
 	Platform           string          `gorm:"default:''" json:"platform"`
-	Homepage           json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"homepage"` // text[] → jsonb
+	Homepage           json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"homepage"`
 	ResourceUpdateTime time.Time       `gorm:"column:resource_update_time;autoCreateTime" json:"resource_update_time"`
 	Edited             *time.Time      `gorm:"" json:"edited"`
 	Version            string          `gorm:"type:varchar(233);default:''" json:"version"`
-	// CommentCount is the LIVE display counter for the toolset's community
-	// comments (charter step 06a, migration 059): maintained ±1 by the community
-	// BFF (resource_comment_write.go), replacing the old count(*) over the frozen
-	// galgame_toolset_comment table. Drift tolerated (charter ruling 11).
-	CommentCount int `gorm:"column:comment_count;not null;default:0" json:"comment_count"`
+	CommentCount       int             `gorm:"column:comment_count;not null;default:0" json:"comment_count"`
 
 	UserID int `gorm:"column:user_id;not null" json:"user_id"`
 
@@ -35,10 +27,6 @@ type GalgameToolset struct {
 }
 
 func (GalgameToolset) TableName() string { return "galgame_toolset" }
-
-// ──────────────────────────────────────────
-// Contributor & Practicality
-// ──────────────────────────────────────────
 
 type GalgameToolsetContributor struct {
 	ID        int `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -53,7 +41,7 @@ func (GalgameToolsetContributor) TableName() string { return "galgame_toolset_co
 
 type GalgameToolsetPracticality struct {
 	ID        int `gorm:"primaryKey;autoIncrement" json:"id"`
-	Rate      int `gorm:"default:1" json:"rate"` // 1-10
+	Rate      int `gorm:"default:1" json:"rate"`
 	UserID    int `gorm:"column:user_id;not null" json:"user_id"`
 	ToolsetID int `gorm:"column:toolset_id;not null" json:"toolset_id"`
 
@@ -62,10 +50,6 @@ type GalgameToolsetPracticality struct {
 }
 
 func (GalgameToolsetPracticality) TableName() string { return "galgame_toolset_practicality" }
-
-// ──────────────────────────────────────────
-// Alias
-// ──────────────────────────────────────────
 
 type GalgameToolsetAlias struct {
 	ID        int    `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -78,18 +62,10 @@ type GalgameToolsetAlias struct {
 
 func (GalgameToolsetAlias) TableName() string { return "galgame_toolset_alias" }
 
-// ──────────────────────────────────────────
-// Resource
-// ──────────────────────────────────────────
-
 type GalgameToolsetResource struct {
-	ID      int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content string `gorm:"type:varchar(1007);default:''" json:"content"`
-	Type    string `gorm:"default:''" json:"type"` // s3, user
-	// ArtifactUUID links an s3-type resource to the centralized artifact service
-	// (kun-galgame-infra). When set, the download URL is resolved at read time
-	// via the artifact service (served from dl.imoe.uk); legacy s3 rows leave it
-	// empty and keep their stored Content URL. Always empty for 'user' rows.
+	ID           int        `gorm:"primaryKey;autoIncrement" json:"id"`
+	Content      string     `gorm:"type:varchar(1007);default:''" json:"content"`
+	Type         string     `gorm:"default:''" json:"type"`
 	ArtifactUUID string     `gorm:"column:artifact_uuid;type:varchar(36);not null;default:''" json:"artifact_uuid"`
 	Code         string     `gorm:"type:varchar(1007);default:''" json:"code"`
 	Password     string     `gorm:"type:varchar(1007);default:''" json:"password"`
@@ -108,15 +84,11 @@ type GalgameToolsetResource struct {
 
 func (GalgameToolsetResource) TableName() string { return "galgame_toolset_resource" }
 
-// ──────────────────────────────────────────
-// Category
-// ──────────────────────────────────────────
-
 type GalgameToolsetCategory struct {
 	ID          int             `gorm:"primaryKey;autoIncrement" json:"id"`
 	Name        string          `gorm:"uniqueIndex;not null" json:"name"`
 	Description string          `gorm:"default:''" json:"description"`
-	Alias       json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"alias"` // text[] → jsonb
+	Alias       json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"alias"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
@@ -133,6 +105,3 @@ type GalgameToolsetCategoryRelation struct {
 }
 
 func (GalgameToolsetCategoryRelation) TableName() string { return "galgame_toolset_category_relation" }
-
-// The legacy galgame_toolset_comment table was retired in charter step 06a
-// (comments moved to the infra community primitive) and dropped by migration 060.

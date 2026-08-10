@@ -11,8 +11,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// RolePermissionHandler serves the admin role→permission matrix (read + replace)
-// and the public effective-bundles read.
 type RolePermissionHandler struct {
 	svc *service.RolePermissionService
 }
@@ -21,8 +19,6 @@ func NewRolePermissionHandler(svc *service.RolePermissionService) *RolePermissio
 	return &RolePermissionHandler{svc: svc}
 }
 
-// GetMatrix returns the full role→permission matrix for the admin editor.
-// GET /api/admin/role-permissions
 func (h *RolePermissionHandler) GetMatrix(c fiber.Ctx) error {
 	matrix, err := h.svc.Matrix(c.Context())
 	if err != nil {
@@ -31,8 +27,6 @@ func (h *RolePermissionHandler) GetMatrix(c fiber.Ctx) error {
 	return response.OK(c, matrix)
 }
 
-// Replace atomically replaces the path role's override set and returns the fresh
-// matrix. PUT /api/admin/role-permissions/:role
 func (h *RolePermissionHandler) Replace(c fiber.Ctx) error {
 	operator, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -49,11 +43,6 @@ func (h *RolePermissionHandler) Replace(c fiber.Ctx) error {
 	return response.OK(c, matrix)
 }
 
-// GetBundles returns the EFFECTIVE role→permission bundles for
-// creator/moderator/admin/ren. PUBLIC (no auth): it only tells the FE which
-// capabilities a role holds so it can show/hide UI affordances — it is
-// non-sensitive config and grants nothing.
-// GET /api/perm/bundles
 func (h *RolePermissionHandler) GetBundles(c fiber.Ctx) error {
 	bundles := perm.EffectiveBundles()
 	out := make(map[string][]string, len(bundles))

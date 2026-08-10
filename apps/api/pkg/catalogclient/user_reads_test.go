@@ -1,16 +1,5 @@
 package catalogclient
 
-// Contract tests for the READS wave 180 moved onto the user-token plane, plus
-// the one asserted-actor write that came with them (the image upload).
-//
-// The axis is the same as the write lanes' and fails just as silently: a read
-// that quietly kept the Basic credential still returns data — the right data,
-// even — while answering "who is asking" with "the forum". What the tests pin
-// is therefore the request, not the payload: which credential travels, which
-// path, and above all which fields DO NOT travel. `site`, `proposer_uid` and
-// `actor_uid` are each a sentence the forum is no longer entitled to say, and
-// each of them would keep working if it were left in.
-
 import (
 	"bytes"
 	"context"
@@ -34,12 +23,6 @@ func parseQuery(t *testing.T, raw string) url.Values {
 	return q
 }
 
-// TestEditSnapshotUser_TravelsAsTheUser: the snapshot op is NOT viewer-fenced
-// upstream — it returns the same entity state a public read renders — so what
-// this pins is channel hygiene, not a gate: a read a human triggered must
-// arrive as that human, on the Bearer face, rather than as the forum on the
-// asserted Basic lane. No site travels; entity_type + entity_id are the whole
-// query.
 func TestEditSnapshotUser_TravelsAsTheUser(t *testing.T) {
 	srv, got := recordingServer(t, 0,
 		`{"code":0,"message":"ok","data":{"values":{"catalog.work.name_zh_cn":"现值"}}}`)
@@ -62,9 +45,6 @@ func TestEditSnapshotUser_TravelsAsTheUser(t *testing.T) {
 	}
 }
 
-// The "my proposals" read is the one that used to name a uid. Mine=true must
-// become the `mine` flag and nothing else: a proposer_uid on this plane would
-// be a caller naming a person again, which is the whole thing that moved.
 func TestListEditProposalsUser_MineIsTheToken(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"items":[`+
 		`{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}`+
@@ -96,10 +76,6 @@ func TestListEditProposalsUser_MineIsTheToken(t *testing.T) {
 	}
 }
 
-// The review queue is the SAME face without the flag — the catalog decides
-// whether this token may see everybody's proposals. Sending mine=false would
-// invite an upstream that reads the parameter loosely to treat "present" as
-// "true", so the flag is omitted rather than negated.
 func TestListEditProposalsUser_QueueOmitsMine(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"items":[],"total":0}}`)
 
@@ -112,9 +88,6 @@ func TestListEditProposalsUser_QueueOmitsMine(t *testing.T) {
 	}
 }
 
-// A contributor asking for the queue is refused by the catalog, not by us —
-// and the refusal has to stay a refusal (a plain 403), distinct from the stale
-// grant that asks for a re-login.
 func TestListEditProposalsUser_QueueDenialStaysADenial(t *testing.T) {
 	srv, _ := recordingServer(t, http.StatusForbidden,
 		`{"code":233,"message":"permission denied: catalog.edit.review"}`)
@@ -130,8 +103,6 @@ func TestListEditProposalsUser_QueueDenialStaysADenial(t *testing.T) {
 	}
 }
 
-// The covers read: the ballot comes from the token, so there is no uid to send
-// and no query at all.
 func TestWorkCoversUser_BallotFromTheToken(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"covers":[`+
 		`{"id":88,"image_hash":"abc","vote_count":3,"voted":true}]}}`)
@@ -154,8 +125,6 @@ func TestWorkCoversUser_BallotFromTheToken(t *testing.T) {
 	}
 }
 
-// The upload was the last asserted-actor WRITE. The multipart body must carry
-// the file and the preset and NOTHING that names a person.
 func TestUploadEditImageUser_SendsNoActorUID(t *testing.T) {
 	var (
 		gotPath   string
@@ -212,8 +181,6 @@ func TestUploadEditImageUser_SendsNoActorUID(t *testing.T) {
 	}
 }
 
-// The upload shares the user plane's taxonomy: an old session is told to log
-// back in, not that it may not upload.
 func TestUploadEditImageUser_ScopeDenial(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -228,8 +195,6 @@ func TestUploadEditImageUser_ScopeDenial(t *testing.T) {
 	}
 }
 
-// An empty token never leaves the process: a dead session is not a question
-// for the catalog.
 func TestUploadEditImageUser_RefusesAnEmptyToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("an empty token must not reach the catalog")

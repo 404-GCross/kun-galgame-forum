@@ -1,9 +1,5 @@
 package client
 
-// Contract tests for the character face. Hermetic: a httptest catalog serves
-// the record, so the query the client BUILDS is under test alongside the decode
-// — and the query is where this face's two policy decisions live.
-
 import (
 	"context"
 	"net/http"
@@ -12,8 +8,6 @@ import (
 	"testing"
 )
 
-// characterStub serves GET /v1/catalog/characters/{id} and records the query it
-// was called with. status/body let a test drive the 301 and 404 branches.
 func characterStub(t *testing.T, id int64, status int, body string) (*httptest.Server, *url.Values) {
 	t.Helper()
 	var seen url.Values
@@ -30,9 +24,6 @@ func characterStub(t *testing.T, id int64, status int, body string) (*httptest.S
 	return srv, &seen
 }
 
-// The popup and the page ask for different amounts of the same record, and the
-// difference has to reach the wire: the popup never renders the appearance
-// list, and asking for it anyway would cost a works-lane hydration per open.
 func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 	srv, seen := characterStub(t, 5, http.StatusOK,
 		`{"code":0,"message":"ok","data":{"id":5,"name":{"ja":"朝倉"},"traits":[],"intros":[],"refs":[]}}`)
@@ -44,13 +35,9 @@ func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 	if got := seen.Get("include"); got != "" {
 		t.Errorf("include = %q with withWorks=false, want it absent", got)
 	}
-	// Spoiler traits must ride along even on the popup's light fetch: the
-	// reveal is a click, not a second request.
 	if got := seen.Get("spoilers"); got != "2" {
 		t.Errorf("spoilers = %q, want the full ceiling 2", got)
 	}
-	// r18 is 94.5% of the registry — a closed gate would delete most of a
-	// character's appearances rather than filter them.
 	if got := seen.Get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want the population open", got)
 	}
@@ -63,10 +50,6 @@ func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 	}
 }
 
-// Bust and 立绘 are different assets, not two sizes of one, and each has to
-// arrive in its own field for the renderer to give it the right fit. Collapsing
-// them is the obvious simplification and also the bug: a figure cropped into a
-// portrait box is a picture of someone's midriff.
 func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 	srv, _ := characterStub(t, 7, http.StatusOK, `{"code":0,"message":"ok","data":{
 		"id":7,"name":{"ja":"雪村杏"},"latin":"Yukimura Anzu",
@@ -91,13 +74,9 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 	if ch.Figure != "https://cdn.test/cc/dd/figure.webp" {
 		t.Errorf("Figure = %q", ch.Figure)
 	}
-	// A major-spoiler trait decodes rather than being dropped upstream — the
-	// whole point of asking for the ceiling.
 	if len(ch.Traits) != 2 || ch.Traits[1].Spoiler != 2 || !ch.Traits[1].Lie {
 		t.Errorf("Traits = %+v, want the spoiler+lie row intact", ch.Traits)
 	}
-	// The Chinese renderings decode; the catalog omits both keys for a trait it
-	// has not rendered, which must stay empty rather than becoming "null".
 	if ch.Traits[0].NameZh != "金发" || ch.Traits[0].GroupZh != "发型" {
 		t.Errorf("zh trait = %q / %q, want 金发 / 发型", ch.Traits[0].NameZh, ch.Traits[0].GroupZh)
 	}
@@ -115,9 +94,6 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 	}
 }
 
-// A merged character keeps her old id addressable, but only as a 301: the
-// survivor's record must never be painted under the dead id, so the caller gets
-// an id to redirect to and nothing else.
 func TestCatalogCharacter_MergedIDRedirectsRatherThanRenders(t *testing.T) {
 	srv, _ := characterStub(t, 3, http.StatusMovedPermanently,
 		`{"code":12,"message":"moved","data":{"entity_type":"character","id":3,"current_id":91}}`)
@@ -135,7 +111,6 @@ func TestCatalogCharacter_MergedIDRedirectsRatherThanRenders(t *testing.T) {
 	}
 }
 
-// A 404 is a miss, not an error: the page renders 未找到该角色 rather than a 500.
 func TestCatalogCharacter_UnknownIDIsAMiss(t *testing.T) {
 	srv, _ := characterStub(t, 4, http.StatusNotFound, `{"code":404,"message":"not found","data":null}`)
 	c := New(srv.URL, "nm_test_key", "")

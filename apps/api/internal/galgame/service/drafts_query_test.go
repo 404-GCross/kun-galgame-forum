@@ -1,14 +1,5 @@
 package service
 
-// The claim funnel's upstream query is load-bearing in a way that is invisible
-// from this side: drop `claimed=false` and the modal quietly lists works kungal
-// ALREADY has, which is the exact opposite of what it offers. Drop the entity
-// scope and every entity page shows the same global list. So the query is
-// pinned here.
-//
-// The upstream is stubbed empty on purpose — ToCards short-circuits before
-// touching the DB or the user service, so these need no fixtures.
-
 import (
 	"context"
 	"net/http"
@@ -56,7 +47,6 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	if rec.path != "/v1/catalog/works/search" {
 		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
-	// The whole point of the funnel: works NO product has an entry for.
 	if got := rec.get("claimed"); got != "false" {
 		t.Errorf("claimed = %q, want false — anything else lists games kungal already has", got)
 	}
@@ -66,10 +56,6 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want 24", got)
 	}
-	// The age gate is open on every lane (doc 106 §38). The EDITORIAL gate is
-	// absent here and only here: the funnel pins claimed=false, so no row can
-	// carry a wiki verdict for content_limit= to match against, and sending it
-	// could only empty the funnel for the SFW default.
 	if got := rec.get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
 	}

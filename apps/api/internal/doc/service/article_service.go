@@ -16,9 +16,7 @@ import (
 type ArticleService struct {
 	articleRepo  *repository.ArticleRepository
 	categoryRepo *repository.CategoryRepository
-	// cdnBase is the image_service public CDN prefix used to resolve a stored
-	// banner_image_hash into a full URL (matches the galgame banner resolver).
-	cdnBase string
+	cdnBase      string
 }
 
 func NewArticleService(
@@ -29,8 +27,6 @@ func NewArticleService(
 	return &ArticleService{articleRepo: articleRepo, categoryRepo: categoryRepo, cdnBase: cdnBase}
 }
 
-// resolveBannerURL prefers the content-addressed hash (image_service) and falls
-// back to the legacy free-form Banner URL while the migration is in flight.
 func (s *ArticleService) resolveBannerURL(hash, legacy string) string {
 	if hash != "" {
 		return imageclient.MainURL(s.cdnBase, hash, "webp")
@@ -38,35 +34,20 @@ func (s *ArticleService) resolveBannerURL(hash, legacy string) string {
 	return legacy
 }
 
-// ──────────────────────────────────────────
-// GetList — GET /doc/article
-// ──────────────────────────────────────────
-
-// ArticleListResult carries the list + total for paginated handler responses.
 type ArticleListResult struct {
 	Items []dto.ArticleSummary
 	Total int64
 }
 
-// orderByColumn maps the camelCase wire enum (validated by the DTO) onto
-// the actual DB column name used by GORM's Order clause. Without this
-// translation a request like `?orderBy=publishedTime` would emit
-// `ORDER BY publishedTime DESC` and PostgreSQL would 42703 — the column
-// is `published_time`. Doing the mapping here keeps the HTTP surface
-// consistent with the rest of the API (camelCase) without renaming the
-// DB column.
 var orderByColumn = map[string]string{
 	"publishedTime": "published_time",
 	"created":       "created",
 	"view":          "view",
 	"updated":       "updated",
-	"order":         "sort_order", // manual admin drag order
+	"order":         "sort_order",
 }
 
 func (s *ArticleService) GetList(req *dto.GetArticlesRequest) *ArticleListResult {
-	// Default to the manual drag order ("order" → sort_order ASC) so the doc
-	// list reflects whatever admins arranged; callers can still pass an explicit
-	// orderBy (publishedTime / view / …) to re-sort.
 	if req.OrderBy == "" {
 		req.OrderBy = "order"
 	}
@@ -95,8 +76,6 @@ func (s *ArticleService) GetList(req *dto.GetArticlesRequest) *ArticleListResult
 	return &ArticleListResult{Items: summaries, Total: total}
 }
 
-// Reorder persists a new manual article ordering (the drag-reorder result):
-// sort_order is rewritten to each id's index in the provided list.
 func (s *ArticleService) Reorder(ids []int) *errors.AppError {
 	if err := s.articleRepo.Reorder(ids); err != nil {
 		return errors.ErrInternal("调整文档顺序失败")
@@ -104,8 +83,6 @@ func (s *ArticleService) Reorder(ids []int) *errors.AppError {
 	return nil
 }
 
-// SetPin toggles a single article's first-page pin (quick action from the admin
-// doc manager, no full update).
 func (s *ArticleService) SetPin(id int, isPin bool) *errors.AppError {
 	if err := s.articleRepo.SetPin(id, isPin); err != nil {
 		return errors.ErrInternal("更新置顶状态失败")
@@ -161,17 +138,12 @@ func toArticleSummary(a model.DocArticle, cat dto.ArticleCategoryBrief) dto.Arti
 	}
 }
 
-// ──────────────────────────────────────────
-// GetBySlug — GET /doc/article/:slug
-// ──────────────────────────────────────────
-
 func (s *ArticleService) GetBySlug(slug string) (*dto.ArticleDetailResponse, *errors.AppError) {
 	article, err := s.articleRepo.FindBySlug(slug)
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该文章")
 	}
 
-	// Bump view asynchronously to preserve the old fire-and-forget behavior.
 	go s.articleRepo.IncrementView(article.ID)
 
 	tagIDs, err := s.articleRepo.FindTagIDsByArticleID(article.ID)
@@ -210,17 +182,11 @@ func (s *ArticleService) GetBySlug(slug string) (*dto.ArticleDetailResponse, *er
 		CategoryID:      article.CategoryID,
 		AuthorID:        article.AuthorID,
 		Category:        cat,
-		// Tag IDs let the FE rewrite flow re-populate the tag picker
-		// without a second round-trip. See ArticleDetailResponse.
-		TagIDs:  tagIDs,
-		Created: article.CreatedAt,
-		Updated: article.UpdatedAt,
+		TagIDs:          tagIDs,
+		Created:         article.CreatedAt,
+		Updated:         article.UpdatedAt,
 	}, nil
 }
-
-// ──────────────────────────────────────────
-// Create — POST /doc/article
-// ──────────────────────────────────────────
 
 func (s *ArticleService) Create(userID int, req *dto.CreateArticleRequest) (*model.DocArticle, *errors.AppError) {
 	now := time.Now()
@@ -252,10 +218,6 @@ func (s *ArticleService) Create(userID int, req *dto.CreateArticleRequest) (*mod
 	return &article, nil
 }
 
-// ──────────────────────────────────────────
-// Update — PUT /doc/article
-// ──────────────────────────────────────────
-
 func (s *ArticleService) Update(req *dto.UpdateArticleRequest) *errors.AppError {
 	now := time.Now()
 	updates := map[string]any{
@@ -284,10 +246,6 @@ func (s *ArticleService) Update(req *dto.UpdateArticleRequest) *errors.AppError 
 
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Delete — DELETE /doc/article
-// ──────────────────────────────────────────
 
 func (s *ArticleService) Delete(articleID int) *errors.AppError {
 	if err := s.articleRepo.DeleteTagRelationsByArticleID(articleID); err != nil {

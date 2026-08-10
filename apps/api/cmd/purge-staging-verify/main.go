@@ -1,12 +1,3 @@
-// Command purge-staging-verify runs the REAL PurgeRepository.PurgeUserContent
-// against a throwaway STAGING copy of kungalgame and rigorously verifies the
-// outcome: every trace of the target user is gone (except the by-design
-// exceptions), no denormalized counter was left worse than before, the op is
-// atomic, and a re-run is a clean no-op.
-//
-// SAFETY: refuses to run unless current_database() == "kungalgame_purge_staging".
-//
-//	KUN_STAGING_URL=postgres://.../kungalgame_purge_staging go run ./cmd/purge-staging-verify <userID>
 package main
 
 import (
@@ -25,14 +16,12 @@ import (
 
 const stagingDBName = "kungalgame_purge_staging"
 
-// colCheck is a user-referencing column and how it must look AFTER the purge.
 type colCheck struct {
 	table, col string
-	mode       string // "zero" = must be 0; "keep" = allowed to remain (by design)
+	mode       string
 	why        string
 }
 
-// every user-referencing column in kungal (authoritative).
 var colChecks = []colCheck{
 	{"topic", "user_id", "zero", ""},
 	{"topic_reply", "user_id", "zero", ""},
@@ -47,8 +36,6 @@ var colChecks = []colCheck{
 	{"topic_reply_dislike", "user_id", "zero", ""},
 	{"topic_poll", "user_id", "zero", ""},
 	{"topic_poll_vote", "user_id", "zero", ""},
-	// galgame_post_like = the LIVE community-comment like footprint (charter step
-	// 06a); the frozen galgame_comment* / *_comment tables were dropped (migration 060).
 	{"galgame_post_like", "user_id", "zero", ""},
 	{"galgame_favorite", "user_id", "zero", ""},
 	{"galgame_like", "user_id", "zero", ""},
@@ -79,14 +66,12 @@ var colChecks = []colCheck{
 	{"user_follow", "followed_id", "zero", ""},
 	{"user_friend", "user_id", "zero", ""},
 	{"user_friend", "friend_id", "zero", ""},
-	// excluded-by-design (admin content, role>1 guard prevents purging such users)
 	{"doc_article", "author_id", "keep", "admin content; role>1 not purgeable"},
 	{"todo", "user_id", "keep", "admin content"},
 	{"update_log", "user_id", "keep", "admin content"},
 	{"unmoe", "user_id", "keep", "read-only logs; not a POST surface"},
 }
 
-// counterCheck is a denormalized counter and how to recompute it.
 type counterCheck struct {
 	parent, countCol, child, fk string
 }
@@ -103,12 +88,6 @@ var counterChecks = []counterCheck{
 	{"topic_reply", "dislike_count", "topic_reply_dislike", "topic_reply_id"},
 	{"topic_poll_option", "vote_count", "topic_poll_vote", "option_id"},
 	{"galgame", "rating_count", "galgame_rating", "galgame_id"},
-	// galgame.comment_count / galgame_website.comment_count are NOT reconciled here:
-	// since the community cutover they are LIVE counters maintained by the community
-	// BFF, and the frozen galgame_comment / galgame_website_comment source tables
-	// were dropped (charter step 06a / ruling 11; migration 060). The
-	// galgame_rating.comment_count + galgame_comment.like_count reconciliations are
-	// likewise retired with their now-dropped tables.
 	{"galgame", "resource_count", "galgame_resource", "galgame_id"},
 	{"galgame", "like_count", "galgame_like", "galgame_id"},
 	{"galgame", "favorite_count", "galgame_favorite", "galgame_id"},
@@ -140,7 +119,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// ── SAFETY GUARD: never touch anything but the staging copy. ──
 	var dbName string
 	db.Raw("SELECT current_database()").Scan(&dbName)
 	if dbName != stagingDBName {
@@ -154,7 +132,6 @@ func main() {
 		db.Table(table).Where(col+" = ?", userID).Count(&n)
 		return n
 	}
-	// counterDrift returns how many parent rows have a wrong denormalized count.
 	counterDrift := func(c counterCheck) int64 {
 		var n int64
 		db.Raw(fmt.Sprintf(
@@ -169,7 +146,6 @@ func main() {
 		fmt.Printf("  FAIL: "+format+"\n", a...)
 	}
 
-	// ── Pre-purge snapshot ──
 	fmt.Println("[1] pre-purge footprint (non-zero columns):")
 	var preTotal int64
 	for _, c := range colChecks {
@@ -182,8 +158,6 @@ func main() {
 	for _, c := range counterChecks {
 		preDrift[c.parent+"."+c.countCol] = counterDrift(c)
 	}
-	// chat_room.last_message_sender_id is a denormalized snapshot that already
-	// drifts in source data (recalled/old messages); track it comparatively.
 	staleLastMsg := func() int64 {
 		var n int64
 		db.Raw("SELECT COUNT(*) FROM chat_room cr WHERE cr.last_message_sender_id IS NOT NULL " +
@@ -192,7 +166,6 @@ func main() {
 	}
 	preStale := staleLastMsg()
 
-	// ── Run the REAL purge ──
 	fmt.Println("\n[2] running PurgeRepository.PurgeUserContent ...")
 	repo := repository.NewPurgeRepository(db)
 	stats, perr := repo.PurgeUserContent(userID)
@@ -205,7 +178,6 @@ func main() {
 		stats.Total, stats.Topics, stats.Replies, stats.TopicComments,
 		stats.Ratings, stats.Resources, stats.Websites, stats.Toolsets, stats.ChatMessages, stats.Messages, stats.Interactions)
 
-	// ── Completeness assertions ──
 	fmt.Println("\n[3] completeness — every traced column must be 0 (except by-design keeps):")
 	for _, c := range colChecks {
 		n := count(c.table, c.col)
@@ -224,7 +196,6 @@ func main() {
 		fmt.Println("    OK — all must-zero columns are 0")
 	}
 
-	// ── Counter integrity: purge must not WORSEN any counter ──
 	fmt.Println("\n[4] counter integrity — drift must not increase vs pre-purge:")
 	for _, c := range counterChecks {
 		key := c.parent + "." + c.countCol
@@ -239,7 +210,6 @@ func main() {
 		fmt.Println("    OK — no counter left worse than before")
 	}
 
-	// ── Orphan spot-checks (FKs enforce most, but verify subtree cleanup) ──
 	fmt.Println("\n[5] orphan checks:")
 	orphan := func(label, sql string) {
 		var n int64
@@ -255,14 +225,12 @@ func main() {
 	if pass {
 		fmt.Println("    OK — no orphans")
 	}
-	// last_message_sender drift is comparative (pre-existing in source data).
 	if postStale := staleLastMsg(); postStale > preStale {
 		fail("chat_room stale last_message_sender increased %d -> %d", preStale, postStale)
 	} else {
 		fmt.Printf("    last_message_sender staleness %d -> %d (pre-existing drift, not increased)\n", preStale, postStale)
 	}
 
-	// ── Idempotency: a second purge must succeed and be a clean no-op ──
 	fmt.Println("\n[6] idempotency — re-run purge:")
 	stats2, perr2 := repo.PurgeUserContent(userID)
 	if perr2 != nil {
@@ -273,10 +241,6 @@ func main() {
 		fmt.Println("    OK — second run found nothing and errored not")
 	}
 
-	// ── Community compliance purge: the local PurgeRepository is local-only, so
-	// mirror what PurgeService does (AuthorPurge) and assert the author has no
-	// visible community posts left. Skipped (with a warning) when the community
-	// S2S face isn't configured via env. ──
 	fmt.Println("\n[7] community purge — author has 0 visible posts:")
 	verifyCommunityPurge(fail, userID)
 
@@ -286,12 +250,6 @@ func main() {
 	}
 }
 
-// verifyCommunityPurge mirrors PurgeService's community step against the S2S
-// face configured via env (KUN_COMMUNITY_API_BASE + KUN_COMMUNITY_CLIENT_ID/
-// SECRET, falling back to OAUTH_CLIENT_ID/SECRET), then asserts the author has
-// zero visible community posts. When unconfigured it prints a warning and skips
-// (does not fail — a dev box without the community service still validates the
-// local purge).
 func verifyCommunityPurge(fail func(string, ...any), userID int) {
 	base := os.Getenv("KUN_COMMUNITY_API_BASE")
 	clientID := firstNonEmpty(os.Getenv("KUN_COMMUNITY_CLIENT_ID"), os.Getenv("OAUTH_CLIENT_ID"))

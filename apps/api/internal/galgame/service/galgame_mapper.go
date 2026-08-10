@@ -11,10 +11,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// ──────────────────────────────────────────
-// Shared slice/CSV utilities
-// ──────────────────────────────────────────
-
 func splitCSV(s string) []string {
 	if s == "" {
 		return nil
@@ -22,8 +18,6 @@ func splitCSV(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// groupResourceMeta bucketises rows from galgame_resource into per-galgame
-// platform/language sets (preserving insertion order + dedup).
 func groupResourceMeta(rows []model.GalgameResourceMeta) (platforms, languages map[int][]string) {
 	platforms = make(map[int][]string)
 	languages = make(map[int][]string)
@@ -38,22 +32,6 @@ func groupResourceMeta(rows []model.GalgameResourceMeta) (platforms, languages m
 	return
 }
 
-// frozenCreatorBrief resolves a galgame card's 发布人 chip from the FROZEN
-// wiki-era creator on the LOCAL row (migration 066), which is the only source
-// left: the catalog face deliberately carries no submitter, so the brief's /
-// item's own UserID is always 0 (client.CatalogItemToBrief leaves it zero) and
-// keying the user map off it blanked the chip on every card.
-//
-// An unknown creator — NULL column, or a catalog work with no local row at all,
-// whose zero-value GalgameLocalRow lands here — yields the zero brief, which the
-// frontend renders as no chip. It is returned WITHOUT consulting the user map on
-// purpose: 已注销用户 is what a lookup of user 0 produces, and "nobody knows who
-// submitted this" must never be shown as "a deleted account submitted this".
-//
-// The ownership lane reads the SAME column now (GalgameService.ownerOf): the
-// wiki's /internal meta op retired with wave-161 P5, and converging on one
-// column is the better end state anyway — an owner-review gate that disagreed
-// with the author chip on screen would be impossible to explain.
 func frozenCreatorBrief(row repository.GalgameLocalRow, userMap map[int]userclient.User) dto.UserBrief {
 	id := userclient.DerefID(row.CreatorUserID)
 	if id <= 0 {
@@ -62,23 +40,12 @@ func frozenCreatorBrief(row repository.GalgameLocalRow, userMap map[int]userclie
 	return userBriefToDTO(userMap[id])
 }
 
-// frozenCreatorIDs is the batch half of frozenCreatorBrief: the distinct
-// creators of a local stats batch, for ONE Hydrate round-trip. `ids` is the
-// card order; a game with no local row (catalog-only) or a NULL creator
-// collapses to 0 and is dropped, so Hydrate is never asked about user 0 and
-// can't answer with a 已注销用户 placeholder.
 func frozenCreatorIDs(ids []int, localMap map[int]repository.GalgameLocalRow) []int {
 	return userclient.CollectIDs(ids, func(id int) int {
 		return userclient.DerefID(localMap[id].CreatorUserID)
 	})
 }
 
-// ──────────────────────────────────────────
-// Galgame → Detail DTO
-// ──────────────────────────────────────────
-
-// galgameDetailFromNextMoe maps a galgame galgame payload into the response DTO,
-// resolving author/contributor users from the galgame-returned users map.
 func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]dto.NextMoeUser) dto.GalgameDetail {
 	return dto.GalgameDetail{
 		ID:     g.ID,
@@ -99,20 +66,13 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 			EnUs: g.IntroEnUs, JaJp: g.IntroJaJp,
 			ZhCn: g.IntroZhCn, ZhTw: g.IntroZhTw,
 		},
-		ContentLimit:       g.ContentLimit,
-		ResourceUpdateTime: g.ResourceUpdateTime,
-		Status:             g.Status,
-		OriginalLanguage:   g.OriginalLanguage,
-		AgeLimit:           g.AgeLimit,
-		ReleaseDate:        g.ReleaseDate,
-		ReleaseDateTBA:     g.ReleaseDateTBA,
-		// U2: effective_banner_hash + Covers/Screenshots are the
-		// canonical banner/gallery sources. CDN URLs (effective_banner_url
-		// + per-row cdn_url) are injected by client.rewriteBanners over
-		// the galgame response BEFORE we unmarshal — and we explicitly
-		// declare the fields on NextMoeGalgameDetailFull so they survive,
-		// then pipe through here. banner_image_hash retired in galgame
-		// PR5 (K-PR6).
+		ContentLimit:             g.ContentLimit,
+		ResourceUpdateTime:       g.ResourceUpdateTime,
+		Status:                   g.Status,
+		OriginalLanguage:         g.OriginalLanguage,
+		AgeLimit:                 g.AgeLimit,
+		ReleaseDate:              g.ReleaseDate,
+		ReleaseDateTBA:           g.ReleaseDateTBA,
 		EffectiveBannerHash:      g.EffectiveBannerHash,
 		EffectiveBannerURL:       g.EffectiveBannerURL,
 		EffectiveBannerWidth:     g.EffectiveBannerWidth,
@@ -124,15 +84,12 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 		Alias:                    nextMoeAliasesToNames(g.Alias),
 		Engine:                   enginesFromNextMoe(g.Engine),
 		Official:                 officialsFromNextMoe(g.Official),
-		// Left unassigned when the series page came back, so the field shipped
-		// as JSON null on every game — a required Array prop on the FE, which
-		// warned on every detail render and rendered no 所属系列 at all.
-		Series:     seriesFromNextMoe(g.Series),
-		Tag:        tagsFromNextMoe(g.Tag),
-		Staff:      staffFromNextMoe(g.Staff),
-		Characters: charactersFromNextMoe(g.Characters),
-		Created:    g.Created,
-		Updated:    g.Updated,
+		Series:                   seriesFromNextMoe(g.Series),
+		Tag:                      tagsFromNextMoe(g.Tag),
+		Staff:                    staffFromNextMoe(g.Staff),
+		Characters:               charactersFromNextMoe(g.Characters),
+		Created:                  g.Created,
+		Updated:                  g.Updated,
 	}
 }
 
@@ -143,10 +100,6 @@ func lookupNextMoeUser(users map[string]dto.NextMoeUser, userID int) dto.UserBri
 	return dto.UserBrief{ID: userID}
 }
 
-// U2: cover/screenshot row mappers. Plain field-by-field copy — wire
-// shape is identical (snake_case JSON tags); the wrappers exist so the
-// frontend-exposed types can later diverge (e.g. omit Source/SourceKey
-// from public responses) without rewriting the mapper site.
 func coversFromNextMoe(rows []dto.NextMoeGalgameCover) []dto.GalgameCover {
 	out := make([]dto.GalgameCover, len(rows))
 	for i, r := range rows {
@@ -252,9 +205,6 @@ func tagsFromNextMoe(tags []dto.NextMoeTagWithSpoiler) []dto.GalgameDetailTag {
 	return out
 }
 
-// staffFromNextMoe copies the 制作人员 panel across the DTO boundary. The
-// folding, dedup and ordering already happened in the catalog projection — this
-// is a plain field copy, kept so the forum-facing type can diverge later.
 func staffFromNextMoe(groups []dto.NextMoeStaffGroup) []dto.GalgameDetailStaff {
 	out := make([]dto.GalgameDetailStaff, len(groups))
 	for i, g := range groups {
@@ -269,10 +219,6 @@ func staffFromNextMoe(groups []dto.NextMoeStaffGroup) []dto.GalgameDetailStaff {
 	return out
 }
 
-// charactersFromNextMoe copies the 登场角色 roster across the DTO boundary. The
-// merge (appearance edges ∪ VA credits) and the billing order both happened
-// upstream, so this is a field copy for the same reason staffFromNextMoe is:
-// the forum-facing type is free to diverge later.
 func charactersFromNextMoe(chars []dto.NextMoeGalgameCharacter) []dto.GalgameDetailCharacter {
 	out := make([]dto.GalgameDetailCharacter, len(chars))
 	for i, c := range chars {
@@ -291,15 +237,6 @@ func charactersFromNextMoe(chars []dto.NextMoeGalgameCharacter) []dto.GalgameDet
 	return out
 }
 
-// withoutSexualTags drops the adult chips from a detail payload.
-//
-// This is a SERVER-side gate on purpose. The detail page renders for everyone
-// by design (§16.2: a direct URL is 有意为之), and the tag strip has a
-// client-side category filter that already hid these chips from a SFW viewer —
-// but hiding is not withholding: the full tag list still shipped inside the
-// SSR HTML and the __NUXT__ payload, so an anonymous visitor and, more to the
-// point, a crawler read the adult vocabulary of every game on the site. A chip
-// nobody is meant to see must not be in the response at all.
 func withoutSexualTags(tags []dto.GalgameDetailTag) []dto.GalgameDetailTag {
 	out := make([]dto.GalgameDetailTag, 0, len(tags))
 	for _, t := range tags {
@@ -311,7 +248,6 @@ func withoutSexualTags(tags []dto.GalgameDetailTag) []dto.GalgameDetailTag {
 	return out
 }
 
-// detailRatingFromRow maps a DB rating row into the detail-page rating card.
 func detailRatingFromRow(
 	r repository.GalgameDetailRatingRow,
 	user userclient.User,

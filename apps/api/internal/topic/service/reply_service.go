@@ -58,15 +58,6 @@ func NewReplyService(
 	}
 }
 
-// ──────────────────────────────────────────
-// Locate (deep-link)
-// ──────────────────────────────────────────
-
-// LocateReply resolves a deep-link target — a reply floor OR a comment id — to the
-// reply-stream page it lives on, so the frontend can load that page directly and
-// scroll to it. commentID wins: its parent reply's floor is resolved first. Returns
-// ErrNotFound when a comment target no longer exists; a deleted reply floor just
-// yields the page where it would sit (the frontend gracefully no-ops the scroll).
 func (s *ReplyService) LocateReply(topicID, floor, commentID, limit int) (*dto.ReplyLocateResponse, *errors.AppError) {
 	replyID := 0
 	if commentID > 0 {
@@ -94,10 +85,6 @@ func (s *ReplyService) LocateReply(topicID, floor, commentID, limit int) (*dto.R
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// List replies
-// ──────────────────────────────────────────
-
 func (s *ReplyService) GetReplies(
 	ctx context.Context,
 	req *dto.ListRepliesRequest,
@@ -108,7 +95,6 @@ func (s *ReplyService) GetReplies(
 		return []dto.TopicReplyResponse{}, nil
 	}
 
-	// Collect special reply IDs (pinned + best answer)
 	var specialIDs []int
 	if topic.PinnedReplyID != nil {
 		specialIDs = append(specialIDs, *topic.PinnedReplyID)
@@ -119,7 +105,6 @@ func (s *ReplyService) GetReplies(
 
 	var result []dto.TopicReplyResponse
 
-	// On page 1, prepend special replies
 	if req.Page == 1 && len(specialIDs) > 0 {
 		if specialRows, err := s.replyRepo.FindRepliesByIDs(specialIDs); err == nil {
 			result = append(result, s.buildReplyResponses(ctx, specialRows, topic, userInfo)...)
@@ -142,10 +127,6 @@ func (s *ReplyService) GetReplies(
 	return result, nil
 }
 
-// ──────────────────────────────────────────
-// Reply detail
-// ──────────────────────────────────────────
-
 func (s *ReplyService) GetReplyDetail(
 	ctx context.Context,
 	replyID int,
@@ -164,10 +145,6 @@ func (s *ReplyService) GetReplyDetail(
 	return &responses[0], nil
 }
 
-// ──────────────────────────────────────────
-// Create reply — floor calculation inside tx
-// ──────────────────────────────────────────
-
 func (s *ReplyService) CreateReply(
 	ctx context.Context,
 	userID int,
@@ -182,9 +159,6 @@ func (s *ReplyService) CreateReply(
 		return nil, errors.ErrBadRequest("回复内容不能为空")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 1). A reply's
-	// moderation text is its RAW body (no title). deny blocks (nothing persisted);
-	// hold publishes normally + logs; fail-open on any error/timeout.
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, req.Content, &authorID)
 	if decision == gate.DecisionDeny {
@@ -219,17 +193,12 @@ func (s *ReplyService) CreateReply(
 
 		preview := truncate(strings.TrimSpace(req.Content), constants.TextPreviewLength)
 
-		// Notify the topic owner their topic got a reply (independent of mentions).
 		if topic.UserID != userID {
 			s.helpers.AdjustMoemoepoint(tx, topic.UserID, constants.RewardReply,
 				moemoepoint.ReasonContentApproved, moemoepoint.Ref("topic", req.TopicID))
 			s.helpers.CreateReplyMessage(tx, userID, topic.UserID, "replied", preview, req.TopicID, newReply.Floor, 0)
 		}
 
-		// @mentions in the reply body → "mentioned" notifications (deduped, self
-		// skipped). Replying-to-a-floor now flows through here: the 「引用」 button
-		// inserts an @mention of the quoted author, so they're notified as
-		// "mentioned" in place of the retired per-target "replied".
 		s.helpers.NotifyMentions(tx, userID, req.TopicID, newReply.Floor, 0, req.Content)
 
 		return nil
@@ -252,14 +221,6 @@ func (s *ReplyService) CreateReply(
 	return &responses[0], nil
 }
 
-// ──────────────────────────────────────────
-// Update reply
-// ──────────────────────────────────────────
-
-// UpdateReply rewrites a reply's content and stamps `edited`. The author may
-// always edit their own; canEditAny (perm.ReplyEditAny) lets staff rewrite
-// someone else's — the same author-or-moderator shape TopicWriteService.Update
-// uses. `edited` is stamped either way, so a staff rewrite is never silent.
 func (s *ReplyService) UpdateReply(
 	ctx context.Context,
 	userID int,
@@ -278,8 +239,6 @@ func (s *ReplyService) UpdateReply(
 		return errors.ErrBadRequest("回复内容不能为空")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (reply.UserID).
 	authorID := int64(reply.UserID)
 	decision, matched := s.check.Decision(ctx, req.Content, &authorID)
 	if decision == gate.DecisionDeny {
@@ -295,12 +254,6 @@ func (s *ReplyService) UpdateReply(
 			return err
 		}
 
-		// @mentions in the edited reply → notify newly mentioned users (deduped,
-		// so anyone already mentioned in this topic isn't re-notified on edit).
-		// The actor is the reply's AUTHOR, not the editor: the reply carries the
-		// author's byline, so "X 提到了你" must name them even when a moderator
-		// (perm.ReplyEditAny) made the edit. Identical to the old behaviour on the
-		// author path, where the two are the same person.
 		s.helpers.NotifyMentions(tx, reply.UserID, reply.TopicID, reply.Floor, 0, req.Content)
 
 		return nil
@@ -317,10 +270,6 @@ func (s *ReplyService) UpdateReply(
 
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Delete reply — cascade + moemoepoint penalty
-// ──────────────────────────────────────────
 
 func (s *ReplyService) DeleteReply(
 	ctx context.Context,
@@ -374,10 +323,6 @@ func (s *ReplyService) DeleteReply(
 	return nil
 }
 
-// ModerationRemove hard-deletes a reply for a T&S `remove` enforcement — no
-// permission check (the disposition is already authorized) and NO moemoepoint
-// penalty (unlike DeleteReply, which can even abort on insufficient author
-// points). Idempotent: a missing reply is a no-op.
 func (s *ReplyService) ModerationRemove(replyID int) error {
 	reply, err := s.replyRepo.FindByID(replyID)
 	if err != nil {
@@ -391,12 +336,6 @@ func (s *ReplyService) ModerationRemove(replyID int) error {
 	})
 }
 
-// ──────────────────────────────────────────
-// Reply interactions
-// ──────────────────────────────────────────
-
-// ToggleReplyLike / ToggleReplyDislike are kept as thin aliases (the legacy
-// endpoints still call them) — both route through the unified reaction path.
 func (s *ReplyService) ToggleReplyLike(ctx context.Context, userID, replyID int) *errors.AppError {
 	return s.ToggleReplyReaction(ctx, userID, replyID, "like")
 }
@@ -405,10 +344,6 @@ func (s *ReplyService) ToggleReplyDislike(ctx context.Context, userID, replyID i
 	return s.ToggleReplyReaction(ctx, userID, replyID, "dislike")
 }
 
-// ToggleReplyReaction is the reply-level counterpart of TopicWriteService
-// .ToggleReaction: like → ±1 moemoepoint to the reply owner + a "liked"
-// notification; like⇄dislike mutually exclusive; emoji reactions plain. Only
-// 'like' is blocked on one's own reply. (reactionKeys lives in topic_write_service.go.)
 func (s *ReplyService) ToggleReplyReaction(ctx context.Context, userID, replyID int, reaction string) *errors.AppError {
 	if !reactionKeys[reaction] {
 		return errors.ErrBadRequest("无效的 reaction")
@@ -489,10 +424,6 @@ func (s *ReplyService) ToggleReplyReaction(ctx context.Context, userID, replyID 
 	}
 }
 
-// GetReplyReactionHistory returns a reply's reaction events — who reacted, with
-// which reaction, and when — newest first, capped. The reply-level counterpart
-// of TopicService.GetTopicReactionHistory, powering the same 查看历史 modal
-// (topicReactionHistoryLimit is shared; it lives in topic_service.go).
 func (s *ReplyService) GetReplyReactionHistory(ctx context.Context, replyID int) ([]dto.ReactionHistoryItem, *errors.AppError) {
 	rows, err := s.replyRepo.GetReplyReactionHistory(replyID, topicReactionHistoryLimit)
 	if err != nil {
@@ -515,8 +446,6 @@ func (s *ReplyService) GetReplyReactionHistory(ctx context.Context, replyID int)
 	return out, nil
 }
 
-// clearReplyReaction removes the user's `reaction` on a reply if present (like⇄
-// dislike exclusion), reversing the like count + moemoepoint for a 'like'.
 func (s *ReplyService) clearReplyReaction(tx *gorm.DB, replyID, userID, ownerID int, reaction string) error {
 	has, err := s.replyRepo.HasReplyReaction(tx, replyID, userID, reaction)
 	if err != nil || !has {
@@ -580,9 +509,6 @@ func (s *ReplyService) PinReply(ctx context.Context, userID int, canModerate boo
 	return nil
 }
 
-// replyPlainPreview is the reply's markdown-stripped content, used for pin-reply
-// / solution notification previews. (The Phase-4 migration folded legacy
-// multi-target content into Content, so there are no separate targets to append.)
 func replyPlainPreview(reply topicModel.TopicReply) string {
 	return markdown.ToPlainText(reply.Content, 500)
 }

@@ -1,28 +1,3 @@
-// Backfill topic.cover_images from the images already embedded in each topic's
-// body: take the first N distinct /image/<hash> content tokens (in order of
-// appearance) and store them as the topic's feed-card covers.
-//
-// Covers are stored as a JSON array of /image/<hash> tokens in the scalar text
-// column topic.cover_images (see migration 029 + model.ImageTokens for why
-// tokens-in-text, not text[]). This tool writes exactly that shape, so the
-// daily reference-ping keeps the harvested covers alive automatically.
-//
-// SCOPE: only /image/<hash> CONTENT TOKENS are harvested. Topics whose body
-// images are arbitrary external URLs (topics — unlike chat — allow any host)
-// are left without an auto-cover; their author can add covers by hand. Only
-// topics whose cover_images is still ” (unset) are touched, so this is
-// idempotent and never overwrites a cover someone picked manually — a re-run
-// only fills topics that gained a token-image since the last run.
-//
-// SAFE BY DEFAULT: -dry-run defaults to TRUE — it reports how many topics would
-// get covers (and the per-count distribution), with NO DB writes. Pass
-// -dry-run=false to apply. Run the 029 migration FIRST (the column must exist).
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  backfill-topic-covers                      # dry-run: report workload
-//	  backfill-topic-covers -dry-run=false       # apply (first 3 token-images per topic)
-//	  backfill-topic-covers -dry-run=false -max=1 # only the first image as a single cover
-//	  backfill-topic-covers -dry-run=false -limit=20 # smoke-test 20 topics first
 package main
 
 import (
@@ -40,9 +15,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// contentImageTokenRe matches a /image/<64hex> content token — the same shape
-// cron/reference_ping.go scans for. We harvest the full token (with the
-// /image/ prefix) so what we store is render-ready and ping-visible.
 var contentImageTokenRe = regexp.MustCompile(`/image/[0-9a-f]{64}`)
 
 func main() {
@@ -74,7 +46,6 @@ func main() {
 	var rows []row
 	q := db.Table("topic").
 		Select("id, content").
-		// Only topics without covers yet, that contain at least one token image.
 		Where("cover_images = ''").
 		Where("content LIKE ?", "%/image/%").
 		Order("id ASC")
@@ -89,12 +60,12 @@ func main() {
 	slog.Info("开始回填话题封面", "dry_run", *dryRun, "max", *maxCovers, "limit", *limit, "候选话题数", len(rows))
 
 	var wouldFill, filled int
-	countDist := map[int]int{} // #covers -> #topics
+	countDist := map[int]int{}
 
 	for _, r := range rows {
 		covers := firstDistinctTokens(r.Content, *maxCovers)
 		if len(covers) == 0 {
-			continue // only external-URL images, no token to harvest
+			continue
 		}
 		wouldFill++
 		countDist[len(covers)]++
@@ -134,8 +105,6 @@ func main() {
 	fmt.Printf("回填完成: 已为 %d 个话题写入封面 (候选 %d)。\n", filled, len(rows))
 }
 
-// firstDistinctTokens returns the first `max` distinct /image/<hash> tokens in
-// the order they appear in content (a repeated image counts once).
 func firstDistinctTokens(content string, max int) []string {
 	matches := contentImageTokenRe.FindAllString(content, -1)
 	seen := make(map[string]struct{}, len(matches))

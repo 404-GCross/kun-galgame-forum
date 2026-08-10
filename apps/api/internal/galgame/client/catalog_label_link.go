@@ -9,33 +9,8 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// The 会社's 官网 on a work's detail page.
-//
-// A work detail's labels[] rows carry identity and counts but no links — the
-// catalog publishes a label's web presence on the LABEL record, not on every
-// attribution edge that points at it. So the detail projection left Link empty
-// and every galgame page said 暂无官网, including the ones whose maker has had
-// a homepage on its own 会社 page all along. This resolves the missing half.
-//
-// Labels per work are few (one to four), the fetches run together, and the
-// answers are memoized, so a page pays one upstream call per distinct maker
-// per TTL window and usually none.
-
-// The one label-link source this file cares about. It is NOT the vocabulary:
-// wave 186 widened the catalog's related-link table to official_site / twitter
-// / cien / steam / pixiv / web, and `web` alone stands in for ~35 whitelisted
-// sites. Naming any of them is LinkDisplayName's job (link_name.go); picking
-// the homepage out of them is this one's.
 const LabelLinkOfficialSite = "official_site"
 
-// PrimaryLabelLink picks the maker's OFFICIAL SITE, and only that.
-//
-// The older rule looked for sources named "official" or "homepage" and fell
-// back to whatever link came first. No such source keys exist — the catalog's
-// are official_site / twitter / cien — so the preference never fired and the
-// fallback decided every case: a maker with only an X account had that account
-// rendered under a 官方网站 label. A 会社 with no site now says so, and its
-// other web presences are shown, correctly named, on its own page.
 func PrimaryLabelLink(l *CatalogLabelDetail) string {
 	for _, link := range l.Links {
 		if link.Source == LabelLinkOfficialSite {
@@ -45,11 +20,6 @@ func PrimaryLabelLink(l *CatalogLabelDetail) string {
 	return ""
 }
 
-// HydrateOfficialLinks fills in each 会社's 官网 on a detail projection.
-//
-// Best-effort by design: a label that 404s, moved, or simply has no site keeps
-// an empty Link, and an upstream hiccup costs the page its 官网 links rather
-// than the page itself.
 func (c *GalgameClient) HydrateOfficialLinks(
 	ctx context.Context,
 	g *dto.NextMoeGalgameDetailFull,
@@ -79,9 +49,6 @@ func (c *GalgameClient) HydrateOfficialLinks(
 	}
 }
 
-// fetchLabelLinks resolves label ids → primary link, concurrently. Ids that
-// resolve to no link are absent from the result, which cachedBatch remembers as
-// a negative so a maker without a site isn't re-asked on every page view.
 func (c *GalgameClient) fetchLabelLinks(ctx context.Context, ids []int) map[int]string {
 	var (
 		mu  sync.Mutex

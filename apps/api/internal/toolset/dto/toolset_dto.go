@@ -8,9 +8,6 @@ import (
 	userModel "kun-galgame-api/internal/user/model"
 )
 
-// ──────────────────────────────────────────
-// Requests
-// ──────────────────────────────────────────
 
 type ToolsetListRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
@@ -21,12 +18,7 @@ type ToolsetListRequest struct {
 	Version   string `query:"version"`
 	SortField string `query:"sort_field"`
 	SortOrder string `query:"sort_order"`
-	// Query is the keyword search across name + description + version (on the
-	// toolset row) and alias name (on galgame_toolset_alias). Empty = off.
 	Query string `query:"query" validate:"max=100"`
-	// UserID is set by the per-user handler (GET /user/:id/toolsets) from the
-	// path, NOT bound from the query — so the public /toolset list can't be
-	// author-filtered by an arbitrary caller.
 	UserID int `query:"-"`
 }
 
@@ -52,14 +44,7 @@ type UpdateToolsetRequest struct {
 	Aliases     []string `json:"aliases"`
 }
 
-// ──────────────────────────────────────────
-// Responses
-// ──────────────────────────────────────────
 
-// ToolsetCard is the shape of each item in the list response.
-//
-// Note: `PracticalityAvg` is `any` so we can emit `null` when there are no
-// ratings (the original handler did the same).
 type ToolsetCard struct {
 	ID                 int                 `json:"id"`
 	Name               string              `json:"name"`
@@ -75,9 +60,6 @@ type ToolsetCard struct {
 	ResourceUpdateTime any                 `json:"resource_update_time"`
 }
 
-// ToolsetResourceItem is the slim resource projection embedded in the toolset
-// detail response. Hides sensitive fields (code/password/note) — those are
-// only served by the dedicated /toolset/:id/resource/detail endpoint.
 type ToolsetResourceItem struct {
 	ID       int    `json:"id"`
 	Type     string `json:"type"`
@@ -86,11 +68,6 @@ type ToolsetResourceItem struct {
 	Status   int    `json:"status"`
 }
 
-// ToolsetDetailResponse is the FLAT response for GET /toolset/:id, shaped to
-// match the frontend `ToolsetDetail` type directly. Previously this was a
-// nested envelope (`{toolset, descriptionHTML, ...}`) which made the
-// frontend look up `data.toolset.created` — but the page reads `data.created`,
-// causing `new Date(undefined).toISOString()` to throw RangeError.
 type ToolsetDetailResponse struct {
 	ID                 int                           `json:"id"`
 	Name               string                        `json:"name"`
@@ -118,8 +95,6 @@ type ToolsetDetailResponse struct {
 	Contributors       []userModel.UserBrief         `json:"contributors"`
 }
 
-// CreatedToolsetResponse is the raw toolset row returned by POST /toolset.
 type CreatedToolsetResponse = model.GalgameToolset
 
-// HomepageJSON is a convenience alias used by the service when encoding homepage.
 type HomepageJSON = json.RawMessage

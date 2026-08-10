@@ -17,8 +17,6 @@ func NewHomeHandler(homeService *service.HomeService) *HomeHandler {
 	return &HomeHandler{homeService: homeService}
 }
 
-// GetHome returns homepage data: galgames + topics.
-// GET /api/home
 func (h *HomeHandler) GetHome(c fiber.Ctx) error {
 	isSFW := utils.IsSFW(c)
 

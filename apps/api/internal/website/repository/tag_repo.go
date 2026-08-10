@@ -17,18 +17,12 @@ func NewTagRepository(db *gorm.DB) *TagRepository {
 
 func (r *TagRepository) DB() *gorm.DB { return r.db }
 
-// ──────────────────────────────────────────
-// Tag reads
-// ──────────────────────────────────────────
-
-// FindAll returns all tags ordered by id ASC.
 func (r *TagRepository) FindAll() []model.GalgameWebsiteTag {
 	var tags []model.GalgameWebsiteTag
 	r.db.Order("id ASC").Find(&tags)
 	return tags
 }
 
-// FindByName returns a tag by its unique name.
 func (r *TagRepository) FindByName(name string) (*model.GalgameWebsiteTag, error) {
 	var tag model.GalgameWebsiteTag
 	if err := r.db.Where("name = ?", name).First(&tag).Error; err != nil {
@@ -37,38 +31,25 @@ func (r *TagRepository) FindByName(name string) (*model.GalgameWebsiteTag, error
 	return &tag, nil
 }
 
-// ──────────────────────────────────────────
-// Tag writes
-// ──────────────────────────────────────────
-
-// Create inserts a new tag row.
 func (r *TagRepository) Create(tag *model.GalgameWebsiteTag) error {
 	return r.db.Create(tag).Error
 }
 
-// UpdateFields updates arbitrary fields on a tag row.
 func (r *TagRepository) UpdateFields(id int, updates map[string]any) {
 	r.db.Model(&model.GalgameWebsiteTag{}).Where("id = ?", id).Updates(updates)
 }
 
-// DeleteByID deletes a tag row and all its relation rows.
 func (r *TagRepository) DeleteByID(id int) {
 	r.db.Where("tag_id = ?", id).Delete(&model.GalgameWebsiteTagRelation{})
 	r.db.Delete(&model.GalgameWebsiteTag{}, id)
 }
 
-// ──────────────────────────────────────────
-// Relation reads
-// ──────────────────────────────────────────
-
-// FindRelationsByTagID returns all relation rows for a tag.
 func (r *TagRepository) FindRelationsByTagID(tagID int) []model.GalgameWebsiteTagRelation {
 	var rels []model.GalgameWebsiteTagRelation
 	r.db.Where("galgame_website_tag_id = ?", tagID).Find(&rels)
 	return rels
 }
 
-// FindRelationsByWebsiteWithTag returns relations for a website preloading the Tag.
 func (r *TagRepository) FindRelationsByWebsiteWithTag(websiteID int) []model.GalgameWebsiteTagRelation {
 	var rels []model.GalgameWebsiteTagRelation
 	r.db.Where("galgame_website_id = ?", websiteID).
@@ -76,7 +57,6 @@ func (r *TagRepository) FindRelationsByWebsiteWithTag(websiteID int) []model.Gal
 	return rels
 }
 
-// LevelSumsByWebsiteIDs returns a map[websiteID] -> sum of tag levels for the given websites.
 func (r *TagRepository) LevelSumsByWebsiteIDs(websiteIDs []int) map[int]int {
 	if len(websiteIDs) == 0 {
 		return map[int]int{}
@@ -98,7 +78,6 @@ func (r *TagRepository) LevelSumsByWebsiteIDs(websiteIDs []int) map[int]int {
 	return out
 }
 
-// LevelSumsAll returns the map of tag level sums for every website.
 func (r *TagRepository) LevelSumsAll() map[int]int {
 	type tagSum struct {
 		WebsiteID int
@@ -116,16 +95,7 @@ func (r *TagRepository) LevelSumsAll() map[int]int {
 	return out
 }
 
-// ──────────────────────────────────────────
-// Relation writes
-// ──────────────────────────────────────────
-
-// ReplaceWebsiteTagRelations deletes existing website↔tag rows and re-adds the given tag IDs.
-// Call inside a tx.
 func (r *TagRepository) ReplaceWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) {
-	// The join table's FK column is `galgame_website_id` (see the model); a stray
-	// `website_id` here raised 42703 (undefined_column), which aborted the whole
-	// update tx (every following tag INSERT then failed 25P02 → 500 on edit).
 	tx.Where("galgame_website_id = ?", websiteID).Delete(&model.GalgameWebsiteTagRelation{})
 	for _, tagID := range tagIDs {
 		tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameWebsiteTagRelation{
@@ -134,7 +104,6 @@ func (r *TagRepository) ReplaceWebsiteTagRelations(tx *gorm.DB, websiteID int, t
 	}
 }
 
-// InsertWebsiteTagRelations inserts website↔tag rows for newly-created website (inside a tx).
 func (r *TagRepository) InsertWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) {
 	for _, tagID := range tagIDs {
 		tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameWebsiteTagRelation{

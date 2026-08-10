@@ -48,19 +48,12 @@ func NewPollService(
 	}
 }
 
-// pollModerationText composes the RAW text the trust gate sees for a poll:
-// title + description + each option's text, blank fragments skipped. Used by
-// both create (all options) and update (the options being added/updated).
 func pollModerationText(title, description string, optionTexts []string) string {
 	parts := make([]string, 0, 2+len(optionTexts))
 	parts = append(parts, title, description)
 	parts = append(parts, optionTexts...)
 	return gate.ComposeText(parts...)
 }
-
-// ──────────────────────────────────────────
-// Create poll
-// ──────────────────────────────────────────
 
 func (s *PollService) CreatePoll(
 	ctx context.Context,
@@ -88,9 +81,6 @@ func (s *PollService) CreatePoll(
 		}
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): title + description
-	// + every option text. deny blocks (nothing persisted); hold publishes+logs;
-	// fail-open on any error/timeout.
 	optionTexts := make([]string, len(req.Options))
 	for i, opt := range req.Options {
 		optionTexts[i] = opt.Text
@@ -145,10 +135,6 @@ func (s *PollService) CreatePoll(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Get polls by topic
-// ──────────────────────────────────────────
-
 func (s *PollService) GetPollsByTopic(
 	ctx context.Context,
 	topicID int,
@@ -177,10 +163,6 @@ func (s *PollService) GetPollsByTopic(
 	return responses, nil
 }
 
-// ──────────────────────────────────────────
-// Vote
-// ──────────────────────────────────────────
-
 func (s *PollService) Vote(
 	ctx context.Context,
 	userID int,
@@ -197,7 +179,6 @@ func (s *PollService) Vote(
 		return errors.ErrBadRequest("投票已过截止日期")
 	}
 
-	// Validate choice count
 	if poll.Type == "single" && len(req.OptionIDArray) != 1 {
 		return errors.ErrBadRequest("单选投票只能选择一个选项")
 	}
@@ -245,13 +226,6 @@ func (s *PollService) Vote(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Update poll — PUT /topic/:tid/poll
-// Patches scalar fields and applies an option diff (add/update/delete).
-// Forbids editing the option *content* if it has votes; the same applies to
-// deletion. Refuses option mutations when can_change_vote=false.
-// ──────────────────────────────────────────
-
 func (s *PollService) UpdatePoll(
 	ctx context.Context,
 	userID int,
@@ -267,8 +241,6 @@ func (s *PollService) UpdatePoll(
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	// Moderators (CanModerate) MUST be allowed to edit polls on others'
-	// topics — otherwise moderation of non-owned polls is neutered.
 	if topic.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限修改此投票")
 	}
@@ -291,9 +263,6 @@ func (s *PollService) UpdatePoll(
 		"can_change_vote":   req.CanChangeVote,
 	}
 
-	// Synchronous word-list gate BEFORE any write: title + description + the option
-	// texts being added/updated (deletions carry no new text). author_id is the
-	// content author (poll.UserID), not the editor. Gates BOTH write paths below.
 	optionTexts := make([]string, 0, len(req.Options.Add)+len(req.Options.Update))
 	for _, opt := range req.Options.Add {
 		optionTexts = append(optionTexts, opt.Text)
@@ -310,7 +279,6 @@ func (s *PollService) UpdatePoll(
 
 	totalOptionOps := len(req.Options.Add) + len(req.Options.Update) + len(req.Options.Delete)
 
-	// No option diff — just patch scalars and return.
 	if totalOptionOps == 0 {
 		if err := s.pollRepo.UpdatePollFields(s.pollRepo.DB(), req.PollID, scalarFields); err != nil {
 			return errors.ErrInternal("更新投票失败")
@@ -323,7 +291,6 @@ func (s *PollService) UpdatePoll(
 		return errors.ErrBadRequest("本投票结果不可修改")
 	}
 
-	// Pre-validate update/delete operations against current option vote counts.
 	touchedIDs := collectOptionIDs(req.Options)
 	current, err := s.pollRepo.FindOptionsByIDs(touchedIDs)
 	if err != nil {
@@ -378,9 +345,6 @@ func (s *PollService) UpdatePoll(
 	return nil
 }
 
-// afterPollModeration runs the post-commit trust wiring shared by UpdatePoll's
-// two success paths: a suspect hold leaves one greppable audit line, then the
-// RAW text is fed into the async shadow scan off the request path.
 func (s *PollService) afterPollModeration(decision string, matched []string, pollID, authorID int, text string) {
 	if decision == gate.DecisionHold {
 		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopicPoll, "subject_id", pollID, "author_id", authorID, "matched", matched)
@@ -388,8 +352,6 @@ func (s *PollService) afterPollModeration(decision string, matched []string, pol
 	s.scan.ScanBg(gate.SubjectKindTopicPoll, strconv.Itoa(pollID), text, int64(authorID))
 }
 
-// collectOptionIDs returns the union of update.option_id + delete IDs — needed
-// for the validation pre-fetch above.
 func collectOptionIDs(ops dto.PollOptionsUpdate) []int {
 	ids := make([]int, 0, len(ops.Update)+len(ops.Delete))
 	for _, u := range ops.Update {
@@ -398,10 +360,6 @@ func collectOptionIDs(ops dto.PollOptionsUpdate) []int {
 	ids = append(ids, ops.Delete...)
 	return ids
 }
-
-// ──────────────────────────────────────────
-// Delete poll
-// ──────────────────────────────────────────
 
 func (s *PollService) DeletePoll(
 	ctx context.Context,
@@ -426,10 +384,6 @@ func (s *PollService) DeletePoll(
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Vote log
-// ──────────────────────────────────────────
 
 func (s *PollService) GetVoteLog(
 	ctx context.Context,

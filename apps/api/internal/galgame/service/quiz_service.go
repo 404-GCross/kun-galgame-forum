@@ -47,28 +47,17 @@ func NewQuizService(
 	}
 }
 
-// quizAuthoringModerationText composes the RAW text the trust gate sees for an
-// authored quiz (create + edit): question + description + explanation + every
-// free-text fragment inside the content JSONB.
 func quizAuthoringModerationText(question, description, explanation, qtype string, content json.RawMessage) string {
 	return gate.ComposeText(question, description, explanation, quizContentModerationText(qtype, content))
 }
 
-// quizCreateReward: flat authoring reward (被采纳), granted at create time and
-// refunded on delete. Difficulty is ignored for now (kept in the signature so
-// re-introducing a scaled reward stays a one-line change).
 func quizCreateReward(_ int) int {
 	return constants.QuizCreateReward
 }
 
-// quizCorrectReward: reward for a correct answer. Currently 0 (disabled).
 func quizCorrectReward(_ int) int {
 	return constants.QuizCorrectReward
 }
-
-// ──────────────────────────────────────────
-// GetAllQuizzes — GET /galgame-quiz/all
-// ──────────────────────────────────────────
 
 func (s *QuizService) GetAllQuizzes(
 	ctx context.Context,
@@ -94,7 +83,6 @@ func (s *QuizService) GetAllQuizzes(
 	return s.hydrateCards(ctx, rows, total, viewerID), nil
 }
 
-// GetMyAnswered — GET /galgame-quiz/mine/answered (self only).
 func (s *QuizService) GetMyAnswered(
 	ctx context.Context,
 	userID, page, limit int,
@@ -103,9 +91,6 @@ func (s *QuizService) GetMyAnswered(
 	return s.hydrateCards(ctx, rows, total, userID), nil
 }
 
-// hydrateCards resolves authors + stamps the viewer's own status, dropping rows
-// whose author is banned. Cards show the category, not the linked games (which
-// may be hidden until answered), so no galgame briefs are fetched here.
 func (s *QuizService) hydrateCards(
 	ctx context.Context,
 	rows []model.GalgameQuizRow,
@@ -135,7 +120,6 @@ func (s *QuizService) hydrateCards(
 	return &dto.QuizListPage{QuizData: cards, Total: total}
 }
 
-// quizViewerStatus maps the viewer's row to a status label for the list card.
 func quizViewerStatus(va repository.QuizViewerAnswer, answered bool) string {
 	switch {
 	case !answered:
@@ -143,17 +127,13 @@ func quizViewerStatus(va repository.QuizViewerAnswer, answered bool) string {
 	case va.Role == "author":
 		return "author"
 	case va.IsCorrect == nil:
-		return "answered" // essay / ungraded
+		return "answered"
 	case *va.IsCorrect:
 		return "correct"
 	default:
 		return "incorrect"
 	}
 }
-
-// ──────────────────────────────────────────
-// GetQuizPlay — GET /galgame-quiz/:id
-// ──────────────────────────────────────────
 
 func (s *QuizService) GetQuizPlay(
 	ctx context.Context,
@@ -163,7 +143,6 @@ func (s *QuizService) GetQuizPlay(
 	if !ok {
 		return nil, errors.ErrNotFound("题目不存在")
 	}
-	// Hide a banned author's quiz even by direct link.
 	author, _, _ := s.userClient.User(ctx, quiz.UserID)
 	if !userclient.IsRenderable(author) {
 		return nil, errors.ErrNotFound("题目不存在")
@@ -174,8 +153,6 @@ func (s *QuizService) GetQuizPlay(
 
 	isAuthor := currentUserID != 0 && currentUserID == quiz.UserID
 
-	// Reveal the answer key + explanation only once the viewer has a row
-	// (answered, or the author's auto-row).
 	var myAnswer *dto.QuizAnswerResult
 	if currentUserID != 0 {
 		if row, has := s.quizRepo.FindAnswer(quizID, currentUserID); has {
@@ -189,8 +166,6 @@ func (s *QuizService) GetQuizPlay(
 		}
 	}
 
-	// Linked games are revealed only if not hidden, or once the viewer has a
-	// row (answered / is the author) — otherwise sent empty.
 	galgames := []dto.QuizGalgameDetail{}
 	if !quiz.HideGalgame || myAnswer != nil {
 		galgames = s.galgamesDetailFor(ctx, s.quizRepo.FindQuizGalgameIDs(quizID))
@@ -218,12 +193,6 @@ func (s *QuizService) GetQuizPlay(
 	return play, nil
 }
 
-// ──────────────────────────────────────────
-// CreateQuiz — POST /galgame-quiz
-// Anyone publishes immediately (no review gate in MVP). Grants the author the
-// difficulty-scaled authoring reward, and seeds the author's roster row.
-// ──────────────────────────────────────────
-
 func (s *QuizService) CreateQuiz(
 	ctx context.Context,
 	userID int,
@@ -233,9 +202,6 @@ func (s *QuizService) CreateQuiz(
 		return nil, appErr
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): question +
-	// description + explanation + the content's free text. deny blocks (nothing
-	// persisted); hold publishes+logs; fail-open on error/timeout.
 	moderationText := quizAuthoringModerationText(req.Question, req.Description, req.Explanation, req.Type, req.Content)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -248,17 +214,16 @@ func (s *QuizService) CreateQuiz(
 		spoiler = "none"
 	}
 	quiz := &model.GalgameQuiz{
-		UserID:       userID,
-		Category:     req.Category,
-		SpoilerLevel: spoiler,
-		Type:         req.Type,
-		Difficulty:   req.Difficulty,
-		Question:     req.Question,
-		Description:  req.Description,
-		Content:      req.Content,
-		Explanation:  req.Explanation,
-		HideGalgame:  req.HideGalgame,
-		// Seed last-activity = creation time (bumped later on answer / edit).
+		UserID:           userID,
+		Category:         req.Category,
+		SpoilerLevel:     spoiler,
+		Type:             req.Type,
+		Difficulty:       req.Difficulty,
+		Question:         req.Question,
+		Description:      req.Description,
+		Content:          req.Content,
+		Explanation:      req.Explanation,
+		HideGalgame:      req.HideGalgame,
 		StatusUpdateTime: time.Now(),
 	}
 	reward := quizCreateReward(req.Difficulty)
@@ -270,8 +235,6 @@ func (s *QuizService) CreateQuiz(
 		if err := s.quizRepo.SetQuizGalgames(tx, quiz.ID, req.GalgameIDs); err != nil {
 			return err
 		}
-		// Author roster row: marks them a participant so they can't answer
-		// their own question; carries no submitted answer / grade.
 		if err := s.quizRepo.CreateAnswer(tx, &model.GalgameQuizAnswer{
 			QuizID: quiz.ID, UserID: userID, Role: "author",
 		}); err != nil {
@@ -305,12 +268,6 @@ func (s *QuizService) CreateQuiz(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// AnswerQuiz — POST /galgame-quiz/:id/answer
-// One attempt per user. Grades server-side; a correct answer grants the
-// difficulty-scaled reward once. Reveals the answer key + explanation.
-// ──────────────────────────────────────────
-
 func (s *QuizService) AnswerQuiz(
 	ctx context.Context,
 	userID int,
@@ -332,9 +289,6 @@ func (s *QuizService) AnswerQuiz(
 		return nil, appErr
 	}
 
-	// Synchronous word-list gate BEFORE the tx — but ONLY when the submission
-	// carries user free text (fill values / essay). Choice/judge answers are
-	// indexes/booleans, so both check AND scan are skipped entirely for them.
 	moderationText := quizAnswerModerationText(quiz.Type, req.Submitted)
 	decision := gate.DecisionAllow
 	var matched []string
@@ -352,8 +306,6 @@ func (s *QuizService) AnswerQuiz(
 		reward = quizCorrectReward(quiz.Difficulty)
 	}
 
-	// Notify the author of this answer + verdict (choice questions include the
-	// chosen option text; essay is ungraded so it carries no verdict).
 	notifyContent := quizAnswerSummary(quiz.Type, quiz.Content, req.Submitted)
 	if grade != nil {
 		if *grade {
@@ -389,8 +341,6 @@ func (s *QuizService) AnswerQuiz(
 		return nil, errors.ErrInternal("提交答案失败")
 	}
 
-	// Off-request shadow scan (only when the submission carried free text). The
-	// subject id is the answer row id.
 	if moderationText != "" {
 		if decision == gate.DecisionHold {
 			slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameQuizAnswer, "subject_id", row.ID, "author_id", userID, "matched", matched)
@@ -406,11 +356,6 @@ func (s *QuizService) AnswerQuiz(
 		RewardDelta: reward,
 	}, nil
 }
-
-// ──────────────────────────────────────────
-// RateQuizQuality — PUT /galgame-quiz/:id/quality
-// Only a genuine answerer may rate (not the author). Re-rating is allowed.
-// ──────────────────────────────────────────
 
 func (s *QuizService) RateQuizQuality(
 	userID int,
@@ -452,11 +397,6 @@ func (s *QuizService) RateQuizQuality(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// DeleteQuiz — DELETE /galgame-quiz/:id
-// Author or moderator. Refunds the author's create reward.
-// ──────────────────────────────────────────
-
 func (s *QuizService) DeleteQuiz(userID int, canModerate bool, quizID int) *errors.AppError {
 	quiz, ok := s.quizRepo.FindByID(quizID)
 	if !ok {
@@ -480,12 +420,6 @@ func (s *QuizService) DeleteQuiz(userID int, canModerate bool, quizID int) *erro
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// ToggleQuizFavorite — PUT /galgame-quiz/:id/favorite
-// Mirrors topic favorites: toggle the (quiz, user) row, bump favorite_count,
-// and grant the author ±1 moemoepoint (ReasonLiked). Self-favorites earn nothing.
-// ──────────────────────────────────────────
 
 func (s *QuizService) ToggleQuizFavorite(userID, quizID int) *errors.AppError {
 	quiz, ok := s.quizRepo.FindByID(quizID)
@@ -519,11 +453,6 @@ func (s *QuizService) ToggleQuizFavorite(userID, quizID int) *errors.AppError {
 	return nil
 }
 
-// ──────────────────────────────────────────
-// UpdateQuiz — PUT /galgame-quiz/:id (author or moderator)
-// Editing content does NOT re-grade existing answers (a known MVP limitation).
-// ──────────────────────────────────────────
-
 func (s *QuizService) UpdateQuiz(
 	ctx context.Context,
 	userID int, canModerate bool, req *dto.UpdateQuizRequest,
@@ -539,8 +468,6 @@ func (s *QuizService) UpdateQuiz(
 		return 0, appErr
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (quiz.UserID).
 	moderationText := quizAuthoringModerationText(req.Question, req.Description, req.Explanation, req.Type, req.Content)
 	authorID := int64(quiz.UserID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -552,24 +479,19 @@ func (s *QuizService) UpdateQuiz(
 	if spoiler == "" {
 		spoiler = "none"
 	}
-	// Existing answers can be re-scored against the edited key only when the type
-	// is unchanged — a type change is a different question, not a key correction.
 	regradable := req.Type == quiz.Type
 	fields := map[string]any{
-		"category":      req.Category,
-		"spoiler_level": spoiler,
-		"type":          req.Type,
-		"difficulty":    req.Difficulty,
-		"question":      req.Question,
-		"description":   req.Description,
-		"content":       req.Content,
-		"explanation":   req.Explanation,
-		"hide_galgame":  req.HideGalgame,
-		// An author edit counts as activity → bump the last-activity time.
+		"category":           req.Category,
+		"spoiler_level":      spoiler,
+		"type":               req.Type,
+		"difficulty":         req.Difficulty,
+		"question":           req.Question,
+		"description":        req.Description,
+		"content":            req.Content,
+		"explanation":        req.Explanation,
+		"hide_galgame":       req.HideGalgame,
 		"status_update_time": gorm.Expr("now()"),
 	}
-	// Point the local model at the NEW key/difficulty so the regrade grades and
-	// rewards against what was just saved (UpdateQuizFields writes from `fields`).
 	quiz.Type = req.Type
 	quiz.Content = req.Content
 	quiz.Difficulty = req.Difficulty
@@ -602,13 +524,6 @@ func (s *QuizService) UpdateQuiz(
 	return regraded, nil
 }
 
-// regradeAnswers re-scores every existing answer against the (possibly just
-// corrected) answer key. ADDITIVE-ONLY: it only flips wrong→correct and back-pays
-// the answer-correct reward that was missed — idempotent via the original
-// galgame_quiz_answer:<id> ref — and NEVER flips correct→wrong nor claws
-// moemoepoint back, so the author's key fix can't cost anyone points. Auto-graded
-// types only (essay is never machine-graded). Returns how many were newly
-// marked correct.
 func (s *QuizService) regradeAnswers(tx *gorm.DB, quiz *model.GalgameQuiz) (int, error) {
 	if quiz.Type == "essay" {
 		return 0, nil
@@ -618,12 +533,12 @@ func (s *QuizService) regradeAnswers(tx *gorm.DB, quiz *model.GalgameQuiz) (int,
 	for _, a := range s.quizRepo.FindAnswerersForRegrade(quiz.ID) {
 		grade, appErr := gradeQuiz(quiz.Type, quiz.Content, a.Submitted)
 		if appErr != nil {
-			continue // a submission that no longer fits the key shape — leave it
+			continue
 		}
 		newCorrect := grade != nil && *grade
 		wasCorrect := a.IsCorrect != nil && *a.IsCorrect
 		if !newCorrect || wasCorrect {
-			continue // additive-only: act on wrong→correct, nothing else
+			continue
 		}
 		fields := map[string]any{"is_correct": true}
 		if reward > 0 && !a.Rewarded {
@@ -644,11 +559,6 @@ func (s *QuizService) regradeAnswers(tx *gorm.DB, quiz *model.GalgameQuiz) (int,
 	}
 	return flipped, nil
 }
-
-// ──────────────────────────────────────────
-// GetQuizForEdit — GET /galgame-quiz/:id/edit (author or moderator)
-// Returns the FULL quiz incl. the answer key so the edit form can pre-fill.
-// ──────────────────────────────────────────
 
 func (s *QuizService) GetQuizForEdit(
 	ctx context.Context, userID int, canModerate bool, quizID int,
@@ -677,16 +587,9 @@ func (s *QuizService) GetQuizForEdit(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// GetMyFavorites returns the quiz ids the viewer has favorited — for the feed
-// card's client-side favorite hydration.
 func (s *QuizService) GetMyFavorites(userID int) []int {
 	return s.quizRepo.FindFavoritedQuizIDs(userID)
 }
-
-// GetQuizAnswers — GET /galgame-quiz/:id/answers
-// The genuine answerers + their grade, for the card 查看详情 panel.
-// ──────────────────────────────────────────
 
 const quizAnswerersLimit = 100
 
@@ -697,10 +600,6 @@ func (s *QuizService) GetQuizAnswers(
 	if len(rows) == 0 {
 		return []dto.QuizAnswererRecord{}
 	}
-	// A submitted answer reveals the correct answer, so surface it ONLY to a
-	// viewer who has themselves engaged this quiz — answered it, or authored it
-	// (both already know the answer). A non-answerer still sees who answered +
-	// their grade, never the answers. Anonymous viewer (id 0) → no row → hidden.
 	_, viewerEngaged := s.quizRepo.FindAnswer(quizID, viewerID)
 
 	userIDs := make([]int, 0, len(rows))
@@ -727,12 +626,6 @@ func (s *QuizService) GetQuizAnswers(
 	return records
 }
 
-// ──────────────────────────────────────────
-// Internal helpers
-// ──────────────────────────────────────────
-
-// galgameBriefsFor returns id+name briefs (order-preserving) for the edit
-// form's picker chips. No SFW gate — mirrors the rating/detail policy.
 func (s *QuizService) galgameBriefsFor(ctx context.Context, ids []int) []dto.QuizGalgameBrief {
 	out := []dto.QuizGalgameBrief{}
 	if len(ids) == 0 {
@@ -756,8 +649,6 @@ func (s *QuizService) galgameBriefsFor(ctx context.Context, ids []int) []dto.Qui
 	return out
 }
 
-// galgamesDetailFor builds the richer linked-game panels (banner + 会社) for the
-// answer page's 查看详情. isSFW=false — the detail page doesn't SFW-gate.
 func (s *QuizService) galgamesDetailFor(ctx context.Context, ids []int) []dto.QuizGalgameDetail {
 	out := []dto.QuizGalgameDetail{}
 	if len(ids) == 0 {
@@ -805,33 +696,16 @@ func (s *QuizService) fetchBriefs(ctx context.Context, galgameIDs []int) map[int
 	return m
 }
 
-// ──────────────────────────────────────────
-// SearchGalgameOptions — GET /galgame/search/picker
-// Powers the 出题 modal's galgame picker: a name search enriched with each
-// hit's banner + maker (会社) names. Soft-fails to an empty list.
-// ──────────────────────────────────────────
-
-// quizGalgameSearchLimit caps how many hits we enrich (one batch-detail call),
-// keeping the picker snappy.
 const quizGalgameSearchLimit = 12
 
 func (s *QuizService) SearchGalgameOptions(
 	ctx context.Context, keywords string, isSFW bool,
 ) []dto.QuizGalgameOption {
 	empty := []dto.QuizGalgameOption{}
-	// The catalog product search is the SAME ranked, typo-tolerant search the
-	// /search page uses. Only the hit ids are read here — the picker hydrates
-	// them through the batch-detail call below, which is where the banner and
-	// maker names come from.
 	q := url.Values{
-		"q":     {keywords},
-		"limit": {strconv.Itoa(quizGalgameSearchLimit)},
-		"sort":  {"relevance"},
-		// Only works kungal can actually address are pickable: an unclaimed
-		// catalog work has no gid, and a quiz option must point at a galgame the
-		// forum can render. `claimed` alone still admits an entry the wiki
-		// claimed but never published, so a quiz could be authored against a
-		// game no player can open — the authoring-side face of the §37 leak.
+		"q":           {keywords},
+		"limit":       {strconv.Itoa(quizGalgameSearchLimit)},
+		"sort":        {"relevance"},
 		"claimed":     {"true"},
 		"claim_state": {"live"},
 	}
@@ -861,7 +735,7 @@ func (s *QuizService) SearchGalgameOptions(
 	for _, id := range ids {
 		b, ok := briefs[id]
 		if !ok {
-			continue // SFW-filtered or missing
+			continue
 		}
 		banner := b.EffectiveBannerURL
 		if banner == "" {

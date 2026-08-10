@@ -10,8 +10,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// WebsiteHandler handles the core website CRUD + interaction routes.
-// Sub-domains (comments, category, tag) each live in their own handler file.
 type WebsiteHandler struct {
 	websiteService *service.WebsiteService
 }
@@ -20,14 +18,10 @@ func NewWebsiteHandler(websiteService *service.WebsiteService) *WebsiteHandler {
 	return &WebsiteHandler{websiteService: websiteService}
 }
 
-// GetWebsites returns all websites as WebsiteCard[].
-// GET /api/website
 func (h *WebsiteHandler) GetWebsites(c fiber.Ctx) error {
 	return response.OK(c, h.websiteService.GetList(utils.IsSFW(c)))
 }
 
-// CreateWebsite creates a new website entry.
-// POST /api/website
 func (h *WebsiteHandler) CreateWebsite(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -44,8 +38,6 @@ func (h *WebsiteHandler) CreateWebsite(c fiber.Ctx) error {
 	return response.OKMessage(c, "网站创建成功")
 }
 
-// GetWebsiteDetail returns website detail by domain.
-// GET /api/website/:domain
 func (h *WebsiteHandler) GetWebsiteDetail(c fiber.Ctx) error {
 	domain := c.Params("domain")
 
@@ -61,8 +53,6 @@ func (h *WebsiteHandler) GetWebsiteDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// UpdateWebsite updates a website.
-// PUT /api/website/:domain
 func (h *WebsiteHandler) UpdateWebsite(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -78,8 +68,6 @@ func (h *WebsiteHandler) UpdateWebsite(c fiber.Ctx) error {
 	return response.OKMessage(c, "网站更新成功")
 }
 
-// DeleteWebsite deletes a website.
-// DELETE /api/website/:domain
 func (h *WebsiteHandler) DeleteWebsite(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -95,8 +83,6 @@ func (h *WebsiteHandler) DeleteWebsite(c fiber.Ctx) error {
 	return response.OKMessage(c, "网站已删除")
 }
 
-// ToggleLike toggles website like.
-// PUT /api/website/:domain/like
 func (h *WebsiteHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -113,8 +99,6 @@ func (h *WebsiteHandler) ToggleLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// ToggleFavorite toggles website favorite.
-// PUT /api/website/:domain/favorite
 func (h *WebsiteHandler) ToggleFavorite(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

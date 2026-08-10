@@ -22,8 +22,6 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 	return &CommentHandler{commentService: commentService}
 }
 
-// CreateComment creates a comment on a reply.
-// POST /api/topic/:tid/comment
 func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -43,14 +41,9 @@ func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	// Return the full comment DTO so the frontend can append it to its
-	// in-memory list without refetching. Previous OKMessage-only response
-	// caused `comment.user.name` to throw on the client.
 	return response.OK(c, created)
 }
 
-// UpdateComment lets the author edit their comment's content.
-// PUT /api/topic/:tid/comment
 func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -68,12 +61,9 @@ func (h *CommentHandler) UpdateComment(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	// Return the full updated DTO so the FE can replace the comment in place.
 	return response.OK(c, updated)
 }
 
-// ToggleCommentLike toggles like on a comment.
-// PUT /api/topic/:tid/comment/like
 func (h *CommentHandler) ToggleCommentLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -92,8 +82,6 @@ func (h *CommentHandler) ToggleCommentLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// DeleteComment deletes a comment.
-// DELETE /api/topic/:tid/comment
 func (h *CommentHandler) DeleteComment(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

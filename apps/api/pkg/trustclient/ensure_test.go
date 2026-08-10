@@ -42,7 +42,6 @@ func TestEnsureSubjectKindsSuccess(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Path + auth + content-type.
 	if gotPath != "/api/v1/trust/subject-kinds/ensure" {
 		t.Fatalf("bad path %q", gotPath)
 	}
@@ -53,12 +52,10 @@ func TestEnsureSubjectKindsSuccess(t *testing.T) {
 		t.Fatalf("expected JSON content-type, got %q", gotContentType)
 	}
 
-	// Body shape: {"kinds":[{"key":...}]} with keys only.
 	if len(gotBody.Kinds) != 2 || gotBody.Kinds[0].Key != "forum_topic" || gotBody.Kinds[1].Key != "forum_reply" {
 		t.Fatalf("bad forwarded body: %+v", gotBody.Kinds)
 	}
 
-	// Result decoding, in request order.
 	if len(results) != 2 {
 		t.Fatalf("want 2 results, got %d", len(results))
 	}

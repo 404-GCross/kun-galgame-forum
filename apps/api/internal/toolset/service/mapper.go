@@ -8,9 +8,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// toolsetCardFromRow maps a raw toolset row to a list-card DTO given the
-// pre-loaded batch maps. `userMap` is the result of userclient.Hydrate so
-// missing/banned users get a placeholder rather than nil.
 func toolsetCardFromRow(
 	t model.GalgameToolset,
 	userMap map[int]userclient.User,
@@ -41,9 +38,6 @@ func toolsetCardFromRow(
 	}
 }
 
-// allowedSortField returns the DB column name to sort by and whether the value
-// is allowed. Defaults to "created" when the input is empty or not in the
-// whitelist.
 func allowedSortField(raw string) string {
 	allowed := map[string]bool{
 		"created":              true,
@@ -57,7 +51,6 @@ func allowedSortField(raw string) string {
 	return "created"
 }
 
-// sortOrder normalises the sort order (only "asc" flips to ASC).
 func sortOrder(raw string) string {
 	if raw == "asc" {
 		return "ASC"

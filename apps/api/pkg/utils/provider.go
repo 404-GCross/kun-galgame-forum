@@ -2,9 +2,6 @@ package utils
 
 import "strings"
 
-// providerPatterns maps a provider key to the substrings that identify it
-// within a URL. Patterns are checked in iteration order; first match wins
-// per URL. The "other" bucket captures anything that matches no pattern.
 var providerPatterns = []struct {
 	key      string
 	patterns []string
@@ -26,8 +23,6 @@ var providerPatterns = []struct {
 	}},
 }
 
-// DetectProviderFromURL classifies a single URL into one of the known
-// provider keys, falling back to "other".
 func DetectProviderFromURL(url string) string {
 	if url == "" {
 		return "other"
@@ -43,8 +38,6 @@ func DetectProviderFromURL(url string) string {
 	return "other"
 }
 
-// DetectProvidersFromURLs returns the deduped set of providers spanning all
-// URLs. Preserves the classifier order for stable output.
 func DetectProvidersFromURLs(urls []string) []string {
 	seen := map[string]bool{}
 	out := make([]string, 0, len(urls))
@@ -58,15 +51,6 @@ func DetectProvidersFromURLs(urls []string) []string {
 	return out
 }
 
-// providerNameSubstrs is the granular URL→display-name map ported from
-// `app/constants/galgameResource.ts:GALGAME_RESOURCE_PROVIDER_MAP`. Each key
-// is a substring matched case-insensitively against the URL. The display
-// names are stored verbatim in the `galgame_resource.provider_name` jsonb
-// column so the UI no longer has to do a runtime lookup or HTML title fetch.
-//
-// IMPORTANT: keep ordering deliberate. More specific patterns (e.g.
-// "tieba.baidu.com") MUST appear before less specific ones (e.g. "baidu.com")
-// because we return on first match.
 var providerNameSubstrs = []struct {
 	pattern string
 	name    string
@@ -103,7 +87,7 @@ var providerNameSubstrs = []struct {
 	{"github.com", "GitHub"},
 	{"bilibili.com", "哔哩哔哩"},
 	{"t.me", "Telegram"},
-	{"telegram.me", "Telegram"}, // t.me was deregistered 2026-07; new links use telegram.me, old stored ones keep t.me
+	{"telegram.me", "Telegram"},
 	{"archive.org", "Internet Archive"},
 	{"nyaa.si", "Nyaa"},
 	{"2dfan.com", "2BFun"},
@@ -128,8 +112,6 @@ var providerNameSubstrs = []struct {
 	{"lycorisgal.com", "LycorisGal"},
 }
 
-// DetectProviderNameFromURL returns the display name for a URL, falling back
-// to the URL's host when no pattern matches. Returns "" only for an empty input.
 func DetectProviderNameFromURL(rawURL string) string {
 	if rawURL == "" {
 		return ""
@@ -143,8 +125,6 @@ func DetectProviderNameFromURL(rawURL string) string {
 	return hostFromURL(rawURL)
 }
 
-// DetectProviderNamesFromURLs returns the deduped display names for a slice
-// of URLs. Order is the order of first appearance (stable for tests).
 func DetectProviderNamesFromURLs(urls []string) []string {
 	seen := map[string]bool{}
 	out := make([]string, 0, len(urls))
@@ -159,9 +139,6 @@ func DetectProviderNamesFromURLs(urls []string) []string {
 	return out
 }
 
-// hostFromURL extracts the bare hostname (no scheme, no path, no port). On
-// any parse failure it returns the original string — the caller will store
-// whatever it was given rather than dropping the link silently.
 func hostFromURL(raw string) string {
 	s := raw
 	if i := strings.Index(s, "://"); i >= 0 {

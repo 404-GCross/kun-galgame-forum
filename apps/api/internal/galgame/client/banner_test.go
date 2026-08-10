@@ -6,34 +6,29 @@ import (
 	"testing"
 )
 
-// contains is a thin wrapper so the test reads as English prose.
 func contains(haystack, needle string) bool { return strings.Contains(haystack, needle) }
 
 const cdn = "https://image.kungal.iloveren.link"
 
-// hash → expected main URL: {cdn}/{hh}/{hh}/{hash}.webp
 func TestBannerURLFromHash(t *testing.T) {
 	cases := []struct {
 		hash, want string
 	}{
 		{"abcd1234ef", cdn + "/ab/cd/abcd1234ef.webp"},
 		{"00ff00ff00ff", cdn + "/00/ff/00ff00ff00ff.webp"},
-		{"abc", ""},  // < 4 chars → unusable, mirrors galgame guard
-		{"", ""},     // empty
+		{"abc", ""},
+		{"", ""},
 	}
 	for _, c := range cases {
 		if got := bannerURLFromHash(cdn, c.hash); got != c.want {
 			t.Errorf("bannerURLFromHash(%q) = %q, want %q", c.hash, got, c.want)
 		}
 	}
-	// trailing slash on base must not double up
 	if got := bannerURLFromHash(cdn+"/", "abcd"); got != cdn+"/ab/cd/abcd.webp" {
 		t.Errorf("trailing-slash base not trimmed: %q", got)
 	}
 }
 
-// Number-precision smoke: numbers must round-trip exactly through the
-// json.Number decode path (no float mangling).
 func TestRewriteBanners_NumberRoundtrip(t *testing.T) {
 	in := json.RawMessage(`{"galgame":{"id":60744,"status":3,"effective_banner_hash":"abcd1234ef"}}`)
 	out := rewriteBanners(in, cdn)
@@ -56,7 +51,6 @@ func TestRewriteBanners_NumberRoundtrip(t *testing.T) {
 	}
 }
 
-// U2: effective_banner_hash on a detail/list object → effective_banner_url.
 func TestRewriteBanners_EffectiveBannerURL(t *testing.T) {
 	in := json.RawMessage(`{"galgame":{"id":1,"effective_banner_hash":"abcd1234ef"}}`)
 	out := rewriteBanners(in, cdn)
@@ -72,7 +66,6 @@ func TestRewriteBanners_EffectiveBannerURL(t *testing.T) {
 		t.Errorf("effective_banner_url not injected: %q", got.Galgame.URL)
 	}
 
-	// Existing URL must not be overwritten.
 	keep := json.RawMessage(`{"effective_banner_hash":"abcd","effective_banner_url":"https://pinned/x.webp"}`)
 	out2 := rewriteBanners(keep, cdn)
 	if !contains(string(out2), `"https://pinned/x.webp"`) {
@@ -80,9 +73,6 @@ func TestRewriteBanners_EffectiveBannerURL(t *testing.T) {
 	}
 }
 
-// U2: cover/screenshot row injection — heuristic requires sort_order so
-// the galgame image record (which also carries image_hash but no sort_order)
-// is left alone.
 func TestRewriteBanners_CoverAndScreenshotCDNURL(t *testing.T) {
 	in := json.RawMessage(`{"galgame":{
 		"covers":[
@@ -124,9 +114,6 @@ func TestRewriteBanners_CoverAndScreenshotCDNURL(t *testing.T) {
 	}
 }
 
-// U2: a bare image_hash without sort_order (the galgame image-service
-// record itself) must NOT receive a cdn_url — that field is the image
-// record's own concern, not ours.
 func TestRewriteBanners_SkipBareImageRecord(t *testing.T) {
 	in := json.RawMessage(`{"image":{"image_hash":"abcd1234","url":"https://wiki-image/x.webp"}}`)
 	out := rewriteBanners(in, cdn)
@@ -136,17 +123,14 @@ func TestRewriteBanners_SkipBareImageRecord(t *testing.T) {
 }
 
 func TestRewriteBanners_FailSafe(t *testing.T) {
-	// empty cdn → passthrough untouched
 	raw := json.RawMessage(`{"galgame":{"effective_banner_hash":"abcd1234"}}`)
 	if string(rewriteBanners(raw, "")) != string(raw) {
 		t.Error("empty cdnBase should passthrough verbatim")
 	}
-	// non-JSON → returned verbatim, never errors
 	bad := json.RawMessage(`Cannot GET /api/galgame/mine`)
 	if string(rewriteBanners(bad, cdn)) != string(bad) {
 		t.Error("non-JSON should passthrough verbatim")
 	}
-	// nothing to change → original bytes (no needless re-marshal)
 	noop := json.RawMessage(`{"galgame":{"banner":"https://x/y.webp"}}`)
 	if string(rewriteBanners(noop, cdn)) != string(noop) {
 		t.Error("no-op payload should return original bytes")

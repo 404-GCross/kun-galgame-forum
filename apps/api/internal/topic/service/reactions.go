@@ -6,9 +6,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// reactionReactorIDs collects the reactor ids to hydrate. Every reaction shows a
-// few avatars now (the repo's window already caps reactors per reaction), so
-// there's no count gate — the FE renders up to 3 avatars + a "+N" overflow.
 func reactionReactorIDs(rows []repository.ReactionRow) []int {
 	ids := make([]int, 0, len(rows))
 	for _, row := range rows {
@@ -19,9 +16,6 @@ func reactionReactorIDs(rows []repository.ReactionRow) []int {
 	return ids
 }
 
-// buildReactionSummaries turns the windowed rows for ONE target + the viewer's
-// own keys + a hydrated user map into ordered DTO summaries — each carries up to
-// the window's cap of reactor avatars (the rest become a "+N" on the FE).
 func buildReactionSummaries(
 	rows []repository.ReactionRow,
 	mine []string,
@@ -52,7 +46,6 @@ func buildReactionSummaries(
 	return out
 }
 
-// replyReactorIDs is reactionReactorIDs for the batched reply rows.
 func replyReactorIDs(rows []repository.ReplyReactionRow) []int {
 	ids := make([]int, 0, len(rows))
 	for _, row := range rows {
@@ -63,8 +56,6 @@ func replyReactorIDs(rows []repository.ReplyReactionRow) []int {
 	return ids
 }
 
-// buildRepliesReactions groups the batched reply rows by reply id and builds each
-// reply's summaries against a shared (already-hydrated) user map.
 func buildRepliesReactions(
 	rows []repository.ReplyReactionRow,
 	mineByReply map[int][]string,

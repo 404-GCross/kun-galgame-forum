@@ -11,31 +11,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// Backfill deep-links into OLD notification rows. Before the deep-link feature
-// every reply/comment notification stored link = "/topic/<id>" (the topic root),
-// so clicking an old notification couldn't jump to the actual post. We never
-// recorded the target reply/comment id on the message — but the notification is
-// written in the SAME transaction as the reply/comment, so notification.created
-// ≈ the target's created. That lets us recover the target heuristically:
-//
-//   - replied   → the sender's reply on that topic, closest in time      → ?reply=<floor>
-//   - commented → the sender's comment on that topic, closest in time     → ?comment=<id>
-//   - mentioned → the sender's reply (else comment) on that topic         → ?reply / ?comment
-//   - solution  → the topic's CURRENT best-answer reply                   → ?reply=<floor>
-//   - pin-reply → the topic's CURRENT pinned reply                        → ?reply=<floor>
-//   - liked     → the receiver's reply/comment the sender liked            → ?reply / ?comment
-//
-// Best-effort: a target deleted since (or a best-answer/pin changed since) won't
-// match and the row keeps its /topic/<id> link — still valid, just not deep.
-//
-// Safe + idempotent: touches ONLY rows whose link is still the bare "/topic/<id>"
-// (regex-anchored on `$`), so it never double-appends and re-running is a no-op
-// for rows already deep-linked (by this tool or the new write path). Topic-level
-// notifications (liked / favorite / upvoted) are intentionally left untouched —
-// they target the topic, not a post.
-//
-//	go run ./cmd/backfill-message-links          # dry-run — counts only
-//	go run ./cmd/backfill-message-links --apply  # write the deep-links
 func main() {
 	apply := flag.Bool("apply", false, "write the changes (default: dry-run, counts only)")
 	flag.Parse()
@@ -48,10 +23,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// A reply / comment by the notification's SENDER on the LINKED topic, closest
-	// in time to the notification. Same-tx → created ≈ created (sub-second); the
-	// ±60s window only guards clock/storage granularity, and ORDER BY time-
-	// proximity picks the triggering post when a user authored several there.
 	const replyMatch = `(SELECT r.floor FROM topic_reply r
 		WHERE r.user_id = m.sender_id
 		  AND r.topic_id = substring(m.link from '^/topic/([0-9]+)$')::int
@@ -63,12 +34,6 @@ func main() {
 		  AND c.created BETWEEN m.created - interval '60 seconds' AND m.created + interval '60 seconds'
 		ORDER BY abs(extract(epoch FROM (c.created - m.created))) LIMIT 1)`
 
-	// A reply / comment by the notification's RECEIVER that the SENDER liked. Like
-	// notifications carry no time signal (the like can land long after the post),
-	// so match through the like tables, not by time. The pre-deep-link dedup
-	// collapsed a user's topic/reply/comment likes into one /topic/<id> row, so
-	// this is best-effort: pick the most recent liked reply (else comment); a like
-	// that was on the TOPIC (no matching reply/comment) finds nothing and stays put.
 	const likedReplyMatch = `(SELECT r.floor FROM topic_reply r
 		JOIN topic_reply_reaction rr ON rr.topic_reply_id = r.id
 		  AND rr.user_id = m.sender_id AND rr.reaction = 'like'
@@ -81,8 +46,6 @@ func main() {
 		  AND cc.user_id = m.receiver_id
 		ORDER BY cc.id DESC LIMIT 1)`
 
-	// Only bare "/topic/<id>" links are candidates (anchored on `$` → never a
-	// link that already carries ?reply=/?comment=).
 	const bare = `m.link ~ '^/topic/[0-9]+$'`
 
 	steps := []struct {
@@ -106,14 +69,11 @@ func main() {
 			`UPDATE message m SET link = m.link || '?reply=' || ` + replyMatch + ` WHERE m.type='mentioned' AND ` + bare + ` AND ` + replyMatch + ` IS NOT NULL`,
 		},
 		{
-			// Comment @mentions: only the ones NOT already resolved as a reply mention
-			// above (so the two passes are disjoint — accurate dry-run + order-free).
 			"mentioned→comment",
 			`SELECT count(*) FROM message m WHERE m.type='mentioned' AND ` + bare + ` AND ` + replyMatch + ` IS NULL AND ` + commentMatch + ` IS NOT NULL`,
 			`UPDATE message m SET link = m.link || '?comment=' || ` + commentMatch + ` WHERE m.type='mentioned' AND ` + bare + ` AND ` + replyMatch + ` IS NULL AND ` + commentMatch + ` IS NOT NULL`,
 		},
 		{
-			// best_answer_id has OnDelete:SET NULL, so NOT NULL ⇒ the reply still exists.
 			"solution→best-answer",
 			`SELECT count(*) FROM message m JOIN topic t ON t.id = substring(m.link from '^/topic/([0-9]+)$')::int WHERE m.type='solution' AND ` + bare + ` AND t.best_answer_id IS NOT NULL`,
 			`UPDATE message m SET link = m.link || '?reply=' || r.floor FROM topic t JOIN topic_reply r ON r.id = t.best_answer_id WHERE m.type='solution' AND ` + bare + ` AND t.id = substring(m.link from '^/topic/([0-9]+)$')::int AND t.best_answer_id IS NOT NULL`,
@@ -124,13 +84,11 @@ func main() {
 			`UPDATE message m SET link = m.link || '?reply=' || r.floor FROM topic t JOIN topic_reply r ON r.id = t.pinned_reply_id WHERE m.type='pin-reply' AND ` + bare + ` AND t.id = substring(m.link from '^/topic/([0-9]+)$')::int AND t.pinned_reply_id IS NOT NULL`,
 		},
 		{
-			// Reply like → ?reply: the receiver's reply the sender liked.
 			"liked→reply",
 			`SELECT count(*) FROM message m WHERE m.type='liked' AND ` + bare + ` AND ` + likedReplyMatch + ` IS NOT NULL`,
 			`UPDATE message m SET link = m.link || '?reply=' || ` + likedReplyMatch + ` WHERE m.type='liked' AND ` + bare + ` AND ` + likedReplyMatch + ` IS NOT NULL`,
 		},
 		{
-			// Comment like → ?comment: only rows not already matched as a reply like.
 			"liked→comment",
 			`SELECT count(*) FROM message m WHERE m.type='liked' AND ` + bare + ` AND ` + likedReplyMatch + ` IS NULL AND ` + likedCommentMatch + ` IS NOT NULL`,
 			`UPDATE message m SET link = m.link || '?comment=' || ` + likedCommentMatch + ` WHERE m.type='liked' AND ` + bare + ` AND ` + likedReplyMatch + ` IS NULL AND ` + likedCommentMatch + ` IS NOT NULL`,
@@ -164,8 +122,6 @@ func main() {
 		}
 	}
 
-	// Reply/comment-ish notifications still on a bare topic link (target deleted,
-	// or best-answer/pin changed) — not recoverable, kept as /topic/<id>.
 	var leftover int64
 	db.Raw(`SELECT count(*) FROM message m WHERE ` + bare +
 		` AND m.type IN ('replied','commented','mentioned','solution','pin-reply','liked')`).Scan(&leftover)

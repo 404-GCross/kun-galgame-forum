@@ -17,8 +17,6 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 	return &SearchHandler{searchService: searchService}
 }
 
-// Search performs keyword search across different content types.
-// GET /api/search
 func (h *SearchHandler) Search(c fiber.Ctx) error {
 	var req dto.SearchRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -33,11 +31,6 @@ func (h *SearchHandler) Search(c fiber.Ctx) error {
 		}
 		return response.Paginated(c, res.Items, res.Total)
 	case "galgame":
-		// Search ignores the SFW cookie by product decision: anyone (logged
-		// in or not, SFW-mode or not) can discover every game by name. The
-		// SFW gate is enforced on the detail page itself (anonymous SFW
-		// callers see a click-to-confirm interstitial there). Pass
-		// isSFW=false so galgame receives content_limit=all.
 		res, appErr := h.searchService.SearchGalgames(
 			c.Context(), req.Keywords, req.Page, req.Limit, false,
 		)

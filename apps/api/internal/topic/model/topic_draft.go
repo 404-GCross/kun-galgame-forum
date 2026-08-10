@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// StringSlice is a JSON-array string persisted in a scalar text column ("" ⇄
-// empty), used for a draft's tag / section lists. Same storage mechanism as
-// ImageTokens, minus the image semantics.
 type StringSlice []string
 
 func (s StringSlice) Value() (driver.Value, error) {
@@ -49,11 +46,6 @@ func (s *StringSlice) Scan(src any) error {
 	return nil
 }
 
-// TopicDraft is a per-user saved draft of an unpublished topic — private to the
-// author (scoped by user_id in the service). It holds the same fields as a
-// create-topic request so a draft loads straight back into the editor. content
-// and cover_images are text columns carrying /image/<hash> tokens, so the daily
-// reference-ping cron keeps drafted images alive (see migration 029 + 042).
 type TopicDraft struct {
 	ID          int         `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID      int         `gorm:"column:user_id;not null" json:"user_id"`

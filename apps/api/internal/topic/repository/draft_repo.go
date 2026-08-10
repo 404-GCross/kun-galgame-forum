@@ -16,8 +16,6 @@ func NewTopicDraftRepository(db *gorm.DB) *TopicDraftRepository {
 	return &TopicDraftRepository{db: db}
 }
 
-// DraftListRow is the metadata-only projection for the list view (content is
-// fetched only on load); summary is a short raw-markdown prefix for display.
 type DraftListRow struct {
 	ID      int
 	Title   string

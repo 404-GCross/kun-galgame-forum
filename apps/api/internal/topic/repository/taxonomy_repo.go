@@ -7,8 +7,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// TopicTaxonomyRepository owns the section taxonomy attached to a topic:
-// section rows + topic_section_relation.
 type TopicTaxonomyRepository struct {
 	db *gorm.DB
 }
@@ -18,10 +16,6 @@ func NewTopicTaxonomyRepository(db *gorm.DB) *TopicTaxonomyRepository {
 }
 
 func (r *TopicTaxonomyRepository) DB() *gorm.DB { return r.db }
-
-// ──────────────────────────────────────────
-// Sections
-// ──────────────────────────────────────────
 
 func (r *TopicTaxonomyRepository) FindSectionsByNames(names []string) ([]model.TopicSection, error) {
 	var sections []model.TopicSection
@@ -74,13 +68,11 @@ func (r *TopicTaxonomyRepository) FindSectionNamesByTopicID(topicID int) ([]stri
 	return names, err
 }
 
-// CreateSectionRelation upserts a (topic_id, section_id) pair.
 func (r *TopicTaxonomyRepository) CreateSectionRelation(tx *gorm.DB, topicID, sectionID int) error {
 	rel := model.TopicSectionRelation{TopicID: topicID, TopicSectionID: sectionID}
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&rel).Error
 }
 
-// FindSectionsByNamesTx resolves section names to rows inside the caller tx.
 func (r *TopicTaxonomyRepository) FindSectionsByNamesTx(tx *gorm.DB, names []string) ([]model.TopicSection, error) {
 	var sections []model.TopicSection
 	err := tx.Where("name IN ?", names).Find(&sections).Error

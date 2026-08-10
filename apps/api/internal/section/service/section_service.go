@@ -21,9 +21,6 @@ func NewSectionService(
 	return &SectionService{repo: repo, userClient: userClient}
 }
 
-// GetSectionTopics returns topics filtered by section name. Identity is
-// hydrated from OAuth via userclient since the repo no longer joins on the
-// user table; banned authors are dropped from the listing.
 func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionTopicsRequest) (*dto.SectionTopicsResponse, *errors.AppError) {
 	rows, total, err := s.repo.FindSectionTopics(req.Section, req.SortOrder, req.Page, req.Limit)
 	if err != nil {
@@ -51,23 +48,12 @@ func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionT
 	return &dto.SectionTopicsResponse{Topics: items, Total: total}, nil
 }
 
-// GetCategoryStats returns section stats (topic count + view count + latest topic)
-// filtered by category.
-//
-// The "latest topic" preview must not surface a banned author's topic (title +
-// link), so we pull a few newest candidates per section and pick the newest
-// whose author is renderable. The topic_count / view_count aggregates still
-// include banned authors' topics — ban status is OAuth-owned, not a local
-// column, so it can't be filtered in SQL; this is the same over-report every
-// other list's `total` carries.
 func (s *SectionService) GetCategoryStats(ctx context.Context, category string) ([]dto.SectionStat, *errors.AppError) {
 	rows, err := s.repo.FindCategoryStats(category)
 	if err != nil {
 		return nil, errors.ErrInternal("获取板块统计失败")
 	}
 
-	// Fetch candidates for every section first, then hydrate all their authors
-	// in one batch so the per-section pick is a cheap in-memory scan.
 	const latestCandidates = 10
 	candBySection := make(map[int][]repository.LatestTopicRow, len(rows))
 	uidSet := map[int]struct{}{}

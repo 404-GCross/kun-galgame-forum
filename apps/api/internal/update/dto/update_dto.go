@@ -1,19 +1,10 @@
 package dto
 
-// ──────────────────────────────────────────
-// Requests
-// ──────────────────────────────────────────
-
 type ListQuery struct {
 	Page  int `query:"page" validate:"min=1"`
 	Limit int `query:"limit" validate:"min=1,max=50"`
 }
 
-// Caps mirror apps/web/app/validations/update-log.ts + todo.ts. The FE
-// schemas enforced these (version max=20, content_* max=1000, todo
-// status 0..10) but the BE was silently accepting anything — so a
-// malicious / mis-typed direct API call could land a 100k-char locale
-// blob or status=99 into the DB. Tightened here.
 type CreateHistoryRequest struct {
 	Type        string `json:"type" validate:"required"`
 	Version     string `json:"version" validate:"max=20"`

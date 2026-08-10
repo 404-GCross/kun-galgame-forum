@@ -16,9 +16,6 @@ func sampleForm() *SubmissionForm {
 	}
 }
 
-// The form speaks four product locales; the registry speaks BCP-47. A wrong
-// mapping here does not fail — it files the title under a language nobody
-// searches in.
 func TestSubmissionFieldsTranslateLocales(t *testing.T) {
 	fields := sampleForm().Fields()
 
@@ -29,8 +26,6 @@ func TestSubmissionFieldsTranslateLocales(t *testing.T) {
 	want := []map[string]any{
 		{"lang": "ja", "title": "白恋サクラ", "kind": titleKindOfficial},
 		{"lang": "zh-Hans", "title": "白恋樱", "kind": titleKindOfficial},
-		// An alias belongs to no language in particular, and the field accepts
-		// the empty language for this kind alone.
 		{"lang": "", "title": "シロコイ", "kind": titleKindAlias},
 	}
 	if len(titles) != len(want) {
@@ -49,28 +44,20 @@ func TestSubmissionFieldsTranslateLocales(t *testing.T) {
 	if fields["catalog.work.olang"] != "ja" {
 		t.Errorf("olang = %v, want ja (not the product locale ja-jp)", fields["catalog.work.olang"])
 	}
-	// The two editorial switches are DIFFERENT axes and must not collapse:
-	// content_rating is what the game is rated, display_nsfw is whether the
-	// material we would render is safe to show.
 	if fields["catalog.work.content_rating"] != contentRatingR18 {
 		t.Errorf("content_rating = %v, want r18", fields["catalog.work.content_rating"])
 	}
 	if fields["catalog.work.display_nsfw"] != true {
 		t.Errorf("display_nsfw = %v, want true", fields["catalog.work.display_nsfw"])
 	}
-	// display_name is an identity, so it follows the form's own preference
-	// order and never the reader's locale.
 	if fields["catalog.work.display_name"] != "白恋サクラ" {
 		t.Errorf("display_name = %v, want the ja title", fields["catalog.work.display_name"])
 	}
-	// Covers are not a submittable facet.
 	if _, present := fields["catalog.work.covers"]; present {
 		t.Error("covers must not ride the mint — the bytes are referenced, not carried")
 	}
 }
 
-// An empty field is OMITTED, never sent blank: the mint reads a present key as
-// an assertion, and an empty title list is refused outright.
 func TestSubmissionOmitsEmptyLists(t *testing.T) {
 	fields := (&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw"}).Fields()
 	if _, present := fields["catalog.work.intros"]; present {
@@ -84,20 +71,17 @@ func TestSubmissionOmitsEmptyLists(t *testing.T) {
 	}
 }
 
-// The nullable tail of the date IS the precision, so a truncated date is a
-// legitimate value rather than an error — and a shape the three columns cannot
-// express is refused rather than guessed.
 func TestSubmissionReleaseDatePrecision(t *testing.T) {
 	cases := []struct {
 		raw     string
 		want    *[3]int16
 		wantErr bool
 	}{
-		{"", nil, false},                       // TBA
-		{"2019", &[3]int16{2019, 0, 0}, false}, // year only
+		{"", nil, false},
+		{"2019", &[3]int16{2019, 0, 0}, false},
 		{"2019-06-00", &[3]int16{2019, 6, 0}, false},
 		{"2019-06-14", &[3]int16{2019, 6, 14}, false},
-		{"2019-00-14", nil, true}, // a day with no month has no representation
+		{"2019-00-14", nil, true},
 		{"0000-01-01", nil, true},
 		{"not-a-date", nil, true},
 	}
@@ -126,9 +110,6 @@ func TestSubmissionReleaseDatePrecision(t *testing.T) {
 	}
 }
 
-// An unknown original-language code is passed through rather than dropped, so
-// the registry's own whitelist answers with a 422 naming the field instead of
-// the submission silently losing its language.
 func TestSubmissionUnknownOLangIsPassedThrough(t *testing.T) {
 	if got := olangOf("ko-kr"); got != "ko-kr" {
 		t.Errorf("olangOf(ko-kr) = %q, want it forwarded for the registry to judge", got)

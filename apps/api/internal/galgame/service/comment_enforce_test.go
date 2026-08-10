@@ -12,8 +12,6 @@ import (
 	"kun-galgame-api/pkg/communityclient"
 )
 
-// fakeCommentMap is a stub legacyGalgameCommentMap: it returns the configured
-// row (or nil for a never-migrated id) without touching a DB.
 type fakeCommentMap struct {
 	row *model.GalgameCommentCommunityMap
 }
@@ -22,8 +20,6 @@ func (f fakeCommentMap) FindMapByLegacyID(int) (*model.GalgameCommentCommunityMa
 	return f.row, nil
 }
 
-// TestGalgameCommentEnforcerTombstoneMapHit proves a legacy id that resolves to a
-// community post is tombstoned via DeletePost as_moderator.
 func TestGalgameCommentEnforcerTombstoneMapHit(t *testing.T) {
 	var resolveHit, deleteHit bool
 	var deletePath, deleteQuery string
@@ -72,8 +68,6 @@ func TestGalgameCommentEnforcerTombstoneMapHit(t *testing.T) {
 	}
 }
 
-// TestGalgameCommentEnforcerTombstoneMapMiss proves a never-migrated id is a
-// no-op success: no community request is made.
 func TestGalgameCommentEnforcerTombstoneMapMiss(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("no community request expected on a map miss, got %s %s", r.Method, r.URL.Path)
@@ -88,8 +82,6 @@ func TestGalgameCommentEnforcerTombstoneMapMiss(t *testing.T) {
 	}
 }
 
-// TestGalgameCommentEnforcerAuthorID proves AuthorID resolves via the map + the
-// resolve face, and returns 0 on a map miss without a network hit.
 func TestGalgameCommentEnforcerAuthorID(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
