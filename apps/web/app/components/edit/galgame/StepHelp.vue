@@ -1,11 +1,4 @@
 <script setup lang="ts">
-// Collapsible help block for the publish stepper. Long explanatory copy
-// (NSFW definition, where to source intros, etc.) used to sit as walls of
-// gray text inline in the form, which is what made the page feel messy.
-// Wrap it here so it's discoverable but collapsed by default.
-//
-// Uses the project's own useKunDisclosure composable for consistency
-// (there's no KunCollapse component in the KunUI set).
 withDefaults(defineProps<{ title?: string }>(), {
   title: '填写建议'
 })

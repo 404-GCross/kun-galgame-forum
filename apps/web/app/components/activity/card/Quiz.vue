@@ -1,14 +1,9 @@
 <script setup lang="ts">
-// GALGAME_QUIZ_CREATION feed card: a user authored a 题目 in the Galgame 题库.
-// Layout mirrors the other creation cards — a muted descriptive line, the 题干,
-// then a 收藏 + 查看详情 footer. actor = author, content = 题干, data = meta.
 import { kunQuizDifficultyLabel } from '~/constants/galgame-quiz'
 
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(() => props.activity.data as QuizActivityData | undefined)
-// The quiz id — parsed from the link (/galgame-quiz/:id); the feed item carries
-// no raw source id.
 const quizId = computed(
   () => Number(props.activity.link.split('/').pop()) || 0
 )
@@ -19,13 +14,11 @@ const summary = computed(() => {
   return `出了一道题目，${kunQuizDifficultyLabel(d.difficulty)}·难度${d.difficulty}，已经有 ${d.answer_count} 人作答。`
 })
 
-// The 题目描述 preview (server truncates to 200 chars); markdown → plain text.
 const descriptionText = computed(() => {
   const d = data.value?.description
   return d ? markdownToText(d) : ''
 })
 
-// The shared feed can't carry per-viewer state → hydrate 收藏 client-side.
 const { isFavorited, setFavorited, ensureLoaded } = useMyQuizInteractions()
 onMounted(ensureLoaded)
 </script>
@@ -35,7 +28,6 @@ onMounted(ensureLoaded)
     <div class="space-y-2">
       <p class="text-default-600 text-sm">{{ summary }}</p>
 
-      <!-- 题干 -->
       <KunLink
         underline="none"
         color="default"
@@ -49,7 +41,6 @@ onMounted(ensureLoaded)
         </p>
       </KunLink>
 
-      <!-- 题目描述 preview (truncated to 200 chars on the server) -->
       <p
         v-if="descriptionText"
         class="text-default-500 text-sm break-words whitespace-pre-line"
@@ -57,7 +48,6 @@ onMounted(ensureLoaded)
         {{ descriptionText }}
       </p>
 
-      <!-- 收藏 + 查看详情, like the other creation cards -->
       <div class="flex items-center gap-2">
         <FavoriteToggle
           :favorited="isFavorited(quizId)"

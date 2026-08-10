@@ -15,8 +15,6 @@ export const useTempReplyStore = defineStore(
     const isReplyRewriting = ref<ReplyStoreTemp['isReplyRewriting']>(false)
     const replyRewrite = ref<ReplyStoreTemp['replyRewrite']>(null)
     const lastSuccessfulReply = ref<ReplyStoreTemp['lastSuccessfulReply']>(null)
-    // One-shot 「引用」 signal: the open reply editor inserts the inline header,
-    // then clears it.
     const pendingQuote = ref<ReplyStoreTemp['pendingQuote']>(null)
 
     const setPendingQuote = (reference: ReplyReference) => {

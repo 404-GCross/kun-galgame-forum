@@ -16,10 +16,6 @@ const handleClickReply = () => {
     return
   }
 
-  // Replying to a specific floor: hand the editor a 「引用」 signal, which it turns
-  // into an inline `@author #floor` header (mention notifies the author, quote
-  // links the floor) via a live editor command — caret lands on the body line
-  // below, WYSIWYG. Replying to the topic (floor 0) just opens the panel.
   if (props.targetFloor !== 0 && props.targetReplyId) {
     tempReplyStore.setPendingQuote({
       userId: props.targetUserId,

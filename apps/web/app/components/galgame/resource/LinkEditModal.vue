@@ -1,19 +1,4 @@
 <script setup lang="ts">
-// Single modal for BOTH publishing a new resource AND editing an
-// existing one. Replaced the legacy `<GalgameResourcePublish>` flow,
-// which threaded state through useTempGalgameResourceStore and a
-// nested KunModal in a parent — that triple-hop emit/store chain was
-// the source of the recurring `$nuxt of null` crashes on edit-modal
-// close (the live diagnosis turned out to be useKunMessage rendering
-// MessageContainer without an app context; see
-// packages/ui/app/composables/useKunMessage.ts for the actual fix).
-//
-// Mode is driven by whether `resource` is supplied:
-//   • resource present → edit mode (PUT, "保存修改", title 重新编辑)
-//   • resource absent  → create mode (POST, "发布", title 发布)
-//
-// Both modes use the same form / validation / help block, so there's
-// no longer a separate Publish.vue file to keep in sync.
 import {
   kunGalgameResourceTypeOptions,
   kunGalgameResourceLanguageOptions,
@@ -92,10 +77,6 @@ const snapshotFromResource = (): FormShape => {
 
 const form = ref<FormShape>(snapshotFromResource())
 
-// Re-seed every time the modal opens. Without this, closing without
-// saving and reopening would carry stale local edits between sessions
-// (or stale fields from a previously-edited resource into a new
-// create flow).
 watch(open, (isOpen) => {
   if (isOpen) form.value = snapshotFromResource()
 })
@@ -123,7 +104,6 @@ const handleSubmit = async () => {
 
   if (result) {
     nuxtApp.runWithContext(() => {
-      // Backend message codes: 10549 = 发布成功, 10550 = 更新成功
       useMessage(isEditing.value ? 10550 : 10549, 'success')
       props.refresh()
       open.value = false

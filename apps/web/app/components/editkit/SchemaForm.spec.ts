@@ -1,9 +1,4 @@
 // @vitest-environment nuxt
-//
-// Render proof for the schema-driven form: the tabbed layout groups fields by
-// their config.group into a tab per group, and the stacked layout renders every
-// section. Nuxt env so the auto-imported KunUI primitives (KunTab, inputs)
-// resolve at mount.
 import { describe, it, expect } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import SchemaForm from './SchemaForm.vue'

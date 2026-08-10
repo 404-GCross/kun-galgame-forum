@@ -1,16 +1,10 @@
 <script setup lang="ts">
-// Reaction chips below a topic / reply: detail chips show up to MAX_AVATARS
-// reactor avatars + a "+N" overflow (uniform height — every chip has avatars);
-// feed chips (no reactors shipped) show emoji + count. Tap a chip to toggle.
-// State is provided by the parent (useReactions) so these chips and the trigger
-// button stay in sync even when the trigger lives elsewhere (e.g. the footer).
 import { KUN_REACTION_EMOJI, reactionAsset } from '~/constants/reaction'
 
 const { list, toggle } = inject(reactionsKey)!
 
 const MAX_AVATARS = 3
 const shownReactors = (r: KunReaction) => r.reactors?.slice(0, MAX_AVATARS) ?? []
-// Users beyond the shown avatars → "+N"; 0 hides the badge.
 const overflow = (r: KunReaction) => r.count - shownReactors(r).length
 </script>
 

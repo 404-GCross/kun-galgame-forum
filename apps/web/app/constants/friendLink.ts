@@ -3,7 +3,6 @@ import type {
   FriendLinkStatus
 } from '../../shared/types/friend-link'
 
-// The 3 fixed display groups (mirrors the API + the old config/friend.ts).
 export const FRIEND_LINK_CATEGORIES: {
   key: FriendLinkCategory
   label: string
@@ -24,7 +23,6 @@ export const FRIEND_LINK_STATUS_OPTIONS = [
   { value: 'down', label: '已下线' }
 ] as const
 
-// Chip rendering for a non-normal status (normal → no chip).
 export const FRIEND_LINK_STATUS_CHIP: Record<
   FriendLinkStatus,
   { label: string; color: 'primary' | 'danger' } | null

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// TOPIC_COMMENT_CREATION — a comment on a reply. Same shape as the reply card:
-// the comment body (a few lines), the reply it's on (被评论的评论) quoted above,
-// and the topic name anchored at the bottom.
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(
@@ -13,15 +10,12 @@ const quoted = computed(() => data.value?.quoted_reply)
 <template>
   <ActivityCardShell :actor="activity.actor" :timestamp="activity.timestamp">
     <div class="space-y-2">
-      <!-- The reply being commented on (被评论的评论). -->
       <ActivityCardQuote
         v-if="quoted"
         :content="quoted.content"
         :label="`#${quoted.floor}`"
       />
 
-      <!-- Body sits OUTSIDE the link so its 显示更多 toggle never navigates;
-           preserveNewlines + pre-line keep the author's line breaks. -->
       <ActivityCollapse :max-height="300">
         <p class="text-default-700 text-base break-all whitespace-pre-line">
           {{ markdownToText(activity.content, { preserveNewlines: true }) }}

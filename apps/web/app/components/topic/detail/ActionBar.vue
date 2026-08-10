@@ -6,8 +6,6 @@ const props = defineProps<{
 const { id } = usePersistUserStore()
 const { isEdit } = storeToRefs(useTempReplyStore())
 
-// The pill "input" opens the reply editor, which renders as a bottom KunDrawer
-// on mobile (see TopicReplyPanel). Floor 0 = replying to the OP.
 const handleOpenReply = () => {
   if (!id) {
     useAuthModal().open()
@@ -30,10 +28,6 @@ const handleShare = () => {
 </script>
 
 <template>
-  <!-- Mobile-only floating action pill (desktop keeps the original in-card
-       TopicFooter). A frosted, fully-rounded bar that floats a gap above the
-       bottom. Visible: input · 收藏 · 评论 · ⋯; the ⋯ holds 推 / 点赞 / 点踩 /
-       分享 / 重新编辑 / 隐藏. -->
   <div
     class="border-default/20 bg-background/70 sticky bottom-4 z-30 mx-2 flex items-center gap-1 rounded-full border px-2 py-1.5 shadow-lg backdrop-blur-xl md:hidden"
   >

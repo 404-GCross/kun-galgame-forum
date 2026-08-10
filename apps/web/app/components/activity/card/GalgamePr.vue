@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// GALGAME_PR_CREATION — a user proposed an update (PR) to a galgame. Mirrors the
-// edit card's layout (header + the shared galgame info area); the footer flags it
-// as pending review (warning) and links to the PR detail, which shows the full
-// proposed diff (kept off the feed card — it'd need a second fetch + assembly).
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(

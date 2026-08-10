@@ -32,9 +32,6 @@ export const isDeepEmpty = (obj: any): boolean => {
   return true
 }
 
-/**
- * Compare two objects，return a new object which contains diff content(new or update)
- */
 export const createUpdatePayload = (
   oldObject: AnyObject,
   newObject: AnyObject

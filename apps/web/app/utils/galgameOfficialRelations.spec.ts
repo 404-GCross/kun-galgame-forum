@@ -1,8 +1,3 @@
-// Pins the ONE thing about the corporate-family derivation that is easy to get
-// backwards and impossible to notice from the types: an edge reads "`to` is the
-// `relation` of `from`", which makes `parent` run child→parent and `imprint`
-// run owner→brand. Reading both the same way silently hangs every brand under
-// its own owner's owner, and the tree still renders — just wrong.
 import { describe, it, expect } from 'vitest'
 import {
   buildOfficialFamilyForest,
@@ -19,8 +14,6 @@ const node = (id: number, name: string, work_count = 0) => ({
 
 describe('buildOfficialFamilyForest', () => {
   it('reads parent and imprint edges in OPPOSITE directions', () => {
-    // VisualArt's owns Key (a parent edge, read upward) and Na-Ga (an imprint
-    // edge, read downward). Both belong UNDER VisualArt's.
     const forest = buildOfficialFamilyForest(
       {
         nodes: [
@@ -39,7 +32,6 @@ describe('buildOfficialFamilyForest', () => {
     expect(forest).toHaveLength(1)
     expect(forest[0]!.official.id).toBe(993)
     expect(forest[0]!.role).toBe('root')
-    // Ordered by catalogue weight: Key (33) before Na-Ga (5).
     expect(forest[0]!.children.map((c) => [c.official.id, c.role])).toEqual([
       [24, 'subsidiary'],
       [994, 'imprint']
@@ -53,8 +45,6 @@ describe('buildOfficialFamilyForest', () => {
         edges: [
           { from: 2, to: 1, relation: 'parent' },
           { from: 4, to: 3, relation: 'parent' },
-          // The two ownership trees are joined ONLY by a rename, which the
-          // family lane cannot draw — so both must survive as roots.
           { from: 1, to: 3, relation: 'succeeded_by' }
         ]
       },
@@ -65,8 +55,6 @@ describe('buildOfficialFamilyForest', () => {
   })
 
   it('drops a node no ownership edge reaches', () => {
-    // Its spin-off relation is drawn by the other lane; a tree of one row is
-    // noise.
     const forest = buildOfficialFamilyForest(
       {
         nodes: [node(1, 'A'), node(2, 'B')],
@@ -79,8 +67,6 @@ describe('buildOfficialFamilyForest', () => {
   })
 
   it('survives an ownership cycle', () => {
-    // A data error, not an impossibility — and it must cost a wrong chip, not
-    // a hung render.
     const forest = buildOfficialFamilyForest(
       {
         nodes: [node(1, 'A'), node(2, 'B')],

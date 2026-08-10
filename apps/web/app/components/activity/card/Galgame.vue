@@ -1,10 +1,4 @@
 <script setup lang="ts">
-// GALGAME_CREATION — "new galgame" feed card (layout per spec):
-//   top    — avatar · username · time (shell), then "创建了一个新的Galgame,已经有
-//            N 个下载资源"
-//   middle — banner (left) + name · 发售于<date> (right)
-//   bottom — 点赞 + 收藏 buttons (reused detail components) + 查看详情 link
-// 制作会社 + 简介 are intentionally omitted until the wiki brief exposes them.
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(
@@ -15,8 +9,6 @@ const detailLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
 
-// Hydrate the like/favorite buttons' initial state (the cached feed can't carry
-// it); fetched once per session, client-side.
 const { isLiked, isFavorited, ensureLoaded } = useMyGalgameInteractions()
 onMounted(ensureLoaded)
 </script>

@@ -43,9 +43,6 @@ const onChange = async (next: boolean) => {
 </script>
 
 <template>
-  <!-- No KunTooltip wrapper: its inline-block line-height box left the reaction
-       baseline-offset (~2px high) vs the sibling download count / button. The
-       KunReaction already carries the "点赞" label. -->
   <KunReaction
     v-model="isLiked"
     v-model:count="likeCount"

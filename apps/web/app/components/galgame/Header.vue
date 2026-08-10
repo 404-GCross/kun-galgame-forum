@@ -21,9 +21,6 @@ const emits = defineEmits<{
 const { id } = usePersistUserStore()
 const canBanResourcePublish = useCan('galgame.ban_resource_publish')
 
-// Resource-publish ban (moderator kill-switch): a live reactive flag shared with
-// the resource tab (provided by Galgame.vue), so the menu label + tab notice
-// update together after a toggle without a refetch.
 const resourcePublishBanned = inject<Ref<boolean>>(
   'galgameResourcePublishBanned',
   ref(false)
@@ -66,8 +63,6 @@ const galgameAliasArray = computed(() => {
 
 const isRatingOpen = ref(false)
 
-// "查看所有封面" modal — only worth offering when there's more than the pinned
-// banner cover (covers[] includes the banner at sort_order 0).
 const coversOpen = ref(false)
 const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 </script>
@@ -81,12 +76,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
     <div
       className="relative rounded-lg w-full h-full overflow-hidden md:col-span-1 aspect-video md:rounded-l-xl"
     >
-      <!-- Banner is a real <KunImage>, so use the declarative
-           Gallery/Item rather than the document-scan composable.
-           wrap=false + v-slot lets the overlay content-limit chip
-           stay a sibling that does NOT trigger the lightbox — only
-           the image itself opens it. Full-res src (no `mini` variant)
-           so the zoomed view is sharp. -->
       <KunLightboxGallery>
         <KunLightboxGalleryItem
           :src="getEffectiveBanner(galgame)"
@@ -119,8 +108,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
         </KunTooltip>
       </KunChip>
 
-      <!-- 查看所有封面 — sibling of the lightbox (not nested) so it doesn't trigger
-           the banner lightbox; opens the covers modal. -->
       <button
         v-if="hasMoreCovers"
         type="button"
@@ -137,9 +124,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       />
     </div>
 
-    <!-- min-w-0: a long unbroken title (Japanese names run wide with no space
-         to break on) would otherwise floor this `1fr` track at its max-content
-         width and squeeze the banner beside it. -->
     <div className="flex min-w-0 flex-col gap-3 md:col-span-2">
       <div class="flex flex-wrap items-center gap-2">
         <h1 class="text-3xl">
@@ -196,12 +180,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-center gap-1">
-            <!-- View count: the same compact pill as 点赞 / 收藏 (KunReaction),
-                 but STATIC — action skin (no toggle), no animation, and
-                 pointer-events-none so it has no hover / click effect. -->
-            <!-- Hidden for not-yet-ingested wiki games: their view is always 0
-                 (IncrementView no-ops without a local row), so showing it reads
-                 as a misleading stat. The 未收录 notice explains the empty page. -->
             <KunReaction
               v-if="galgame.is_on_forum !== false"
               :count="galgame.view"
@@ -227,8 +205,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             />
           </div>
 
-          <!-- ml-auto keeps this group right-aligned even after it wraps to its
-               own line on mobile (justify-between would left-align a wrapped row). -->
           <div class="ml-auto flex flex-wrap items-center justify-end gap-1">
             <KunButton
               variant="shadow"
@@ -241,19 +217,12 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               </span>
             </KunButton>
 
-            <!-- 正版购买 (DLsite affiliate). Only for galgames that actually
-                 resolve to a DLsite work; the component owns the coupon-then-buy
-                 popover. `flat` rather than another `shadow`: two solid primaries
-                 side by side would fight, and 添加评分 stays this page's own
-                 primary action. -->
             <GalgameDlsitePurchase
               v-if="galgame.dlsite_purchase_url"
               :purchase-url="galgame.dlsite_purchase_url"
               :coupon-url="galgame.dlsite_coupon_url"
             />
 
-            <!-- The schema-driven proposal editor (the engine review queue).
-                 The legacy rewrite editor retired in E3b. -->
             <KunButton
               variant="light"
               color="default"
@@ -288,8 +257,6 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                   :snapshot="getPreferredLanguageText(galgame.name)"
                   :subject-url="`${kungal.domain.main}/galgame/${galgame.id}`"
                 />
-                <!-- Moderator kill-switch: forbid / allow publishing download
-                     resources under this game (copyright / third-party). -->
                 <KunButton
                   v-if="canBanResourcePublish"
                   variant="light"

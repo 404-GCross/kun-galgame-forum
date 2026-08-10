@@ -4,9 +4,6 @@ export interface UserInfo {
   id: number
   name: string
   avatar: string
-  // OAuth named-role set (empty for a plain user; `user` never appears). Drives
-  // the profile badge via managementRoleLabel + a creator chip. `creator` is
-  // orthogonal — no moderation/admin power.
   roles: string[]
   status: number
   moemoepoint: number
@@ -61,7 +58,6 @@ export interface UserGalgameResource {
 
 export interface UserReply {
   topic_id: number
-  // Floor → deep-link to this reply (/topic/:id?reply=<floor>).
   floor: number
   content: string
   created: Date | string
@@ -73,7 +69,6 @@ export interface UserGetUserReplyRequestData {
 }
 
 export interface UserComment {
-  // Comment id → deep-link to it (/topic/:id?comment=<id>).
   id: number
   topic_id: number
   content: string

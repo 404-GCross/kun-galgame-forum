@@ -65,8 +65,6 @@ export const useTopicSubmitter = () => {
       )
       return
     }
-    // The publish modal is itself the deliberate confirmation step now, so no
-    // extra alert() — the seek/help moemoepoint cost is surfaced inline there.
 
     isSubmitting.value = true
     if (isRewriteMode.value) {

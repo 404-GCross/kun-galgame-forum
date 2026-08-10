@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// TOOLSET_CREATION — a user created a Galgame toolset. The toolset name is in
-// content; the link goes to /toolset/<id>.
 defineProps<{ activity: ActivityItem }>()
 </script>
 

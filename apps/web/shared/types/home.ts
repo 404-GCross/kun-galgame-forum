@@ -12,11 +12,7 @@ export interface HomeTopic {
   view: number
 
   section: string[]
-  // Optional 1..9 feed-card cover images, as /image/<hash> content tokens
-  // (usable directly as an <img src>). Empty array = no covers.
   cover_images: string[]
-  // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
-  // token in cover_images — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
   cover_image_meta?: Record<string, KunImageMeta>
   user: KunUser
   status: number

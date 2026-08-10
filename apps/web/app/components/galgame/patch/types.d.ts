@@ -1,11 +1,9 @@
 export interface KunPatchResponse {
   id: number
   name: string
-  // e.g. "vndb_id": "v19658",
   vndb_id: string
   banner: string
   introduction: string
-  // e.g. "released": "2016-11-25",
   released: string
   status: number
   download: number

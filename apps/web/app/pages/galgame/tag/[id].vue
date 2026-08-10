@@ -1,29 +1,11 @@
 <script setup lang="ts">
 import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 
-// `id` is a CANONICAL CATALOG tag id (A2-3 / doc 106 R1), carried bare — this
-// namespace needs no discriminator segment.
-//
-// The retired `/galgame-tag/` space did need one (`/galgame-tag/c/{n}`, doc 146):
-// there a bare number was a WIKI id, and the two id spaces overlap densely — 718
-// of the 1,530 mapped wiki tag ids are themselves live catalog tag ids — so one
-// path serving both meanings would silently render the wrong entity for whichever
-// one lost. `/galgame/tag/` never served wiki ids at all, so the ambiguity it was
-// guarding against cannot arise and the segment is pure baggage. The old space
-// survives only as 301 shells (server/middleware/legacy-taxonomy.ts).
-//
-// Staff affordances (edit / revision history) are deliberately NOT here any
-// more: those write ops address WIKI rows and this page no longer knows a wiki
-// id. They live in the admin taxonomy console, which stays wiki-ids end to end
-// (doc 106 R11).
 const route = useRoute()
 const tag_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
-// A junk segment (/galgame/tag/null, crawler-made) becomes NaN and used to ride
-// all the way upstream, where the catalog answered 400 — dozens of pointless
-// round trips a day for a URL that can only ever be a 404. Answer it here.
 if (!Number.isInteger(tag_id.value) || tag_id.value <= 0) {
   throw createError({
     statusCode: 404,
@@ -44,13 +26,8 @@ const {
 } = useGalgameFilters()
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
-// SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): the catalog then hides r18 works from BOTH the list and the
-// (content-aware) count, so an NSFW-heavy entity can look emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-// "未发布的游戏": catalog works carrying this tag that no product has an entry
-// for yet. Public claim funnel — open to everyone, not just moderators.
 const showDraftsModal = ref(false)
 
 const { data, status } = await useKunFetch<GalgameTagDetail>(
@@ -71,9 +48,6 @@ const { data, status } = await useKunFetch<GalgameTagDetail>(
   }
 )
 
-// An unknown id is a real 404, not an empty 200 shell: this namespace went live
-// with no legacy id space behind it, so a miss means the entity does not exist
-// and a crawler must be told exactly that rather than indexing a blank page.
 if (!data.value) {
   throw createError({
     statusCode: 404,
@@ -82,10 +56,6 @@ if (!data.value) {
   })
 }
 
-// Two independent reasons to keep a tag page out of the index: it is adult
-// (`category === 'sexual'`), or upstream parked it in the do-not-display tier
-// (`hidden` — junk terms, absent from every list, search and picker). Either
-// way the page itself still renders: a direct link to a tag always resolves.
 const isIndexable = computed(
   () => data.value?.category !== 'sexual' && !data.value?.hidden
 )

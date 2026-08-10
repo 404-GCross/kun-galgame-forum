@@ -2,15 +2,10 @@
 import { useRouteQuery } from '@vueuse/router'
 import type { KunTabItem } from '@kungal/ui-vue'
 
-// URL-backed so a given month / tab is shareable, bookmarkable, and survives
-// refresh + back/forward (same idiom as useGalgameFilters). 'month' is the
-// default tab and also catches empty / unknown ?view values.
 const opts = { mode: 'replace' as const }
-// Widen to string (not the literal default) so the union comparisons + the
-// KunTab v-model (which emits a bare string) typecheck.
 const view = useRouteQuery<string>('view', 'month', opts)
-const month = useRouteQuery<string>('month', '', opts) // '' → current month (server-resolved)
-const year = useRouteQuery<string>('year', '', opts) // '' → current year (server-resolved)
+const month = useRouteQuery<string>('month', '', opts)
+const year = useRouteQuery<string>('year', '', opts)
 
 const tabs: KunTabItem[] = [
   { value: 'month', textValue: '月历' },
@@ -26,16 +21,9 @@ const isMonthView = computed(
     view.value !== 'tba'
 )
 
-// Omit empty month/year so the wiki applies its current-JST default — sending
-// `?month=` would trip its strict YYYY-MM validation (→ 400).
 const monthQuery = computed(() => (month.value ? { month: month.value } : {}))
 const yearQuery = computed(() => (year.value ? { year: year.value } : {}))
 
-// content_limit is derived server-side from the SFW cookie (forwarded on SSR);
-// NSFW-opt-in users get the sfw+nsfw union. Each bucket fetches lazily the
-// first time its tab opens; the month view is the landing default. A single
-// month already has plenty of releases (the wiki returns drafts too), so the
-// view shows just the focus month — no multi-month window.
 const {
   data: monthData,
   status: monthStatus,
@@ -80,7 +68,6 @@ const {
   server: view.value === 'tba'
 })
 
-// Fetch a bucket the first time its tab is activated (lazy tabs start empty).
 watch(view, () => {
   if (isMonthView.value && !monthData.value) {
     refreshMonth()
@@ -93,16 +80,11 @@ watch(view, () => {
   }
 })
 
-// Month-grouped headers on the 未发售 tab.
 const ymLabel = (m: string) => {
   const [y, mo] = m.split('-')
   return `${y} 年 ${Number(mo)} 月`
 }
 
-// Compute the adjacent month from the viewed month's "YYYY-MM" string rather
-// than the wiki meta: forward paging is unbounded (browse every future month,
-// even empty ones — some games are dated years out), while backward stops at
-// the data floor (minMonth) since there's nothing before it.
 const addMonth = (ym: string, delta: number) => {
   const [y, m] = ym.split('-').map(Number)
   const total = (y ?? 0) * 12 + ((m ?? 1) - 1) + delta
@@ -130,8 +112,6 @@ const goToday = () => {
   month.value = ''
 }
 
-// Pending exposes no data-boundary meta (just a count), so year nav is
-// unbounded — an empty year simply renders the KunNull empty state.
 const goPrevYear = () => {
   const y = Number(pendingData.value?.year)
   if (y) {
@@ -161,7 +141,6 @@ const goNextYear = () => {
       description="标记「未在论坛发布」的作品来自 Galgame 资料库, 本站尚未收录。点击这类卡片即可前往「发布 Galgame」页面认领并发布, 成为该游戏的创建者。"
     />
 
-    <!-- 未发售 · 已定档的发售排期 (release_date >= today, day/month precision) -->
     <template v-if="view === 'upcoming'">
       <div
         class="border-default-200 flex items-center justify-center gap-2 rounded-xl border px-3 py-3"
@@ -199,7 +178,6 @@ const goNextYear = () => {
       </KunLoading>
     </template>
 
-    <!-- 年内待定 (release_precision=year) -->
     <template v-else-if="view === 'pending'">
       <div
         class="border-default-200 flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
@@ -231,7 +209,6 @@ const goNextYear = () => {
       </KunLoading>
     </template>
 
-    <!-- 发售日期未定 (release_precision=tba) -->
     <template v-else-if="view === 'tba'">
       <div
         class="border-default-200 flex items-center justify-center gap-2 rounded-xl border px-3 py-3"
@@ -251,8 +228,6 @@ const goNextYear = () => {
       </KunLoading>
     </template>
 
-    <!-- 月历 (default) — nav + calendar + day panel live in GalgameCalendarMonth;
-         paging is emitted back here (we own the URL-backed month ref). -->
     <template v-else>
       <KunLoading :loading="monthStatus === 'pending'">
         <GalgameCalendarMonth

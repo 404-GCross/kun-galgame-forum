@@ -1,8 +1,3 @@
-// @mention links in rendered content are server-emitted plain <a> tags with an
-// ABSOLUTE href (absolute so they survive the markdown sanitizer), so a normal
-// click triggers a full-page reload. Intercept clicks on `.kun-mention` anywhere
-// and route client-side via data-uid → /user/<id>/info (SPA, no reload). Modifier
-// clicks (ctrl/cmd/shift/middle) fall through to the browser's open-in-new-tab.
 export default defineNuxtPlugin(() => {
   const router = useRouter()
 

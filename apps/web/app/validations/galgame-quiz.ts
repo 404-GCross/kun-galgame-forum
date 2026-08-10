@@ -8,8 +8,6 @@ import {
 
 const SORT_ORDER_CONST = ['asc', 'desc'] as const
 
-// Common fields only. The type-specific `content` payload is shape-checked in
-// the content editor (and again server-side); here it just passes through.
 export const createGalgameQuizSchema = z.object({
   galgame_ids: z
     .array(z.coerce.number<number>().int().min(1).max(9999999))

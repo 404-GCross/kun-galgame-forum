@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 
-// Filters are URL-backed (useGalgameFilters / useRouteQuery). The refs
-// double as the fetch query — URL key === BE query key, so no remapping.
-// useKunFetch watches the query refs, so a chip toggle (which writes the
-// URL) re-fetches; browser back/forward re-fetches too.
 const {
   page,
   limit,
@@ -23,9 +19,6 @@ const {
   minRating
 } = useGalgameFilters()
 
-// Global "显示没有下载资源的 Galgame" preference (cookie-persisted settings
-// store, SSR-safe). Off (default) hides resource-less galgames. Passed in the
-// query so toggling it re-fetches.
 const { showKUNGalgameNoResource } = storeToRefs(usePersistSettingsStore())
 
 const route = useRoute()
@@ -53,10 +46,6 @@ const { data, status, refresh } = await useKunFetch<{
     min_rating: minRating,
     show_no_resource: showKUNGalgameNoResource
   },
-  // Don't auto-refetch on every query-ref change: clicking a card navigates to
-  // /galgame/:id, which resets these URL-backed filters to their defaults and
-  // would otherwise fire a wasted default-params fetch right before unmount.
-  // Refetch manually instead, and ONLY while still on the list route.
   watch: false
 })
 

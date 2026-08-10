@@ -27,14 +27,13 @@ describe('formatFileSize', () => {
 })
 
 describe('formatNumber', () => {
-  // Boundaries: 1k → "k" suffix at 1_000; 1w → at 10_000; 1M at 1_000_000.
   it('returns string for <1k', () => {
     expect(formatNumber(0)).toBe('0')
     expect(formatNumber(999)).toBe('999')
   })
   it('k suffix for [1k, 10k)', () => {
     expect(formatNumber(1000)).toBe('1.0k')
-    expect(formatNumber(9999)).toBe('10.0k') // rounds up
+    expect(formatNumber(9999)).toBe('10.0k')
   })
   it('w (万) suffix for [10k, 1M)', () => {
     expect(formatNumber(10_000)).toBe('1.0w')

@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// One block of the 动态 overview: a titled section showing a section's latest
-// few items, with a 查看全部 link to its full tab. Pass `items` for the compact
-// text-row layout (话题 / 资源 / 回复 / 评论), or use the default slot to drop in a
-// rich card grid (Galgame / 评分).
 defineProps<{
   title: string
   icon: string

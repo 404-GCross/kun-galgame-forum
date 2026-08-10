@@ -31,8 +31,6 @@ const isSaving = ref(false)
 const { id: userId } = usePersistUserStore()
 const canEditAnyResource = useCan('toolset.resource.edit_any')
 const canDeleteAnyResource = useCan('toolset.resource.delete_any')
-// The resource owner manages their own row once its detail (author) is loaded;
-// toolset.resource.edit_any / delete_any extend that to anyone's.
 const isResourceOwner = computed(() =>
   detail.value ? detail.value.user.id === userId : false
 )
@@ -63,9 +61,6 @@ const links = computed(() => {
       .filter(Boolean)
   }
 
-  // s3: artifact-backed rows return a full download URL (dl.imoe.uk), resolved
-  // server-side from the artifact uuid; legacy rows store a raw key that needs
-  // the old OSS domain prefixed.
   const content = detail.value.content
   if (/^https?:\/\//.test(content)) {
     return [content]
@@ -73,12 +68,6 @@ const links = computed(() => {
   return [`${kungal.domain.oss}/${content}`]
 })
 
-// formData.size mirrors the wire format expected by
-// updateToolsetResourceSchema: s3 rows carry a byte-count string (the
-// API rejects formatted strings here, and ignores size changes for s3
-// anyway), user rows carry the kb/mb/gb-suffixed value typed by the
-// author. UI presentation goes through s3DisplaySize separately so the
-// user still sees "1.5 MB" rather than a raw byte count.
 const formData = reactive({
   toolset_resource_id: base.value.id,
   type: base.value.type,

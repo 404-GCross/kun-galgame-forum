@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Rich feed card for TOPIC_CREATION — title · excerpt · first-3 covers · badges
-// (NSFW / 有解答 / 投票 / 被推) + section chips · 高赞回复 · a footer row: 收藏 +
-// reactions (clickable) on the left, 浏览数 + 查看更多 on the right. Header
-// (avatar · username · time) comes from the shared shell.
 import { KUN_TOPIC_SECTION } from '~/constants/topic'
 
 const props = defineProps<{ activity: ActivityItem }>()
@@ -17,13 +13,8 @@ const hasBadge = computed(() => {
   return !!d && (d.has_best_answer || d.is_poll || d.is_nsfw || !!d.upvote_time)
 })
 
-// 高赞回复 + 最佳答案 + 推话题记录 (all optional). When the best answer IS the
-// top-liked reply (same reply_id), show only the best-answer style; otherwise the
-// best answer stacks below 高赞回复.
 const topReply = computed(() => data.value?.top_reply)
 const bestAnswer = computed(() => data.value?.best_answer)
-// The feed card shows only the MOST RECENT push (the topic detail lists them
-// all); sort by time so this doesn't depend on the API's ordering.
 const upvotes = computed(() => {
   const all = data.value?.upvotes ?? []
   if (all.length <= 1) return all
@@ -41,8 +32,6 @@ const sameReply = computed(
 )
 const showTopReply = computed(() => !!topReply.value && !sameReply.value)
 
-// The newest reply/comment — shown below 推话题记录, UNLESS it's a reply already
-// surfaced as the best answer or 高赞回复 (then it's merged into those blocks).
 const latest = computed(() => data.value?.latest_activity)
 const showLatest = computed(() => {
   const l = latest.value
@@ -57,14 +46,9 @@ const showLatest = computed(() => {
   return true
 })
 
-// Per-viewer 收藏 + reaction state (the shared feed can't carry it) — hydrated
-// once per session, client-side.
 const { isFavorited, reactionKeysOf, ensureLoaded } = useMyTopicInteractions()
 onMounted(ensureLoaded)
 
-// Feed reaction counts + the viewer's own "mine" (reactive — patched once the
-// hydration lands). Provided to the reaction bar + trigger via reactionsKey; the
-// `sync` re-seeds them when "mine" arrives.
 const reactionList = computed<KunReaction[]>(() =>
   (data.value?.reactions ?? []).map((r) => ({
     reaction: r.reaction,
@@ -87,7 +71,6 @@ provide(
 
 <template>
   <ActivityCardShell :actor="activity.actor" :timestamp="activity.timestamp">
-    <!-- Re-edited? show an edit icon + how long ago, after the timestamp. -->
     <template v-if="data?.edited" #meta>
       <span class="text-default-400 ml-2 flex items-center gap-1 text-xs">
         <KunIcon name="lucide:pencil" class="size-3" />
@@ -120,7 +103,6 @@ provide(
         />
       </KunLink>
 
-      <!-- Badges (NSFW / 有解答 / 投票 / 被推), then the section chips after them. -->
       <div
         v-if="hasBadge || data?.sections?.length"
         class="flex flex-wrap items-center gap-1.5"
@@ -144,10 +126,8 @@ provide(
         </KunChip>
       </div>
 
-      <!-- 推话题记录 (above the quoted replies) — reuse the topic-detail list. -->
       <TopicUpvoteRecords v-if="upvotes.length" :records="upvotes" />
 
-      <!-- 最新回复/评论 — neutral quote (skipped when it's the best answer / 高赞回复). -->
       <KunLink
         v-if="showLatest && latest"
         underline="none"
@@ -181,7 +161,6 @@ provide(
         </div>
       </KunLink>
 
-      <!-- 高赞回复 — quote style, primary bar (hidden when it IS the best answer). -->
       <KunLink
         v-if="showTopReply && topReply"
         underline="none"
@@ -213,7 +192,6 @@ provide(
         </div>
       </KunLink>
 
-      <!-- 最佳答案 — quote style, success bar + a faint corner checkmark. -->
       <KunLink
         v-if="bestAnswer"
         underline="none"
@@ -253,8 +231,6 @@ provide(
         />
       </KunLink>
 
-      <!-- Footer: reactions on their own row; then 收藏 + reaction trigger on the
-           left, 浏览 + 查看详情 on the right. TopicReactionBar self-hides when empty. -->
       <div class="space-y-2">
         <TopicReactionBar />
 

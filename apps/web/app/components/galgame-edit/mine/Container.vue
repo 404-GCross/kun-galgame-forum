@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// "My proposals" (E3a): the session user's galgame edit proposals across
-// every state, with withdrawal for the open ones and the reviewers'
-// decision notes for the closed ones.
 import { galgameEditLabel } from '~/constants/galgameEdit'
 
 useKunDisableSeo('我的资料编辑提案')

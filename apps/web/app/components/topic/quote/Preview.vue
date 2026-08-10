@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// Lazy preview card for a quote chip, driven entirely by the reactive state from
-// useQuoteContent (which fetches + positions it). Teleported to body so it
-// escapes the reply's overflow/stacking context, fixed-positioned at the chip.
 import type { QuotePreviewState } from '~/composables/topic/useQuoteContent'
 
 const props = defineProps<{

@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// GALGAME_RESOURCE_CREATION — a published download resource. No bordered preview
-// box: the galgame banner on the LEFT, the resource's spec on the RIGHT
-// (type / platform / language / size + 备注). The download link, 提取码 and 解压码
-// are intentionally NOT shown in the feed.
 import {
   KUN_GALGAME_RESOURCE_TYPE_MAP,
   KUN_GALGAME_RESOURCE_LANGUAGE_MAP,

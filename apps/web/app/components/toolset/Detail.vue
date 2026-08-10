@@ -17,8 +17,6 @@ const canEditAnyToolset = useCan('toolset.edit_any')
 const canDeleteAnyToolset = useCan('toolset.delete_any')
 
 const data = computed(() => props.toolset)
-// The toolset owner manages their own tool; toolset.edit_any / delete_any
-// extend that to anyone's.
 const canEditToolset = computed(
   () => data.value.user.id === userId || canEditAnyToolset.value
 )
@@ -26,10 +24,6 @@ const canDeleteToolset = computed(
   () => data.value.user.id === userId || canDeleteAnyToolset.value
 )
 
-// Own the resource list locally so add / edit / delete are reactive. The detail
-// fetch (useKunFetch) returns a SHALLOW data ref (Nuxt's default deep:false), so
-// mutating the nested props.toolset.resource wouldn't re-render the list — a
-// plain ref([...]) is deeply reactive and decoupled from the fetch.
 const resources = ref<ToolsetResource[]>([...props.toolset.resource])
 
 const isDeleting = ref(false)
@@ -158,10 +152,6 @@ const handleResourceUpdated = (res: ToolsetResource) => {
         <KunContent :content="renderKatex(data.content_html)" />
       </div>
 
-      <!-- min-w-0: this is the clearest case of the `1fr` blowout — the left
-           track swaps a fixed-height placeholder for an ApexCharts SVG, which
-           sizes itself from its content, so without a floor of 0 the columns
-           re-split the moment the chart lands. -->
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div class="min-w-0 space-y-3 md:col-span-1">
           <template v-if="practicalityData">

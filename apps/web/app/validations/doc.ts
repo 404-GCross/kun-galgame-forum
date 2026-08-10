@@ -1,8 +1,5 @@
 import { z } from 'zod'
 
-// 233 is the BE article slug cap (`max=233` on Doc article DTO). Category
-// and Doc tag entities cap their slugs at 100 (BE DocCategory/DocTag DTOs)
-// — those schemas override `slug` with a stricter rule below.
 const slugSchema = z
   .string()
   .trim()
@@ -11,7 +8,6 @@ const slugSchema = z
   .regex(/^[a-z0-9-]+$/i, 'slug 仅能包含字母、数字与连接符')
   .transform((value) => value.toLowerCase())
 
-// Category and Tag slugs are capped at 100 on the BE side.
 const shortSlugSchema = z
   .string()
   .trim()
@@ -31,7 +27,6 @@ const paginationSchema = {
 
 export const getDocCategoryListSchema = z.object(paginationSchema)
 
-// All caps mirror apps/api/internal/doc/dto/category_dto.go exactly.
 export const createDocCategorySchema = z.object({
   slug: shortSlugSchema,
   title: z
@@ -56,7 +51,6 @@ export const deleteDocCategorySchema = z.object({
 
 export const getDocTagListSchema = z.object(paginationSchema)
 
-// All caps mirror apps/api/internal/doc/dto/tag_dto.go exactly.
 export const createDocTagSchema = z.object({
   slug: shortSlugSchema,
   title: z
@@ -94,10 +88,6 @@ export const getDocArticleListSchema = z.object({
   sort_order: z.enum(['asc', 'desc']).default('desc')
 })
 
-// All caps mirror apps/api/internal/doc/dto/article_dto.go.
-// `description` and `banner` previously diverged from BE — description
-// was capped at 777 (BE 1000) and banner at 777 (BE 500), with FE
-// description.min=1 BE has no min. Aligned both ways here.
 const docArticleBaseSchema = z.object({
   title: z
     .string()

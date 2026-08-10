@@ -1,16 +1,10 @@
 <script setup lang="ts">
-// Same KUN Galgame family as /sites + the sidebar; short labels for the rail.
 import { kunSubSites } from '~/constants/layout'
 </script>
 
 <template>
-  <!-- Simple Card-less footer tuned for the narrow right rail: everything wraps
-       + centers. No top divider — it sits at the bottom of the rail, spaced off
-       the info above by the rail's flex gap. -->
   <footer class="text-default-500 space-y-2.5 text-center text-xs">
 
-    <!-- Each cell stretches to its grid track; text-center centers the inline
-         KunLink within it, so every label sits centered in its own box. -->
     <div class="grid grid-cols-3 gap-x-2 gap-y-1">
       <div
         v-for="(site, index) in kunSubSites"

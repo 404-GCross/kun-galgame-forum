@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { KUN_FEED_KIND_GROUPS } from '~/constants/activity'
 
-// 主页 feed tabs. The tabs themselves (name / icon / order / existence) are
-// FIXED; the only thing editable here is which activity "kinds" each tab shows.
-// Single-editor UX: pick a tab above, toggle its kinds below — so the panel
-// shows one kind-set at a time instead of stacking every tab's editor (which
-// overflowed the modal).
 const settings = usePersistSettingsStore()
 const { feedTabs } = storeToRefs(settings)
 
@@ -17,7 +12,6 @@ const editingTab = computed(() =>
   feedTabs.value.find((t) => t.id === editingId.value)
 )
 
-// If the selected tab vanished (e.g. after 恢复默认), fall back to the first.
 watchEffect(() => {
   if (
     feedTabs.value.length &&
@@ -58,10 +52,8 @@ const toggleKind = (kind: string) => {
       </KunButton>
     </div>
 
-    <!-- Pick which tab to edit -->
     <KunSelect v-model="editingId" :options="tabOptions" />
 
-    <!-- Kinds for the selected tab -->
     <div v-if="editingTab" class="space-y-3">
       <div
         v-for="group in KUN_FEED_KIND_GROUPS"

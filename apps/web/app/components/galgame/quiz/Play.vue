@@ -14,11 +14,6 @@ import { answerGalgameQuizSchema } from '~/validations/galgame-quiz'
 const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
 const router = useRouter()
-// 返回题库: prefer a history round-trip so the exact browse page + filters +
-// scroll position the user left are restored (the list is fully URL-driven —
-// see quiz/Container.vue). Fall back to the library root for deep links or
-// arrivals from the galgame-detail quiz panel, where the previous history entry
-// isn't the list.
 const returnToLibrary = () => {
   const back = window.history.state?.back
   if (typeof back === 'string' && /^\/galgame-quiz(\?|#|$)/.test(back)) {
@@ -28,10 +23,7 @@ const returnToLibrary = () => {
   }
 }
 
-// Local mutable copy so answering / rating updates the view without a refetch.
 const state = ref<GalgameQuizPlay>({ ...props.quiz })
-// Edit fetches the answer key (quiz.edit_any); delete removes the quiz and its
-// records (quiz.delete_any). The author holds both over their own quiz.
 const canEditAnyQuiz = useCan('quiz.edit_any')
 const canDeleteAnyQuiz = useCan('quiz.delete_any')
 
@@ -66,7 +58,6 @@ const submitAnswer = async () => {
     if (res.reward_delta > 0) {
       useMessage(`回答正确, +${res.reward_delta} 萌萌点`, 'success')
     }
-    // Hidden linked games are revealed once answered — refetch to populate them.
     if (state.value.hide_galgame && !state.value.galgames.length) {
       const fresh = await kunFetch<GalgameQuizPlay>(
         `/galgame-quiz/${state.value.id}`
@@ -102,7 +93,6 @@ const openEdit = async () => {
     showEdit.value = true
   }
 }
-// After an edit, refetch the play detail so the view reflects the changes.
 const reloadQuiz = async () => {
   const fresh = await kunFetch<GalgameQuizPlay>(
     `/galgame-quiz/${state.value.id}`
@@ -227,7 +217,6 @@ const correctRate = computed(() =>
           {{ state.question }}
         </h1>
 
-        <!-- author's markdown description / image hints -->
         <KunContent
           v-if="state.description_html"
           :content="renderKatex(state.description_html)"
@@ -255,8 +244,6 @@ const correctRate = computed(() =>
             </span>
           </div>
 
-          <!-- view + favorite, KunReaction-styled, right-aligned (stays right
-               on its own line when the row wraps on mobile). -->
           <div class="text-default-500 ml-auto flex items-center gap-1">
             <span class="inline-flex items-center gap-1.5 px-2 py-1 text-sm">
               <KunIcon name="lucide:eye" class="text-[1.15rem]" />{{
@@ -274,7 +261,6 @@ const correctRate = computed(() =>
 
         <KunDivider />
 
-        <!-- answer flow -->
         <div v-if="!state.my_answer" class="space-y-4">
           <GalgameQuizPlayAnswerInput
             ref="answerRef"
@@ -288,7 +274,6 @@ const correctRate = computed(() =>
           </div>
         </div>
 
-        <!-- result / reveal -->
         <GalgameQuizPlayResult
           v-else
           :quiz="state"
@@ -298,7 +283,6 @@ const correctRate = computed(() =>
 
         <KunDivider />
 
-        <!-- 查看题目详情: stats + answerer records (peek → expand) -->
         <GalgameQuizDetailPanel :quiz="state" />
       </div>
     </KunCard>

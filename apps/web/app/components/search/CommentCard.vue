@@ -30,12 +30,6 @@ defineProps<{
         <KunAvatar :user="comment.user" :is-navigation="false" />
         <span class="ml-2 text-sm">{{ comment.user.name }}</span>
       </div>
-      <!--
-        BE `CommentItem` (search/dto) doesn't carry `target_user`. Guard
-        with v-if so the arrow + avatar pair appears only when the
-        chain parent is populated. See SearchResultComment in
-        shared/types/search.ts for the optional-typed field.
-      -->
       <template v-if="comment.target_user">
         <KunIcon name="lucide:arrow-right" class="h-4 w-4" />
         <div class="flex items-center">

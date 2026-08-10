@@ -10,11 +10,9 @@ export interface GalgameRatingGalgameInfo {
   banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
-  // Derived banner's intrinsic metadata for no-CLS aspect-ratio + blur-up.
   effective_banner_width?: number
   effective_banner_height?: number
   effective_banner_thumbhash?: string
-  // rating overall average
   rating: number
   rating_count: number
 }
@@ -27,10 +25,6 @@ export interface GalgameRatingCard {
   view: number
   galgame_type: string[]
   play_status: string
-  // Author's short writeup; BE returns it on every list row (RatingCard),
-  // so listing it here mirrors the wire shape. Card.vue doesn't render it
-  // today but consumers like user/Rating.vue may surface a preview later
-  // without having to widen the type.
   short_summary: string
 
   art: number

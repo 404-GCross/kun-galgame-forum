@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// The 会社's catalogue, on its own URL. Everything on this page serves one job
-// — finding a game this maker made — so the filter bar sits directly under the
-// title with the grid right below it, instead of being sandwiched between the
-// maker's intro and a corporate family tree (see GalgameOfficialDetailNav).
-//
-// `id` is a CATALOG LABEL id, carried bare; the id-space reasoning and the
-// merged-id 301 both live in useGalgameOfficialDetail, shared with the
-// overview.
 const {
   page,
   limit,
@@ -33,16 +25,8 @@ const { officialId, data, status } = await useGalgameOfficialDetail(
 )
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
-// SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): the catalog then hides this maker's r18 works from BOTH the list and
-// the (content-aware) count, so a NSFW-heavy company can look emptier than it
-// is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-// "未发布的游戏": catalog works by this maker that no product has an entry for
-// yet. Public claim funnel — open to everyone, not just moderators. It belongs
-// here rather than on the overview: it is another way of browsing the same
-// catalogue.
 const showDraftsModal = ref(false)
 
 const official = data.value
@@ -66,11 +50,6 @@ if (official && !official.moved_to) {
       </template>
 
       <template #endContent>
-        <!-- No TOTAL here: the 作品 tab right below already carries it, and
-             printing the same number twice in adjacent rows reads as two
-             different facts. The split is a different fact — how much of this
-             catalogue the 会社 made itself — and it only appears for the
-             companies that have imprints at all. -->
         <div class="flex flex-wrap items-center gap-2">
           <template v-if="data.imprint_galgame_count">
             <KunChip color="primary">自有 {{ data.own_galgame_count }}</KunChip>

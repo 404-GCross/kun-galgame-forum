@@ -1,11 +1,4 @@
 <script setup lang="ts">
-// Async entity picker (editkit): the stored value is an id (single) or an id
-// array (multiple), but the user searches and sees NAMES. Host-agnostic — the
-// search + id→name resolve arrive as props (the host wires them to its own
-// endpoints). KunUI primitives + self-contained types only (extraction-ready
-// boundary). Numeric id types are preserved end-to-end so the engine patch
-// compares equal (KunAutocomplete option values are strings, so we round-trip
-// the originals through a side map).
 import { computed, ref, watch } from 'vue'
 import type { EditSelectOption } from './types'
 
@@ -14,9 +7,7 @@ const props = defineProps<{
   multiple?: boolean
   disabled?: boolean
   placeholder?: string
-  /** keyword → {value:id, label:name} options. */
   search: (keyword: string) => Promise<EditSelectOption[]>
-  /** current id(s) → {value:id, label:name} (seeds names for existing picks). */
   resolve?: (
     ids: (string | number)[]
   ) => Promise<EditSelectOption[]> | EditSelectOption[]
@@ -25,8 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: unknown] }>()
 
 const keyOf = (id: string | number) => String(id)
-const labels = ref(new Map<string, string>()) // strKey → name
-const origIds = ref(new Map<string, string | number>()) // strKey → original id
+const labels = ref(new Map<string, string>())
+const origIds = ref(new Map<string, string | number>())
 const labelFor = (id: string | number) => labels.value.get(keyOf(id)) ?? `#${id}`
 
 const remember = (option: EditSelectOption) => {
@@ -37,7 +28,6 @@ const remember = (option: EditSelectOption) => {
   }
 }
 
-// Current selection as an id array (single = 0 or 1 element).
 const selectedIds = computed<(string | number)[]>(() => {
   const v = props.modelValue
   if (props.multiple) {
@@ -46,7 +36,6 @@ const selectedIds = computed<(string | number)[]>(() => {
   return v === null || v === undefined || v === '' ? [] : [v as string | number]
 })
 
-// Resolve names for any current ids we don't know yet.
 watch(
   selectedIds,
   async (ids) => {
@@ -62,7 +51,6 @@ watch(
   { immediate: true }
 )
 
-// --- search ---
 const query = ref('')
 const options = ref<{ value: string; label: string }[]>([])
 const isLoading = ref(false)
@@ -79,7 +67,7 @@ const onSearch = async (raw: string) => {
   isLoading.value = true
   const hits = await props.search(kw)
   if (seq !== searchSeq) {
-    return // superseded by a newer search — drop stale hits
+    return
   }
   const chosen = new Set(selectedIds.value.map(keyOf))
   options.value = hits

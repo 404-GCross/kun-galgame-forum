@@ -16,10 +16,6 @@ export interface DocCategoryItem {
   updated: Date | string
 }
 
-// BE returns the shared response.Paginated envelope `{items, total}`
-// (apps/api/pkg/response/response.go). FE consumers already read
-// `.items` everywhere, so the legacy `categories` / `page` / `limit`
-// keys were dead-and-misleading TS.
 export interface DocCategoryListResponse {
   items: DocCategoryItem[]
   total: number
@@ -51,10 +47,7 @@ export interface DocArticle {
   slug: string
   path: string
   description: string
-  // Legacy full-URL cover (still written/returned for un-migrated docs).
   banner: string
-  // Content-addressed cover: `bannerImageHash` is the stored hash (write +
-  // read), `bannerUrl` is the BE-resolved CDN url (falls back to `banner`).
   banner_image_hash: string
   banner_url: string
   status: number
@@ -66,8 +59,6 @@ export interface DocArticle {
   category_id: number
   author_id: number
   category: DocArticleCategoryBrief
-  // Embedded by BE so the rewrite flow can pre-fill the tag picker
-  // without a second fetch. List endpoints may omit; detail always sets.
   tag_ids?: number[]
   created: Date | string
   updated: Date | string
@@ -75,7 +66,6 @@ export interface DocArticle {
   toc?: DocTocLink[]
 }
 
-// Kept for backward compatibility with components that use the old shape
 export type DocArticleSummary = DocArticle
 export type DocArticleDetail = DocArticle
 

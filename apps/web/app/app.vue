@@ -7,9 +7,6 @@ const {
   showKUNGalgameRounded
 } = storeToRefs(usePersistSettingsStore())
 
-// The single global login/register modal. Bound to useAuthModal()'s shared
-// state so the top-bar 登录 button AND every requireLogin() gate open this one
-// instance — mounted at app root so it works on every layout / page.
 const { isOpen: isAuthModalOpen } = useAuthModal()
 
 const route = useRoute()
@@ -84,7 +81,6 @@ useSeoMeta({
   ogSiteName: kungal.title,
   ogType: 'website',
 
-  // use absolute URLs
   ogImage: kungal.images[0]
     ? kungal.images[0].fullUrl
     : `${kungal.domain.main}/kungalgame.webp`,
@@ -118,17 +114,13 @@ onMounted(() => {
     showKUNGalgameBackgroundBlur.value
   )
 
-  // Restore the persisted global corner radius — the forum-side CSS multiplier
-  // (--kun-radius-scale). KunUI's side is handled reactively above.
   usePersistSettingsStore().setKUNGalgameRounded(showKUNGalgameRounded.value)
 
   if (process.env.NODE_ENV === 'development') {
-    // Disable pinia console info for dev
     localStorage.setItem(
       '__VUE_DEVTOOLS_NEXT_PLUGIN_SETTINGS__dev.esm.pinia__',
       '{"logStoreChanges":false}'
     )
-    // Disable umami for dev
     localStorage.setItem('umami.disabled', '1')
   } else {
     showMoeMessage()
@@ -146,21 +138,12 @@ onMounted(() => {
 
     <KunCapture />
 
-    <!-- 萌萌点明细 + 退出登录 modals. Opened from the avatar menu via temp-store
-         flags; mounted here at the non-scoped app.vue root (not the <style
-         scoped> avatar bar) so Vue doesn't warn about stamping a scope id onto
-         their <KunModal> teleport root. Closed by default; harmless logged-out. -->
     <LazyKunTopBarMoemoepointLog />
     <LazyKunTopBarLogout />
     <LazyKunTopBarCreatorApply />
 
-    <!-- Single global report modal (triggered by every <ReportButton>). At the
-         stable root so it animates on close and survives a triggering popover. -->
     <LazyReportModal />
 
-    <!-- Single global 推话题 modal (triggered by every <TopicFooterUpvote>),
-         here for the same reason: the mobile ⋯ menu row that opens it unmounts
-         with its popover the instant the dialog is clicked. -->
     <LazyTopicUpvoteModal />
 
     <KunFloatingBar />

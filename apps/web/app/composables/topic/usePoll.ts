@@ -2,9 +2,6 @@ import type { PollFormData } from '~/components/topic/poll/types'
 
 export const usePoll = (topicId: number) => {
   const getPoll = () => {
-    // BE returns an ARRAY of polls (typically 0 or 1 entry per topic),
-    // not a single object — see PollHandler.GetPollsByTopic. The
-    // consumer (topic/poll/Container.vue) treats the result as a list.
     return useKunFetch<TopicPoll[]>(
       `/topic/${topicId}/poll/topic`,
       {

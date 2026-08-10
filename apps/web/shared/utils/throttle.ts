@@ -1,14 +1,3 @@
-/**
- * Throttle function
- * Executes the function only once within a specified time period,
- * regardless of how many times it's triggered.
- */
-
-/**
- * @param {T} executeCallback - The code to apply the throttle function to.
- * @param {number} delay - Throttle time interval.
- * @param delayedCallback - Callback generated when the execute function is executed before the throttle time interval.
- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function throttle<T extends (...args: any[]) => void>(
   executeCallback: T,

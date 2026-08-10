@@ -1,53 +1,14 @@
 <script setup lang="ts">
 import { KUN_DLSITE_ANNOUNCE_TOPIC_ID } from '~/constants/dlsite'
 
-// The 补票 (buy-legit) prompt shown wherever a download resource is surfaced —
-// the download modal and the resource detail panel. It used to be inlined in both
-// with slightly different wording; one component keeps the ask consistent.
-//
-// TWO MODES, and the difference is the whole point:
-//
-//   - No DLsite id → the plain appeal. Nothing actionable to offer, so it stays
-//     one quiet sentence pointing at the 制作商 section.
-//   - DLsite id → the partnership offer. kungal is a DLsite affiliate that keeps
-//     NONE of the revenue share. Part of it reaches buyers directly (the periodic
-//     ¥400 coupon, the monthly ¥1000 coupon pool); the 12% point rebate cannot —
-//     DLsite has no way to convert a share into per-user discounts — so it pools
-//     in kungal's official DLsite account and buys games for the community.
-//
-// The offer mode deliberately leads with the benefit rather than the old guilt
-// framing ("厂商不易, 请支持正版"). Two reasons. Buying through this link is now
-// materially cheaper than going to DLsite directly, so the honest pitch is the
-// discount, not a lecture. And an affiliate button sitting on a download page
-// reads as the site monetising piracy traffic unless it says outright that the
-// site takes nothing — which is true here, and is the most trust-building fact in
-// the whole deal, so it gets its own line instead of being buried in a topic.
-//
-// Both URLs are assembled server-side — never build them here, the affiliate
-// template lives in server config (this project's frontend build cannot be
-// trusted with env vars).
 const props = defineProps<{
   galgameId: number
-  // Absent when the galgame has no DLsite id or the affiliate is unconfigured.
   purchaseUrl?: string
-  // The partnership coupon page. Absent until it is configured (it must be a
-  // shortened URL — the partner's anti-censorship requirement).
   couponUrl?: string
 }>()
 
 const hasOffer = computed(() => Boolean(props.purchaseUrl))
 
-// The partnership terms, as scannable chips.
-//
-// The coupons come FIRST because they are the only part a buyer personally
-// receives. The 12% is deliberately worded as going to the forum's shared
-// account: DLsite cannot convert a revenue share into per-user discounts (the
-// technical limit that shaped this whole deal), so those points land in kungal's
-// official DLsite account and are spent on games for everyone — a buyer will
-// never see them in their own account. Writing "购买返还 12% 点数" implies a
-// personal rebate and would leave every buyer looking for points that are not
-// there, on the one partnership whose entire premise is being straight about
-// where the money goes.
 const perks = [
   { icon: 'lucide:ticket', label: '每 3 个月 ¥400 优惠券' },
   { icon: 'lucide:gift', label: '每月 20 张 ¥1000 优惠券' },
@@ -56,9 +17,6 @@ const perks = [
 </script>
 
 <template>
-  <!-- Offer mode: a positive, actionable block. Deliberately NOT `danger` —
-       red would read as a warning and compete with the real ones on this page
-       (expired link / NSFW), and there is nothing to warn about here. -->
   <KunInfo
     v-if="hasOffer"
     color="primary"
@@ -81,11 +39,6 @@ const perks = [
         </KunChip>
       </div>
 
-      <!-- The trust line. This is the fact that separates the partnership from
-           ordinary affiliate spam, so it is stated plainly and not linked away.
-           "用于回馈用户" rather than "返还给用户": part of it comes back as coupons
-           a buyer personally uses, part as points in the forum's shared account
-           spent on games for everyone — "返还" would promise a personal rebate. -->
       <p class="text-default-600 text-sm">
         通过本站链接购买, DLsite 给本站的
         <span class="text-default-800 font-medium">全部分成都用于回馈用户</span>
@@ -134,7 +87,6 @@ const perks = [
     </div>
   </KunInfo>
 
-  <!-- Plain appeal: no DLsite id for this galgame, so there is nothing to offer. -->
   <KunInfo v-else color="danger" variant="bordered" title="补票提示">
     <p class="text-sm">
       Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭, 可见经济并不宽裕。

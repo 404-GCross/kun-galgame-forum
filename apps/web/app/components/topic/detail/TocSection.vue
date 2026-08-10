@@ -7,9 +7,6 @@ const props = defineProps<{
   activeIds: string[]
 }>()
 
-// One highlight for the whole section: an absolutely-positioned overlay covering
-// the contiguous run of active items, so the region reads as a single block and
-// its top/height transition smoothly (grow/shrink) as items join/leave.
 const wrapper = ref<HTMLElement | null>(null)
 const overlay = reactive({ top: 0, height: 0, visible: false })
 
@@ -19,8 +16,6 @@ const measure = () => {
     overlay.visible = false
     return
   }
-  // Offsets relative to the wrapper (scroll-independent: both rects are
-  // viewport-relative, so the difference is the in-wrapper position).
   const base = w.getBoundingClientRect().top
   let top = Infinity
   let bottom = -Infinity
@@ -42,7 +37,6 @@ const measure = () => {
   overlay.visible = true
 }
 
-// flush:'post' so the DOM has settled before measuring.
 watch([() => props.activeIds, () => props.items], () => measure(), {
   flush: 'post'
 })

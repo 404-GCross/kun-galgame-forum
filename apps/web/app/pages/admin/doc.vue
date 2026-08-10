@@ -3,12 +3,6 @@ import { useSortable, moveArrayElement } from '@vueuse/integrations/useSortable'
 import type { KunUIColor } from '@kungal/ui-core'
 import type { DocEditorMode } from '~/components/edit/doc/type'
 
-// DocArticleSummary / DocArticleDetail / DocArticleListResponse are
-// auto-imported (shared/types).
-
-// Mirrors the API's RequirePermission(doc.create/edit/delete) gates on the
-// /admin/doc/article + /doc/* routes — the same keys, not the moderator tier
-// they used to be approximated by. UX guard; the real boundary is the API.
 definePageMeta({
   middleware: 'permission',
   permissions: ['doc.create', 'doc.edit', 'doc.delete']
@@ -16,14 +10,12 @@ definePageMeta({
 
 useKunDisableSeo('文档管理')
 
-// Status (0/1/2) → chip label + color, mirroring the friend-link chip map.
 const DOC_STATUS_CHIP: Record<number, { label: string; color: KunUIColor }> = {
   0: { label: '草稿', color: 'default' },
   1: { label: '已发布', color: 'success' },
   2: { label: '已归档', color: 'warning' }
 }
 
-// Moderator-gated endpoint that returns ALL statuses in manual order.
 const { data, refresh: refetch } = await useKunFetch<DocArticleListResponse>(
   '/admin/doc/article',
   {
@@ -31,8 +23,6 @@ const { data, refresh: refetch } = await useKunFetch<DocArticleListResponse>(
   }
 )
 
-// Drag mutations need a deeply-reactive local copy — useKunFetch's data ref is
-// shallow, so reordering it in place would not re-render the list.
 const list = ref<DocArticleSummary[]>([...(data.value?.items ?? [])])
 
 const refresh = async () => {
@@ -54,7 +44,6 @@ useSortable(listEl, list, {
   onUpdate: (e: { oldIndex?: number; newIndex?: number }) => {
     if (e.oldIndex == null || e.newIndex == null) return
     moveArrayElement(list, e.oldIndex, e.newIndex)
-    // Persist the new top→bottom order once Vue settles the moved array.
     nextTick(() => persistOrder())
   }
 })
@@ -70,7 +59,6 @@ const openCreate = () => {
 }
 
 const openEdit = async (row: DocArticleSummary) => {
-  // The list rows are summaries; fetch the full detail to pre-fill the editor.
   const detail = await kunFetch<DocArticleDetail>(`/doc/article/${row.slug}`)
   if (!detail) return
   modalMode.value = 'rewrite'
@@ -101,8 +89,6 @@ const handleDelete = async (row: DocArticleSummary) => {
   }
 }
 
-// Quick first-page pin toggle (optimistic; reverts on failure). Uses the
-// lightweight pin endpoint so we don't have to re-send the whole article.
 const handleTogglePin = async (row: DocArticleSummary, value: boolean) => {
   const prev = row.is_pin
   row.is_pin = value

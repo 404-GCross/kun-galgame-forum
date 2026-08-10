@@ -3,7 +3,6 @@ import { KunTooltip } from '#components'
 
 const props = defineProps<{
   topic: TopicDetail
-  // Render as a left-justified labeled row for the ⋯ overflow menu.
   menu?: boolean
 }>()
 

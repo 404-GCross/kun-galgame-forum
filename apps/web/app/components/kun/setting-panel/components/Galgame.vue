@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Galgame list-card display preferences, surfaced here in the global settings
-// panel as well as in the list page's own 显示设置 popover (card/Nav.vue) — both
-// bind the SAME persisted stores, so a change in either place takes effect on
-// every Galgame list immediately.
 const {
   showPlatform,
   showRating,

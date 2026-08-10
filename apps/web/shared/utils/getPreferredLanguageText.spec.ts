@@ -1,8 +1,4 @@
 // @vitest-environment nuxt
-//
-// getPreferredLanguageText is the locale-priority picker driving every
-// 4-language KunLanguage display (galgame name/intro, doc, topic, …).
-// The Nuxt env auto-imports the Language / KunLanguage types.
 import { describe, it, expect } from 'vitest'
 import { getPreferredLanguageText } from './getPreferredLanguageText'
 
@@ -34,14 +30,12 @@ describe('getPreferredLanguageText', () => {
   })
 
   it('falls back through the locale-priority chain when picked field empty', () => {
-    // en-us priority: en-us → ja-jp → zh-tw → zh-cn
     expect(
       getPreferredLanguageText(
         { 'en-us': '', 'ja-jp': 'JA', 'zh-cn': 'CN', 'zh-tw': 'TW' },
         'en-us'
       )
     ).toBe('JA')
-    // zh-cn priority: zh-cn → zh-tw → ja-jp → en-us
     expect(
       getPreferredLanguageText(
         { 'en-us': 'EN', 'ja-jp': 'JA', 'zh-cn': '', 'zh-tw': '' },
@@ -60,14 +54,12 @@ describe('getPreferredLanguageText', () => {
   })
 
   it('zh-tw prioritises zh-tw → zh-cn (Chinese cluster) over ja-jp / en-us', () => {
-    // Both Chinese variants present → zh-tw wins for locale='zh-tw'.
     expect(
       getPreferredLanguageText(
         { 'en-us': 'EN', 'ja-jp': 'JA', 'zh-cn': 'CN', 'zh-tw': 'TW' },
         'zh-tw'
       )
     ).toBe('TW')
-    // zh-tw missing → fall back to zh-cn before reaching ja-jp.
     expect(
       getPreferredLanguageText(
         { 'en-us': 'EN', 'ja-jp': 'JA', 'zh-cn': 'CN', 'zh-tw': '' },

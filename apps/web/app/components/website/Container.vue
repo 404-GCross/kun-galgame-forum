@@ -46,7 +46,6 @@ const filteredAndSortedWebsites = computed(() => {
     })
   }
 
-  // ordered sort, ['resource', 'community', 'telegram', 'other']
   return Object.keys(KUN_WEBSITE_CATEGORY_MAP)
     .map((categoryKey) => {
       const sites = categorized[categoryKey] || []

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { useRouteQuery } from '@vueuse/router'
 
-// Page lives in the URL (?page=N) so the list is shareable / survives
-// refresh + back-forward. Default 1 is omitted from the URL. limit is fixed —
-// each card fans out a five-cover montage, so a page is deliberately small.
 const page = useRouteQuery('page', 1, { mode: 'replace', transform: Number })
 const limit = 12
 
@@ -15,9 +12,6 @@ const { data, status } = await useKunFetch<{
   query: { page, limit }
 })
 
-// SFW mode lists only the series that hide nothing from the reader, which on
-// this catalogue is a handful — say so, rather than letting the index look
-// broken next to a 会社 / 标签 page that still lists thousands.
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 </script>

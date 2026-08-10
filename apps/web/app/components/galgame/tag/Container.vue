@@ -38,14 +38,6 @@ const displayTags = computed(() => {
   return data.value!.tags
 })
 
-// True when we're showing the FULL paginated tag list: single mode with no
-// active search, or multi mode with no tags selected. A single-mode search
-// shows the unpaginated /search results instead, so no pager there.
-//
-// The pager and the 共 N 个标签 count are both honest here — the BE pages out of
-// a precomputed index, so `total` counts the terms THIS visitor can reach
-// (adult vocabulary and junk terms already removed) rather than the whole
-// upstream vocabulary, and every page but the last comes back full.
 const isBrowsingList = computed(() =>
   searchMode.value === 'single'
     ? !searchQuery.value.trim()
@@ -107,8 +99,6 @@ const fetchGames = async () => {
     return
   }
   loadingGames.value = true
-  // Both modes are the same query; `mode` decides whether the backend asks the
-  // galgame to expand each tag to its descendants (科幻 also admitting 硬科幻).
   const res = await kunFetch<{ galgames: GalgameCard[]; total: number }>(
     `/galgame-tag/multi`,
     {
@@ -148,9 +138,6 @@ watch(
   }
 )
 
-// Switching 精确/包含 changes the result set, so it has to refetch — without this
-// the dropdown looks inert until you happen to add or remove a tag. Page resets
-// because the current page number means nothing against a different result set.
 watch(matchMode, () => {
   gamesPage.value = 1
   fetchGames()

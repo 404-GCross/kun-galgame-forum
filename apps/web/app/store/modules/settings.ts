@@ -27,41 +27,24 @@ export const usePersistSettingsStore = defineStore(
       ref<KUNGalgameSettingsStore['showKUNGalgameBackgroundBlur']>(0)
     const showKUNGalgameBackgroundBrightness =
       ref<KUNGalgameSettingsStore['showKUNGalgameBackgroundBrightness']>(100)
-    // Background-image opacity (%). Read directly by the layout (bound on the bg
-    // div), so it's SSR-safe + reactive — no CSS-var setter / init flash needed.
     const showKUNGalgameBackgroundOpacity =
       ref<KUNGalgameSettingsStore['showKUNGalgameBackgroundOpacity']>(15)
     const showKUNGalgameBackLoli =
       ref<KUNGalgameSettingsStore['showKUNGalgameBackLoli']>(false)
-    // Global "显示没有下载资源的 Galgame" — off by default; hides resource-less
-    // galgames across all local galgame lists. See KUNGalgameSettingsStore.
     const showKUNGalgameNoResource =
       ref<KUNGalgameSettingsStore['showKUNGalgameNoResource']>(false)
-    // Global corner-radius level (直角/小/中/大). One knob rounds the WHOLE UI:
-    // both the forum's own rounded-* and KunUI's rounded-kun-* derive from the
-    // --kun-radius-scale CSS multiplier this sets (see styles/tailwindcss.css).
-    // 'md' = stock look.
     const showKUNGalgameRounded =
       ref<KUNGalgameSettingsStore['showKUNGalgameRounded']>('md')
-    // Per-rating galgame gallery filters — the rating levels (1/2/3) the viewer
-    // opted to reveal. Default [] = only unrated shows. 色情 is additionally
-    // gated by the global NSFW mode; 暴力 is an independent warned opt-in. See
-    // KUNGalgameSettingsStore + components/galgame/GalleryFilter.vue.
     const showKUNGalgameGallerySexualLevels =
       ref<KUNGalgameSettingsStore['showKUNGalgameGallerySexualLevels']>([])
     const showKUNGalgameGalleryViolenceLevels =
       ref<KUNGalgameSettingsStore['showKUNGalgameGalleryViolenceLevels']>([])
-    // Home-feed tabs — deep-cloned from the defaults so the seed array isn't
-    // shared/mutated. Persisted; old users (no persisted value) get the defaults.
     const feedTabs = ref<KUNGalgameSettingsStore['feedTabs']>(
       structuredClone(KUN_DEFAULT_FEED_TABS)
     )
-    // 0 = pre-versioning sentinel; afterHydrate (below) resets feedTabs whenever
-    // the persisted value trails KUN_FEED_TABS_VERSION.
     const feedTabsVersion =
       ref<KUNGalgameSettingsStore['feedTabsVersion']>(0)
 
-    // Restore the home-feed tabs to the shipped defaults (设置 → 动态 → 恢复默认).
     const resetKUNGalgameFeedTabs = () => {
       feedTabs.value = structuredClone(KUN_DEFAULT_FEED_TABS)
       feedTabsVersion.value = KUN_FEED_TABS_VERSION
@@ -75,12 +58,7 @@ export const usePersistSettingsStore = defineStore(
     const setKUNGalgameTransparency = (trans: number) => {
       showKUNGalgamePageTransparency.value = trans
       const opacity = `${trans / 100}`
-      // Page background + default-100 glass.
       document.documentElement.style.setProperty('--kun-global-opacity', opacity)
-      // Raised surfaces (cards / inputs / modals / dropdowns): KunUI 1.8 split
-      // these onto --kun-surface-opacity (default 1 = opaque). Drive it from the
-      // same slider so surfaces stay translucent over a background image. Blur is
-      // a separate opt-in knob (--kun-background-blur, default 0) — left untouched.
       document.documentElement.style.setProperty('--kun-surface-opacity', opacity)
     }
 
@@ -100,10 +78,6 @@ export const usePersistSettingsStore = defineStore(
       )
     }
 
-    // Radius multiplier per level. md (1) keeps every radius at its stock
-    // value; the rest scale the whole hierarchy proportionally. Both the
-    // forum's --radius-* and KunUI's --radius-kun-* derive from this one
-    // multiplier (styles/tailwindcss.css), so it rounds everything at once.
     const ROUNDED_SCALE: Record<
       KUNGalgameSettingsStore['showKUNGalgameRounded'],
       number
@@ -181,10 +155,6 @@ export const usePersistSettingsStore = defineStore(
   },
   {
     persist: {
-      // Feed-tab DEFAULTS changed structurally (renamed 资源, added 资源和求助话题).
-      // Persisted tabs from an older schema would mask that — and keep showing
-      // 资源/求助 sections (g-other/g-seeking/t-help) in 话题 — so when the stored
-      // version trails the current one, reset feedTabs to the shipped defaults once.
       afterHydrate: (ctx) => {
         const store = ctx.store as unknown as {
           feedTabsVersion: number

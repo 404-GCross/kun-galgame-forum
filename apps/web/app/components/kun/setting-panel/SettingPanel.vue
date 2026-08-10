@@ -2,11 +2,6 @@
 const { showKUNGalgameBackLoli } = storeToRefs(usePersistSettingsStore())
 const { showKUNGalgamePanel } = storeToRefs(useTempSettingStore())
 
-// The panel grew too many controls for one column, so everything is grouped
-// into categories. Desktop shows the categories as a LEFT rail; mobile stacks
-// them on TOP. KunTab's orientation is a prop (not responsive), so we render
-// two instances bound to the same `activeTab`. The 差分图 (Loli) stays on the
-// right on desktop and hides on mobile (no room) — gated in its own component.
 const settingTabs = [
   { value: 'appearance', textValue: '外观', icon: 'lucide:palette' },
   { value: 'background', textValue: '背景', icon: 'lucide:image' },
@@ -39,9 +34,6 @@ const activeTab = ref('appearance')
         </KunTooltip>
       </div>
 
-      <!-- Mobile: category tabs as a horizontal light KunTab (scrollable if the
-           6 categories overflow the modal width). Desktop keeps the vertical
-           underlined rail below. -->
       <div class="sm:hidden">
         <KunTab
           v-model="activeTab"
@@ -54,7 +46,6 @@ const activeTab = ref('appearance')
       </div>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <!-- Desktop: category tabs as a left rail (same wrapper rationale). -->
         <div class="hidden shrink-0 sm:block sm:w-24">
           <KunTab
             v-model="activeTab"
@@ -103,7 +94,6 @@ const activeTab = ref('appearance')
           </div>
         </div>
 
-        <!-- 差分图 — desktop only (the component is hidden sm:block) -->
         <KunSettingPanelComponentsLoli />
       </div>
     </div>

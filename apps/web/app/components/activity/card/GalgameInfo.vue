@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// Shared galgame "info area" for feed cards: cover (left) + name · 由X制作发售于Y ·
-// intro (right). Used by BOTH the new-galgame card and the edit card so an edit
-// shows the exact same galgame summary as a creation. Fields come from the
-// hydrated GalgameActivityData (developer/intro require the wiki detail brief,
-// which the backend fetches for creation + edit alike).
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(
@@ -14,7 +9,6 @@ const detailLink = computed(() =>
   gid.value ? `/galgame/${gid.value}` : props.activity.link
 )
 
-// 由 <制作会社> 制作，发售于 <发售日期> — each half shown only if present.
 const madeBy = computed(() => {
   const parts: string[] = []
   if (data.value?.developer) parts.push(`由 ${data.value.developer} 制作`)

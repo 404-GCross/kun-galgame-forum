@@ -5,21 +5,13 @@ import { GALGAME_RESOURCE_PLATFORM_ICON_MAP } from '~/constants/galgameResource'
 const props = defineProps<{
   galgames: T[]
   isTransparent?: boolean
-  // Max columns at the widest breakpoint. Default 4 (the full-width lists); the
-  // calendar's narrower 2/3 panel passes 3 so the cards aren't cramped.
   columns?: 3 | 4
 }>()
 
-// Generic in T so a caller with a RICHER card (the 制作人员 filmography, whose
-// rows carry the person's credits on each game) gets its own shape back in the
-// slot instead of the base card. The slot renders under the title.
 defineSlots<{
   meta?: (props: { galgame: T }) => unknown
 }>()
 
-// Card layout is user-configurable (persisted): each banner corner, the
-// NSFW badge, the footer, the secondary JP title, and whether the card opens
-// in a new tab — all toggle independently.
 const {
   showPlatform,
   showRating,
@@ -37,14 +29,6 @@ const gridClass = computed(() =>
     : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
 )
 
-// status=2 = unclaimed VNDB draft (calendar). It 404s at /galgame/:gid, so send
-// it to the publish wizard pre-searched by name → 认领并发布. Published games
-// link to their detail page as usual.
-//
-// A card with no gid at all (id 0 — a catalogue game the forum has never
-// ingested, which is most of a 制作人员 filmography) links NOWHERE: /galgame/0
-// is not a page, and a card that navigates to a 404 is worse than one that
-// stays put under its 未收录 badge.
 const cardHref = (galgame: GalgameCard) => {
   if (galgame.status === GalgameStatus.VndbDraft) {
     return `/edit/galgame/publish?q=${encodeURIComponent(getPreferredLanguageText(galgame.name))}`
@@ -84,8 +68,6 @@ const cardHref = (galgame: GalgameCard) => {
           "
           class="absolute top-2 right-2 left-2 flex items-start gap-1"
         >
-          <!-- status=2 = 未认领 VNDB 草稿 → 未发布 (the card links to the claim
-               wizard). Otherwise a never-ingested wiki game → 未收录. -->
           <span
             v-if="galgame.status === GalgameStatus.VndbDraft"
             class="bg-primary rounded-full px-3 py-1 text-xs whitespace-nowrap text-white backdrop-blur-sm sm:text-sm"
@@ -139,9 +121,9 @@ const cardHref = (galgame: GalgameCard) => {
           </div>
         </div>
 
-        <!-- Sanctioned exception to the no-gradient house rule: a bottom→top
-             black scrim so the caption stays legible over the cover image
-             (see CLAUDE.md iron rule #2). -->
+        <!-- SANCTIONED EXCEPTION to 铁律 #1 (no gradients): a bottom-to-top
+             black scrim so the caption stays legible over an arbitrary cover.
+             Listed in CLAUDE.md; do NOT remove it in a no-gradient sweep. -->
         <div
           v-if="(showViewLike || showLanguage) && galgame.is_on_forum !== false"
           class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300 sm:text-sm"

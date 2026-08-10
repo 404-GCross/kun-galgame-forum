@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Login + register modal — replaces the old /login and /register pages.
-// Both buttons just hand off to the OAuth account-center (no in-page
-// forms anymore), so this is a thin presentation wrapper around the
-// two startOAuth* utils. Auto-imported globally as <KunAuthModal>.
 const open = defineModel<boolean>({ required: true })
 
 const isJumping = ref(false)

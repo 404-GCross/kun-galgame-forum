@@ -7,15 +7,9 @@ const props = defineProps<{
 
 provide<GalgameDetail>('galgame', props.galgame)
 
-// Resource-publish ban (moderator kill-switch): a live reactive flag the Header
-// menu toggles and the resource tab reads for its notice — kept here so both
-// stay in sync without mutating the galgame prop.
 const resourcePublishBanned = ref(props.galgame.resource_publish_banned)
 provide<Ref<boolean>>('galgameResourcePublishBanned', resourcePublishBanned)
 
-// Tab selection is deep-linkable via ?tab=, but a ?comment=<id> notification
-// deep-link always wins (it lands on the comment tab + scrolls to the thread).
-// Only the always-present tabs are restorable from the URL (patch is async).
 const route = useRoute()
 const router = useRouter()
 const DEEP_LINK_TABS = ['intro', 'resource', 'comment', 'quiz']
@@ -28,8 +22,6 @@ const initialTab = () => {
 }
 const activeTab = ref(initialTab())
 
-// Reflect manual tab switches into the URL (replace, so the back button isn't
-// polluted), dropping the one-shot comment deep-link so a reload doesn't re-jump.
 watch(activeTab, (tab) => {
   const query = { ...route.query }
   delete query.comment
@@ -43,8 +35,6 @@ watch(activeTab, (tab) => {
 })
 const hasPatchResource = ref(false)
 
-// Per-tab loading, surfaced by each async child, so KunTabPanel :loading can dim
-// the panel while its data (re)loads (a 2.10.0 feature). intro is static.
 const resourceLoading = ref(false)
 const patchLoading = ref(false)
 const commentLoading = ref(false)
@@ -71,12 +61,6 @@ const handleRatingCreated = (newRating: GalgameRatingCardOnGalgamePage) => {
   ratings.value.unshift(newRating)
 }
 
-// The 贡献者 card is really "创建者 + 贡献者": the creator chip is the wiki-era
-// 发布人 (frozen on the local row since the catalog face carries no submitter)
-// and stands on its own, so gating the whole card on a non-empty contributor
-// list hid the publisher of every game nobody has contributed resources to.
-// An unknown creator arrives as the zero user (id 0) — see the API's
-// frozenCreatorBrief — so the chip row is gated separately.
 const hasCreator = computed(() => props.galgame.user.id > 0)
 const hasContributorCard = computed(
   () => hasCreator.value || !!props.galgame.contributor?.length
@@ -90,10 +74,6 @@ const hasContributorCard = computed(
       @on-rating-created="handleRatingCreated"
     />
 
-    <!-- Wiki-catalogue game the forum hasn't ingested yet (无本地 galgame 行).
-         Explains that any interaction records it, the creator/萌萌点 nuances,
-         and only offers 认领 on a claimable VNDB draft (status=2) — a published
-         entry (status=0) already has a creator and can't be claimed. -->
     <KunInfo
       v-if="galgame.is_on_forum === false"
       color="danger"
@@ -106,10 +86,6 @@ const hasContributorCard = computed(
       </p>
     </KunInfo>
 
-    <!-- Mobile: tags sit right under the header. On desktop they live at the top
-         of the sidebar instead (the stacked single-column layout would otherwise
-         push them below all the main content). Two breakpoint-gated instances —
-         see GalgameTag's `variant`. -->
     <div v-if="galgame.tag?.length" class="md:hidden">
       <GalgameTag :tags="galgame.tag" variant="mobile" />
     </div>
@@ -121,13 +97,6 @@ const hasContributorCard = computed(
       <GalgameRatingRadarCard :ratings="sortedRatings" />
     </div>
 
-    <!-- min-w-0 on both tracks is load-bearing, not tidying. A `1fr` track is
-         minmax(AUTO, 1fr): its floor is the item's max-content width, so any
-         child wider than its share (a long URL in a comment, a wide table, an
-         image arriving without intrinsic size) pushes its own column open and
-         steals width from the other one. On a slow connection that happens as
-         each tab panel streams in, and the 2/1 split visibly jitters
-         side-to-side. min-w-0 lowers the floor to zero and pins the split. -->
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
       <div class="order-1 flex min-w-0 flex-col gap-3 md:order-2 md:col-span-2">
         <KunTab
@@ -164,8 +133,6 @@ const hasContributorCard = computed(
 
               <GalgameStaff :staff="galgame.staff" />
 
-              <!-- Cast before screenshots: both are picture blocks, and the
-                   roster is the one that explains the other. -->
               <GalgameCharacterPanel :characters="galgame.characters ?? []" />
 
               <GalgameGallery :screenshots="galgame.screenshots" />

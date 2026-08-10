@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// TOOLSET_RESOURCE_CREATION — a user published a resource under a toolset. The
-// resource note/content is in content; data.parent_name is the owning toolset.
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(

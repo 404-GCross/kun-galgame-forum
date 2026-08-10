@@ -9,10 +9,6 @@ const { data } = await useKunFetch<GalgameQuizPlay>(
   `/galgame-quiz/${route.params.id}`
 )
 
-// ── SEO ───────────────────────────────────────────────────────────
-// Built from the SSR-resolved quiz. Linked games surface ONLY when not hidden
-// (the API omits them until the viewer answers), so a "guess the game" quiz
-// never leaks its answer into the title / description / og image.
 const quiz = data.value
 const galgameNames = (quiz?.galgames ?? [])
   .map((g) => getPreferredLanguageText(g.name))
@@ -59,8 +55,6 @@ useKunSeoMeta({
   <div class="mx-auto max-w-3xl space-y-3">
     <template v-if="data">
       <GalgameQuizPlay :quiz="data" />
-      <!-- Discussion is spoiler-gated server-side for a concealing quiz the
-           viewer has not answered; the section renders that ruling itself. -->
       <GalgameQuizCommentCommunityContainer :quiz-id="data.id" />
     </template>
     <KunNull v-else description="题目不存在或已被删除" />

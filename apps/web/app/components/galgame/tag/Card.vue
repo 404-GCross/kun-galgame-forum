@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { KUN_GALGAME_TAG_CATEGORY_MAP } from '~/constants/galgameTag'
 
-// Renders a browse row OR a search hit. A hit carries identity only (the
-// catalog's entity search is a picker feed), so category and count are optional
-// here and simply absent rather than zero-filled — the card used to print
-// "+ 0" and an undefined category for every search result.
 const props = defineProps<{
   tag: GalgameTagItem | GalgameTaxonomySearchItem
 }>()

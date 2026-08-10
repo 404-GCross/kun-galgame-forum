@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Like button for a community-backed comment. Unlike the legacy one-way heart,
-// the community reaction is a real TOGGLE: the server returns the authoritative
-// { liked, like_count } and we reconcile the optimistic state to it. Region-
-// agnostic — the like route is post-addressed, so all four comment areas share it.
 const props = defineProps<{
   comment: GalgameCommunityComment
 }>()
@@ -12,8 +8,6 @@ const isLiked = ref(props.comment.is_liked)
 const likesCount = ref(props.comment.like_count)
 const pending = ref(false)
 
-// KunReaction has already flipped the model + count optimistically when @change
-// fires; `next` is the intended new state, so a revert restores the prior one.
 const revert = (next: boolean) => {
   isLiked.value = !next
   likesCount.value += next ? -1 : 1
@@ -42,7 +36,6 @@ const onChange = async (next: boolean) => {
     revert(next)
     return
   }
-  // Reconcile to the server's authoritative counts (absorbs any drift).
   isLiked.value = result.liked
   likesCount.value = result.like_count
 }

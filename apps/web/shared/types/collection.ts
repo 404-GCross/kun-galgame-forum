@@ -8,7 +8,6 @@ export interface CollectionUserBrief {
   avatar: string
 }
 
-// One card in a user's collection grid (GET /user/:id/collections).
 export interface CollectionSummary {
   id: number
   name: string
@@ -21,7 +20,6 @@ export interface CollectionSummary {
   updated: string
 }
 
-// GET /galgame/collection/:cid — metadata + one page of games.
 export interface CollectionDetail {
   id: number
   name: string
@@ -38,7 +36,6 @@ export interface CollectionDetail {
   updated: string
 }
 
-// One row in the collection-picker modal (GET /galgame/:gid/collections/mine).
 export interface MyCollectionForGalgame {
   id: number
   name: string

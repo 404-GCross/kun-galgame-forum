@@ -2,10 +2,6 @@
 import { useIntersectionObserver } from '@vueuse/core'
 import { KUN_ACTIVITY_TYPE_TYPE } from '~/constants/activity'
 
-// Keyset (cursor) pagination + infinite scroll. The old numbered pages re-ran
-// `ORDER BY created` (no tiebreaker) per page, so rows sharing a timestamp
-// reordered between pages → duplicated / skipped entries. The API now returns a
-// deterministic page plus an opaque `next_cursor`; we accumulate and seek.
 const settings = usePersistSettingsStore()
 
 const items = ref<ActivityItem[]>([])
@@ -13,9 +9,6 @@ const cursor = ref('')
 const hasMore = ref(true)
 const isLoadingMore = ref(false)
 
-// First page renders on the server (SEO + no load spinner). The computed query
-// re-fetches when the show_no_resource toggle flips; the watch below re-seeds the
-// accumulator from whatever first page is current.
 const { data, status } = await useKunFetch<{
   items: ActivityItem[]
   next_cursor: string
@@ -59,8 +52,6 @@ const loadMore = async () => {
   hasMore.value = !!next.next_cursor
 }
 
-// Auto-load when the sentinel near the page bottom scrolls into view. SSR-safe
-// (VueUse no-ops on the server); the "加载更多" button is the manual fallback.
 const sentinel = ref<HTMLElement | null>(null)
 useIntersectionObserver(
   sentinel,
@@ -120,7 +111,6 @@ useIntersectionObserver(
       </div>
     </div>
 
-    <!-- Infinite-scroll sentinel + manual fallback / end state -->
     <div v-if="items.length" ref="sentinel" class="flex justify-center pt-1">
       <KunButton
         v-if="hasMore"

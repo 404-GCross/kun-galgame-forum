@@ -14,12 +14,6 @@ defineProps<{
 </script>
 
 <template>
-  <!-- KunScrollShadow 2.5+ real props: `wheel="contain"` = vertical mouse wheel
-       scrolls the strip sideways AND keeps the wheel on the strip at its edges so
-       the page doesn't move (only while the strip is actually scrollable, so it
-       can't freeze the page), `draggable` = click-drag to scroll, `scrollbar="thin"`
-       = slim themed bar. Replaces the old dead `scrollbar-visible` class + native
-       `:draggable="true"` attr. -->
   <KunScrollShadow
     axis="horizontal"
     shadow-size="5rem"
@@ -62,8 +56,6 @@ defineProps<{
             :readonly="true"
             label-class="text-[10px]"
           />
-          <!-- Spoiler-flagged ratings (portion/serious) hide their summary in
-               list contexts; "阅读详情 >" below opens the full review. -->
           <div
             v-if="rating.short_summary && rating.spoiler_level !== 'none'"
             class="text-default-500 flex max-h-[110px] items-center gap-1.5 text-sm"

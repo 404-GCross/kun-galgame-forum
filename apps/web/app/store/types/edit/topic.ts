@@ -6,7 +6,6 @@ export interface EditStorePersist {
   category: string
   section: string[]
   isNSFW: boolean
-  // Optional 1..9 cover images as /image/<hash> tokens (see useTopicSubmitter).
   coverImages: string[]
 }
 

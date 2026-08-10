@@ -1,17 +1,5 @@
 <script setup lang="ts">
-// Community-primitive comment section (charter step 04) — the unconditional
-// galgame comment UI, rendered from Galgame.vue (the legacy comment components
-// were retired in charter step 06a). This area's look is the reference the other
-// comment areas conform to.
-//
-// Paging / grouping / optimistic mutation come from useCommunityCommentList. What
-// stays here is what only this area has: the tab-panel loading emit, the
-// un-ingested-galgame empty-state guard, and the LEGACY deep-link resolve (old
-// notification links carry a pre-migration galgame_comment id, which has to be
-// mapped through the community map before it can be scrolled to).
 const emit = defineEmits<{
-  // Surface the (lazy, client-side) fetch state so the tab panel dims while it
-  // loads — same contract as the legacy container.
   'update:loading': [boolean]
 }>()
 
@@ -21,9 +9,6 @@ const gid = parseInt((route.params as { gid: string }).gid)
 
 const target: CommunityCommentTarget = { kind: 'galgame', galgameId: gid }
 
-// See GalgameResource: for a wiki-catalogue game the forum hasn't ingested, hide
-// the empty-state (the detail page's 未收录 notice covers it) but KEEP the
-// composer — commenting creates the local row, part of the recording funnel.
 const galgame = inject<GalgameDetail>('galgame')
 
 const {
@@ -47,12 +32,6 @@ const showEmpty = computed(
   () => isEmpty.value && galgame?.is_on_forum !== false
 )
 
-// ──────────────────────────────────────────
-// Deep-link continuity (charter ruling 9)
-// ──────────────────────────────────────────
-
-// Silent legacy-id resolve: a 404 (old content not imported yet) is ignored,
-// so a raw $fetch swallows it instead of kunFetch's error toast.
 const locateLegacy = async (legacyId: number): Promise<number | null> => {
   try {
     const resp = await $fetch<{ code: number; data?: { post_id: number } }>(
@@ -65,8 +44,6 @@ const locateLegacy = async (legacyId: number): Promise<number | null> => {
   }
 }
 
-// Page forward until the target post is loaded (or the list is exhausted), then
-// scroll. Capped so a bad id can't run away.
 const ensureLoadedAndScroll = async (postId: number) => {
   let guard = 0
   while (
@@ -84,8 +61,6 @@ const ensureLoadedAndScroll = async (postId: number) => {
 
 const resolveDeepLink = async () => {
   const commentParam = Number(route.query.comment) || 0
-  // The old @-mention notification shape carried a `thread` param alongside a
-  // legacy comment id; its presence flags the id as legacy.
   const hasThreadParam = route.query.thread != null
   const hashMatch = (route.hash || '').match(/^#galgame-comment-(\d+)$/)
 
@@ -97,15 +72,12 @@ const resolveDeepLink = async () => {
       }
       return
     }
-    // New deep-link: `comment` IS the community post id.
     await ensureLoadedAndScroll(commentParam)
     return
   }
 
   if (hashMatch) {
     const raw = Number(hashMatch[1])
-    // Old external anchors (#galgame-comment-<id>) may carry either a new post
-    // id or a legacy id: try it as a post id first, then fall back to locate.
     await ensureLoadedAndScroll(raw)
     if (posts.value.some((p) => p.id === raw)) {
       return
@@ -118,12 +90,6 @@ const resolveDeepLink = async () => {
 }
 
 onMounted(() => {
-  // Resolve deep-links client-side, once the first page has seeded. When the
-  // comment subtree hydrates lazily (folded tab), the SSR payload has already
-  // seeded the page by the time we mount — check the current value instead of
-  // an immediate watch: an immediate callback runs synchronously INSIDE the
-  // watch() call, so calling the not-yet-assigned stop handle there is a TDZ
-  // crash ("Cannot access 'stop' before initialization").
   if (seeded.value) {
     resolveDeepLink()
     return
@@ -182,7 +148,6 @@ onMounted(() => {
       加载更多评论
     </KunButton>
 
-    <!-- Single community-comment flag modal for this section. -->
     <CommentCommunityFlagModal />
   </div>
 </template>

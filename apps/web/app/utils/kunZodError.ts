@@ -1,20 +1,4 @@
-// User-facing formatting for Zod (client-side) validation errors.
-//
-// The old format `位置: ${path[0]} - 错误提示: ${message}` leaked two things users
-// couldn't read: the raw schema key as the "位置" (e.g. `short_summary`), and raw
-// keys embedded in some hand-written messages. This maps a field key to a 中文
-// label and renders one clean line — `简评：当总分为 1 或 10 分时需不少于 100 字`
-// instead of `位置: short_summary - 错误提示: 当 overall 为 1 或 10 时, ...`.
-//
-// Default Zod messages (min/max/type/email…) are localized to 简体中文 globally by
-// the zod-i18n plugin (z.config(z.locales.zhCN())); this only adds the field label
-// in front so the user knows WHICH field the message is about.
-
-// Raw schema field key → 用户能看懂的中文标签. Unmapped keys fall back to the raw
-// key (no worse than before), so a new field degrades gracefully. Add entries as
-// new user-facing forms appear.
 export const KUN_FIELD_LABELS: Record<string, string> = {
-  // ── galgame 评分 (galgame-rating) ──────────────────────────────
   overall: '总分',
   short_summary: '简评',
   galgameType: 'Galgame 类型',
@@ -30,7 +14,6 @@ export const KUN_FIELD_LABELS: Record<string, string> = {
   voice: '配音',
   replay_value: '可重复游玩性',
 
-  // ── galgame 词条 (galgame) ─────────────────────────────────────
   name_en_us: '英文名称',
   name_ja_jp: '日文名称',
   name_zh_cn: '简体中文名称',
@@ -49,7 +32,6 @@ export const KUN_FIELD_LABELS: Record<string, string> = {
   banner: '预览图',
   introduction: '简介',
 
-  // ── 通用 ───────────────────────────────────────────────────────
   name: '名称',
   title: '标题',
   content: '内容',
@@ -71,24 +53,17 @@ interface KunZodIssue {
   message: string
 }
 
-// First string segment of the issue path → its 中文 label (fallback: raw key).
 const labelForPath = (path?: (string | number)[]): string => {
   const key = path?.find((p) => typeof p === 'string') as string | undefined
   if (!key) return ''
   return KUN_FIELD_LABELS[key] ?? key
 }
 
-// One parsed Zod issue → one clear, user-facing line. Leads with the field's
-// 中文 label so the user knows WHERE; falls back to just the message when the
-// issue has no field path (e.g. a root-level refine).
 export const formatKunZodIssue = (issue: KunZodIssue): string => {
   const label = labelForPath(issue.path)
   return label ? `${label}：${issue.message}` : issue.message
 }
 
-// Convenience for a whole ZodError: format its first issue. Accepts anything
-// with an `issues` array or the JSON-encoded `.message` the older call sites
-// parse by hand.
 export const formatKunZodError = (error: {
   issues?: KunZodIssue[]
   message?: string

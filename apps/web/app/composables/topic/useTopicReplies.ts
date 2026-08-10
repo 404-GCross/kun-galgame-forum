@@ -17,9 +17,6 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     () => 'idle'
   )
 
-  // Contiguous loaded page window [minPage, maxPage]. useState (not a plain ref)
-  // so a deep-link's SSR-loaded page survives hydration — a ref would reset to 1
-  // on the client and break load-earlier / load-more.
   const minPage = useState<number>(`kun-topic-replies-min-${_topicId}`, () => 1)
   const maxPage = useState<number>(`kun-topic-replies-max-${_topicId}`, () => 1)
   const sortOrder = useState<'asc' | 'desc'>(
@@ -27,8 +24,6 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     () => 'asc'
   )
 
-  // True when the window doesn't reach page 1 — i.e. a deep-link landed deeper and
-  // there are earlier replies to pull in above.
   const hasEarlier = computed(() => minPage.value > 1)
 
   const _fetchReplies = async (
@@ -52,10 +47,6 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     return newReplies ?? []
   }
 
-  // Seed the window at a single starting page (1 by default, or a deep-link's
-  // located page so SSR renders the target's page directly). Idempotent: skips if
-  // replies are already loaded (e.g. SSR → client hydration), preserving the
-  // SSR-set window.
   const loadInitialReplies = async (startPage = 1) => {
     if (replies.value.length > 0) {
       return
@@ -71,7 +62,6 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     replies.value = data
   }
 
-  // Extend the window DOWN (next page, append).
   const loadMore = async () => {
     if (status.value === 'pending' || isComplete.value) return
 
@@ -84,8 +74,6 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     replies.value.push(...newReplies)
   }
 
-  // Extend the window UP (previous page, prepend). Powers the deep-link
-  // "加载更早的回复". Browser scroll-anchoring keeps the viewport stable on prepend.
   const loadEarlier = async () => {
     if (status.value === 'pending' || minPage.value <= 1) return
 

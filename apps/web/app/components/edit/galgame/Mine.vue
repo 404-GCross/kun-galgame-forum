@@ -1,27 +1,5 @@
 <script setup lang="ts">
-// "我的提交" — the works whose lifecycle the current user moved, served by
-// GET /api/galgame/mine off the registry's per-user claim face.
-//
-// Each row carries the work's LATEST transition by anyone, which is why a
-// decline reason shows up here without a second request: what a submitter needs
-// on their own submission is the reviewer's verdict, an event they did not
-// cause.
-//
-// This is the post-submit landing page — a submission awaiting review has no
-// public page to redirect to.
-//
-// TEMPLATE SINGLE-ROOT: the root <KunCard> renders unconditionally and
-// must be the *only* top-level template node — NOT preceded by a
-// template comment. In dev, Vue keeps template comments as comment
-// vnodes, so a leading `<!-- ... -->` becomes a sibling of KunCard,
-// making the page's render root a 2-child Fragment and tripping Nuxt's
-// "does not have a single root node" route-transition warning. A bare
-// `v-if="data"` root has the same effect (empty comment vnode on
-// fetch failure). Hence: all conditional content lives INSIDE the card.
 
-// The face is cursor-paged, not offset-paged: this list is being written to
-// while it is read, and a cursor is what makes paging neither skip nor repeat a
-// row. `before` is the previous page's next_before.
 const pageData = reactive({
   before: 0,
   limit: 20
@@ -32,11 +10,8 @@ const { data, status, refresh } = await useKunFetch<UserClaimList>(
   { query: pageData }
 )
 
-// State badge is shared (shared/utils/galgameClaimState.ts) so this list, the
-// wizard, the draft editor and the moderation queue cannot drift apart.
 const stateBadge = galgameClaimStateBadge
 const nameOf = (item: UserClaimItem) => item.display_name || '(无标题)'
-// product_work_id IS the gid; a work with no anchor has no kungal page.
 const gidOf = (item: UserClaimItem) => item.product_work_id ?? 0
 
 const isWithdrawing = ref<Record<number, boolean>>({})
@@ -61,8 +36,6 @@ const handleWithdraw = async (item: UserClaimItem) => {
   }
 }
 
-// A declined submission goes back to the queue without being re-typed — the
-// content is already on the entry, only its state moves.
 const isResubmitting = ref<Record<number, boolean>>({})
 
 const handleResubmit = async (item: UserClaimItem) => {
@@ -81,6 +54,10 @@ const handleResubmit = async (item: UserClaimItem) => {
 
 <template>
   <div class="space-y-4">
+    <!-- 铁律 #11: keep this template's SINGLE real root element. A sibling
+         or a leading comment at the template root is itself a root node,
+         trips Nuxt's "does not have a single root node" warning, and
+         silently drops the page-transition enter animation. -->
     <KunHeader
       name="我的 Galgame 提交"
       description="您提交的 Galgame 申请, 审核中 / 已拒绝 / 草稿都会显示在此处。审核通过的 Galgame 会成为公开条目, 不再列在这里。"

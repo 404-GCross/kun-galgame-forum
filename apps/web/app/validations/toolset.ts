@@ -51,22 +51,15 @@ export const updateToolsetPracticalitySchema = z.object({
   rate: z.coerce.number<number>().min(1).max(5)
 })
 
-// Toolset resource & upload
 export const getToolsetResourceDetailSchema = z.object({
   toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
-// In s3 mode the wire value of `size` is a raw byte-count string
-// ("1572864") — the resource list later parses it back via Number(...).
-// In user mode it must be a human-readable "1007MB" / "0721GB" because
-// the user types it themselves and Item.vue prints it verbatim.
 export const createToolsetResourceSchema = z
   .object({
     toolset_id: z.coerce.number<number>().min(1).max(9999999),
     type: z.enum(['s3', 'user']),
     content: z.string().max(1007).optional().default(''),
-    // s3 resources carry the completed-upload artifact uuid (the download URL is
-    // resolved server-side from it); content stays empty.
     artifact_uuid: z.string().max(36).optional().default(''),
     size: z.string(),
     code: z.string().max(1007).optional().default(''),
@@ -98,12 +91,6 @@ export const createToolsetResourceSchema = z
     }
   })
 
-// Same byte-vs-formatted contract as createToolsetResourceSchema: in s3
-// mode `size` is a raw byte-count string (matches what the resource row
-// already stores), in user mode it's a kb/mb/gb-suffixed human string.
-// The s3 branch is mostly a guard for hygiene — the API ignores size
-// updates on s3 rows anyway — but rejecting impossible inputs here keeps
-// the schema honest and avoids silent acceptance of typo'd values.
 export const updateToolsetResourceSchema = z
   .object({
     toolset_resource_id: z.coerce.number<number>().min(1).max(9999999),

@@ -3,8 +3,6 @@ import { navItems } from './items'
 
 const { keywords } = storeToRefs(useTempSearchStore())
 
-// Backend (Go SearchHandler) wraps every type in `{items, total}` via
-// response.Paginated. Match that shape verbatim.
 interface SearchPage {
   items: SearchResult[]
   total: number
@@ -13,15 +11,12 @@ interface SearchPage {
 const results = ref<SearchResult[]>([])
 const total = ref(0)
 const isLoading = ref(false)
-// Search type lives in the URL (?type=) so it survives back/forward + sharing.
 const activeType = useTabQuery('topic', 'type')
 const pageData = reactive({
   page: 1,
   limit: 12
 })
 
-// Derive load-complete from total instead of counting pages — works for the
-// last page being non-full and for total being 0 (no results).
 const isLoadComplete = computed(
   () => total.value > 0 && results.value.length >= total.value
 )
@@ -29,8 +24,6 @@ const isLoadComplete = computed(
 const searchQuery = async (searchType?: string): Promise<SearchPage> => {
   isLoading.value = true
   const type = searchType || activeType.value
-  // toolset reuses the public /toolset list endpoint with its `query` keyword
-  // filter (BE has no /search?type=toolset). Same {items,total} envelope.
   if (type === 'toolset') {
     const result = await kunFetch<SearchPage>('/toolset', {
       method: 'GET',
@@ -69,8 +62,6 @@ const handleSetType = async (value: SearchType) => {
   }
 }
 
-// `immediate` so returning to /search (no longer keepalive) re-runs the persisted
-// search on mount and restores the results, instead of showing an empty page.
 watch(
   () => keywords.value,
   async () => {

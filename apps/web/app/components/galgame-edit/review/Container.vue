@@ -1,14 +1,6 @@
 <script setup lang="ts">
-// The kungal review queue (E3a, moderator entry): open galgame.game
-// proposals on the kungal tenant, enriched with game briefs. Field-level
-// adjudication rights come from the engine's projection on the detail page —
-// this list is the entry.
 import { galgameEditLabel } from '~/constants/galgameEdit'
 
-// Proxy-face gate: the review-queue entry mirrors the infra editing-engine
-// review capability (truth = infra, not pkg/perm), so it stays on useRole
-// rather than useCan. Per-proposal adjudication rights come from the engine
-// projection on the detail page (can_decide).
 const { canModerate } = useRole()
 
 useKunDisableSeo('Galgame 提案审核队列')

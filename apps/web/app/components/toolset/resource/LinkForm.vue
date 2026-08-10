@@ -12,23 +12,9 @@ const emits = defineEmits<{
   onSuccess: [ToolsetResource]
 }>()
 
-// In s3 mode the file pointer is the S3 key returned by the upload
-// pipeline (resource.content gets stored as-is by the API and is treated
-// as immutable for s3-type rows). In user mode the user types a link
-// into the content textarea below.
-//
-// formData.size is stored as a raw byte-count string in s3 mode (e.g.
-// "1572864") and as a human-readable "1007MB" / "520KB" in user mode.
-// Why: Item.vue (the resource list) renders s3 rows by doing
-// `formatFileSize(Number(size))`, so persisting a pre-formatted string
-// would round-trip back through Number(...) as NaN. The display value
-// in this form is computed separately so users still see "1.5 MB"
-// rather than a raw byte integer.
 const formData = reactive({
   toolset_id: props.toolsetId,
   type: props.type,
-  // s3: content stays empty — the download URL is resolved server-side from the
-  // artifact uuid. user: the link typed into the textarea below.
   content: '',
   artifact_uuid: props.type === 's3' ? props.uploadResult.artifact_uuid : '',
   size:
@@ -50,7 +36,6 @@ const sizeDisplay = computed(() => {
 })
 
 const onSizeInput = (value: string | number) => {
-  // s3 mode field is disabled — only user mode writes back to formData.
   if (props.type === 'user') {
     formData.size = String(value)
   }
@@ -60,8 +45,6 @@ watch(
   () => props.type,
   () => {
     formData.type = props.type
-    // Switching modes resets content/uuid + size — s3 rebinds to upload data,
-    // user mode clears so the inputs start empty for manual entry.
     if (props.type === 's3') {
       formData.artifact_uuid = props.uploadResult.artifact_uuid
       formData.content = ''

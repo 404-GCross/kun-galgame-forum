@@ -10,26 +10,16 @@ const gid = computed(() => {
   return parseInt((route.params as { gid: string }).gid)
 })
 
-// Provided by the detail page (Galgame.vue). For a wiki-catalogue game the forum
-// hasn't ingested, the parent already shows a 未收录 notice, so we suppress this
-// section's empty-state — but KEEP the 添加资源 CTA (the funnel that records it).
 const galgame = inject<GalgameDetail>('galgame')
-// Moderator resource-publish ban (live reactive flag from Galgame.vue): when set,
-// hide the publish entry + show a notice. Initialized from galgame on the server.
 const resourcePublishBanned = inject<Ref<boolean>>(
   'galgameResourcePublishBanned',
   ref(false)
 )
 
-// Publish-modal toggle is purely local to this page — no longer needs
-// the (now removed) tempGalgameResource Pinia store because no other
-// component reads / writes it.
 const isShowPublish = ref(false)
 const { id } = usePersistUserStore()
 
 const emit = defineEmits<{
-  // Surface the fetch state so the tab panel dims while (re)loading — most
-  // visible when the list revalidates after publishing/editing a resource.
   'update:loading': [boolean]
 }>()
 
@@ -42,11 +32,6 @@ const { data, status, refresh } = await useKunFetch<GalgameResource[]>(
 )
 watchEffect(() => emit('update:loading', status.value === 'pending'))
 
-// Group resources into the 7 user-facing provider buckets; skip empty
-// buckets so the tablist collapses when a galgame only has, say, baidu
-// + quark links. Each resource appears in exactly one bucket (its
-// primary provider per bucketizeResourceProvider's first-match-wins
-// rule).
 const groupedResources = computed(() => {
   const grouped: Record<GalgameResourceProviderBucketKey, GalgameResource[]> = {
     baidu: [],
@@ -66,9 +51,6 @@ const groupedResources = computed(() => {
   })
 })
 
-// KunTab items map: each non-empty bucket becomes a tab. textValue
-// embeds the bucket label + count so the tab itself doubles as a
-// section header.
 const providerTabs = computed(() =>
   groupedResources.value.map((g) => ({
     value: g.key,
@@ -77,9 +59,6 @@ const providerTabs = computed(() =>
   }))
 )
 
-// activeProvider follows the first non-empty bucket on data load, then
-// the user's choice. Re-pinned to a still-existing bucket if a refresh
-// removes the previously-selected one (e.g. all baidu links deleted).
 const activeProvider = ref<GalgameResourceProviderBucketKey | ''>('')
 watchEffect(() => {
   const first = groupedResources.value[0]?.key

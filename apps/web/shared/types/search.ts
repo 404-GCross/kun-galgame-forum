@@ -5,10 +5,6 @@ export type SearchResultTopic = HomeTopic
 export type SearchResultGalgame = HomeGalgame
 export type SearchResultToolset = ToolsetCard
 
-// BE `UserItem` (apps/api/internal/search/dto) currently leaves
-// `moemoepoint` and `created` zero — they're not joined from
-// kungal_user_state at search time. Type them as optional so the FE
-// template can guard with v-if rather than render `0` / Date(0).
 export interface SearchResultUser extends KunUser {
   bio: string
   moemoepoint?: number
@@ -24,10 +20,7 @@ export interface SearchResultReply {
   created: Date | string
 }
 
-// `target_user` is the "comment-chain parent" — BE `CommentItem`
-// doesn't carry it today; FE guards rendering with v-if.
 export type SearchResultComment = {
-  // Comment id → deep-link to it (/topic/:id?comment=<id>).
   id: number
   topic_id: number
   topic_title: string

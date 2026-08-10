@@ -29,12 +29,6 @@ const sectionColors: Record<string, KunUIColor> = {
   o: 'secondary'
 }
 
-// `hourDiff` reads `new Date()`, so the server (render time) and the client
-// (hydration time + network latency) can land on opposite sides of the 24h
-// boundary, flipping this chip on/off → a hydration mismatch (the page appears
-// to "load twice"). Compute on the server, ship it via the payload (useState)
-// so hydration matches exactly, then refresh after mount — the same
-// hydration-safe pattern as <KunTime>.
 const isRecentlyUpvoted = useState(`kun-recent-upvote-${useId()}`, () =>
   hourDiff(props.upvoteTime || 0, 24)
 )

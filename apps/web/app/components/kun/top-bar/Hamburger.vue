@@ -1,11 +1,6 @@
 <script setup lang="ts">
 const { showKUNGalgameHamburger } = storeToRefs(useTempSettingStore())
 
-// Close the drawer on navigation. The drawer reuses the sidebar with @click.stop,
-// so a nav link click never bubbles to the scrim's close handler — without this
-// the drawer stayed open over the new page (the "click once to navigate, click
-// again to close, but the second click never lands" bug). This mirrors how a
-// popover closes on select: selecting an item (= navigating) dismisses it.
 const route = useRoute()
 watch(
   () => route.fullPath,
@@ -21,11 +16,6 @@ const startY = ref(0)
 const currentX = ref(0)
 const isDragging = ref(false)
 
-// Locking the body works because the root element keeps `overflow: visible`
-// and hands its scrolling to the viewport — see the html rules in
-// styles/tailwindcss.css, which this depends on. No scrollbar-width padding to
-// go with it: that gutter is reserved permanently, so it is never handed back
-// on lock and compensating for it only shoves the page sideways.
 const lockScroll = () => {
   document.body.style.overflow = 'hidden'
 }

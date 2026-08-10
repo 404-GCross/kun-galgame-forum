@@ -17,9 +17,6 @@ export const getLoli = async () => {
     face: loliData[randomFace]!
   }
 
-  // Bounding box of THIS assembled character (body silhouette + head overlays).
-  // Skirts vary in width (most ~309px, the widest 367px), so a fixed frame left
-  // narrower characters shoved to one side — the stage centers on this bbox.
   const parts = [loli.lass, loli.eye, loli.brow, loli.mouth, loli.face]
   const left = Math.min(...parts.map((p) => p.left))
   const top = Math.min(...parts.map((p) => p.top))

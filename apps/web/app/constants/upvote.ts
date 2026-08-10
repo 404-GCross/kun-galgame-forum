@@ -1,7 +1,3 @@
-// Playful "why I pushed this topic" blurbs for the 推话题 feed card. When a user
-// upvotes a topic WITHOUT writing their own one-liner, the card shows one of
-// these (picked deterministically by the activity id, so it stays stable per
-// item but varies across the feed). Kept ≤30 chars to match the input limit.
 export const KUN_TOPIC_UPVOTE_DESCRIPTIONS = [
   '他觉得这个萝莉写的太好了，足足给了她十根棒棒糖！',
   '感觉吾之暗黑的半身要觉醒了，必须推！',
@@ -29,8 +25,6 @@ export const KUN_TOPIC_UPVOTE_DESCRIPTIONS = [
   '我的 DNA 动了，必须让大家的一起动'
 ] as const
 
-// Deterministic pick by id — same item always shows the same blurb, but
-// different upvotes spread across the pool.
 export const randomUpvoteDescription = (seed: number): string =>
   KUN_TOPIC_UPVOTE_DESCRIPTIONS[
     Math.abs(seed) % KUN_TOPIC_UPVOTE_DESCRIPTIONS.length

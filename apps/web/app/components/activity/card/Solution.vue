@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// MESSAGE_SOLUTION feed card: a topic owner accepted a reply as the best answer.
-// actor = the accepter, content = the accepted reply's preview, data.topic_title =
-// the owning topic, link → that topic. Styled in success green to echo the
-// in-topic 最佳答案 banner.
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(
@@ -19,7 +15,6 @@ const data = computed(
       采纳了最佳答案
     </div>
 
-    <!-- The accepted answer's preview — green fill, all corners rounded. -->
     <div class="bg-success-500/10 mt-2 rounded-lg p-3">
       <KunText
         class-name="whitespace-normal! text-default-600 line-clamp-3 text-sm"
@@ -27,7 +22,6 @@ const data = computed(
       />
     </div>
 
-    <!-- The owning topic's name + a 查看详情 link to it. -->
     <div
       class="text-default-500 mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm"
     >

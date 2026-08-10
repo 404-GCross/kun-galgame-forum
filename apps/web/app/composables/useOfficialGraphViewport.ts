@@ -1,39 +1,17 @@
 import { useElementSize } from '@vueuse/core'
 import type { Ref, ComputedRef } from 'vue'
 
-// Pan and zoom for the 会社 relation graph: one transform, and every gesture
-// that can move it.
-//
-// Separated from the canvas component for the ordinary reason — the canvas is
-// already carrying selection, highlighting and keyboard navigation — but also
-// because this is the half with no markup at all, which makes the arithmetic
-// readable on its own.
-//
-// The rule the whole thing turns on: zooming must keep the point under the
-// cursor under the cursor. Scaling around the container's origin instead is
-// the single most common way a graph viewport ends up feeling broken — the
-// thing you are looking at slides off screen as you zoom toward it.
-
 const MIN_SCALE = 0.4
 const MAX_SCALE = 1.8
-/** Breathing room around a fitted graph, in screen pixels. */
 const FIT_PADDING = 28
-/** Below this, brand names stop being readable and "fit everything" stops being
- * a service to anyone. */
 export const OFFICIAL_GRAPH_LEGIBLE_SCALE = 0.62
 
 const clamp = (value: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, value))
 
 interface OfficialGraphViewportOptions {
-  /** Where to look when the whole graph will not fit legibly. */
   focus?: ComputedRef<{ x: number; y: number } | null>
-  /** Whether a finger may drag the graph VERTICALLY. False inside the page,
-   * where that gesture belongs to the page's own scroll; true in fullscreen,
-   * where the graph owns the screen and there is nothing behind it to scroll. */
   freeTouchPan?: ComputedRef<boolean>
-  /** Preview mode: nothing here can be panned or zoomed, so the whole shape is
-   * shown at whatever scale that takes, however small. */
   preview?: ComputedRef<boolean>
 }
 
@@ -50,9 +28,6 @@ export const useOfficialGraphViewport = (
   const offsetY = ref(0)
   const isPanning = ref(false)
 
-  /** The scale that shows everything, before the interactive floor is applied.
-   * Never above 1: a two-node family blown up to fill the canvas reads as a
-   * mistake, not as emphasis. */
   const rawFitScale = computed(() => {
     const { width, height } = content.value
     if (!width || !height || !viewW.value || !viewH.value) return 1
@@ -63,8 +38,6 @@ export const useOfficialGraphViewport = (
     )
   })
 
-  /** What 适应画布 actually does — floored, because a reader who can pan should
-   * not be able to shrink the graph into a smudge they then have to find. */
   const fitScale = computed(() =>
     clamp(rawFitScale.value, MIN_SCALE, MAX_SCALE)
   )
@@ -78,7 +51,6 @@ export const useOfficialGraphViewport = (
     offsetY.value = (viewH.value - height * k) / 2
   }
 
-  /** Zoom about a point given in VIEWPORT coordinates. */
   const zoomAt = (factor: number, atX: number, atY: number) => {
     const next = clamp(scale.value * factor, MIN_SCALE, MAX_SCALE)
     const ratio = next / scale.value
@@ -90,25 +62,12 @@ export const useOfficialGraphViewport = (
   const zoomBy = (factor: number) =>
     zoomAt(factor, viewW.value / 2, viewH.value / 2)
 
-  /** Put a CONTENT-space point in the middle of the viewport. */
   const centerOn = (x: number, y: number) => {
     offsetX.value = viewW.value / 2 - x * scale.value
     offsetY.value = viewH.value / 2 - y * scale.value
   }
 
-  /**
-   * The opening view — NOT simply "fit".
-   *
-   * A family that only fits at 0.42 fits as unreadable confetti: the reader
-   * arrives at a picture whose whole content is "there is a lot of this". So
-   * below a legible scale the graph opens ON the 会社 the page is about, at a
-   * size where the names can be read, and 适应画布 is one button away for
-   * whoever wants the whole shape.
-   */
   const frame = () => {
-    // A preview cannot be panned, so it must show the whole thing — a strip
-    // cropped to the middle of a family, on a screen with no way to move it, is
-    // the worst of both.
     if (preview?.value) {
       fit(true)
       return
@@ -121,7 +80,6 @@ export const useOfficialGraphViewport = (
     centerOn(focus.value.x, focus.value.y)
   }
 
-  // Pointer bookkeeping. Two live pointers is a pinch; one is a drag.
   const pointers = new Map<number, { x: number; y: number }>()
   let pinchDistance = 0
 
@@ -160,10 +118,6 @@ export const useOfficialGraphViewport = (
     }
 
     offsetX.value += event.clientX - previous.x
-    // Inside the page, a finger dragging upward is scrolling the PAGE:
-    // `touch-action: pan-y` hands the vertical axis to the browser, and
-    // claiming it here would fight the scroll the reader actually asked for.
-    // Fullscreen has nothing behind it, so there the finger moves the graph.
     if (event.pointerType === 'mouse' || freeTouchPan?.value) {
       offsetY.value += event.clientY - previous.y
     }
@@ -175,16 +129,6 @@ export const useOfficialGraphViewport = (
     if (!pointers.size) isPanning.value = false
   }
 
-  /**
-   * The wheel zooms. That is what a canvas is for, and asking for a modifier
-   * key first makes the obvious gesture do nothing.
-   *
-   * What keeps it from being a scroll trap is the LIMIT: once the graph cannot
-   * zoom any further in the direction being asked for, the event is left alone
-   * and the page scrolls on past. So a reader who spins the wheel over the
-   * graph zooms out to the whole family and then keeps going down the page,
-   * without ever finding out there was a rule.
-   */
   const onWheel = (event: WheelEvent) => {
     const zoomingIn = event.deltaY < 0
     const stuck = zoomingIn
@@ -193,8 +137,6 @@ export const useOfficialGraphViewport = (
     if (stuck) return
     event.preventDefault()
     const { x, y } = localPoint(event as unknown as PointerEvent)
-    // Trackpads deliver many small deltas and a mouse wheel a few large ones;
-    // scaling the step by the delta keeps both feeling like the same gesture.
     const strength = Math.min(Math.abs(event.deltaY) / 100, 2)
     zoomAt(zoomingIn ? 1 + 0.14 * strength : 1 / (1 + 0.14 * strength), x, y)
   }
@@ -204,8 +146,6 @@ export const useOfficialGraphViewport = (
       `translate(${offsetX.value}px, ${offsetY.value}px) scale(${scale.value})`
   )
 
-  // Re-frame when the graph or the box it lives in changes size — a sidebar
-  // opening or a phone rotating must not leave the drawing off screen.
   watch(
     [() => content.value.width, viewW, viewH, () => preview?.value],
     frame,

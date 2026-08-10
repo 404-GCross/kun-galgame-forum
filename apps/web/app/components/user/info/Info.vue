@@ -48,8 +48,6 @@ const infoList = [
 
 <template>
   <div v-if="user" class="w-full space-y-4">
-    <!-- 内容统计 — plain neutral card (the old per-stat color="primary" cards
-         read as abrupt); a compact number grid with primary-accented figures. -->
     <KunCard :is-hoverable="false">
       <h3 class="text-default-500 mb-4 text-sm font-medium">内容统计</h3>
       <div class="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-6">

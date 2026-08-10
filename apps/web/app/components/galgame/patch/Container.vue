@@ -12,8 +12,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'has-resource': [boolean]
-  // Surface the (slow, external moyu.moe) fetch state so the tab panel can dim
-  // while it loads.
   'update:loading': [boolean]
 }>()
 
@@ -46,11 +44,8 @@ const fetchKunPatchResource = async (vndbId: string) => {
       resources.value = res.data ? res.data.resource : []
     }
   } catch {
-    // moyu.moe is a different origin. If it returns no CORS header the browser
-    // blocks the request and `fetch` rejects — and because this runs in
-    // onMounted, an unhandled rejection bubbles up and trips the page-level
-    // error state ("请求 Galgame 错误"). The patch list is supplementary, so
-    // swallow the failure and render the galgame page without it.
+    // A third-party host being down must not break the page; the section just
+    // renders empty.
   } finally {
     isLoading.value = false
   }

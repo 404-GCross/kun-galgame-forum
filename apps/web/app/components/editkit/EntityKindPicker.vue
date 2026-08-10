@@ -1,16 +1,4 @@
 <script setup lang="ts">
-// Async entity picker whose entries carry a KIND (editkit).
-//
-// EntityPicker stores a bare id array, which cannot express the one thing this
-// field exists for: the SAME entity attached twice under different kinds — a
-// 会社 that both developed and published a game. The registry models one edge
-// per (entity, kind), so the stored value is one object per edge and the
-// identity of a row is the PAIR, never the id alone.
-//
-// Host-agnostic like its sibling: search + id→name resolve arrive as props, and
-// the id key is a prop too, so the value is the field's own wire shape
-// ([{label_id, kind}]) with no translation layer between control and patch —
-// a translation layer is exactly where a shape disagreement hides.
 import { computed, ref, watch } from 'vue'
 import type { EditSelectOption } from './types'
 
@@ -23,15 +11,10 @@ const props = defineProps<{
   modelValue: unknown
   disabled?: boolean
   placeholder?: string
-  /** Object key holding the entity id (e.g. "label_id"). */
   idKey: string
-  /** The kind vocabulary, in the order it should be offered. */
   kindOptions: KindOption[]
-  /** Kind applied to a freshly picked entity. */
   defaultKind: number
-  /** keyword → {value:id, label:name} options. */
   search: (keyword: string) => Promise<EditSelectOption[]>
-  /** current ids → {value:id, label:name} (seeds names for existing picks). */
   resolve?: (
     ids: (string | number)[]
   ) => Promise<EditSelectOption[]> | EditSelectOption[]
@@ -49,8 +32,6 @@ const labelFor = (id: number) => labels.value.get(id) ?? `#${id}`
 const kindLabel = (kind: number) =>
   props.kindOptions.find((k) => k.value === kind)?.label ?? String(kind)
 
-// The stored value → edges. Rows that carry no usable id are dropped rather
-// than rendered as "#NaN": they cannot round-trip anyway.
 const edges = computed<Edge[]>(() => {
   const v = props.modelValue
   if (!Array.isArray(v)) {
@@ -72,8 +53,6 @@ const commit = (next: Edge[]) => {
   )
 }
 
-// Resolve names for any ids we don't know yet. One entity attached twice needs
-// its name looked up once, so the ids are deduped before asking.
 watch(
   edges,
   async (rows) => {
@@ -93,7 +72,6 @@ watch(
   { immediate: true }
 )
 
-// --- search ---
 const query = ref('')
 const options = ref<{ value: string; label: string }[]>([])
 const isLoading = ref(false)
@@ -110,11 +88,8 @@ const onSearch = async (raw: string) => {
   isLoading.value = true
   const hits = await props.search(kw)
   if (seq !== searchSeq) {
-    return // superseded by a newer search — drop stale hits
+    return
   }
-  // Entities are NOT filtered out once picked: attaching the same 会社 a second
-  // time under another kind is the point of this control. The duplicate guard
-  // is on the (id, kind) pair, at add time.
   const next = new Map(labels.value)
   options.value = hits.map((o) => {
     next.set(Number(o.value), o.label)
@@ -138,8 +113,6 @@ const onSelect = (opt: { value: string; label: string }) => {
 
 const setKind = (index: number, kind: number) => {
   const next = edges.value.map((e, i) => (i === index ? { ...e, kind } : e))
-  // Retyping a row onto a kind the same entity already holds would create a
-  // duplicate edge, which the engine rejects. Collapse instead of erroring.
   const seen = new Set<string>()
   commit(
     next.filter((e) => {

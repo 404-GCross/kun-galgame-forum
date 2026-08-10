@@ -3,7 +3,6 @@ const props = defineProps<{
   data: GalgameCalendarMonth
 }>()
 
-// Month paging is owned by the parent (it holds the URL-backed `month` ref).
 const emit = defineEmits<{
   prev: []
   next: []
@@ -19,10 +18,8 @@ const monthLabel = computed(() => `${year.value} 年 ${monthNum.value} 月`)
 const isCurrentMonth = computed(
   () => props.data.month === props.data.today.slice(0, 7)
 )
-// Backward stops at the data floor; forward is unbounded (parent computes it).
 const canGoPrev = computed(() => props.data.month > props.data.meta.min_month)
 
-// Today's day-of-month, or -1 when today isn't in the viewed month.
 const todayDay = computed(() =>
   props.data.today.slice(0, 7) === props.data.month
     ? Number(props.data.today.slice(8, 10))
@@ -65,8 +62,6 @@ const cells = computed<(number | null)[]>(() => {
   return out
 })
 
-// `selected` highlights the active cell; clicking scrolls the (normal page-flow)
-// month list to that day's row.
 const selected = ref<number | 'bucket' | null>(null)
 const defaultSelected = computed<number | 'bucket' | null>(() =>
   todayDay.value > 0 && dayGames.value.map.has(todayDay.value)
@@ -102,8 +97,6 @@ const pickBucket = () => {
 
 <template>
   <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-    <!-- LEFT: focus-month calendar. Sticky on wide so it stays put while the
-         month list scrolls; full width on mobile. -->
     <div
       class="flex flex-col gap-3 lg:sticky lg:top-20 lg:w-1/3 lg:shrink-0 lg:self-start"
     >
@@ -149,8 +142,6 @@ const pickBucket = () => {
       <div class="grid grid-cols-7 gap-1.5">
         <template v-for="(cell, i) in cells" :key="i">
           <div v-if="cell === null" />
-          <!-- Release count as a corner badge (KunBadge). Today is outlined +
-               bold, selected gets a soft fill, empty days are muted. -->
           <KunBadge
             v-else
             :count="countOf(cell)"
@@ -195,7 +186,6 @@ const pickBucket = () => {
       </button>
     </div>
 
-    <!-- RIGHT: the focus month's games (normal page flow). -->
     <div class="min-w-0 lg:w-2/3">
       <GalgameCalendarMonthList :data="data" />
     </div>

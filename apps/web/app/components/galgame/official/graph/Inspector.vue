@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { KUN_GALGAME_OFFICIAL_RELATION_MAP } from '~/constants/galgameOfficial'
 
-// The panel beside the canvas: what the selected box actually IS, in words.
-//
-// A graph is good at shape and bad at sentences — an arrow between two boxes
-// cannot say "拆分出" and "前身公司" at the same time even though those are the
-// same edge read from its two ends. So the picture carries the structure and
-// this carries the reading, from the selected 会社's point of view, and the two
-// stay in step because clicking a name here selects it over there.
 const props = defineProps<{
   layout: GalgameOfficialGraphLayout
   currentId: number
@@ -25,8 +18,6 @@ const selected = computed(() =>
   props.selectedId === null ? undefined : nodeOf(props.selectedId)
 )
 
-/** The same edge means two different things depending on which end you stand
- * at, so both readings are spelled out rather than derived from one. */
 const OUTGOING: Record<string, string> = {
   subsidiary: 'subsidiary',
   imprint: 'imprint',
@@ -105,9 +96,6 @@ const LEGEND = [
         <div v-for="group in groups" :key="group.label" class="space-y-1">
           <p class="text-default-500 text-xs">{{ group.label }}</p>
           <div class="flex flex-wrap gap-1">
-            <!-- Clicking a name here moves the SELECTION, it does not leave the
-                 page: walking a family by reading it is the whole point of the
-                 panel, and a link would end the walk at the first step. -->
             <KunButton
               v-for="official in group.officials"
               :key="official.id"

@@ -3,11 +3,6 @@ const props = defineProps<{
   message: MessageSystemMessage
 }>()
 
-// System broadcasts are admin-authored HTML (admin-only write path), rendered
-// directly. No client-side DOM sanitizer here on purpose — the old DOMPurify
-// ran jsdom on every SSR render and leaked the web container to OOM. If
-// user-influenced text ever reaches a system message, sanitize it server-side
-// via the goldmark + bluemonday pipeline (internal/infrastructure/markdown).
 const messageHtml = computed(() => props.message.content['zh-cn'] ?? '')
 </script>
 

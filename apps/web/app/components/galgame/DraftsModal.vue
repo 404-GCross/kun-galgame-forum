@@ -1,17 +1,4 @@
 <script setup lang="ts">
-// "未发布的游戏" overlay launched from an official / tag / engine detail page.
-// Lists the unclaimed VNDB drafts (status=2) scoped to THAT entity — games the
-// wiki has synced from VNDB but nobody has published on the forum yet. Each row
-// renders as a shared GalgameCard whose built-in routing sends status=2 straight
-// to the publish wizard (认领并发布). No filter UI by design; the SFW gate is
-// applied server-side via the content cookie.
-//
-// Drafts carry VNDB-synced official + tag edges, so those two scopes are well
-// populated; engine edges are human-curated and empty on drafts today, so the
-// engine variant honestly shows the empty state.
-//
-// Pagination is a "加载更多" accumulator (the draft pool can be large), the same
-// in-modal pattern as the 萌萌点明细 ledger (MoemoepointLog.vue).
 type EntityType = 'official' | 'tag' | 'engine' | 'series'
 
 const props = defineProps<{
@@ -24,8 +11,6 @@ const open = defineModel<boolean>({ required: true })
 
 const LIMIT = 24
 
-// Single source of truth mapping the entity kind to its scoping query param
-// (official_id / tag_id / engine_id / series_id) and to its Chinese label.
 const ENTITY_LABEL: Record<EntityType, string> = {
   official: '会社',
   tag: '标签',
@@ -57,8 +42,6 @@ const fetchPage = async (more = false) => {
         page: nextPage,
         limit: LIMIT,
         [scopeParam.value]: props.entityId,
-        // Claim-funnel policy: only Japanese / Chinese originals — the raw
-        // VNDB pool is ~37% EN/RU/... originals nobody here will claim.
         original_language: 'ja-jp,zh-cn,zh-tw'
       }
     }
@@ -75,7 +58,6 @@ const fetchPage = async (more = false) => {
   status.value = 'idle'
 }
 
-// Fetch fresh on each open (a just-published draft should drop off the list).
 watch(open, (isOpen) => {
   if (!isOpen) {
     return

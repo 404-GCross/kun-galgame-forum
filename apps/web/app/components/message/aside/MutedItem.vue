@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// "已静音的消息" aside entry. Muting suppresses badges, so this shows a neutral
-// total (not an unread / red-dot count) and links to the muted view. Fetched
-// client-only + lazy, mirroring GalgameItem — the aside shouldn't pay for it on SSR.
 const { data } = useKunFetch<MessageList>('/message/muted', {
   query: { page: 1, limit: 1, sort_order: 'desc' },
   server: false,

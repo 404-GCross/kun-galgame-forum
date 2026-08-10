@@ -7,27 +7,17 @@ const props = defineProps<{
 }>()
 
 const currentUserId = usePersistUserStore().id
-// Authors edit their own; staff holding comment.topic.edit may fix anyone's,
-// so an abusive passage can be corrected instead of only deleted wholesale.
 const canEditTopicComment = useCan('comment.topic.edit')
 const canEdit = (comment: TopicComment) =>
   comment.user.id === currentUserId || canEditTopicComment.value
 const comments = ref(props.commentsData)
 const activeCommentId = ref<number | null>(null)
 const targetUserForPanel = ref<KunUser | null>(null)
-// The comment being replied to (its id becomes the new comment's parent), so
-// the reply nests under the right thread.
 const parentCommentIdForPanel = ref<number | null>(null)
 
-// Flatten the comment tree to a SINGLE visible level: each top-level comment
-// followed by all its descendants (replies), ordered by time. The data model
-// stores the full tree (parentCommentId) — future-proof — but rendering it one
-// level deep reads best (especially on mobile); a reply shows "回复 @<target>".
 const threadedComments = computed(() => {
   const list = comments.value
   const byId = new Map(list.map((c) => [c.id, c]))
-  // A comment's top-level ancestor (walk up parentCommentId). A missing parent
-  // — e.g. one that was deleted and re-rooted — makes the comment a root itself.
   const rootOf = (c: TopicComment): TopicComment => {
     let cur = c
     const seen = new Set<number>()
@@ -68,17 +58,10 @@ const threadedComments = computed(() => {
   return out
 })
 
-// Inline edit state (mirrors the reply "重新编辑" feature). Only the author
-// can edit; saving PUTs to /topic/:tid/comment and replaces the comment in
-// place with the server's updated DTO (which carries the new `edited` stamp).
 const editingId = ref<number | null>(null)
 const editValue = ref('')
 const isSaving = ref(false)
 
-// Mobile shows the comment editor in a bottom KunDrawer (one shared instance
-// driven by activeCommentId); desktop keeps the inline per-comment panel. Gate
-// behind mount so the first client render matches SSR (desktop) — useMediaQuery
-// resolves true synchronously on a mobile client and would otherwise mismatch.
 const isMobileQuery = useMediaQuery('(max-width: 767px)')
 const mounted = ref(false)
 onMounted(() => (mounted.value = true))
@@ -172,8 +155,6 @@ const handleSaveEdit = async (comment: TopicComment) => {
     <h3 class="text-lg font-semibold">评论</h3>
 
     <div class="space-y-3">
-      <!-- Threaded: depth-0 = top-level, depth-1 = a reply (indented one level
-           under its thread root, no connector line). -->
       <div
         v-for="{ comment, depth } in threadedComments"
         :id="`comment-${comment.id}`"
@@ -198,7 +179,6 @@ const handleSaveEdit = async (comment: TopicComment) => {
               </KunLink>
             </div>
 
-            <!-- Edit mode: textarea + save / cancel -->
             <div v-if="editingId === comment.id" class="space-y-2">
               <KunTextarea
                 name="edit-comment"
@@ -224,7 +204,6 @@ const handleSaveEdit = async (comment: TopicComment) => {
               </div>
             </div>
 
-            <!-- View mode -->
             <p
               v-else
               style="overflow-wrap: break-word"
@@ -242,10 +221,6 @@ const handleSaveEdit = async (comment: TopicComment) => {
                 </span>
               </span>
 
-              <!-- Same shape as a reply's footer: reactions as KunReaction
-                   pills, everything else behind ⋯. leading-none kills the
-                   descender the popover's inline-block wrapper would otherwise
-                   add under the row. -->
               <div class="flex items-center gap-1 leading-none">
                 <TopicCommentLike :comment="comment" />
                 <KunTooltip text="评论">

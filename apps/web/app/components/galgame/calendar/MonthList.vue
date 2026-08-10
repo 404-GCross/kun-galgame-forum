@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// The month view's right-hand content: the focus month's releases as date-tile
-// day-rows. Today's row is pinned on top, then the rest run chronologically;
-// the 日期待定 (month-precision) bucket goes last. Each row carries an id so the
-// calendar grid can scroll-to it on click.
 const props = defineProps<{
   data: GalgameCalendarMonth
 }>()
@@ -52,7 +48,6 @@ const rows = computed<DayRow[]>(() => {
   const mkRow = (d: number): DayRow => ({
     id: `${props.data.month}-${String(d).padStart(2, '0')}`,
     day: d,
-    // Fixed calendar components → timezone-invariant weekday (SSR-safe).
     weekday: WEEKDAYS[new Date(y ?? 0, (mo ?? 1) - 1, d).getDay()] ?? '',
     status: statusOf(d),
     isBucket: false,
@@ -61,7 +56,6 @@ const rows = computed<DayRow[]>(() => {
 
   const days = [...dayMap.keys()].sort((a, b) => a - b)
   const out: DayRow[] = []
-  // Today pinned on top, then the rest of the month chronologically.
   if (todayDay > 0 && dayMap.has(todayDay)) {
     out.push(mkRow(todayDay))
   }

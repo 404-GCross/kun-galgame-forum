@@ -4,7 +4,6 @@ import type { TopicCategoryKey } from '~/constants/topic'
 export interface TopicDraftListItem {
   id: number
   title: string
-  // A short raw-markdown prefix of the content, for title-less drafts.
   summary: string
   updated: string
 }
@@ -20,9 +19,6 @@ interface TopicDraftDetail {
   updated: string
 }
 
-// Server-side, per-user topic drafts (private to the author). The current editor
-// state is read from / written back to the shared editor store, so saving a draft
-// snapshots exactly what would be published, and loading one restores it fully.
 export const useTopicDraft = () => {
   const { title, content, category, section, isNSFW, coverImages } =
     useTopicEditorStore()

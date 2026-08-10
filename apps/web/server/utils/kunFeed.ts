@@ -43,9 +43,6 @@ interface KunApiResponse<T> {
 
 export const fetchKunApi = async <T>(path: string): Promise<T> => {
   const config = useRuntimeConfig()
-  // These RSS routes run server-side; a stalled $fetch with no timeout would
-  // hang the Nitro handler forever, leaking its sockets + render context (same
-  // failure mode as app/utils/kunFetch.ts SSR_API_TIMEOUT_MS).
   const resp = await $fetch<KunApiResponse<T>>(
     `${config.apiBaseUrl}/api${path}`,
     { method: 'GET', timeout: 10000 }

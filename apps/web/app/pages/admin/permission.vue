@@ -6,13 +6,9 @@ import {
   KUN_PERM_ROLE_COLUMNS
 } from '~/constants/permission'
 
-// Admin-only (admin ⊂ ren): mirrors the API's RequireAdmin gate on the
-// /admin/role-permissions routes. UX guard — the API is the real boundary.
 definePageMeta({ middleware: 'admin' })
 useKunDisableSeo('权限管理')
 
-// Two views: the role matrix (the Phase 2 surface, unchanged) and the change
-// log. Plain local tab state — no ?tab= deep-link needed.
 const permTabs = [
   { value: 'matrix', textValue: '权限矩阵' },
   { value: 'audit', textValue: '变更日志' }
@@ -23,13 +19,8 @@ const { data, refresh } = await useKunFetch<KunRolePermMatrix>(
   '/admin/role-permissions'
 )
 
-// A locally-mutable copy of the matrix; replaced wholesale after every save so
-// the baseline reference stays authoritative.
 const matrix = ref<KunRolePermMatrix | null>(data.value ?? null)
 
-// WORKING effective sets for the three editable roles (creator/moderator/admin).
-// Rebuilt from a matrix on load, discard and after each save. Toggling replaces
-// the whole record (immutable) so Vue tracks the change without reactive Sets.
 const buildWorking = (m: KunRolePermMatrix): Record<string, Set<string>> =>
   Object.fromEntries(
     KUN_PERM_EDITABLE_ROLES.map(
@@ -42,8 +33,6 @@ const working = ref<Record<string, Set<string>>>(
   matrix.value ? buildWorking(matrix.value) : {}
 )
 
-// Baseline + effective sets for EVERY column (ren included, for its locked
-// display), read straight off the current matrix.
 const baseline = computed<Record<string, Set<string>>>(() =>
   Object.fromEntries(
     KUN_PERM_ROLE_COLUMNS.map(
@@ -77,9 +66,6 @@ const toggle = (role: string, permission: string, value: boolean) => {
   working.value = { ...working.value, [role]: next }
 }
 
-// The DELTA vs baseline for one role: an override row per key where working
-// diverges from baseline. Computed over the 43 keys only, so a no-op (granting
-// what the baseline has / revoking what it lacks) can never be sent.
 const deltasFor = (role: string) => {
   const base = baseline.value[role] ?? new Set<string>()
   const work = working.value[role] ?? new Set<string>()
@@ -113,8 +99,6 @@ const totalPending = computed(() =>
   )
 )
 
-// Containment guard: the backend rejects a moderator holding a permission admin
-// lacks (moderator ⊆ admin must hold). Surface it inline BEFORE save.
 const moderatorExceedsAdmin = computed(() => {
   const mod = working.value.moderator ?? new Set<string>()
   const admin = working.value.admin ?? new Set<string>()
@@ -152,8 +136,6 @@ const handleSave = async () => {
   saving.value = true
   let latest: KunRolePermMatrix | null = null
   let failed = false
-  // One PUT per dirty role — each REPLACES that role's full override set and
-  // returns the updated full matrix; the last success reflects every change.
   for (const role of dirtyRoles.value) {
     const res = await kunFetch<KunRolePermMatrix>(
       `/admin/role-permissions/${role}`,
@@ -170,7 +152,6 @@ const handleSave = async () => {
   if (latest) {
     applyMatrix(latest)
   } else if (failed) {
-    // Nothing persisted before the failure — resync from the server anyway.
     await refresh()
     if (data.value) {
       applyMatrix(data.value)
@@ -248,9 +229,6 @@ const handleReset = async (role: string) => {
 
         <AdminPermissionProxyList />
 
-        <!-- Sticky save bar: pin the surface to alpha 1 (bg-content1 carries the
-           --kun-surface-opacity glass alpha; a lowered 透明度 setting would
-           otherwise let the grid show through). -->
         <div class="sticky bottom-0 z-20 pb-3">
           <KunCard
             :is-hoverable="false"

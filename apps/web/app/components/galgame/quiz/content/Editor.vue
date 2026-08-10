@@ -1,23 +1,12 @@
 <script setup lang="ts">
-// Per-type authoring of the quiz `content` payload. The parent (Publish) holds
-// a ref to this component and calls getContent() / validate() on submit — the
-// server validates the same shape again, so this is UX-only.
-//
-// Correctness is marked INLINE on each option row (one action per row) rather
-// than in a separate "correct answer" picker — the pattern used by Google
-// Forms / Typeform / Kahoot.
 const props = defineProps<{ type: QuizType }>()
 const emits = defineEmits<{ change: [content: Record<string, unknown>] }>()
 
-// single / multiple
 const options = ref<string[]>(['', ''])
 const singleAnswer = ref(0)
 const multiAnswers = ref<number[]>([])
-// judge
 const judgeAnswer = ref<'true' | 'false'>('true')
-// fill: one string[] of accepted answers per blank
 const blanks = ref<string[][]>([[]])
-// essay
 const essayReference = ref('')
 
 const reset = () => {
@@ -28,7 +17,6 @@ const reset = () => {
   blanks.value = [[]]
   essayReference.value = ''
 }
-// Switching type starts a clean payload.
 watch(() => props.type, reset)
 
 const addOption = () => options.value.push('')
@@ -41,15 +29,12 @@ const removeOption = (i: number) => {
   if (singleAnswer.value >= options.value.length) singleAnswer.value = 0
 }
 
-// Inline correct-answer marking, driven by a per-row KunCheckBox
-// (type="single" renders a radio, "multiple" a checkbox).
 const isCorrect = (i: number) =>
   props.type === 'single'
     ? singleAnswer.value === i
     : multiAnswers.value.includes(i)
 const setCorrect = (i: number, checked: boolean) => {
   if (props.type === 'single') {
-    // radio semantics — this option becomes the sole answer
     singleAnswer.value = i
   } else if (checked) {
     if (!multiAnswers.value.includes(i)) multiAnswers.value.push(i)
@@ -57,10 +42,6 @@ const setCorrect = (i: number, checked: boolean) => {
     multiAnswers.value = multiAnswers.value.filter((x) => x !== i)
   }
 }
-// A labeled, highlighted per-row action drives correctness instead of a bare
-// radio/checkbox — the old control looked identical to the ANSWERING UI, so
-// "mark this option correct" read as "select this option". single = move the
-// sole mark; multiple = toggle it. Correct label differs so the state is obvious.
 const correctLabel = computed(() => (props.type === 'single' ? '正确答案' : '已选'))
 const toggleCorrect = (i: number) =>
   setCorrect(i, props.type === 'single' ? true : !isCorrect(i))
@@ -95,7 +76,6 @@ const getContent = (): Record<string, unknown> => {
   }
 }
 
-// Emit the built content on any change so the create draft can be persisted.
 watch(
   [
     options,
@@ -110,7 +90,6 @@ watch(
   { deep: true }
 )
 
-// Returns an error message, or null when the payload is valid.
 const validate = (): string | null => {
   switch (props.type) {
     case 'single':
@@ -141,7 +120,6 @@ const validate = (): string | null => {
   }
 }
 
-// Hydrate the per-type state from an existing quiz's FULL content (edit mode).
 const load = (content: Record<string, unknown>) => {
   switch (props.type) {
     case 'single': {
@@ -181,8 +159,6 @@ defineExpose({ getContent, validate, reset, load })
 
 <template>
   <div class="space-y-3">
-    <!-- single / multiple — correctness set by a labeled action + row highlight,
-         NOT a bare radio/checkbox (which looked like the answering UI). -->
     <template v-if="type === 'single' || type === 'multiple'">
       <div class="flex items-center justify-between">
         <label class="text-sm font-medium">选项</label>
@@ -246,7 +222,6 @@ defineExpose({ getContent, validate, reset, load })
       </KunButton>
     </template>
 
-    <!-- judge — two big choice cards -->
     <template v-else-if="type === 'judge'">
       <label class="text-sm font-medium">正确答案</label>
       <div class="grid grid-cols-2 gap-3">
@@ -277,7 +252,6 @@ defineExpose({ getContent, validate, reset, load })
       </div>
     </template>
 
-    <!-- fill -->
     <template v-else-if="type === 'fill'">
       <div class="space-y-2">
         <label class="text-sm font-medium">
@@ -309,7 +283,6 @@ defineExpose({ getContent, validate, reset, load })
       </div>
     </template>
 
-    <!-- essay -->
     <template v-else-if="type === 'essay'">
       <KunTextarea
         v-model="essayReference"

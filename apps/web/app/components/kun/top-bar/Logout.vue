@@ -1,25 +1,8 @@
 <script setup lang="ts">
-// Logout scope chooser. Mounted at the app.vue root (a stable, NON-scoped
-// node) — NOT inside the avatar popover, whose content is v-if'd and unmounts
-// the instant the user clicks into the modal (which would tear the modal down
-// with it — the cause of "点退出登录没有反应"). UserInfo's 退出登录 sets the
-// temp-store flag; this self-binds to it, so the modal survives the popover.
-//
-// It lives at app.vue and not the avatar bar specifically because this
-// component's root IS <KunModal> (a <Teleport> root). A <style scoped> parent
-// would try to stamp its scope id onto our teleport root for deep styling and
-// Vue would warn ("Extraneous non-props attributes … at <KunModal>"); app.vue's
-// style is global, so — like KunAuthModal / KunCapture there — no warning.
 const { showKUNGalgameLogout: isOpen } = storeToRefs(useTempSettingStore())
 
 const logoutPending = ref<'local' | 'everywhere' | null>(null)
 
-// "This site only" — end the forum's own BFF session server-side via
-// POST /api/auth/logout (revoke the OAuth refresh token + delete the Redis
-// session + clear the kungal_session cookie), THEN reset the client store. The
-// central OAuth (SSO) session stays, so re-login here is silent. Without the
-// backend call the cookie + Redis session survived and a hard refresh re-logged
-// the user straight back in (resetUser only clears the client-side store).
 const logoutLocal = async () => {
   if (logoutPending.value) return
   logoutPending.value = 'local'
@@ -30,19 +13,13 @@ const logoutLocal = async () => {
   logoutPending.value = null
 }
 
-// "Everywhere" — also end the central OP session via RP-initiated logout so no
-// site can silently re-login. End the forum's own session first (same backend
-// call), then top-level navigate to the OP logout entrypoint. See
-// docs/oauth/07-logout.md.
 const logoutEverywhere = async () => {
   if (logoutPending.value) return
   logoutPending.value = 'everywhere'
   await kunFetch('/auth/logout', { method: 'POST' })
   usePersistUserStore().resetUser()
-  // Full logout ends the OP session bag → the local account roster is now stale;
-  // forget it so a shared device leaves nothing behind. (仅退出本站 keeps it.)
   useKnownAccounts().clearAll()
-  startOAuthLogout() // top-level redirect to the OP; clears the SSO session
+  startOAuthLogout()
 }
 </script>
 

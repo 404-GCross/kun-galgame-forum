@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// GALGAME_WEBSITE_CREATION — a user added a Galgame website. The website name is
-// in content; the link goes to /website/<url>.
 defineProps<{ activity: ActivityItem }>()
 </script>
 

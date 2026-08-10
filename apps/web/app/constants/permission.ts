@@ -1,17 +1,10 @@
 import type { ForumPermission } from '~/composables/useCan'
 
-// Human-facing metadata for the permission-management admin page. Typed against
-// ForumPermission so a change to the pure-forum vocabulary in useCan.ts breaks
-// the build HERE (a missing / stray key is a compile error) — that coupling is
-// deliberate: labels can never silently drift from the wire contract.
-
 export interface KunPermissionMeta {
   label: string
   group: string
 }
 
-// Row grouping order for the matrix (top → bottom). Every ForumPermission's
-// `group` below is one of these.
 export const KUN_PERMISSION_GROUP_ORDER = [
   '话题',
   '回复',
@@ -30,18 +23,13 @@ export const KUN_PERMISSION_GROUP_ORDER = [
   '管理'
 ] as const
 
-// The 51 pure-forum permissions → concise Chinese label + group. Insertion
-// order follows the backend catalog's canonical order within each group.
 export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
-  // 话题
   'topic.edit_any': { label: '编辑任意话题', group: '话题' },
   'topic.hide': { label: '隐藏话题', group: '话题' },
   'topic.set_best_answer': { label: '设置最佳答案', group: '话题' },
-  // 回复
   'reply.edit_any': { label: '编辑任意回复', group: '回复' },
   'reply.delete_any': { label: '删除任意回复', group: '回复' },
   'reply.pin': { label: '置顶回复', group: '回复' },
-  // 评论
   'comment.topic.edit': { label: '编辑话题评论', group: '评论' },
   'comment.topic.delete': { label: '删除话题评论', group: '评论' },
   'comment.galgame.edit': { label: '编辑 Galgame 评论', group: '评论' },
@@ -56,28 +44,21 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'comment.resource.delete': { label: '删除资源评论', group: '评论' },
   'comment.quiz.edit': { label: '编辑题目评论', group: '评论' },
   'comment.quiz.delete': { label: '删除题目评论', group: '评论' },
-  // 投票
   'poll.create_any': { label: '为任意话题创建投票', group: '投票' },
   'poll.edit_any': { label: '编辑任意投票', group: '投票' },
   'poll.delete_any': { label: '删除任意投票', group: '投票' },
   'poll.view_restricted': { label: '查看受限/匿名投票结果', group: '投票' },
-  // Galgame
   'galgame.ban_resource_publish': {
     label: '禁止游戏资源发布',
     group: 'Galgame'
   },
-  // 收藏夹
   'collection.edit_any': { label: '编辑任意收藏夹', group: '收藏夹' },
   'collection.delete_any': { label: '删除任意收藏夹', group: '收藏夹' },
-  // 题目
   'quiz.edit_any': { label: '编辑任意题目', group: '题目' },
   'quiz.delete_any': { label: '删除任意题目', group: '题目' },
-  // 资源
   'resource.edit_any': { label: '编辑任意游戏资源', group: '资源' },
   'resource.delete_any': { label: '删除任意游戏资源', group: '资源' },
-  // 评分
   'rating.delete_any': { label: '删除任意评分', group: '评分' },
-  // 工具集
   'toolset.edit_any': { label: '编辑任意工具集', group: '工具集' },
   'toolset.delete_any': { label: '删除任意工具集', group: '工具集' },
   'toolset.resource.edit_any': {
@@ -89,41 +70,26 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
     group: '工具集'
   },
   'toolset.upload_bypass': { label: '向任意工具集上传', group: '工具集' },
-  // 文档
   'doc.create': { label: '创建文档', group: '文档' },
   'doc.edit': { label: '编辑文档', group: '文档' },
   'doc.delete': { label: '删除文档', group: '文档' },
-  // 网站
   'website.create': { label: '创建网站', group: '网站' },
   'website.edit': { label: '编辑网站', group: '网站' },
   'website.delete': { label: '删除网站', group: '网站' },
-  // 友链
   'friend_link.create': { label: '创建友链', group: '友链' },
   'friend_link.edit': { label: '编辑友链', group: '友链' },
   'friend_link.delete': { label: '删除友链', group: '友链' },
-  // 更新日志与待办 — ONE vocabulary covering BOTH /update/history and
-  // /update/todo (the routes share update_log.create / .edit / .delete). The
-  // labels must name 待办 explicitly: while they read "更新日志" alone, an
-  // operator scanning this matrix for a 待办 permission found none and concluded
-  // the capability had been forgotten, when in fact it was right here.
   'update_log.create': { label: '创建更新日志与待办', group: '更新日志与待办' },
   'update_log.edit': { label: '编辑更新日志与待办', group: '更新日志与待办' },
   'update_log.delete': { label: '删除更新日志与待办', group: '更新日志与待办' },
-  // 管理
   'admin.dashboard': { label: '管理总览与统计', group: '管理' },
   'user.purge_content': { label: '清除用户全部内容', group: '管理' }
 }
 
-// The canonical 51-key list, in declaration order. Used to iterate the editable
-// universe when computing deltas (never a no-op outside these keys).
 export const KUN_PERMISSION_KEYS = Object.keys(
   KUN_PERMISSION_META
 ) as ForumPermission[]
 
-// The 51 keys pre-bucketed by group in KUN_PERMISSION_GROUP_ORDER — the shared
-// row layout for BOTH the role matrix and the per-user override panel. Static
-// (the vocabulary is compile-time constant), so it's a plain array, not a
-// computed. Empty groups are dropped.
 export const KUN_PERMISSION_GROUPS: {
   group: string
   perms: ForumPermission[]
@@ -134,9 +100,6 @@ export const KUN_PERMISSION_GROUPS: {
   )
 })).filter((entry) => entry.perms.length)
 
-// Matrix columns, left → right. `creator` / `moderator` / `admin` are editable;
-// `ren` (莲) is the LOCKED safety anchor — always the full catalogue, never
-// adjustable, and never PUT.
 export interface KunPermRoleColumn {
   role: string
   label: string
@@ -151,20 +114,12 @@ export const KUN_PERM_ROLE_COLUMNS: KunPermRoleColumn[] = [
   { role: 'ren', label: '莲', editable: false, locked: true }
 ]
 
-// The roles a PUT may target. `ren` is intentionally absent.
 export const KUN_PERM_EDITABLE_ROLES = [
   'creator',
   'moderator',
   'admin'
 ] as const
 
-// Delegation rank ladder — MUST stay in lockstep with apps/api/pkg/perm/rank.go
-// (roleRank). Order high → low: ren=4, admin=3, moderator=2, creator=1; any
-// other/absent role (incl. the implicit `user`) = 0. Used ONLY by the permission
-// editors' delegation guard: an operator may edit a subject strictly BELOW their
-// own rank. This is a LOCAL ordering for delegation authority, NOT a general role
-// tier — capability checks still go through useCan, never a number. The backend
-// (pkg/perm) is the real boundary; this mirror is UX only.
 export const KUN_ROLE_RANK: Record<string, number> = {
   ren: 4,
   admin: 3,
@@ -172,37 +127,15 @@ export const KUN_ROLE_RANK: Record<string, number> = {
   creator: 1
 }
 
-// The delegation rank of a role SET: the max rank over its claims (0 if empty).
 export const kunRoleRank = (roles: string[]): number =>
   roles.reduce((max, role) => Math.max(max, KUN_ROLE_RANK[role] ?? 0), 0)
 
-// The 7 INFRA-PROXY operations, shown read-only. Their truth lives in infra
-// (kun-galgame-infra editing engine / kun_trust), NOT in pkg/perm — surfacing
-// them here would only invite drift, so admins can see the full picture but
-// cannot create an override for them. `taxonomy` is deliberately the stricter
-// admin-only threshold per the site owner's standing ruling.
-//
-// There were nine until wave 178, when infra started deriving entity ownership
-// from the user's own token: proposal adjudication and revision revert are
-// authorized entirely on the Bearer edit face now, so the forum's
-// `galgame.edit_decide` / `galgame.edit_revert` mirrors were deleted rather
-// than reworded. The workbench reads the edit face's own capability projection
-// (`can_decide` / `can_revert`) instead — see docs/proj/permissions.md 表一.
-//
-// Wave 179 did the same to the SUBMISSION lifecycle: the four verdicts now ride
-// the moderator's own token and infra checks catalog.claim.review against it,
-// so `galgame.review_submission` joined `galgame.review` as a pure view gate.
-// The count stays 7 — the entry still decides which page opens, and a
-// visibility gate is still a gate somebody has to be able to find.
 export interface KunProxyPermission {
   key: string
   label: string
   note: string
 }
 
-// Keys below mirror the CANONICAL 7-op enumeration in apps/api/pkg/perm's
-// package doc (and docs/proj/permissions.md 表一) verbatim — display names must
-// not fork from the backend vocabulary.
 export const KUN_PROXY_PERMISSIONS: KunProxyPermission[] = [
   {
     key: 'galgame.create',

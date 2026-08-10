@@ -26,8 +26,6 @@ const emits = defineEmits<{
 }>()
 
 const MB = 1024 * 1024
-// Fallback chunk size for pre-flight math only; the artifact service decides the
-// authoritative slicing and returns part_size in its init response.
 const LARGE_CHUNK_SIZE = 5 * MB
 const UPLOAD_TRANSFER_FAILED = 'UPLOAD_TRANSFER_FAILED'
 const DEFAULT_BINARY_CONTENT_TYPE = 'application/octet-stream'
@@ -38,18 +36,12 @@ type ToolsetUploadPart = {
   etag: string
 }
 
-// Browsers don't always populate File.type for archive formats (.7z, .rar
-// in particular often come back empty). Fall back to a generic binary
-// content-type so the API's required-field validator passes and so the
-// presigned PUT later sets a sensible Content-Type header on S3.
 const resolveContentType = (file: File): string =>
   file.type && file.type.length > 0 ? file.type : DEFAULT_BINARY_CONTENT_TYPE
 
 const { moemoepoint, dailyToolsetUploadBytes } = storeToRefs(
   usePersistUserStore()
 )
-// Upload bypass: hold this permission to skip the per-user daily quota / single-
-// file cap (moderator+). Owner/quota checks otherwise apply.
 const canUploadBypass = useCan('toolset.upload_bypass')
 const fileInput = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
@@ -57,10 +49,6 @@ const selectedFile = ref<File | null>(null)
 const progress = ref(0)
 const isDragging = ref(false)
 const uploadStatus = ref<ToolsetUploadStatus>('idle')
-// Set when the selected file matches an interrupted multipart upload — persisted
-// across a page refresh, or failed mid-flight this session. While set, submit
-// RESUMES (skips parts already in B2) instead of starting over. Cleared on a
-// fresh select / successful complete / abort.
 const resumeUuid = ref<string | null>(null)
 
 const isLarge = computed(() => {
@@ -72,7 +60,6 @@ const dailyUploadLimit = computed(() => {
     return MAX_LARGE_FILE_SIZE
   }
 
-  // Remaining daily budget = (100MB + moemoepoint·MB) − bytes already used today.
   return Math.max(
     0,
     USER_DAILY_UPLOAD_LIMIT +
@@ -110,10 +97,6 @@ const resetUploadState = () => {
 const setSelectedUploadFile = (file: File) => {
   selectedFile.value = file
   resetUploadState()
-  // Re-selecting the file of an interrupted upload offers to resume from the
-  // breakpoint. Matched by size+lastModified (NOT name) so a moved OR renamed
-  // file still resumes; any content edit changes size/mtime, so it still
-  // guarantees the same file version.
   const match = resumeStore
     .list()
     .find((p) => p.size === file.size && p.last_modified === file.lastModified)
@@ -227,17 +210,9 @@ const clearSelected = () => {
     fileInput.value.value = ''
   }
   resetUploadState()
-  // Drop the in-memory resume offer; the persisted record stays so re-selecting
-  // the same file can still continue the interrupted upload.
   resumeUuid.value = null
 }
 
-// Interrupted multipart uploads are recoverable: the artifact's uploaded parts
-// live in B2, so we persist {uuid + file identity + progress} per toolset (via
-// useToolsetResumeUploads) and a resume only re-sends the missing parts. The
-// browser can't read a file by path, so resuming needs the user to re-select it
-// (matched by size+lastModified) — surfaced both by re-dragging it here and by
-// the on-open <ToolsetResourceResumeList>.
 const resumeStore = useToolsetResumeUploads(props.toolsetId)
 const pending = ref<ToolsetPendingUpload[]>([])
 
@@ -245,7 +220,6 @@ const refreshPending = () => {
   pending.value = resumeStore.list()
 }
 
-// Remember (insert / replace) an in-flight multipart upload so it can be resumed.
 const rememberPending = (f: File, artifactUuid: string, prog: number) => {
   resumeStore.upsert({
     artifact_uuid: artifactUuid,
@@ -257,7 +231,6 @@ const rememberPending = (f: File, artifactUuid: string, prog: number) => {
   })
 }
 
-// Forget a finished / aborted upload and refresh the banner list.
 const forgetPending = (artifactUuid: string) => {
   resumeStore.remove(artifactUuid)
   if (resumeUuid.value === artifactUuid) {
@@ -266,9 +239,6 @@ const forgetPending = (artifactUuid: string) => {
   refreshPending()
 }
 
-// PUT a set of parts (slices of f by partSize), collecting their ETags and
-// advancing progress against the WHOLE file (doneCount = parts already stored,
-// so a resumed upload's bar starts where it left off).
 const putParts = async (
   artifactUuid: string,
   f: File,
@@ -298,14 +268,11 @@ const putParts = async (
     }
     out.push({ part_number: cur.part_number, etag })
     progress.value = Math.round(((doneCount + i + 1) / totalParts) * 100)
-    // Persist after each part so the resume list stays accurate even if the tab
-    // is closed mid-upload (no interruption event fires then).
     resumeStore.setProgress(artifactUuid, progress.value)
   }
   return out
 }
 
-// Finalize with kungal; on success emit the result and drop the resume record.
 const completeUpload = async (
   artifactUuid: string,
   parts: ToolsetUploadPart[] | undefined
@@ -335,10 +302,6 @@ const completeUpload = async (
   return true
 }
 
-// Park an interrupted multipart upload as resumable: its uploaded parts stay in
-// B2, so the user continues from the breakpoint (re-PUTting only the rest) by
-// clicking 继续上传 — no abort, no re-sending bytes. Reused for a failed complete
-// too: resuming then re-attempts complete (parts already all present).
 const registerResumable = (artifactUuid: string, f: File) => {
   rememberPending(f, artifactUuid, progress.value)
   resumeUuid.value = artifactUuid
@@ -346,11 +309,6 @@ const registerResumable = (artifactUuid: string, f: File) => {
   refreshPending()
 }
 
-// One server-driven flow: init → PUT (single or multipart, per the init
-// response) → complete. Bytes go straight to B2 via the presigned URLs the
-// artifact service returns; kungal only brokers the JSON calls. A multipart
-// upload is registered resumable on init so an interruption continues from the
-// breakpoint (resumeUploadToArtifact) instead of restarting.
 const uploadToArtifact = async (f: File) => {
   const contentType = resolveContentType(f)
   const initData = {
@@ -375,7 +333,6 @@ const uploadToArtifact = async (f: File) => {
   }
 
   if (init.multipart) {
-    // Persist BEFORE the first PUT so even an immediate failure is resumable.
     rememberPending(f, init.artifact_uuid, 0)
     refreshPending()
     const partList = init.parts ?? []
@@ -396,14 +353,12 @@ const uploadToArtifact = async (f: File) => {
         registerResumable(init.artifact_uuid, f)
       }
     } catch (error) {
-      // Keep the artifact — its uploaded parts stay in B2 for resume.
       registerResumable(init.artifact_uuid, f)
       notifyUploadTransferError(error)
     }
     return
   }
 
-  // Single-part (small file): no resume bookkeeping — a failure just re-inits.
   try {
     uploadStatus.value = 'smallUploading'
     if (!init.upload_url) {
@@ -427,10 +382,6 @@ const uploadToArtifact = async (f: File) => {
   }
 }
 
-// Resume an interrupted upload: ask kungal which parts are already stored (skip
-// them, reuse their ETags) and PUT only the missing ones, then complete with the
-// full set. Falls back to a fresh upload if the session is gone (GC'd / already
-// completed / expired → resume 404s).
 const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
   const contentType = resolveContentType(f)
   const resumeData = { artifact_uuid: artifactUuid }
@@ -445,14 +396,11 @@ const resumeUploadToArtifact = async (f: File, artifactUuid: string) => {
     { method: 'POST', body: resumeData }
   )
   if (!resume) {
-    // No longer resumable (GC'd / completed / expired) — drop the stale record
-    // and start fresh.
     forgetPending(artifactUuid)
     await uploadToArtifact(f)
     return
   }
 
-  // Single-part resume = re-PUT the whole file to the fresh URL.
   if (!resume.multipart) {
     try {
       uploadStatus.value = 'smallUploading'
@@ -520,15 +468,11 @@ const submit = async () => {
   }
 }
 
-// From the on-open resume list: the user re-picked the matching file (validated
-// in ResumeList), so select it and continue from the breakpoint.
 const handleContinuePending = (record: ToolsetPendingUpload, file: File) => {
   setSelectedUploadFile(file)
   resumeUploadToArtifact(file, record.artifact_uuid)
 }
 
-// Discard an unfinished upload: soft-delete the artifact (its B2 parts are
-// reclaimed by GC) and drop the local record.
 const handleDeletePending = async (artifactUuid: string) => {
   await abortUpload(artifactUuid)
   forgetPending(artifactUuid)
@@ -541,10 +485,6 @@ onMounted(refreshPending)
   <div class="space-y-4">
     <input ref="fileInput" type="file" hidden @change="onChange" />
 
-    <!-- Surfaced on open: any uploads started-but-not-finished for this toolset
-         (persisted across reloads). Resuming needs the user to re-pick the file
-         (the browser can't read it by path), so the hint spells that out and the
-         list is shown directly. -->
     <div v-if="pending.length && uploadStatus === 'idle'" class="space-y-2">
       <div
         class="text-warning border-warning/30 bg-warning/10 flex items-start gap-2 rounded-lg border p-3 text-sm"

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
-// Restricted-visibility allow-list picker. Reuses OAuth /user/search (the same
-// endpoint the @-mention autocomplete uses); results are never cached.
 const props = defineProps<{
   modelValue: CollectionUserBrief[]
 }>()

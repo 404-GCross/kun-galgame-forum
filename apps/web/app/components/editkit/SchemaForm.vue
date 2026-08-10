@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Schema-driven edit form (infra doc 21 §2.7): renders every projected field
-// by its kind + the host's presentation config, tracks a working copy, and
-// emits ONLY the dirty subset as the proposal patch (field key → new value).
-// Zero policy logic — capabilities come from the projection.
 import { computed, reactive, ref, toRaw, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import type { EditFieldConfigMap, EditSchemaField } from './types'
@@ -11,21 +7,11 @@ import { editValueEqual } from './utils'
 const props = withDefaults(
   defineProps<{
     fields: EditSchemaField[]
-    /** Current entity values keyed by eternal field keys. */
     values: Record<string, unknown>
     config: EditFieldConfigMap
-    /** Section order; fields whose config.group is absent land in the last
-     * unnamed section. */
     groupOrder?: string[]
     disabled?: boolean
-    /** 'stack' (default) renders every section top-to-bottom. 'tabs' renders
-     * one section at a time behind a tab rail — vertical (left) on desktop,
-     * horizontal (top) on mobile — with a per-tab "edited" marker. */
     layout?: 'stack' | 'tabs'
-    /** Group names (in the `tabs` layout) whose fields render behind their OWN
-     * horizontal sub-tab — one field at a time — instead of stacked. Handy for
-     * a language switch (e.g. the four intro fields as 英语/日语/… tabs). Each
-     * sub-tab uses the field's `tabLabel` (falling back to `label`). */
     tabbedGroups?: string[]
   }>(),
   { layout: 'stack' }
@@ -35,7 +21,6 @@ const emit = defineEmits<{
   'update:patch': [patch: Record<string, unknown>]
 }>()
 
-// Working copy, (re)seeded whenever the upstream values change identity.
 const working = reactive<Record<string, unknown>>({})
 watch(
   () => props.values,
@@ -69,7 +54,6 @@ watch(patch, (value) => emit('update:patch', value), { deep: false })
 const dirtyCount = computed(() => Object.keys(patch.value).length)
 defineExpose({ dirtyCount })
 
-// Group fields into ordered sections.
 const UNGROUPED = '__ungrouped'
 const sections = computed(() => {
   const byGroup = new Map<string, EditSchemaField[]>()
@@ -100,15 +84,11 @@ const sections = computed(() => {
   return out
 })
 
-// ---- tabbed layout ---------------------------------------------------------
-// Vertical rail on desktop, horizontal on mobile. Panels stay mounted (v-show)
-// so entity-picker name lookups + dirty state survive tab switches.
 const isDesktop = useMediaQuery('(min-width: 768px)')
 const tabOrientation = computed(() => (isDesktop.value ? 'vertical' : 'horizontal'))
 
 const tabKey = (name: string) => name || UNGROUPED
 
-// patch-key → its section group, so a tab can flag "you edited this section".
 const dirtyBySection = computed<Record<string, number>>(() => {
   const counts: Record<string, number> = {}
   for (const key of Object.keys(patch.value)) {
@@ -122,8 +102,6 @@ const tabItems = computed(() =>
   sections.value.map((section) => ({
     value: tabKey(section.name),
     textValue: section.name || '其他',
-    // # of unsaved edits in this section → a count badge in the #tab slot
-    // (KunTab 2.15 typed the extra field through the generic item shape).
     count: dirtyBySection.value[tabKey(section.name)] ?? 0
   }))
 )
@@ -139,11 +117,9 @@ watch(
   { immediate: true }
 )
 
-// ---- tabbed groups (a group's fields behind their own sub-tab) -------------
 const isTabbedGroup = (name: string) =>
   props.tabbedGroups?.includes(name) ?? false
 
-// section name → the field key shown in its sub-tab.
 const activeField = reactive<Record<string, string>>({})
 watch(
   sections,
@@ -168,13 +144,11 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
       props.config[field.key]?.tabLabel ??
       props.config[field.key]?.label ??
       field.key,
-    // a dot marks a language/field with unsaved edits.
     dirty: field.key in patch.value
   }))
 </script>
 
 <template>
-  <!-- Tabbed layout: rail + one visible panel. -->
   <div v-if="layout === 'tabs'" class="flex flex-col gap-4 md:flex-row md:gap-6">
     <KunTab
       :model-value="active"
@@ -204,8 +178,6 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
         :key="section.name"
         class="grid grid-cols-1 gap-5"
       >
-        <!-- Tabbed group: fields behind a horizontal sub-tab (e.g. intro
-             languages), one at a time. -->
         <template v-if="isTabbedGroup(section.name)">
           <KunTab
             :model-value="activeField[section.name] ?? ''"
@@ -236,7 +208,6 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
             :disabled="disabled"
           />
         </template>
-        <!-- Normal: fields stacked. -->
         <template v-else>
           <EditkitSchemaField
             v-for="field in section.fields"
@@ -251,7 +222,6 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
     </div>
   </div>
 
-  <!-- Stacked layout (default): every section top-to-bottom. -->
   <div v-else class="space-y-6">
     <section v-for="section in sections" :key="section.name" class="space-y-3">
       <h3

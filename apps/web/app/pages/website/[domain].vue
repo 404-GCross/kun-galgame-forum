@@ -9,8 +9,6 @@ import type {
   WithContext
 } from 'schema-dts'
 
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -120,9 +118,6 @@ if (data.value) {
 </script>
 
 <template>
-  <!-- min-w-0: a `1fr` track floors at the item's max-content width, so a long
-       URL or a wide embed would push its column open and shift the 2/1 split as
-       content loads. Same fix as the galgame detail. -->
   <div v-if="data" class="grid grid-cols-1 gap-3 lg:grid-cols-3">
     <div class="min-w-0 space-y-3 lg:col-span-2">
       <KunCard

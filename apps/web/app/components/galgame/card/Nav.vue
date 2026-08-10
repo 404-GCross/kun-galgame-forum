@@ -25,9 +25,6 @@ withDefaults(
   { isShowAdvanced: false }
 )
 
-// All filters now live in the URL query (useGalgameFilters / useRouteQuery)
-// instead of a Pinia store — the filtered view is shareable + survives
-// refresh + back/forward. providers + months ride as CSV strings.
 const {
   page,
   type,
@@ -45,13 +42,9 @@ const {
   minRating
 } = useGalgameFilters()
 
-// One unified 高级筛选 panel folds together what used to be three
-// separate toggles (网盘 / 发售日期 / 评分); 显示设置 controls the card
-// layout prefs. Both toggle independently.
 const showFilters = ref(false)
 const showDisplay = ref(false)
 
-// Card display prefs (persisted) — bound to the 显示设置 switches.
 const {
   showPlatform,
   showRating,
@@ -63,8 +56,6 @@ const {
   isOpenInNewTab
 } = storeToRefs(usePersistGalgameCardStore())
 
-// Global "显示没有下载资源的 Galgame" (cookie-persisted, applies to all local
-// galgame lists, not just /galgame). Bound to the 显示设置 switch below.
 const { showKUNGalgameNoResource } = storeToRefs(usePersistSettingsStore())
 
 watch(
@@ -88,9 +79,6 @@ watch(
   }
 )
 
-// ── Bayesian rating filter ──────────────────────────────────────────
-// Two single-select chip rows: minimum rating count (high-confidence
-// gate) and minimum Bayesian score. 0 = 不限.
 const minCountOptions = [
   { value: 0, label: '不限' },
   { value: 5, label: '≥5' },
@@ -105,7 +93,6 @@ const minRatingOptions = [
   { value: 9, label: '9 分+' }
 ]
 
-// ── CSV set helpers (shared by month + provider multi-selects) ──────
 const csvToSet = (csv: string) => new Set(csv.split(',').filter(Boolean))
 const toggleCsv = (csv: string, key: string) => {
   const set = csvToSet(csv)
@@ -117,17 +104,6 @@ const toggleCsv = (csv: string, key: string) => {
   return [...set].sort().join(',')
 }
 
-// ── Release year / month filter (wiki §17 + §17.10) ─────────────────
-// Two ORTHOGONAL controls, both derived views over the store so the
-// selection survives Nav remounts (store is the source of truth):
-//   • year range — `releasedFrom`/`releasedTo` (each '' | 'YYYY',
-//             independent). Pick the same on both ends for a single
-//             year; leave one end '全部/不限' for an open-ended range
-//             ("2020 及以后" / "2024 及以前").
-//   • months — multi-select set (wiki §17.10) → releasedMonths csv
-//             ('' | '3' | '3,7'). AND-combined with the year range, and
-//             works WITHOUT a year ('历年三月' = months only, no year).
-// Mirrors the 网盘筛选 panel's toggle-button-+-chip-rows UX.
 const KUN_RELEASE_EARLIEST_YEAR = 1980
 const yearOptions = [
   { value: '', label: '不限' },
@@ -144,9 +120,6 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => ({
   label: `${i + 1} 月`
 }))
 
-// Year-range setters with clamping so the lower bound never exceeds the
-// upper (picking a `from` past the current `to` drags `to` along, and
-// vice versa) — an inverted range would silently return nothing.
 const applyFromYear = (year: string) => {
   releasedFrom.value = year
   if (year && releasedTo.value && Number(releasedTo.value) < Number(year)) {
@@ -160,7 +133,6 @@ const applyToYear = (year: string) => {
   }
 }
 
-// Month multi-select (numeric sort for a tidy URL: months=2,3,10).
 const selectedMonths = computed(() => csvToSet(releasedMonths.value))
 const isMonthSelected = (m: number) => selectedMonths.value.has(String(m))
 const toggleMonth = (m: number) => {
@@ -177,7 +149,6 @@ const toggleMonth = (m: number) => {
     .join(',')
 }
 
-// Provider multi-selects (CSV; lexical order is fine, BE does set membership).
 const includeSet = computed(() => csvToSet(includeProviders.value))
 const excludeSet = computed(() => csvToSet(excludeOnlyProviders.value))
 const toggleInclude = (key: string) => {
@@ -191,7 +162,6 @@ const typeOptions = Object.entries(KUN_GALGAME_RESOURCE_TYPE_MAP)
   .filter(([k]) => k !== 'name')
   .map(([value, label]) => ({ value, label }))
 
-// 作品类型 (rating-derived): 全部 + the work types + 未分类.
 const gameTypeOptions = [
   { value: 'all', label: '全部作品' },
   ...Object.entries(KUN_GALGAME_RATING_GAME_TYPE_MAP).map(([value, label]) => ({
@@ -216,10 +186,6 @@ const sortOptions = Object.entries(KUN_GALGAME_RESOURCE_SORT_FIELD_MAP).map(
   })
 )
 
-// ── Reset all filters ───────────────────────────────────────────────
-// `hasActiveFilter` gates the reset button so it only appears when there
-// is something to clear. Defaults mirror the store's initial values
-// (type/language/platform = 'all', sort = time/desc).
 const hasActiveFilter = computed(
   () =>
     type.value !== 'all' ||
@@ -237,8 +203,6 @@ const hasActiveFilter = computed(
     minRating.value > 0
 )
 
-// Highlights the 高级筛选 button when anything inside its (now unified)
-// panel is active — providers, release date, or rating.
 const hasAdvancedFilter = computed(
   () =>
     !!includeProviders.value ||
@@ -317,7 +281,6 @@ const resetFilters = () => {
       </button>
     </KunScrollShadow>
 
-    <!-- 作品类型 — from raters' galgame_type tags (see useGalgameFilters). -->
     <KunScrollShadow>
       <button
         v-for="opt in gameTypeOptions"

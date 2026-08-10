@@ -2,12 +2,6 @@
 import { useIntersectionObserver } from '@vueuse/core'
 import { managementRoleLabel, KUN_USER_STATUS_MAP } from '~/constants/user'
 
-// The full-width profile header (a default KunCard): identity (avatar / name /
-// role · status chips / 签名 / 私聊) plus the headline metrics lifted out of the
-// 关于 panel (the full stats stay there). On scroll, once the header leaves the
-// top, a slim sticky bar (small avatar + name + key stats) fades in below the top
-// bar so the identity stays visible; the header itself scrolls away normally (the
-// mini bar is `fixed`, so it adds no flow height → no scroll jump).
 const props = defineProps<{
   user: UserInfo
 }>()
@@ -15,8 +9,6 @@ const props = defineProps<{
 const currentUserId = usePersistUserStore().id
 const isSelf = computed(() => currentUserId === props.user.id)
 
-// The headline metrics for the header. The complete stats grid lives in 关于;
-// these are the at-a-glance figures worth surfacing on every sub-tab.
 const metrics = computed(() => [
   { label: '萌萌点', value: props.user.moemoepoint, accent: true },
   { label: '话题', value: props.user.topic },
@@ -26,10 +18,6 @@ const metrics = computed(() => [
   { label: '被推', value: props.user.upvote }
 ])
 
-// Collapse when the header has scrolled above the top bar. rootMargin's -80px
-// top inset ≈ the fixed top bar height, so the mini bar appears as the header
-// clears it. The observer targets the root wrapper (a plain element) rather than
-// the KunCard component. Client-only (VueUse no-ops on SSR) → starts expanded.
 const bannerRef = ref<HTMLElement | null>(null)
 const collapsed = ref(false)
 useIntersectionObserver(
@@ -105,7 +93,6 @@ useIntersectionObserver(
         </div>
       </div>
 
-      <!-- Headline metrics -->
       <div class="mt-5 flex flex-wrap gap-x-8 gap-y-3">
         <div v-for="m in metrics" :key="m.label" class="min-w-14">
           <div :class="cn('text-xl font-bold', m.accent && 'text-secondary')">
@@ -116,10 +103,6 @@ useIntersectionObserver(
       </div>
     </KunCard>
 
-    <!-- Compact sticky bar: fades in once the header scrolls above the top bar.
-         `fixed` (not in flow) → no scroll jump; sits below the fixed top bar
-         (z-20 < top bar z-30) and mirrors the layout's max-w-7xl + rail offset so
-         it aligns with the page content. -->
     <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 -translate-y-2"

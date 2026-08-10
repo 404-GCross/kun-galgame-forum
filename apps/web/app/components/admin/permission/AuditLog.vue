@@ -3,11 +3,6 @@ import { KUN_PERMISSION_META } from '~/constants/permission'
 import { KUN_USER_ROLE_MAP } from '~/constants/user'
 import type { ForumPermission } from '~/composables/useCan'
 
-// Paged, newest-first log of every role / per-user permission change. Each row's
-// delta is computed CLIENT-SIDE by diffing the audit entry's before/after
-// override sets — the backend stores the raw snapshots, the FE renders the
-// difference as chips. Imperative fetch (no top-level await) so it mounts
-// cleanly when its tab is toggled on.
 const page = ref(1)
 const limit = 20
 const data = ref<KunPermAuditPage | null>(null)
@@ -46,9 +41,6 @@ const subjectLabel = (entry: KunPermAuditEntry): string => {
   return user ? `用户 · ${user.name}` : `用户 · #${entry.subject}`
 }
 
-// The delta of one audit row: how the override set changed from before → after.
-// A key whose effect newly appears / changes → its NEW effect (grant / revoke);
-// a key present before and gone after → the override was removed entirely.
 type RowDelta = { permission: string; kind: 'grant' | 'revoke' | 'removed' }
 
 const rowDeltas = (entry: KunPermAuditEntry): RowDelta[] => {

@@ -1,16 +1,6 @@
 <script setup lang="ts">
-// Avatar upload — in-app multipart to kungal's proxy, which forwards
-// to OAuth's POST /auth/me/avatar (docs/oauth/02-user-profile.md).
-// OAuth pipes the bytes to image_service, writes the resulting hash
-// back to the user row, and returns { hash, url, variant_urls, ... }
-// in one round-trip. We surface the new url into the local user
-// store so the avatar swaps everywhere without a page reload.
-//
-// Allowed types are scoped to common image formats — the underlying
-// image_service is more permissive, but a UI-side filter keeps users
-// out of the "i picked a PDF and got a 400" rabbit hole.
 const ACCEPT_TYPES = 'image/png,image/jpeg,image/webp,image/gif,image/avif'
-const MAX_BYTES = 4 * 1024 * 1024 // 4 MiB — matches fiber default body cap
+const MAX_BYTES = 4 * 1024 * 1024
 
 const userStore = usePersistUserStore()
 
@@ -47,8 +37,6 @@ const handleFileChange = (event: Event) => {
     return
   }
 
-  // Release the previous preview's blob URL before creating a new one
-  // so we don't leak object-URL memory across re-pick.
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = URL.createObjectURL(file)
   pendingFile.value = file
@@ -67,9 +55,6 @@ const submit = async () => {
   const fd = new FormData()
   fd.append('file', pendingFile.value)
 
-  // No `Content-Type` set here on purpose — letting fetch derive it
-  // from the FormData preserves the multipart boundary. Setting it
-  // manually breaks the upstream binding.
   const result = await kunFetch<AvatarUploadResponse>('/user/avatar', {
     method: 'POST',
     body: fd
@@ -78,13 +63,7 @@ const submit = async () => {
 
   if (result?.url) {
     useMessage('头像更新成功', 'success')
-    // OAuth has already persisted the new avatar; mirror the change
-    // into the local store so every component reading user.avatar
-    // (top bar, comments, etc.) re-renders without a reload.
     userStore.avatar = result.url
-    // withImageVariant handles both image_service (`_100`) and legacy
-    // nitro (`-100`) URL conventions automatically; see helper for the
-    // detection rule.
     userStore.avatarMin = withImageVariant(result.url, '100')
     clearPick()
   }

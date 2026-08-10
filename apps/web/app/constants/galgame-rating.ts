@@ -42,9 +42,6 @@ export const KUN_GALGAME_RATING_SPOILER_COLOR_MAP: Record<string, KunUIColor> =
     serious: 'danger'
   }
 
-// Shown in list / feed contexts in place of a spoiler-flagged rating's summary
-// (spoiler_level !== 'none'). The full text is revealed only on the rating's
-// own detail page. The activity-feed backend mirrors this wording in Go.
 export const KUN_GALGAME_RATING_SPOILER_WARNING = '该评分可能含有剧透内容，点进查看'
 
 export const KUN_GALGAME_RATING_PLAY_STATUS_CONST = [

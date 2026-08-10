@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
-// Mirrors the API's RequirePermission(user.purge_content) gate on the
-// /admin/user/:id/content-stats + purge routes (AdminUserCard) — that pair is
-// permission-gated, not RequireAdmin. UX guard — the real boundary is the API.
 definePageMeta({
   middleware: 'permission',
   permissions: ['user.purge_content']
@@ -11,14 +8,6 @@ definePageMeta({
 
 useKunDisableSeo('用户内容管理')
 
-// Account details (ban / delete / profile) live in the OAuth admin UI now.
-// This page only manages the CONTENT a user has published on kungal — find
-// a user, then purge everything they posted here (for spam / ad accounts).
-//
-// Account-center web app root + /users (the OAuth admin user-management page:
-// ban / unban / 注销 / 角色). Read DIRECTLY from oauthFrontendUrl config — same
-// rationale as the Email/Password 改密 jumps; don't derive from oauthServerUrl
-// (dev runs FE + API on different ports).
 const oauthUsersAdminURL = computed(
   () => `${useRuntimeConfig().public.oauthFrontendUrl}/users`
 )
@@ -36,9 +25,6 @@ const handleSearch = async () => {
   isSearching.value = true
   const res = await kunFetch<{ items: SearchResultUser[]; total: number }>(
     '/search',
-    // limit must stay <= the /search endpoint cap (SearchRequest max=12),
-    // else the request 400s. Username search rarely needs more; refine the
-    // query for a narrower match.
     { method: 'GET', query: { keywords, type: 'user', page: 1, limit: 12 } }
   )
   isSearching.value = false
@@ -66,8 +52,6 @@ watchDebounced(() => searchQuery.value, handleSearch, {
       </template>
     </KunHeader>
 
-    <!-- kungal 是 OAuth 的 RP，本地不存账号，故无法在此封禁 / 删除账号——只能清内容。
-         账号本身的操作集中在统一账号后台，给管理员一个显式入口（此前只有代码注释）。 -->
     <KunInfo
       color="info"
       icon="lucide:shield-alert"

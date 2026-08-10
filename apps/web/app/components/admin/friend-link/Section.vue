@@ -2,7 +2,6 @@
 import { useSortable, moveArrayElement } from '@vueuse/integrations/useSortable'
 import { FRIEND_LINK_STATUS_CHIP } from '~/constants/friendLink'
 
-// FriendLink / FriendLinkCategory are auto-imported (shared/types).
 const props = defineProps<{
   category: FriendLinkCategory
   label: string
@@ -16,7 +15,6 @@ const emits = defineEmits<{
   reorder: [category: FriendLinkCategory, ids: number[]]
 }>()
 
-// Local copy drives sortable; re-synced whenever the parent refetches.
 const items = ref<FriendLink[]>([...props.links])
 watch(
   () => props.links,
@@ -32,7 +30,6 @@ useSortable(listEl, items, {
   onUpdate: (e: { oldIndex?: number; newIndex?: number }) => {
     if (e.oldIndex == null || e.newIndex == null) return
     moveArrayElement(items, e.oldIndex, e.newIndex)
-    // Persist the new order after Vue settles the moved array.
     nextTick(() =>
       emits(
         'reorder',

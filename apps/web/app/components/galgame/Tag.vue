@@ -8,11 +8,6 @@ import {
 const props = withDefaults(
   defineProps<{
     tags: GalgameDetailTag[]
-    // 'mobile' renders the original inline-checkbox filter + larger chips and is
-    // mounted right under the page header; 'desktop' keeps the compact popover
-    // filter + small chips in the sidebar. Two instances are mounted (one per
-    // breakpoint via Galgame.vue) because position, chip size and filter UI all
-    // differ between them.
     variant?: 'mobile' | 'desktop'
   }>(),
   { variant: 'desktop' }
@@ -20,18 +15,6 @@ const props = withDefaults(
 
 const isMobile = computed(() => props.variant === 'mobile')
 
-// Adult tags are off by default and only pre-selected when the viewer has NSFW
-// enabled (cookie-persisted, so this is correct at SSR setup — same source the
-// page's isNsfwMode reads in [gid]/index.vue).
-//
-// This toggle is now a convenience for NSFW-ENABLED viewers ONLY. The server
-// withholds sexual tags from a SFW response entirely (galgame_service.GetDetail
-// → withoutSexualTags): hiding them here still shipped them inside the SSR
-// payload, where a crawler reads them. So a SFW viewer ticking 成人内容 sees
-// nothing appear — there is nothing to reveal, which is the point. Flipping the
-// NSFW setting reloads the page (SidebarNSFWToggle), and the detail fetch
-// carries the cookie, so the fuller set arrives on that reload; there is
-// deliberately no second fetch path for it.
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 const isNsfwEnabled = computed(
   () =>
@@ -39,13 +22,6 @@ const isNsfwEnabled = computed(
     showKUNGalgameContentLimit.value === 'all'
 )
 
-// Default filter: everything non-adult (+ 成人内容 when NSFW is on), 无剧透 only.
-//
-// The category axis is now the CATALOG vocabulary (content / meta, plus the
-// reconstructed sexual bucket) rather than the wiki's closed three-value one —
-// so this is typed as a plain string set: an upstream vocabulary can grow, and
-// a chip whose category we do not recognise must still be filterable rather
-// than silently dropped.
 const selectedCategories = ref<string[]>(
   isNsfwEnabled.value
     ? ['content', 'meta', 'technical', 'sexual']
@@ -86,18 +62,6 @@ const filteredTags = computed(() => {
   return filtered.sort((a, b) => a.id - b.id)
 })
 
-// Color of the trailing "+N" badge encodes the tag's category. Same
-// mapping the leading "#" used to carry before the redesign:
-//   content          → primary (blue)
-//   sexual           → danger  (red)
-//   meta / technical → success (green)
-//
-// `meta` is the live vocabulary; this only listed `technical` and so painted
-// every 作品属性 badge the grey fallback. The catalog re-anchoring replaced the
-// wiki's content/sexual/technical axis with a content|meta kind plus a sexual
-// flag (catalogTagCategory), so `technical` never arrives any more — it stays
-// mapped because rows synthesised from the old wiki data still carry it, and
-// both name the same non-content, non-adult bucket.
 const countColorByCategory = (category: string): string => {
   if (category === 'content') return 'text-primary'
   if (category === 'sexual') return 'text-danger'
@@ -113,8 +77,6 @@ const countColorByCategory = (category: string): string => {
     class-name="overflow-visible"
     content-class="space-y-3"
   >
-    <!-- Mobile: the original inline-checkbox filter (horizontal scroll), above
-         the tag list. The sidebar/desktop variant uses the popover below. -->
     <KunScrollShadow v-if="isMobile" shadow-size="5rem">
       <div class="flex w-fit items-center gap-3 whitespace-nowrap">
         <KunCheckBox
@@ -160,9 +122,6 @@ const countColorByCategory = (category: string): string => {
             :size="isMobile ? 'md' : 'sm'"
           >
             {{ tag.name }}
-            <!-- An unmapped source tag never gets a count from upstream, and
-                 no row has one before the supplying wave deploys — both land
-                 on 0, which must read as "no badge", not "+0". -->
             <span
               v-if="tag.galgame_count > 0"
               :class="cn('text-xs', countColorByCategory(tag.category))"
@@ -182,9 +141,6 @@ const countColorByCategory = (category: string): string => {
       />
     </KunScrollShadow>
 
-    <!-- Desktop: compact popover filter (fits the narrow sidebar column).
-         full-width makes the trigger anchor span the card (KunPopover 2.13),
-         matching the 查看编辑历史与更新请求 button. -->
     <KunPopover v-if="!isMobile" position="top-start" full-width>
       <template #trigger>
         <KunButton variant="flat" color="primary" size="sm" full-width>

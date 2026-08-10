@@ -132,19 +132,6 @@ export const userSortItem: RankingUser[] = [
     sortField: 'moemoepoint',
     label: '萌萌点'
   },
-  // TODO:
-  // {
-  //   index: 2,
-  //   icon: 'lucide:sparkles',
-  //   name: 'upvote',
-  //   sortField: 'upvote'
-  // },
-  // {
-  //   index: 3,
-  //   icon: 'lucide:thumbs-up',
-  //   name: 'like',
-  //   sortField: 'like'
-  // },
   {
     index: 2,
     icon: 'lucide:square-gantt-chart',
@@ -173,9 +160,6 @@ export const userSortItem: RankingUser[] = [
     sortField: 'galgame_resource',
     label: 'Galgame 资源'
   }
-  // NOTE: a "Galgame 数" (galgames added by a user) sort was removed — post
-  // wiki-migration the forum's local galgame table has no creator column, so
-  // there's no local source to rank by. Restoring it needs wiki (infra) data.
 ]
 
 export const rankingPageTabs: KunTabItem[] = [

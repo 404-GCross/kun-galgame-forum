@@ -2,8 +2,6 @@
 const props = defineProps<{
   replyId: number
   targetUser: KunUser
-  // Set when replying to another comment (nested); omitted for a top-level
-  // comment posted on the reply itself.
   parentCommentId?: number
 }>()
 

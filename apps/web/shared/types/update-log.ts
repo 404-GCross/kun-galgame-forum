@@ -37,11 +37,6 @@ export interface UpdateLog {
   updated: Date | string
 }
 
-// Wire shapes of GET /update/history and GET /update/todo. The
-// handlers each return `fiber.Map{"updates|todos": ..., "total":...}`
-// so the outer key is endpoint-specific (not the shared `items`
-// envelope). FE consumers previously typed these as undeclared
-// `UpdateHistoryList` / `UpdateTodoList` — TS `any`.
 export interface UpdateHistoryList {
   updates: UpdateLog[]
   total: number

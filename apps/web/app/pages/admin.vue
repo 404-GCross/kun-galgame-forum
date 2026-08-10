@@ -9,16 +9,6 @@ const pageType = computed(() => {
   return routeType as KUN_ADMIN_PAGE_ROUTE_TYPE
 })
 
-// Underlined vertical tab rail (same style as the home feed, one size up).
-// Selecting a tab navigates to /admin/<router>; the active tab tracks the route.
-//
-// The rail is FILTERED to what this viewer can actually open (useAdminNav — the
-// same filter that decides where the 管理系统 entry in the user menu points, so
-// the door and the room can't disagree). It used to render the full list
-// unconditionally, so a moderator saw 数据总览 / 用户管理 / 权限管理 / 网站设置 —
-// four tabs whose pages bounce them straight back to the homepage. A tab you are
-// shown and then thrown out of reads as the site being broken, or as a
-// permission having gone missing.
 const { items } = useAdminNav()
 
 const adminNavItems = computed(() =>

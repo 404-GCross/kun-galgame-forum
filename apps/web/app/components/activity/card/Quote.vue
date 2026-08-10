@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// A quoted-content block for feed cards: the reply being replied to, or the
-// comment being commented on. A rounded vertical bar on the left, no background.
-// Optional label (e.g. "#5") prefixes the clamped content.
 defineProps<{ content: string; label?: string }>()
 </script>
 

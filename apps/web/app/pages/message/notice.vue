@@ -15,7 +15,6 @@ const { data, status, refresh } = await useKunFetch<MessageList>('/message', {
   query: pageData
 })
 
-// ⋯ menu → 通知设置 modal (reuses the shared preference editor).
 const isSettingOpen = ref(false)
 
 onMounted(async () => {

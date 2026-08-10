@@ -30,9 +30,6 @@ watch(
   }
 )
 
-// Keyword search: reset to page 1 when the query changes so the user
-// always sees results from the top. Debounced so typing doesn't thrash
-// the URL/fetch on every keystroke.
 watchDebounced(
   query,
   () => {
@@ -61,13 +58,6 @@ watchDebounced(
         {{ KUN_GALGAME_TOOLSET_TYPE_MAP[type] || type }}
       </KunSelect>
 
-      <!-- <KunSelect
-        :model-value="language"
-        :options="kunGalgameToolsetLanguageOptions"
-        @set="(newVal) => (language = newVal as typeof language)"
-      >
-        {{ KUN_GALGAME_TOOLSET_LANGUAGE_MAP[language] || language }}
-      </KunSelect> -->
 
       <KunSelect
         :model-value="platform"

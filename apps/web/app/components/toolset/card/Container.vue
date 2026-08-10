@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// URL-backed filters (useToolsetFilters / useRouteQuery) — refs double as
-// the fetch query (URL key === BE query key). useKunFetch watches them, so
-// a filter change (which writes the URL) re-fetches; back/forward too.
 const {
   page,
   limit,

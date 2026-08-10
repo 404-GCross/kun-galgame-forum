@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Shared chrome for every feed card: avatar (top-left) + a header line of
-// [username → /user/:id/info] [muted time], then the card body via the default
-// slot. Centralizes the universal rules — clickable username (darker), lighter
-// time (default-500), no type chip — so each card only supplies its body.
 defineProps<{
   actor?: KunUser
   timestamp: Date | string
@@ -27,7 +23,6 @@ defineProps<{
         <span class="text-default-500">
           <KunTime :time="timestamp" />
         </span>
-        <!-- Optional extra header meta after the time (e.g. an edit indicator). -->
         <slot name="meta" />
       </div>
 

@@ -1,15 +1,4 @@
 <script setup lang="ts">
-// Notification-category preferences (BE migration 053), reused both in the
-// account settings page and in a modal on /message/notice. Each switch is
-// "接收该类通知" — ON = receive, OFF = mute. Muting only stops the category from
-// driving the top-bar red dot / unread badges; the messages are still kept and
-// stay visible in the notification center.
-//
-// Container-agnostic: renders just the heading + tabs + switches, no outer
-// KunCard/modal frame — the host provides that. Catalog keys mirror the server
-// whitelist: message.type values, the "chat" pseudo key, and namespaced
-// "wiki:*" keys. Official system broadcasts are intentionally non-mutable, so
-// they have no switch here.
 import { notificationCategoryGroups } from '~/constants/notification'
 
 const tabs = notificationCategoryGroups
@@ -21,15 +10,12 @@ const tabItems = tabs.map(({ value, textValue, icon }) => ({
 }))
 const activeTab = ref('interaction')
 
-// Items of the currently-selected tab (mirrors Resource.vue's activeBucket):
-// render a single list rather than v-show-ing every panel.
 const activeItems = computed(
   () => tabs.find((t) => t.value === activeTab.value)?.items ?? []
 )
 
 const allKeys = tabs.flatMap((t) => t.items.map((i) => i.key))
 
-// enabled[key] === true → receiving (not muted). Defaults to true.
 const enabled = reactive<Record<string, boolean>>(
   Object.fromEntries(allKeys.map((k) => [k, true]))
 )
@@ -44,7 +30,6 @@ const applyMuted = (muted: string[]) => {
 
 const collectMuted = () => allKeys.filter((key) => !enabled[key])
 
-// Fetch the authoritative muted set and apply it locally.
 const load = async () => {
   const result = await kunFetch<NotificationPreference>(
     '/user/notification-preferences'
@@ -54,10 +39,6 @@ const load = async () => {
   }
 }
 
-// Persist the current desired state. One request is kept in flight and rapid
-// toggles are coalesced (queued) so the last state always wins — concurrent
-// PUTs can't overwrite each other out of order. Each PUT sends the full set, so
-// on failure we re-sync from the server rather than track per-toggle rollbacks.
 const isSaving = ref(false)
 let queued = false
 

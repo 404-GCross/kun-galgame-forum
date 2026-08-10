@@ -9,15 +9,8 @@ const props = defineProps<{
   refresh: () => void
 }>()
 
-// Local edit-modal state — same pattern as LinkDetailModal.
-// Switched away from the legacy useTempGalgameResourceStore +
-// `<GalgameResourcePublish>` triple-hop because that flow was the
-// recurring `$nuxt of null` offender (see LinkEditModal.vue's header
-// comment for the full diagnosis).
 const isEditOpen = ref(false)
 
-// Backend-computed labels (e.g. "百度网盘 / OneDrive"). Falls back to the
-// raw domain when the resource pre-dates the backfill or matches no rule.
 const providerName = computed(() => {
   const names = props.resource.provider_names
   if (names && names.length > 0) {
@@ -51,8 +44,6 @@ const handleDeleteResource = async () => {
   }
 }
 
-// "报告失效" — delegated to useReportResourceExpired (auth + confirm + the
-// gated check→mark flow); reportStatus drives the inline checklist below.
 const { status: reportStatus, report: reportExpire } =
   useReportResourceExpired()
 const handleReportExpire = () =>
@@ -80,9 +71,6 @@ const handleGetResourceLink = async () => {
   }
 }
 
-// Edit flow: ensure detail (link/code/password) is loaded, then open
-// the local LinkEditModal. After save the modal closes itself and
-// calls props.refresh to reload the detail page.
 const handleRewriteResource = async () => {
   if (!detail.value) {
     const res = await handleGetResourceLink()

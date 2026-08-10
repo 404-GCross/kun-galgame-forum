@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// The indented family tree, recursive through its own auto-import name.
-//
-// Indentation is deliberately small and identical at every depth (12px, 16px
-// from `sm`): the graph runs up to four levels deep, and a phone-width column
-// that loses 32px per level has nothing left for the brand names by level
-// three. The connector is a single left border rather than per-row elbows —
-// same reading, no absolutely-positioned pseudo-elements to keep aligned when
-// a row wraps.
 defineProps<{
   nodes: GalgameOfficialFamilyNode[]
   currentId: number

@@ -8,7 +8,6 @@ const props = defineProps<{
 
 const emits = defineEmits<{ rated: [result: QuizQualityResult] }>()
 
-// ── reveal, narrowed by quiz.type ─────────────────────────────────
 const optionRows = computed(() => {
   if (props.quiz.type === 'single') {
     const a = props.result.answer as QuizFullSingle
@@ -59,7 +58,6 @@ const rowClass = (correct: boolean, chosen: boolean) => {
   return 'border-default-200 text-default-600'
 }
 
-// ── quality rating ────────────────────────────────────────────────
 const quality = ref(props.result.quality_rating ?? 0)
 const isRating = ref(false)
 
@@ -84,7 +82,6 @@ const submitQuality = async () => {
 
 <template>
   <div class="space-y-4">
-    <!-- correct / incorrect banner (auto-graded types only) -->
     <KunInfo
       v-if="result.is_correct !== null"
       :color="result.is_correct ? 'success' : 'danger'"
@@ -109,7 +106,6 @@ const submitQuality = async () => {
       description="你是这道题的出题人, 以下为本题答案与解析"
     />
 
-    <!-- single / multiple reveal -->
     <div v-if="optionRows.length" class="space-y-2">
       <div
         v-for="(row, i) in optionRows"
@@ -125,7 +121,6 @@ const submitQuality = async () => {
       </div>
     </div>
 
-    <!-- judge reveal -->
     <div v-else-if="judge" class="flex flex-wrap items-center gap-3 text-sm">
       <KunChip color="success" variant="flat">
         正确答案: {{ judge.answer ? '正确' : '错误' }}
@@ -138,7 +133,6 @@ const submitQuality = async () => {
       </KunChip>
     </div>
 
-    <!-- fill reveal -->
     <div v-else-if="fillRows.length" class="space-y-2">
       <div
         v-for="(row, i) in fillRows"
@@ -151,7 +145,6 @@ const submitQuality = async () => {
       </div>
     </div>
 
-    <!-- essay reveal -->
     <div v-else-if="essay" class="space-y-2 text-sm">
       <div class="border-default-200 rounded-lg border px-3 py-2">
         <p class="text-default-500 mb-1">参考答案</p>
@@ -170,7 +163,6 @@ const submitQuality = async () => {
       </div>
     </div>
 
-    <!-- explanation -->
     <div
       v-if="result.explanation"
       class="bg-default-100 rounded-lg px-3 py-2 text-sm"
@@ -185,7 +177,6 @@ const submitQuality = async () => {
 
     <KunDivider />
 
-    <!-- quality rating (answerers only; the author cannot rate own quiz) -->
     <div v-if="!quiz.is_author" class="space-y-2">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <label class="text-sm font-medium">给这道题的质量打分 (1-10)</label>

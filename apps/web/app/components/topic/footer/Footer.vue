@@ -7,10 +7,6 @@ const { id } = usePersistUserStore()
 </script>
 
 <template>
-  <!-- Desktop only: on mobile the floating TopicDetailActionBar replaces this.
-       leading-none for the same reason as the reply footer: the tooltip /
-       popover wrappers' inline-block line box would otherwise add a descender's
-       worth of dead space under the row's buttons. -->
   <div class="mt-auto hidden items-center justify-between leading-none md:flex">
     <div class="flex items-center gap-1">
       <TopicFooterUpvote

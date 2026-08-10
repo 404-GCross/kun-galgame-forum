@@ -23,15 +23,9 @@ try {
   console.log('Environment variables are valid.')
   console.log('Executing the commands...')
 
-  execSync(
-    // `pnpm prisma:push` removed — DB schema is owned by the Go API now
-    // (apps/api/migrations). Run `pnpm migrate` from the repo root only
-    // when the schema actually changes; most deploys don't touch it.
-    'git pull && pnpm build:limit && pnpm stop && pnpm start',
-    {
-      stdio: 'inherit'
-    }
-  )
+  execSync('git pull && pnpm build:limit && pnpm stop && pnpm start', {
+    stdio: 'inherit'
+  })
 } catch (error) {
   console.error('Invalid environment variables', error)
   process.exit(1)

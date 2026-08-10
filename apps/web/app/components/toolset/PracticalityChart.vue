@@ -23,11 +23,8 @@ const mineIndex = computed(() =>
     : categories.value.indexOf(String(props.practicalityData.mine))
 )
 
-// Single "评分人数" series — a horizontal bar chart (条形图), no cumulative line.
 const series = computed(() => [{ name: '评分人数', data: countsArray.value }])
 
-// Distributed colors so the viewer's own rating bar stands out in gold (the
-// same warning hue as the average star), the rest in primary.
 const barColors = computed(() =>
   categories.value.map((_, i) =>
     i === mineIndex.value ? 'var(--color-warning)' : 'var(--color-primary)'
@@ -69,7 +66,6 @@ const options = computed(
       y: { formatter: (y: number) => `${y} 人` }
     },
     grid: { borderColor: 'var(--color-default-200)', strokeDashArray: 4 },
-    // Distributed bars would otherwise spawn one legend entry per star.
     legend: { show: false }
   })
 )

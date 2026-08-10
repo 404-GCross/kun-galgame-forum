@@ -4,13 +4,10 @@ import {
   FRIEND_LINK_STATUS_CHIP
 } from '~/constants/friendLink'
 
-// Friend links are now admin-managed (DB) instead of the static config/friend.ts.
 const { data } = await useKunFetch<GroupedFriendLinks>('/friend-link')
 
-// Tag every outbound friend link with utm_source=<current domain>.
 const utmLink = useUtmLink()
 
-// Render the 3 fixed categories in order; skip empty groups.
 const groups = computed(() =>
   FRIEND_LINK_CATEGORIES.map((category) => ({
     label: category.label,

@@ -1,44 +1,14 @@
-// Placing a corporate family on a plane.
-//
-// The three text lanes (tree / rename chain / spin-off rows) each answer one
-// question well and none of them answers the one a reader of a big publisher
-// actually has: how does all of this fit together? VisualArt's has a dozen
-// brands, two of which were renamed and one of which was split off from a
-// third — three separate blocks make that four disconnected facts. One picture
-// makes it one shape.
-//
-// So: a layered ("Sugiyama-lite") drawing. Ownership decides the LAYER — a
-// brand always sits below its owner — and the two lateral relations, a rename
-// and a spin-off, stay on the layer they start on, because neither of them is
-// a step down in a hierarchy: a renamed company is the same company, and a
-// spin-off is a sibling, not a child.
-//
-// Everything here is pure, deterministic and cycle-guarded. Deterministic
-// matters twice over: the component renders on the server and hydrates on the
-// client, and a layout that consulted anything random would visibly jump.
-//
-// The same edge-direction trap the family forest documents applies here and is
-// handled once, in `semanticEdges`: an edge reads "`to` is the `relation` of
-// `from`", so `parent` runs child→parent while `imprint` runs owner→brand.
 
-/** Node box, in layout units (= CSS pixels at scale 1). */
 export const OFFICIAL_GRAPH_NODE_WIDTH = 184
 export const OFFICIAL_GRAPH_NODE_HEIGHT = 56
 
 const GAP_X = 28
-/** Between the wrapped rows of ONE sibling block — tight, because those rows
- * are one group, not two. */
 const ROW_GAP = 16
-/** Between layers, which is a change of meaning and gets the air to say so. */
 const LAYER_GAP = 92
 const MIN_STEP = OFFICIAL_GRAPH_NODE_WIDTH + GAP_X
 const ROW_STEP = OFFICIAL_GRAPH_NODE_HEIGHT + ROW_GAP
-/** Room around the drawing for the arrows that run down the outside of it. */
 const PADDING = 28
 
-/** How the two ends of a drawn edge relate. Ownership is vertical (`subsidiary`
- * / `imprint`), the other two are lateral. Kept distinct from the wire
- * vocabulary: these are always read source→target as drawn. */
 export type GalgameOfficialGraphEdgeKind =
   | 'subsidiary'
   | 'imprint'
@@ -46,19 +16,11 @@ export type GalgameOfficialGraphEdgeKind =
   | 'spawn'
 
 export interface GalgameOfficialGraphEdge {
-  /** Stable across renders — used as the `v-for` key and as the hover token. */
   id: string
   kind: GalgameOfficialGraphEdgeKind
   from: number
   to: number
-  /** SVG path, in layout coordinates. Stops short of the arrow tip — see
-   * {@link GalgameOfficialGraphEdge.head}. */
   path: string
-  /** The arrow, as geometry rather than an SVG `marker`. Two reasons: a marker
-   * is painted with its own edge, so a line drawn later crosses over an earlier
-   * arrow's tip and eats it; and a marker cannot be told to stop the line
-   * before the point, so a thick stroke bleeds out around the tip and blunts
-   * it. Drawn as a shape in a layer of its own, both go away. */
   head: { x: number; y: number; angle: number }
   labelX: number
   labelY: number
@@ -67,11 +29,7 @@ export interface GalgameOfficialGraphEdge {
 export interface GalgameOfficialGraphPlacedNode {
   official: GalgameOfficialRelationNode
   layer: number
-  /** Which wrapped row of its sibling block it sits on. 0 for everything that
-   * did not need wrapping, and the reason edges into it are routed differently
-   * when it is not. */
   row: number
-  /** Centre of the box. */
   x: number
   y: number
 }
@@ -89,12 +47,6 @@ interface SemanticEdge {
   to: number
 }
 
-/** Normalises the wire's eight relation words into four drawable ones, always
- * oriented the way the arrow points: owner→brand, old name→new name,
- * origin→spin-off. The catalog only emits the canonical half of each inverse
- * pair, but reading the other half costs one line each and means a widened
- * upstream vocabulary degrades into a correct drawing rather than a missing
- * edge. */
 const semanticEdges = (graph: GalgameOfficialRelationGraph): SemanticEdge[] => {
   const known = new Set(graph.nodes.map((n) => n.id))
   const seen = new Set<string>()
@@ -140,14 +92,11 @@ const semanticEdges = (graph: GalgameOfficialRelationGraph): SemanticEdge[] => {
   return out
 }
 
-/** Union-find over rename edges: a company and its later names are ONE thing on
- * the org chart, so they share a layer and get drawn side by side. */
 const renameGroups = (ids: number[], edges: SemanticEdge[]) => {
   const parent = new Map(ids.map((id) => [id, id]))
   const find = (id: number): number => {
     let root = id
     while (parent.get(root) !== root) root = parent.get(root)!
-    // Path compression, so a long rename chain stays O(1) to query.
     let cursor = id
     while (parent.get(cursor) !== root) {
       const next = parent.get(cursor)!
@@ -165,12 +114,6 @@ const renameGroups = (ids: number[], edges: SemanticEdge[]) => {
   return { find }
 }
 
-/** Longest-path layering over ownership edges, relaxed group by group.
- *
- * The relaxation is capped at one round per group rather than run to a fixed
- * point: the catalog's walk is cycle-safe but its DATA is not (two makers each
- * recorded as the other's parent is a data error, not an impossibility), and a
- * cycle must cost a slightly odd drawing, never a hung render. */
 const assignLayers = (
   ids: number[],
   edges: SemanticEdge[],
@@ -199,10 +142,6 @@ const assignLayers = (
   return new Map(ids.map((id) => [id, groupLayer.get(groupOf(id))!]))
 }
 
-/** Reduce crossings by barycentre sweeps: repeatedly reorder a layer by the
- * mean position of each node's neighbours in the layer next to it. Four passes
- * is where this stops paying for itself on graphs the size the catalog caps at
- * (≤ 60 nodes, depth ≤ 4). */
 const orderLayers = (
   layers: number[][],
   neighbours: Map<number, number[]>,
@@ -233,10 +172,6 @@ const orderLayers = (
   }
 }
 
-/** Pull each rename chain back together after the sweeps and put it in
- * chronological order — a chain read right to left, or with an unrelated brand
- * wedged into the middle of it, is a chain that has to be decoded rather than
- * read. */
 const groupRenameChains = (layers: number[][], edges: SemanticEdge[]) => {
   const next = new Map<number, number>()
   const succeeded = new Set<number>()
@@ -269,9 +204,6 @@ const groupRenameChains = (layers: number[][], edges: SemanticEdge[]) => {
   }
 }
 
-/** Child → its single owner, over ownership edges only. First edge wins: the
- * catalog can record a maker under two owners (a joint venture, or a merge that
- * kept both histories), and a sibling block cannot belong to two parents. */
 const ownershipParents = (edges: SemanticEdge[]) => {
   const parent = new Map<number, number>()
   for (const e of edges) {
@@ -281,24 +213,6 @@ const ownershipParents = (edges: SemanticEdge[]) => {
   return parent
 }
 
-/**
- * Wrapping — the fix for the ribbon.
- *
- * A publisher with a dozen imprints laid out in one row is 2,500px of drawing
- * three boxes tall: fitted to any real viewport it is a strip of unreadable
- * confetti, and no amount of zooming makes the SHAPE visible, which is the one
- * thing a picture was supposed to add. So a wide set of siblings folds into a
- * compact block of rows instead — the same twelve brands as 2 × 6, which is
- * both readable at fit scale and legible AS a group.
- *
- * Only true siblings fold together. Wrapping an arbitrary slice of a layer
- * would put two unrelated brands on the same row and imply they belong to each
- * other, which is worse than the ribbon.
- *
- * The result is a list of COLUMNS per layer (a column is one x, holding one
- * node per row), because everything downstream — spacing, barycentres, the
- * bounding box — is about horizontal room, and a column is the unit of that.
- */
 const TARGET_BLOCK_ASPECT = 2.5
 const MAX_BLOCK_ROWS = 4
 
@@ -307,10 +221,6 @@ const wrapLayer = (
   parentOf: Map<number, number>,
   hasChildren: Set<number>
 ) => {
-  // What may share a block: true siblings, and the loose ends — makers with no
-  // owner and nothing under them, which arrive in the walk because SOMETHING in
-  // the family touches them and which are otherwise a long thin row of names.
-  // Folding those together implies no relationship a row of them did not.
   const blockKey = (id: number) => {
     const owner = parentOf.get(id)
     if (owner !== undefined) return `owned:${owner}`
@@ -334,19 +244,12 @@ const wrapLayer = (
     )
     const perRow = Math.ceil(count / rows)
     const fresh: number[][] = Array.from({ length: perRow }, () => [])
-    // Row-major, so the block reads left to right then down — which is also
-    // heaviest-first, since that is the order the sweeps left it in.
     block.ids.forEach((id, i) => fresh[i % perRow]!.push(id))
     columns.push(...fresh)
   }
   return columns
 }
 
-/** Horizontal placement: each column wants to sit under the average of what its
- * nodes are connected to, subject to never overlapping its neighbour.
- * Alternating the sweep direction is what lets a parent centre over its
- * children and children gather under their parent instead of one winning
- * outright. */
 const assignX = (
   layerColumns: number[][][],
   neighbours: Map<number, number[]>,
@@ -378,8 +281,6 @@ const assignX = (
           : x.get(column[0]!)!
       })
 
-      // Left to right, each column taking its wish or the first free seat after
-      // its left neighbour — whichever is further right.
       let cursor = -Infinity
       const placed = wanted.map((want) => {
         const at = Math.max(want, cursor + MIN_STEP)
@@ -387,10 +288,6 @@ const assignX = (
         return at
       })
 
-      // The greedy pass can only ever push right, which walks the whole layer
-      // away from what it is connected to. Shifting the finished layer back by
-      // its own mean drift restores the centring without disturbing the
-      // spacing it just resolved.
       const drift =
         placed.reduce((sum, at, i) => sum + (wanted[i]! - at), 0) /
         (placed.length || 1)
@@ -402,17 +299,9 @@ const assignX = (
 
 const NODE_HALF_W = OFFICIAL_GRAPH_NODE_WIDTH / 2
 const NODE_HALF_H = OFFICIAL_GRAPH_NODE_HEIGHT / 2
-/** Arrow heads are drawn at the path end; stopping short of the border keeps
- * the head beside the card rather than on top of its outline. */
 const ARROW_GAP = 5
-/** How much of the approach the head occupies. The line is cut back by exactly
- * this, so the two meet instead of overlapping. */
 export const OFFICIAL_GRAPH_HEAD_LENGTH = 9
 
-/** Cut the last {@link OFFICIAL_GRAPH_HEAD_LENGTH} off an approach and hand
- * back where the head goes. `ux`/`uy` is the unit vector the line is travelling
- * along as it arrives — which is also the direction the head points, so a
- * diagonal arrival gets a diagonal arrow rather than being snapped to an axis. */
 const headAt = (x: number, y: number, ux: number, uy: number) => ({
   stopX: x - ux * OFFICIAL_GRAPH_HEAD_LENGTH,
   stopY: y - uy * OFFICIAL_GRAPH_HEAD_LENGTH,
@@ -424,25 +313,12 @@ const edgeGeometry = (
   b: GalgameOfficialGraphPlacedNode,
   layerTop: number[]
 ) => {
-  // An arrow into a WRAPPED row cannot come down from the top: the box directly
-  // above it belongs to the same block, and a line through a sibling reads as a
-  // relation to that sibling. It comes down the empty channel to the left of
-  // the column instead — the gap is exactly GAP_X wide and, because every
-  // column keeps at least MIN_STEP from its neighbour, it is always free —
-  // and turns in from the side, which is the org-chart comb everyone can read.
   if (b.row > 0 && b.y > a.y) {
-    // Down the FAR side of the channel rather than its middle: the turn-in has
-    // to be long enough to hold an arrow head and still read as a line. At the
-    // centre it was 8px — shorter than the head — so the head grew straight out
-    // of the corner instead of arriving along anything.
     const spine = b.x - NODE_HALF_W - GAP_X + 4
     const busY = (layerTop[b.layer] ?? b.y) - LAYER_GAP / 3
     const entry = b.x - NODE_HALF_W - ARROW_GAP
     const y1 = a.y + NODE_HALF_H
     const { stopX, head } = headAt(entry, b.y, 1, 0)
-    // A mitred right angle is the one join on this graph the eye catches; every
-    // other segment meets its neighbour tangentially. Round it — but never past
-    // where the head starts, or the arrow sprouts sideways out of the curve.
     const r = Math.max(0, Math.min(8, (b.y - busY) / 2, stopX - spine))
     return {
       path: `M ${a.x} ${y1} C ${a.x} ${(y1 + busY) / 2} ${spine} ${(y1 + busY) / 2} ${spine} ${busY} L ${spine} ${b.y - r} Q ${spine} ${b.y} ${spine + r} ${b.y} L ${stopX} ${b.y}`,
@@ -453,15 +329,10 @@ const edgeGeometry = (
   }
 
   if (a.y === b.y) {
-    // Lateral: a shallow arc over the gap, so two nodes that happen to sit next
-    // to each other without being related are never joined by a straight line
-    // that looks like the row itself.
     const dir = b.x >= a.x ? 1 : -1
     const x1 = a.x + dir * NODE_HALF_W
     const x2 = b.x - dir * (NODE_HALF_W + ARROW_GAP)
     const lift = Math.min(56, Math.abs(x2 - x1) / 3 + 16)
-    // The arc comes in at 45°, so the head does too — the arrival direction is
-    // read off the tangent rather than rounded to the nearest axis.
     const { stopX, stopY, head } = headAt(x2, b.y, dir / Math.SQRT2, Math.SQRT1_2)
     return {
       path: `M ${x1} ${a.y} C ${x1 + dir * lift} ${a.y - lift} ${x2 - dir * lift} ${b.y - lift} ${stopX} ${stopY}`,
@@ -484,13 +355,6 @@ const edgeGeometry = (
   }
 }
 
-/**
- * buildOfficialGraphLayout — the whole drawing, in one deterministic pass.
- *
- * Coordinates come out normalised to a (0,0)-anchored box of `width` × `height`
- * so the viewport can fit it without measuring the DOM, which is what lets the
- * graph arrive already framed on the server render.
- */
 export const buildOfficialGraphLayout = (
   graph: GalgameOfficialRelationGraph
 ): GalgameOfficialGraphLayout => {
@@ -511,8 +375,6 @@ export const buildOfficialGraphLayout = (
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
   const layers: number[][] = Array.from({ length: depth }, (_, li) =>
     graph.nodes
-      // Heaviest first is the only ranking that makes a twelve-brand publisher
-      // readable, and it is a stable seed for the sweeps below.
       .filter((n) => layerOf.get(n.id) === li)
       .sort(
         (a, b) => b.work_count - a.work_count || a.name.localeCompare(b.name)
@@ -530,8 +392,6 @@ export const buildOfficialGraphLayout = (
   )
   const x = assignX(layerColumns, neighbours, layerOf)
 
-  // A layer is as tall as its deepest wrapped block, so a layer that needed no
-  // wrapping does not pay for one that did.
   const rowsIn = layerColumns.map((columns) =>
     Math.max(1, ...columns.map((column) => column.length))
   )

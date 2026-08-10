@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// The 会社's own brand mark, shared by the maker's two pages so the identity is
-// literally the same object on both — large on the overview, smaller above the
-// games grid where the title carries the page instead.
-//
-// Always on its own light plate, never bare: a logo is usually a transparent
-// PNG drawn in one dark colour, and against the dark theme's background half of
-// them disappear entirely. Logos are SFW upstream, so no content gate sits in
-// front of it.
 withDefaults(
   defineProps<{
     src: string

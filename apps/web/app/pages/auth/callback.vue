@@ -1,28 +1,19 @@
 <script setup lang="ts">
 import Cookies from 'js-cookie'
 
-// No layout: a transient redirect page wants a clean full-screen loader, not
-// the blank layout's top-bar + content column (whose width-less, h-full column
-// collapsed this page's `size-full` into a cramped, off-looking box).
 definePageMeta({ layout: false })
 
 const route = useRoute()
 const error = ref('')
 
-// OAuth callback is a transient redirect-only page — never something a
-// search engine should index.
 useKunDisableSeo('OAuth 登录回调')
 
 onMounted(async () => {
   const code = route.query.code as string
   const returnedState = route.query.state as string
-  // Read + clear the per-attempt secrets from COOKIES (set in oauth-auth.ts).
-  // See there for why sessionStorage was abandoned — it lost these across the
-  // cross-origin redirect on Via / older mobile browsers → "State 不匹配".
   const savedState = Cookies.get('oauth_state')
   const codeVerifier = Cookies.get('oauth_code_verifier')
 
-  // Clean up (must match the path the cookies were set with).
   Cookies.remove('oauth_state', { path: '/' })
   Cookies.remove('oauth_code_verifier', { path: '/' })
 
@@ -44,9 +35,6 @@ onMounted(async () => {
     return
   }
 
-  // Matches BE dto.UserProfile exactly. Email is owned by OAuth and
-  // NOT returned here — the frontend fetches it from OAuth's
-  // /oauth/userinfo on demand (per the BE comment on UserProfile).
   const result = await kunFetch<{
     id: number
     sub: string
@@ -67,11 +55,6 @@ onMounted(async () => {
       sub: result.sub,
       name: result.name,
       avatar: result.avatar,
-      // withImageVariant picks the right separator per URL family:
-      // image_service hash-addressed URLs get `_100`, legacy nitro
-      // paths still on image.kungal.com get `-100`. The legacy avatar
-      // bulk migration is pending; until it lands both coexist for
-      // active users.
       avatarMin: result.avatar ? withImageVariant(result.avatar, '100') : '',
       moemoepoint: result.moemoepoint,
       roles: result.roles ?? [],
@@ -79,8 +62,6 @@ onMounted(async () => {
       dailyToolsetUploadBytes: 0
     })
 
-    // Cache this account for the switch menu — login AND switch both land here,
-    // so the active account stays current. (docs/oauth/09-account-switching §3.6)
     useKnownAccounts().rememberUser({
       sub: result.sub,
       id: result.id,
@@ -90,8 +71,6 @@ onMounted(async () => {
     })
 
     useKunLoliInfo(`登录成功! 欢迎来到 ${kungal.name}`)
-    // A switch/add flow stashed where to return; land back there (origin-guarded),
-    // else home.
     await navigateTo(consumeOAuthReturnTo() ?? '/')
   } else {
     error.value = '登录失败，请重试'
@@ -99,9 +78,6 @@ onMounted(async () => {
   }
 })
 
-// After a failed callback, drop the user back at the homepage. The
-// top-bar 登录 button (KunAuthModal) is one click away — no point in
-// keeping a /login page that itself just shows the same modal.
 const redirectToLogin = () => {
   setTimeout(() => navigateTo('/'), 2000)
 }

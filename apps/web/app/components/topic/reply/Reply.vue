@@ -13,15 +13,11 @@ const props = defineProps<{
 const { scrollToReplyId } = storeToRefs(useTempReplyStore())
 const comments = ref(props.reply.comment)
 
-// The deep-link / #floor target (provided by Detail) gets a PERSISTENT ring. The
-// wrapper already carries outline-primary + offset, so being active just toggles
-// the outline width + rounding — it stays until the reader jumps to another reply.
 const activeFloor = inject('activeReplyFloor', ref(0))
 const isActive = computed(
   () => activeFloor.value > 0 && activeFloor.value === props.reply.floor
 )
 
-// Shared reaction state for this reply — injected by the chips + the trigger.
 provide(
   reactionsKey,
   useReactions({
@@ -32,13 +28,9 @@ provide(
   })
 )
 
-// Hydrate inline #quote chips in this reply's body: click → jump to the floor,
-// hover → lazy preview card.
 const contentRef = ref<HTMLElement | null>(null)
 const { preview, keepPreview, hidePreview } = useQuoteContent(contentRef)
 
-// Short plain-text slug for the reply's anchor id. markdownToText first so a
-// mention/quote token isn't sliced mid-form into the id.
 const replyContent = computed(() =>
   markdownToText(props.reply.content_markdown).slice(0, 20)
 )
@@ -141,10 +133,6 @@ const handleNewComment = (comment: TopicComment) => {
         @leave="hidePreview"
       />
 
-      <!-- Chips get a row to themselves (they wrap, and a wrapping chip row
-           would otherwise drag the action buttons down with it); the 表态
-           trigger lives at the left end of the action row below, mirroring the
-           topic's own footer. -->
       <TopicReactionBar class="mt-2" />
 
       <TopicReplyFooter

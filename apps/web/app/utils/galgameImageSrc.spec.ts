@@ -13,9 +13,6 @@ describe('galgameImageSrc', () => {
   })
 
   it('resolves image_hash to an ABSOLUTE, sharded CDN URL when cdn_url is missing', () => {
-    // The "看不到图片" fix — but absolute, NOT a /image/<hash> token (which would
-    // 404 through @nuxt/image IPX). Host comes from imageCdnBase() (config in
-    // prod / its default here), so assert the shape, not the exact host.
     expect(galgameImageSrc({ image_hash: 'deadbeef' })).toMatch(
       /^https:\/\/[^/]+\/de\/ad\/deadbeef\.webp$/
     )

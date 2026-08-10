@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import { KUN_PROXY_PERMISSIONS } from '~/constants/permission'
-
-// Read-only surface for the 7 INFRA-PROXY operations. Their truth lives in
-// kun-galgame-infra (editing engine / kun_trust), never in pkg/perm — so they
-// are shown for completeness but cannot be overridden here.
 </script>
 
 <template>

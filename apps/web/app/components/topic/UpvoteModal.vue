@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// The single global 推话题 modal, mounted once at app.vue root (a stable node)
-// so it survives the ⋯ popover that triggered it. Driven by useUpvoteModal();
-// <TopicFooterUpvote> only calls open() and awaits the verdict.
 const { isOpen, target, close } = useUpvoteModal()
 
 const description = ref('')
@@ -9,18 +6,14 @@ const pending = ref(false)
 
 watch(isOpen, (open) => {
   if (open) description.value = ''
-  // Backdrop / Esc / 取消 close the modal without a verdict — resolve the
-  // caller's promise as "not pushed" so it never hangs.
   else close(false)
 })
 
-// Cap at 30 characters as the user types (rune-safe; the backend caps too).
 watch(description, (v) => {
   const runes = [...v]
   if (runes.length > 30) description.value = runes.slice(0, 30).join('')
 })
 
-// One-way (no undo); costs 10 萌萌点 and awards the author 5.
 const submit = async () => {
   if (!target.value || pending.value) return
   pending.value = true

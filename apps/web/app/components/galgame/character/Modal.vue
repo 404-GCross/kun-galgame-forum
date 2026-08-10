@@ -6,18 +6,6 @@ import {
   getGalgameCharacterSourceName
 } from '~/constants/galgameCharacter'
 
-// The character popup on a game's 登场角色 panel.
-//
-// It opens with what the roster already knows — name, billing, CV, both
-// artworks — so there is never a spinner in front of an empty box, and then
-// fills in what only the character's own record has (简介 and VNDB traits) from
-// `works=0`, the identity-alone face. The appearance list is deliberately NOT
-// fetched: this popup is "who is she", and "every game she is in" is the whole
-// reason the full page exists.
-//
-// Responses are memoized per character id for the lifetime of the panel —
-// reopening the same character on the same page is free, and a reader comparing
-// two heroines does it constantly.
 const props = defineProps<{
   character: GalgameDetailCharacter | null
 }>()
@@ -44,15 +32,10 @@ const load = async (id: number) => {
     }
   )
   isLoading.value = false
-  // A character the registry moved or dropped simply contributes nothing extra
-  // here: the roster material above is still true, and the popup keeps showing
-  // it rather than turning into an error box.
   if (!res || res.moved_to) {
     return
   }
   cache.set(id, res)
-  // The reader may already have clicked on to someone else while this was in
-  // flight; a late response must not overwrite the character now on screen.
   if (props.character?.id === id) {
     detail.value = res
   }
@@ -68,15 +51,6 @@ watch(
   { immediate: true }
 )
 
-// Both artworks are shown at ORIGINAL size here, so each is framed by its own
-// measured shape and nothing is cropped to fit a box it was never drawn for.
-//
-// The roster line and the character's own record describe the same two
-// pictures, so either may supply the shape: the roster's arrives first and is
-// what the popup opens with, and the record's covers the case where the roster
-// was served before image_service could size it. Neither is a fallback GUESS —
-// when both are silent the frame is simply absent and the picture lays itself
-// out.
 const figureFrame = computed(() =>
   artFrame(props.character?.figure_meta, detail.value?.figure_meta)
 )
@@ -100,9 +74,6 @@ const spoilerText = computed(() =>
     : ''
 )
 
-// Spoiler traits arrive with the response and wait for a click — see the
-// backend's spoilers ceiling. `lie` traits stay in the list with their marker:
-// "looks true, is not" is a fact about the character, not a data defect.
 const isTraitSpoilerRevealed = ref(false)
 const traits = computed(() => {
   const all = detail.value?.traits ?? []
@@ -112,8 +83,6 @@ const hiddenTraitCount = computed(
   () => (detail.value?.traits ?? []).filter((t) => t.spoiler > 0).length
 )
 
-// Grouped, in first-seen order: the catalog already sorts traits so that a
-// group's members are contiguous, so nothing here re-sorts either.
 const traitGroups = computed(() => {
   const groups: { name: string; traits: GalgameCharacterTrait[] }[] = []
   for (const trait of traits.value) {
@@ -128,10 +97,6 @@ const traitGroups = computed(() => {
   return groups
 })
 
-// Same one line the page uses: where the paragraph came from, and whether a
-// machine wrote the translation. The popup shows only the lead bio — the other
-// languages are what the full page is for — but it must still credit the one it
-// does show.
 const introCredit = computed(() => {
   const lead = detail.value?.intros.find((i) => i.intro === detail.value?.intro)
   const parts: string[] = []
@@ -144,8 +109,6 @@ const introCredit = computed(() => {
   return parts.join(' · ')
 })
 
-// Reset the per-character view state whenever the popup switches subject, so
-// one character's revealed spoilers are never already-revealed on the next.
 watch(
   () => props.character?.id,
   () => {
@@ -158,23 +121,7 @@ watch(
   <KunModal v-model="isOpen" size="xl" scroll-behavior="inside">
     <div v-if="character" class="space-y-4">
       <div class="flex flex-col gap-4 sm:flex-row">
-        <!-- The art column. Here each picture stands alone, so each gets its
-             OWN ratio rather than a shared frame — nothing is cropped and
-             nothing is letterboxed. When both exist the figure leads and the
-             bust rides beside it: a portrait is often a different pose, not a
-             crop of the same drawing.
-             Both open full-size in the lightbox, the same as on the character
-             page: this popup shrinks a 立绘 to thumbnail width, and the art is
-             half the reason a reader clicked the character at all. -->
         <KunLightboxGallery v-if="character.figure || character.image">
-          <!-- items-start / sm:items-center and w-fit are load-bearing, not
-               cosmetic. These buttons are flex items and carry the tinted
-               backdrop; left to stretch they take the cross-size of the
-               WIDEST sibling, and the backdrop then paints as bands either
-               side of the narrower picture. A square 500×500 立绘 above a 5:6
-               bust produced exactly that — 56px of tint on each side of the
-               bust, which reads as the frame being wrong when the frame is
-               right. Each box hugs its own picture instead. -->
           <div
             class="flex shrink-0 items-start gap-3 sm:flex-col sm:items-center"
           >
@@ -277,9 +224,6 @@ watch(
               >
                 {{ detail.intro }}
               </p>
-              <!-- Said out loud rather than passed off as the site's own: a
-                   borrowed, sometimes machine-translated bio is worth reading
-                   AND worth knowing about. -->
               <p v-if="introCredit" class="text-default-400 text-xs">
                 {{ introCredit }}
               </p>
@@ -316,10 +260,6 @@ watch(
               显示 {{ hiddenTraitCount }} 条剧透特征
             </KunButton>
 
-            <!-- The identity anchors. Cheap, and the reason a reader opens a
-                 character popup is often to go and read more elsewhere. A
-                 source with no verified template renders as plain text rather
-                 than as a guessed URL that 404s. -->
             <div
               v-if="detail.links.length"
               class="flex flex-wrap items-center gap-3"

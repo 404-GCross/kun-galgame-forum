@@ -1,7 +1,3 @@
-// Single source of truth for notification-category keys + labels (BE migration
-// 053). Shared by the preference editor (message/NotificationPreference.vue)
-// and the muted-messages view (pages/message/muted.vue) so labels never drift.
-
 export interface NotificationCategory {
   key: string
   label: string
@@ -11,14 +7,10 @@ export interface NotificationCategoryGroup {
   value: string
   textValue: string
   icon: string
-  // `local` categories live in the `message` table — they show up in the
-  // notification list and the muted view. `chat` is a separate stream. (The
-  // former `wiki` stream retired in wave 169 with the wiki message page.)
   stream: 'local' | 'chat'
   items: NotificationCategory[]
 }
 
-// Keys mirror the server whitelist (prefs.go). Order = tab order in the editor.
 export const notificationCategoryGroups: NotificationCategoryGroup[] = [
   {
     value: 'interaction',
@@ -66,14 +58,11 @@ export const notificationCategoryGroups: NotificationCategoryGroup[] = [
   }
 ]
 
-// Local message.type categories only — the ones that appear in the notification
-// list / muted view (chat + wiki are separate streams).
 export const localNotificationCategories: NotificationCategory[] =
   notificationCategoryGroups
     .filter((g) => g.stream === 'local')
     .flatMap((g) => g.items)
 
-// Flat key → label lookup across every stream.
 export const notificationCategoryLabel: Record<string, string> =
   Object.fromEntries(
     notificationCategoryGroups.flatMap((g) =>

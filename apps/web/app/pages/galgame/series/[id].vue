@@ -1,20 +1,9 @@
 <script setup lang="ts">
-// `id` is a CATALOG SERIES id, carried bare — this namespace never served wiki
-// ids, so it needs no discriminator segment (the `/c/` split the retired
-// `/galgame-{tag,official,engine}/` spaces needed exists because a bare number
-// there was a WIKI id and the two ranges overlap densely).
-//
-// There is deliberately no legacy redirect shell for series: the wiki's series
-// vocabulary was retired outright rather than migrated (6 of its 146 entries
-// had a catalog counterpart), so an old /galgame-series/{n} URL addresses
-// something that has no successor to point at.
 const route = useRoute()
 const series_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
-// A junk segment (crawler-made /galgame/series/null) becomes NaN and would ride
-// all the way upstream for a 400. Answer it here — it can only ever be a 404.
 if (!Number.isInteger(series_id.value) || series_id.value <= 0) {
   throw createError({
     statusCode: 404,
@@ -23,10 +12,6 @@ if (!Number.isInteger(series_id.value) || series_id.value <= 0) {
   })
 }
 
-// Shared browse filter Nav with the tag / official / engine detail pages: the
-// entity page lists the forum-LOCAL subset of the series' members, so the same
-// 类型/语言/平台/作品类型 filters + sorts as /galgame apply (the backend runs them
-// locally over the member ids — entity_filter.buildEntityFilter).
 const {
   page,
   limit,
@@ -39,9 +24,6 @@ const {
 } = useGalgameFilters()
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
-// SFW mode mirrors the server's IsSFW: the catalog then hides r18 works from
-// BOTH the list and the (content-aware) count, so an NSFW-heavy series can look
-// emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
 const { data, status } = await useKunFetch<GalgameSeriesDetail>(
@@ -62,9 +44,6 @@ const { data, status } = await useKunFetch<GalgameSeriesDetail>(
   }
 )
 
-// An unknown id is a real 404, not an empty 200 shell: this namespace went live
-// with no legacy id space behind it, so a miss means the entity does not exist
-// and a crawler must be told exactly that rather than indexing a blank page.
 if (!data.value) {
   throw createError({
     statusCode: 404,
@@ -124,10 +103,6 @@ useKunSeoMeta({
       :description="`${data.name} 系列下暂无 Galgame`"
     />
 
-    <!-- The series' unpublished remainder: catalog members without a published
-         entry here. Status-2 claim cards, so clicking one opens the publish
-         wizard — the whole series stays visible even when the site has only
-         published part of it. -->
     <div v-if="data.unpublished_galgame.length" class="space-y-3">
       <KunHeader
         name="未在本站发布的作品"

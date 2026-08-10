@@ -4,11 +4,6 @@ const props = defineProps<{
   galgames: GalgameSeriesSample[]
 }>()
 
-// Prefer the U2 derived banner — `g.banner` is the legacy free-form URL
-// and is empty for newly-uploaded (covers-only) galgames, so reading it
-// directly leaves the carousel blank for fresh series entries.
-// Drop covers-less galgames (empty banner) so the montage fills with up to 5
-// real covers instead of blank slots, then cap at 5.
 const banners = computed(() =>
   props.galgames
     .map((g) => ({
@@ -50,12 +45,6 @@ const hoverTranslations = [
         "
         :style="{ zIndex: banners.length - index }"
       >
-        <!--
-          Variant separator is picked per URL because legacy nitro-era
-          banners (image.kungal.com/galgame/N/banner/banner.webp) use
-          `-mini` while image_service URLs (hash-addressed) use `_mini`.
-          See getEffectiveBanner helper for the detection rule.
-        -->
         <KunImage
           :src="withBannerVariant(banner.url, 'mini')"
           :thumbhash="banner.thumbhash"

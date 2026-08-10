@@ -12,8 +12,6 @@ const roundedOptions = [
   { value: 'lg', label: '大' }
 ] as const
 
-// Debounce the persisted writes — the store setter re-applies CSS vars across
-// the whole app, which is wasteful to run on every drag tick.
 watch(
   () => showKUNGalgamePageTransparency.value,
   debounce(() => {
@@ -35,7 +33,6 @@ watch(
 
 <template>
   <div class="space-y-5">
-    <!-- 页面透明度 -->
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <div class="text-default-700 flex items-center gap-2 font-medium">
@@ -54,7 +51,6 @@ watch(
       />
     </div>
 
-    <!-- 背景亮度 -->
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <div class="text-default-700 flex items-center gap-2 font-medium">
@@ -73,7 +69,6 @@ watch(
       />
     </div>
 
-    <!-- 全局圆角 -->
     <div class="space-y-2">
       <div class="text-default-700 flex items-center gap-2 font-medium">
         <KunIcon class="text-primary" name="tabler:border-radius" />

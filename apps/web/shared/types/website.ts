@@ -43,11 +43,8 @@ export interface WebsiteCard {
   domain: string
   age_limit: string
   level: number
-  /** Legacy icon URL. */
   icon: string
-  /** Content-addressed image hash. */
   icon_image_hash: string
-  /** Resolved CDN url for display (falls back to the legacy `icon`). */
   icon_url: string
   price: number
   category: string
@@ -58,11 +55,8 @@ export interface WebsiteDetail {
   name: string
   url: string
   description: string
-  /** Legacy icon URL. */
   icon: string
-  /** Content-addressed image hash. */
   icon_image_hash: string
-  /** Resolved CDN url for display (falls back to the legacy `icon`). */
   icon_url: string
   view: number
   language: string

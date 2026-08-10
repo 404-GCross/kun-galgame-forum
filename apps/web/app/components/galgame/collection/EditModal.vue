@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { createCollectionSchema } from '~/validations/collection'
 
-// Create OR edit a collection. Does its own kunFetch and emits `saved` so the
-// caller (picker / grid / detail page) just refetches.
 const props = defineProps<{
   modelValue: boolean
   mode: 'create' | 'edit'

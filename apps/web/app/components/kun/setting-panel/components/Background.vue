@@ -108,7 +108,6 @@ const handleChangeImage = async (index: number) => {
       </div>
     </div>
 
-    <!-- 背景图片透明度 -->
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <div class="text-default-700 flex items-center gap-2 font-medium">

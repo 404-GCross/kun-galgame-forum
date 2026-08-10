@@ -4,13 +4,8 @@ import {
   type RecentQuizGalgame
 } from '~/store/modules/edit/quizGalgame'
 
-// Multi-galgame picker for the 出题 modal. Search UX is the shared
-// GalgameSearchAutocomplete (KunAutocomplete + the accurate wiki search + the
-// stale-response guard); v-model is the selected galgame id array; picks
-// accumulate as removable chips.
 const props = defineProps<{
   modelValue: number[]
-  // Pre-seed the selected chips (edit mode).
   initialSelected?: RecentQuizGalgame[]
 }>()
 const emits = defineEmits<{ 'update:modelValue': [value: number[]] }>()
@@ -30,7 +25,7 @@ const pick = (game: RecentQuizGalgame) => {
   if (selectedList.value.some((g) => g.id === game.id)) return
   selectedList.value.push(game)
   emitIds()
-  store.add(game) // LRU: bump to front
+  store.add(game)
 }
 
 const remove = (id: number) => {
@@ -41,14 +36,12 @@ const remove = (id: number) => {
 const officialsText = (g: RecentQuizGalgame) =>
   g.officials?.length ? g.officials.join('、') : ''
 
-// Parent resets modelValue to [] after publishing → drop the local selection.
 watch(
   () => props.modelValue,
   (v) => {
     if (!v || v.length === 0) selectedList.value = []
   }
 )
-// Edit mode: seed the selected chips from the pre-linked games.
 watch(
   () => props.initialSelected,
   (v) => {
@@ -62,7 +55,6 @@ watch(
   <div class="space-y-2">
     <label class="text-sm font-medium">关联 Galgame（可选, 可多选）</label>
 
-    <!-- current selections -->
     <div v-if="selectedList.length" class="space-y-2">
       <div
         v-for="g in selectedList"
@@ -97,7 +89,6 @@ watch(
       </div>
     </div>
 
-    <!-- search + recent (always available, so more games can be added) -->
     <GalgameSearchAutocomplete
       :exclude-ids="selectedList.map((g) => g.id)"
       placeholder="输入游戏名搜索并关联"

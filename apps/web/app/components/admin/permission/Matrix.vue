@@ -9,18 +9,10 @@ import {
   type KunPermRoleColumn
 } from '~/constants/permission'
 
-// Presentational grid: rows = the 43 pure-forum permissions grouped by
-// KUN_PERMISSION_GROUP_ORDER, columns = creator / moderator / admin / ren.
-// State is owned by the parent page; this component only reflects it and emits
-// intent (a cell toggle, a per-role reset).
 const props = defineProps<{
-  // Editable roles' WORKING effective sets (local pending edits folded in).
   working: Record<string, Set<string>>
-  // Every role's compiled baseline — the deviation reference.
   baseline: Record<string, Set<string>>
-  // Every role's current effective set — the display source for LOCKED columns.
   effective: Record<string, Set<string>>
-  // Disable interaction while a save is in flight.
   disabled?: boolean
 }>()
 
@@ -33,39 +25,24 @@ const columns = KUN_PERM_ROLE_COLUMNS
 
 const groups = KUN_PERMISSION_GROUPS
 
-// Delegation guard (UX mirror of apps/api — the backend is the real boundary):
-// the operator's rank gates whole columns, and the operator's own effective set
-// gates individual cells (possession). See constants/permission.ts + useCan.ts.
 const { roles } = storeToRefs(usePersistUserStore())
 const operatorRank = computed(() => kunRoleRank(roles.value))
 const myPerms = useMyPermissions()
 
-// A column is locked when it is the pinned ren column OR its role ranks at/above
-// the operator (an operator may only edit strictly-lower-ranked roles).
 const columnLocked = (col: KunPermRoleColumn) =>
   col.locked || (KUN_ROLE_RANK[col.role] ?? 0) >= operatorRank.value
 
-// Cell-level possession lock: an otherwise-editable cell whose key the operator
-// does not themselves hold — visible (carried-over deviations still render) but
-// not toggleable.
 const possessionLocked = (col: KunPermRoleColumn, perm: string) =>
   col.editable && !columnLocked(col) && !myPerms.value(perm)
 
 const cellDisabled = (col: KunPermRoleColumn, perm: string) =>
   columnLocked(col) || props.disabled || possessionLocked(col, perm)
 
-// Locked columns display their persisted effective set; editable ones the working
-// set (local pending edits folded in).
 const isChecked = (col: KunPermRoleColumn, perm: string) =>
   (columnLocked(col)
     ? props.effective[col.role]?.has(perm)
     : props.working[col.role]?.has(perm)) ?? false
 
-// A displayed state that diverges from the baseline is an override: 'grant' when
-// the column now holds a permission its baseline lacks, 'revoke' when it lacks one
-// its baseline holds. Computed off the DISPLAYED value so a locked column still
-// surfaces its persisted deviations (and ren, whose effective == baseline, shows
-// none).
 const deviation = (
   col: KunPermRoleColumn,
   perm: string
@@ -76,8 +53,6 @@ const deviation = (
   return shown ? 'grant' : 'revoke'
 }
 
-// 5 columns: a wide label column + one per role. min-width forces horizontal
-// scroll on mobile instead of squashing the grid.
 const gridStyle =
   'grid-template-columns: minmax(11rem, 1fr) repeat(4, minmax(4.5rem, 7rem));'
 </script>
@@ -85,7 +60,6 @@ const gridStyle =
 <template>
   <div class="overflow-x-auto">
     <div class="grid min-w-[44rem]" :style="gridStyle">
-      <!-- Header row -->
       <div
         class="border-default-200 text-default-500 border-b px-3 py-2 text-sm font-medium"
       >
@@ -122,7 +96,6 @@ const gridStyle =
         </KunButton>
       </div>
 
-      <!-- Grouped permission rows -->
       <template v-for="entry in groups" :key="entry.group">
         <div
           class="bg-default-100/60 text-default-600 col-span-full px-3 py-1.5 text-xs font-semibold"

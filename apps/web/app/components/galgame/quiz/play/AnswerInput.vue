@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// Per-type answer collection. The parent (Play) holds a ref and calls
-// getSubmitted() / validate() on submit; grading happens server-side.
 import type {
   KunRadioOption,
   KunCheckBoxGroupOption
@@ -24,7 +22,6 @@ const blankCount = computed(
   () => (props.content as QuizPublicFill).blank_count ?? 0
 )
 
-// Size the fill inputs to the blank count.
 watch(
   blankCount,
   (n) => {

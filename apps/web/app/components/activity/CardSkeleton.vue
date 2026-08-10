@@ -1,9 +1,3 @@
-<script setup lang="ts">
-// Generic feed-card placeholder, shown while an infinite-scroll page is loading
-// (preserves layout + reads faster than a bare spinner). Mirrors the card shell:
-// an avatar circle + a name/time row + a title bar + a couple of content lines.
-</script>
-
 <template>
   <div class="flex gap-3">
     <KunSkeleton variant="circle" width="2.5rem" height="2.5rem" />

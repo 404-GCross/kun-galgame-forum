@@ -3067,7 +3067,6 @@ export const TAG_MAP: Record<string, string> = {
   Spring: '春天',
   'Near Future': '近未来',
 
-  //色情内容
   'Anal Liquid Expulsion': '肛门排液',
   'Sexual Content by Participants': '按参与者分类的性爱内容',
   'Dickgirl on Male': '人妖X男',
@@ -5415,7 +5414,6 @@ export const TAG_MAP: Record<string, string> = {
   'Nipple Sucking by Tentacles': '触手吸吮乳头',
   'Sex Through Wall': '卡墙性交',
 
-  //被动（性）
   Livestock: '家畜化',
   'Speculum (Sexual)': '窥阴器（性）',
   Dildo: '假阳具',

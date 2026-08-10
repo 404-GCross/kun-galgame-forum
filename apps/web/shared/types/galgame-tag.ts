@@ -14,17 +14,9 @@ export interface GalgameTagItem {
   galgame_count: number
 }
 
-// A search hit. The catalog's entity search is a picker feed — identity and
-// nothing else — so a hit genuinely does not know its category or how many
-// games carry it. Kept distinct from the browse row rather than zero-filled:
-// a card that renders "+ 0" for a tag with 600 games is worse than a card that
-// says nothing.
 export interface GalgameTaxonomySearchItem {
   id: number
   name: string
-  /** The one exception to identity-only, and only on 会社 (label) hits: a
-   * ready-made logo URL, because the brand mark IS a maker's identity. Absent
-   * on tag hits and on makers with no logo. */
   logo?: string
 }
 
@@ -32,9 +24,6 @@ export interface GalgameTagDetail {
   id: number
   name: string
   category: KunGalgameTagCategory
-  // The canonical vocabulary's do-not-display tier. Such a tag appears in no
-  // list, no search and no picker; its page still renders for a direct link,
-  // but carries noindex.
   hidden: boolean
   description: string
   alias: string[]

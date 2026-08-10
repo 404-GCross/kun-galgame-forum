@@ -1,14 +1,4 @@
 <script setup lang="ts">
-// Community-primitive comment section for a QUIZ — rendered from
-// pages/galgame-quiz/[id].vue.
-//
-// Spoiler gate: a quiz that conceals something (hidden linked galgames, or a
-// non-trivial spoiler level) withholds its discussion from a viewer who has
-// neither answered nor authored it — otherwise one "答案是 XX" top post retires the
-// question. The ruling is made SERVER-side and arrives as `locked` on the page
-// payload (api service/resource_comment_gate.go); this component only renders it,
-// so the rule cannot drift between the two sides and cannot be bypassed by reading
-// the network response directly.
 const props = defineProps<{
   quizId: number
 }>()
@@ -53,8 +43,6 @@ const onPublished = (post: GalgameCommunityComment) => {
 
     <KunLoading v-if="status === 'pending' && !seeded" />
 
-    <!-- Gated: the server withheld the thread from this viewer. No composer
-         either — a create is 403'd server-side for the same reason. -->
     <KunNull
       v-else-if="locked"
       description="这道题目含有剧透, 作答后即可查看并参与讨论"
@@ -92,7 +80,6 @@ const onPublished = (post: GalgameCommunityComment) => {
       </KunButton>
     </div>
 
-    <!-- Single community-comment flag modal for this section (region agnostic). -->
     <CommentCommunityFlagModal />
   </KunCard>
 </template>

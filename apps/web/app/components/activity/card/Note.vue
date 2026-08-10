@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// TODO_CREATION / UPDATE_LOG_CREATION — the site's 待办 / 更新日志 entries (both
-// link to /update). A typed label (icon + name) with a badge — the changelog
-// version, or the todo's completion status — over the content.
 import { KUN_UPDATE_LOG_STATUS_MAP } from '~/constants/update'
 
 const props = defineProps<{ activity: ActivityItem }>()
@@ -15,7 +12,6 @@ const meta = computed(() =>
     : { icon: 'lucide:megaphone', label: '更新日志', color: 'text-primary' }
 )
 
-// TODO → its completion status (colored by state); UPDATE_LOG → its version.
 const TODO_STATUS_CLASS: Record<number, string> = {
   0: 'bg-default-100 text-default-600',
   1: 'bg-primary/10 text-primary',

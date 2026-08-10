@@ -1,13 +1,4 @@
 <script setup lang="ts">
-// Shared galgame search picker built on KunAutocomplete (2.11+ async @search /
-// :loading / :debounce, 2.12 generic options + #option slot). Searches the wiki
-// Meilisearch galgame index — the SAME accurate, ranked search the /search page
-// uses — and renders banner + 会社 rows. Emits the picked galgame; the PARENT
-// owns the selected-list / chips UI (quiz picker, series picker).
-//
-// Backed by GET /galgame/search/picker (a generic lightweight galgame search:
-// id + name + banner + 会社). The @select payload shape is
-// { id, name, banner?, thumbhash?, officials? }.
 type GalgameSearchHit = {
   id: number
   name: string
@@ -19,7 +10,6 @@ type GalgameSearchHit = {
 type AutoOption = GalgameSearchHit & { value: string; label: string }
 
 const props = defineProps<{
-  // Hide galgames already selected by the parent.
   excludeIds?: number[]
   placeholder?: string
 }>()
@@ -29,11 +19,6 @@ const query = ref('')
 const options = ref<AutoOption[]>([])
 const isLoading = ref(false)
 
-// Request versioning. Typing then deleting used to let a slow in-flight fetch
-// resolve AFTER the cleared/newer query and clobber the list — a stale-response
-// RACE in this handler, NOT a KunAutocomplete debounce bug (its debounce is a
-// clean trailing timer). We stamp each search and drop results a newer one
-// superseded.
 let searchSeq = 0
 
 const onSearch = async (raw: string) => {
@@ -49,7 +34,7 @@ const onSearch = async (raw: string) => {
     method: 'GET',
     query: { keywords: kw }
   })
-  if (seq !== searchSeq) return // superseded by a newer search — drop stale hits
+  if (seq !== searchSeq) return
   const exclude = new Set(props.excludeIds ?? [])
   options.value = (data ?? [])
     .filter((o) => !exclude.has(o.id))

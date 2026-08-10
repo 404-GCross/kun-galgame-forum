@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { submitGalgameSchema } from '~/validations/galgame'
 
-// POST /galgame/submit mints a registry work in the `pending` claim state and
-// records the birth as a claim event, so "who submitted this and when" is a
-// fact rather than a column somebody has to remember to fill. The legacy admin
-// direct-publish endpoint is gone: publishing and submitting are one lifecycle
-// now, so a moderator submits here too and approves from the queue.
-//
-// The post-success redirect goes to /edit/galgame/mine — a pending submission
-// has no public page to land on.
 
-// No vndb_id: submission is exclusively for VNDB-unlisted works (wiki has
-// the full VNDB set as claimable drafts already) — see Galgame.vue.
 const {
   name,
   content_limit,
@@ -27,10 +17,6 @@ const isPublishing = ref(false)
 
 const handleSubmitGalgame = async () => {
   const banner = await getImage('kun-galgame-publish-banner')
-  // Wire-format payload uses snake_case keys to match the wiki API
-  // (POST /galgame/submit). The Vue store keeps camelCase locally; we
-  // rename at the boundary so the schema, the JSON body, and the wiki
-  // contract all agree.
   const data: Record<
     string,
     number | string | string[] | Blob | boolean | null
@@ -46,7 +32,6 @@ const handleSubmitGalgame = async () => {
     content_limit: content_limit.value,
     age_limit: age_limit.value,
     original_language: original_language.value,
-    // U1: empty string = unknown; wiki schema accepts "" or YYYY-MM-DD.
     release_date: release_date.value,
     release_date_tba: release_date_tba.value,
     banner
@@ -75,10 +60,6 @@ const handleSubmitGalgame = async () => {
     useMessage(10525, 'info', 7777)
   }
 
-  // The banner is uploaded FIRST and travels as a hash. A cover is a reference
-  // to bytes that must already exist, so it cannot ride the mint — it is
-  // attached as the submission's first edit, which is also how the reviewer
-  // sees it alongside the rest.
   const { banner: _bannerBlob, ...jsonFields } = data
   let bannerHash = ''
   if (banner instanceof File) {
@@ -102,9 +83,6 @@ const handleSubmitGalgame = async () => {
 
   if (created?.gid) {
     await deleteImage('kun-galgame-publish-banner')
-    // Clear the persisted wizard-step draft key (set by Galgame.vue via
-    // useLocalStorage) so the next "new submission" starts at step ①
-    // rather than resuming a stale position over empty fields.
     if (import.meta.client) {
       localStorage.removeItem('kun-galgame-publish-step')
     }

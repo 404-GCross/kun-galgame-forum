@@ -47,15 +47,6 @@ watch(
     <KunTopBar />
 
     <div class="bg-background flex min-h-dvh min-h-screen justify-center">
-      <!-- No transition on this wrapper, deliberately. Its box is pinned by
-           max-w-7xl and two desktop-nav: margins, and desktop-nav is a pure
-           media query, so nothing here changes at runtime and a transition
-           could never animate anything intended. What it did animate was
-           accidents: any stray reflow of the page column (an overlay's
-           scrollbar compensation, a late-arriving tab) stopped being an
-           instant, near-invisible jump and became a 300ms glide of the whole
-           content column, seen as the cards inside it shaking. Layout shifts
-           are worth removing; animating them is not. -->
       <div
         :class="
           cn(
@@ -68,18 +59,10 @@ watch(
           )
         "
       >
-        <!-- Small gutter everywhere except the desktop rail layout (desktop-nav),
-             which is flush. pt clears the fixed top bar. -->
         <div class="desktop-nav:px-0 h-full px-2 pt-22 pb-6">
           <NuxtPage />
         </div>
 
-        <!-- Native <img>, NOT KunImage: this mascot must stay `fixed` to the
-             bottom-right corner. KunImage's skeleton wrapper is a
-             `position: relative` div that also receives this class, and
-             Tailwind emits `.relative` after `.fixed`, so `relative` wins and
-             un-pins it. A decorative static webp also wants no skeleton / IPX
-             round-trip, so a bare <img> is the right tool. -->
         <img
           v-if="showKUNGalgameBackLoli"
           class="pointer-events-none fixed right-px bottom-px z-0 h-[33dvh] w-auto opacity-17! select-none"

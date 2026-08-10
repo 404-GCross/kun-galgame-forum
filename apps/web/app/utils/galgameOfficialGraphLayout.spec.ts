@@ -1,8 +1,3 @@
-// Pins the three things about the drawing that are invisible from the picture
-// once it is wrong: the direction each relation word is read in, the fact that
-// a rename keeps a company on its own layer, and that a cycle in the DATA (two
-// makers each recorded as the other's parent — an error, not an impossibility)
-// costs a slightly odd layout rather than a hung render.
 import { describe, it, expect } from 'vitest'
 import {
   buildOfficialGraphLayout,
@@ -24,8 +19,6 @@ const layerOf = (
 
 describe('buildOfficialGraphLayout', () => {
   it('reads parent and imprint edges in OPPOSITE directions', () => {
-    // VisualArt's owns Key (a parent edge, read upward) and Na-Ga (an imprint
-    // edge, read downward). Both belong on the layer BELOW VisualArt's.
     const layout = buildOfficialGraphLayout({
       nodes: [
         node(24, 'Key', 33),
@@ -41,7 +34,6 @@ describe('buildOfficialGraphLayout', () => {
     expect(layerOf(layout, 993)).toBe(0)
     expect(layerOf(layout, 24)).toBe(1)
     expect(layerOf(layout, 994)).toBe(1)
-    // Both arrows are drawn owner→brand whichever word they arrived as.
     expect(layout.edges.map((e) => [e.kind, e.from, e.to])).toEqual([
       ['subsidiary', 993, 24],
       ['imprint', 993, 994]
@@ -49,7 +41,6 @@ describe('buildOfficialGraphLayout', () => {
   })
 
   it('keeps a renamed company on its own layer, in date order', () => {
-    // A rename is not a step down an org chart: the company is the same one.
     const layout = buildOfficialGraphLayout({
       nodes: [node(1, 'Old'), node(2, 'New'), node(3, 'Owner', 10)],
       edges: [
@@ -60,15 +51,12 @@ describe('buildOfficialGraphLayout', () => {
 
     expect(layerOf(layout, 1)).toBe(layerOf(layout, 2))
     expect(layerOf(layout, 3)).toBeLessThan(layerOf(layout, 1))
-    // Oldest name to the left, so the arrow reads forwards in time.
     const old = layout.nodes.find((n) => n.official.id === 1)!
     const renamed = layout.nodes.find((n) => n.official.id === 2)!
     expect(old.x).toBeLessThan(renamed.x)
   })
 
   it('folds a wide set of siblings into rows instead of a ribbon', () => {
-    // Eight imprints in one row is 1,700px of drawing two boxes tall, which at
-    // fit scale is unreadable confetti. They fold into a block.
     const layout = buildOfficialGraphLayout({
       nodes: [
         node(1, 'Owner', 500),
@@ -84,30 +72,19 @@ describe('buildOfficialGraphLayout', () => {
     const brands = layout.nodes.filter((n) => n.official.id !== 1)
     expect(new Set(brands.map((n) => n.y)).size).toBe(2)
     expect(new Set(brands.map((n) => n.row))).toEqual(new Set([0, 1]))
-    // Four columns wide, not eight.
     expect(new Set(brands.map((n) => Math.round(n.x))).size).toBe(4)
 
-    // And the arrows into the second row do NOT come down through the box
-    // above them: they run down the empty channel to the left of the column.
     const wrapped = brands.filter((n) => n.row === 1)
     for (const target of wrapped) {
       const edge = layout.edges.find((e) => e.to === target.official.id)!
-      // The vertical run before the turn-in, read off the rounded corner.
       const spine = Number(edge.path.match(/L (-?[\d.]+) [-\d.]+ Q/)![1])
-      // Inside the free channel: right of the previous column's boxes, left of
-      // this one's.
       expect(spine).toBeGreaterThan(target.x - 92 - 28)
       expect(spine).toBeLessThan(target.x - 92)
-      // And far enough out that the turn-in is a line with a head on it, not a
-      // head sprouting from the corner.
       expect(target.x - 92 - spine).toBeGreaterThanOrEqual(16)
     }
   })
 
   it('stops every line exactly where its arrow head begins', () => {
-    // The seam the eye catches: a line that runs past the tip blunts it, one
-    // that stops short leaves the head floating. Both are invisible in a unit
-    // test unless the meeting point is asserted, so it is.
     const layout = buildOfficialGraphLayout({
       nodes: [
         node(1, 'Owner', 500),
@@ -119,7 +96,6 @@ describe('buildOfficialGraphLayout', () => {
           to: i + 2,
           relation: 'imprint' as const
         })),
-        // A rename, which is drawn laterally — the third of the three routes.
         { from: 2, to: 3, relation: 'succeeded_by' as const }
       ]
     })
@@ -153,9 +129,6 @@ describe('buildOfficialGraphLayout', () => {
   })
 
   it('normalises the drawing to a (0,0)-anchored box', () => {
-    // The viewport frames the graph from these numbers alone — it has no DOM to
-    // measure on the server render — so a stray negative coordinate is a graph
-    // that arrives half off screen.
     const layout = buildOfficialGraphLayout({
       nodes: [node(1, 'A'), node(2, 'B'), node(3, 'C')],
       edges: [

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// The reaction picker popover content: 点赞 / 点踩 pinned on top (with their
-// effect annotations), then the emoji grid. Emits the chosen reaction key.
 import {
   KUN_REACTION_LIKE,
   KUN_REACTION_DISLIKE,
@@ -12,10 +10,7 @@ import {
 
 const props = defineProps<{
   mineKeys?: string[]
-  // Enables the 查看历史 row + picks its wording. Off only where there is no
-  // history feed to open (the feed card).
   subject?: 'topic' | 'reply'
-  // Total reactions on the subject, shown as "xxx 人回应了话题 / 该回复".
   total?: number
 }>()
 const emit = defineEmits<{ select: [key: string]; viewHistory: [] }>()
@@ -25,7 +20,6 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
 
 <template>
   <div class="w-72 space-y-2 p-2">
-    <!-- Effectful reactions -->
     <button
       type="button"
       :class="
@@ -70,7 +64,6 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
 
     <KunDivider />
 
-    <!-- Emoji grid -->
     <div class="grid max-h-60 grid-cols-6 gap-1 overflow-y-auto">
       <button
         v-for="e in KUN_REACTION_EMOJIS"
@@ -94,7 +87,6 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       </button>
     </div>
 
-    <!-- 查看历史 (left: count, right: open the modal). -->
     <template v-if="subject">
       <KunDivider />
       <div class="flex items-center justify-between px-1 text-sm">

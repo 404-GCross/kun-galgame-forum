@@ -1,14 +1,10 @@
 <script setup lang="ts">
-// One proposal's summary card: status, touched fields, note, attribution and
-// decision trail. Entity naming and user rendering are host concerns —
-// passed as props/slots (extraction-ready boundary).
 import { computed } from 'vue'
 import type { EditProposal, EditUser } from './types'
 import { proposalStatusBadge } from './utils'
 
 const props = defineProps<{
   proposal: EditProposal
-  /** Field key → display label (host label map). */
   labelFor: (key: string) => string
   proposer?: EditUser
   decider?: EditUser
