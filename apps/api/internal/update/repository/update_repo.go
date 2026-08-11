@@ -43,15 +43,23 @@ func (r *UpdateRepository) DeleteHistory(id int) {
 	r.db.Delete(&adminModel.UpdateLog{}, id)
 }
 
-func (r *UpdateRepository) CountTodos() int64 {
+func (r *UpdateRepository) todos(status *int) *gorm.DB {
+	q := r.db.Model(&adminModel.Todo{})
+	if status != nil {
+		q = q.Where("status = ?", *status)
+	}
+	return q
+}
+
+func (r *UpdateRepository) CountTodos(status *int) int64 {
 	var total int64
-	r.db.Model(&adminModel.Todo{}).Count(&total)
+	r.todos(status).Count(&total)
 	return total
 }
 
-func (r *UpdateRepository) FindTodosPaginated(page, limit int) []adminModel.Todo {
+func (r *UpdateRepository) FindTodosPaginated(page, limit int, status *int) []adminModel.Todo {
 	var todos []adminModel.Todo
-	r.db.Order("created DESC").
+	r.todos(status).Order("created DESC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&todos)
 	return todos

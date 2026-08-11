@@ -5,6 +5,12 @@ type ListQuery struct {
 	Limit int `query:"limit" validate:"min=1,max=50"`
 }
 
+type TodoListQuery struct {
+	Page   int  `query:"page" validate:"min=1"`
+	Limit  int  `query:"limit" validate:"min=1,max=50"`
+	Status *int `query:"status" validate:"omitempty,min=0,max=10"`
+}
+
 type CreateHistoryRequest struct {
 	Type        string `json:"type" validate:"required"`
 	Version     string `json:"version" validate:"max=20"`
