@@ -4,8 +4,6 @@ import {
   KUN_DOC_CATEGORY_MAP
 } from '~/constants/doc'
 
-// No orderBy/sortOrder: the backend default is the manual sort_order set in
-// the admin doc manager (/admin/doc), so the public list mirrors that order.
 const { data: articleResponse } = await useKunFetch<DocArticleListResponse>(
   '/doc/article',
   {

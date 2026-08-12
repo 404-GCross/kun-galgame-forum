@@ -10,19 +10,6 @@ import (
 	"net/http"
 )
 
-// images.go — the edit face's byte-upload leg (infra wave 169).
-// Covers/screenshots are edited as HASH ROWS on the proposal face; this call is
-// where the hash comes from: the catalog uploads the bytes under its own
-// image-service identity (site "catalog", kept alive by its refping cron) and
-// hands the hash back for the edit payload to carry.
-//
-// It moved to the USER plane in wave 180 (POST /api/v1/user/catalog/edit/images).
-// It was the last asserted-actor WRITE the forum had left: an `actor_uid` form
-// field naming whoever the forum said was uploading, stamped into the image
-// audit trail on that word alone. The token carries the subject now, so the
-// field is gone and the audit trail records a person the catalog verified.
-
-// EditImageResult is the image-service upload result the catalog forwards.
 type EditImageResult struct {
 	Hash         string            `json:"hash"`
 	URL          string            `json:"url"`
@@ -34,18 +21,7 @@ type EditImageResult struct {
 	Deduplicated bool              `json:"deduplicated"`
 }
 
-// UploadEditImageUser forwards one cover/screenshot to the catalog edit face AS
-// the token's subject. preset is the image-service vocabulary the FE already
-// speaks: "galgame_banner" (cover) or "galgame_screenshot".
-//
-// The transport is hand-rolled rather than routed through userEditDo because
-// the body is multipart, but the posture is identical: Bearer only, never the
-// Basic credential alongside it (sending both would let the service fall back
-// to the S2S posture and silently undo the dogfood), and the same user-plane
-// taxonomy — a scope denial reaches the caller as ErrInsufficientScope so an
-// old session is told to log back in rather than that it may not upload.
 func (c *Client) UploadEditImageUser(ctx context.Context, accessToken string, r io.Reader, filename, preset string) (*EditImageResult, error) {
-	// Only the base URL matters — this call authenticates with the user's token.
 	if c.baseURL == "" {
 		return nil, ErrNotConfigured
 	}
@@ -88,8 +64,6 @@ func (c *Client) UploadEditImageUser(ctx context.Context, accessToken string, r 
 		Message string          `json:"message"`
 		Data    json.RawMessage `json:"data"`
 	}
-	// A body that does not parse still has a status worth honouring — a proxy
-	// error page in front of a dead service must not read as a stored image.
 	decodeErr := json.Unmarshal(raw, &env)
 
 	switch resp.StatusCode {

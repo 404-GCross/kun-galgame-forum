@@ -4,21 +4,6 @@ import (
 	"time"
 )
 
-// ──────────────────────────────────────────
-// Requests
-// ──────────────────────────────────────────
-
-// `Description` requires min=10 and `Icon` is validated as a URL —
-// previously the FE schema enforced these but the BE DTO didn't, so the
-// BE silently accepted empty descriptions and non-URL icons that the FE
-// would have rejected. Tightened the BE to match what the product
-// actually requires.
-//
-// `URL` is the site's BARE main domain (no scheme — e.g. `www.kungal.com`),
-// which is how every row is stored and how the UI links to it
-// (`https://${url}`). The `url` tag requires a scheme, so it rejected every
-// existing entry on edit/create; `fqdn` validates a bare domain instead.
-// `Icon`, by contrast, IS a full URL, so it keeps the `url` tag.
 type CreateWebsiteRequest struct {
 	Name          string   `json:"name" validate:"required,max=233"`
 	URL           string   `json:"url" validate:"required,fqdn,max=500"`
@@ -56,12 +41,6 @@ type ToggleInteractionRequest struct {
 	WebsiteID int `json:"website_id" validate:"required,min=1"`
 }
 
-// ──────────────────────────────────────────
-// Responses
-// ──────────────────────────────────────────
-
-// WebsiteCard is the list-card shape returned by GetWebsites and nested in
-// category/tag detail responses.
 type WebsiteCard struct {
 	ID            int    `json:"id"`
 	Name          string `json:"name"`
@@ -76,7 +55,6 @@ type WebsiteCard struct {
 	Category      string `json:"category"`
 }
 
-// WebsiteCategoryBrief is the category sub-object in the website detail response.
 type WebsiteCategoryBrief struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
@@ -84,7 +62,6 @@ type WebsiteCategoryBrief struct {
 	Description string `json:"description"`
 }
 
-// WebsiteTagBrief is the tag sub-object in the website detail response.
 type WebsiteTagBrief struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
@@ -93,14 +70,12 @@ type WebsiteTagBrief struct {
 	Level       int    `json:"level"`
 }
 
-// UserBriefCompact is the user projection used for comments in the website detail.
 type UserBriefCompact struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
 }
 
-// WebsiteDetailComment is a simple flat comment attached to the website detail.
 type WebsiteDetailComment struct {
 	ID      int              `json:"id"`
 	Content string           `json:"content"`
@@ -109,8 +84,6 @@ type WebsiteDetailComment struct {
 	Updated string           `json:"updated"`
 }
 
-// WebsiteDetailResponse is the shape of GET /website/:domain.
-// All field names and ordering are preserved verbatim from the original handler.
 type WebsiteDetailResponse struct {
 	ID            int                    `json:"id"`
 	Name          string                 `json:"name"`

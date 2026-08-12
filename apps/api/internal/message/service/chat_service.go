@@ -28,14 +28,7 @@ func NewChatService(
 	return &ChatService{chatRepo: chatRepo, userClient: userClient}
 }
 
-// ──────────────────────────────────────────
-// GetNavContact — GET /api/message/nav/contact
-// ──────────────────────────────────────────
 
-// GetNavContact returns the chat room list for the message sidebar.
-// For private rooms, the display title/avatar/route are resolved to the
-// OTHER participant (not the current user). Identity is hydrated via
-// userclient since the repo no longer joins on the user table.
 func (s *ChatService) GetNavContact(ctx context.Context, userID int) ([]dto.NavContactItem, *errors.AppError) {
 	rooms, err := s.chatRepo.FindRoomsForUser(userID)
 	if err != nil {
@@ -50,18 +43,15 @@ func (s *ChatService) GetNavContact(ctx context.Context, userID int) ([]dto.NavC
 		roomIDs[i] = r.ID
 	}
 
-	// Participants: { room_id -> [participant...] }
 	participants := s.chatRepo.FindParticipantsByRoomIDs(roomIDs)
 	roomParts := make(map[int][]repository.ParticipantRow)
 	for _, p := range participants {
 		roomParts[p.ChatRoomID] = append(roomParts[p.ChatRoomID], p)
 	}
 
-	// Hydrate participant identity in one batch.
 	pids := userclient.CollectIDs(participants, func(p repository.ParticipantRow) int { return p.UserID })
 	userMap := s.userClient.Hydrate(ctx, pids)
 
-	// Unread + total counts per room.
 	unreadMap := make(map[int]int)
 	for _, u := range s.chatRepo.CountUnreadByRoomIDs(roomIDs, userID) {
 		unreadMap[u.ChatRoomID] = u.Count
@@ -99,13 +89,7 @@ func (s *ChatService) GetNavContact(ctx context.Context, userID int) ([]dto.NavC
 	return items, nil
 }
 
-// ──────────────────────────────────────────
-// GetChatHistory — GET /api/message/chat/history
-// ──────────────────────────────────────────
 
-// GetChatHistory returns paginated chat messages between the current user and
-// the receiver, in chronological (ascending) order. Side effect: marks every
-// fetched message not sent by the current user as read.
 func (s *ChatService) GetChatHistory(
 	ctx context.Context,
 	userID int,
@@ -125,8 +109,6 @@ func (s *ChatService) GetChatHistory(
 
 	rows := s.chatRepo.FindMessagesByRoom(roomID, roomName, req.Page, req.Limit)
 
-	// Mark messages received (not sent by current user) as read. Read-receipts
-	// are non-critical — log on failure but still return the history.
 	if len(rows) > 0 {
 		msgIDs := make([]int, 0, len(rows))
 		for _, m := range rows {
@@ -139,20 +121,13 @@ func (s *ChatService) GetChatHistory(
 		}
 	}
 
-	// Hydrate sender identity in one batch.
 	uids := userclient.CollectIDs(rows, func(m repository.ChatMessageRow) int { return m.SenderID })
 	userMap := s.userClient.Hydrate(ctx, uids)
 
-	// Reverse DB order (DESC) into chronological ASC order for the response.
 	items := make([]dto.ChatMessageItem, len(rows))
 	for i, m := range rows {
 		u := userMap[m.SenderID]
 
-		// Recalled messages must not leak their original body — the client only
-		// ever shows "<sender> 撤回了一条消息", never the content. Blank both the
-		// raw source and the rendered HTML so a recalled message's text (and any
-		// image URL) isn't served at all. (The image bytes themselves still live
-		// on the CDN — true deletion is a separate, larger change.)
 		content := m.Content
 		contentHTML := markdown.RenderInline(m.Content)
 		if m.IsRecall {
@@ -177,13 +152,7 @@ func (s *ChatService) GetChatHistory(
 	return items, nil
 }
 
-// ──────────────────────────────────────────
-// SendChatMessage — POST /api/message/chat/send
-// ──────────────────────────────────────────
 
-// SendChatMessage writes a new chat message and updates the room's
-// last_message_* fields. senderName is written into chat_room for display in
-// the contacts list; it's passed in because the service doesn't have a user repo.
 func (s *ChatService) SendChatMessage(
 	ctx context.Context,
 	senderUserID int,
@@ -200,8 +169,6 @@ func (s *ChatService) SendChatMessage(
 	}
 
 	now := time.Now()
-	// Atomic: the message insert and the room-preview update either both land
-	// or neither does. Surface the error instead of a false "发送成功".
 	txErr := s.chatRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.chatRepo.InsertChatMessage(tx, roomID, roomName, senderUserID, req.ReceiverID, req.Content, now); err != nil {
 			return err
@@ -214,15 +181,7 @@ func (s *ChatService) SendChatMessage(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// RecallMessage — POST /api/message/chat/recall
-// ──────────────────────────────────────────
 
-// RecallMessage marks a chat message as recalled. Only the original sender
-// may recall, and only if it hasn't been recalled already. When the recalled
-// message was the room's latest, the room's last_message preview is also
-// refreshed to "<sender>撤回了一条消息" so contact-list rendering matches the
-// chat history view.
 func (s *ChatService) RecallMessage(
 	ctx context.Context,
 	userID int,
@@ -244,10 +203,7 @@ func (s *ChatService) RecallMessage(
 		return errors.ErrInternal("撤回消息失败")
 	}
 
-	// Only refresh the room preview if this WAS the latest message —
-	// otherwise the preview should keep showing whatever's actually latest.
 	if s.chatRepo.IsLatestMessageInRoom(header.ChatRoomID, messageID) {
-		// Look up the sender's current name from OAuth for the preview text.
 		senderName := ""
 		if u, _, err := s.userClient.User(ctx, header.SenderID); err == nil {
 			senderName = u.Name
@@ -260,14 +216,7 @@ func (s *ChatService) RecallMessage(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────
 
-// findOrCreatePrivateRoom returns the (roomID, roomName) for the private room
-// between two users, creating it if it doesn't exist. Look-up is by
-// participant table (NOT by generated room name, which may be stale after the
-// OAuth migration changed user IDs).
 func (s *ChatService) findOrCreatePrivateRoom(uid1, uid2 int) (int, string, error) {
 	room := s.chatRepo.FindPrivateRoomBetween(uid1, uid2)
 	if room.ID > 0 {
@@ -280,8 +229,6 @@ func (s *ChatService) findOrCreatePrivateRoom(uid1, uid2 int) (int, string, erro
 	return newRoom.ID, newRoom.Name, nil
 }
 
-// generateRoomID produces a deterministic "smaller-larger" name for a private
-// room between two users.
 func generateRoomID(uid1, uid2 int) string {
 	if uid1 < uid2 {
 		return fmt.Sprintf("%d-%d", uid1, uid2)

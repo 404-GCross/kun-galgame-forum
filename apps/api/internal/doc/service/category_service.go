@@ -17,19 +17,16 @@ func NewCategoryService(categoryRepo *repository.CategoryRepository) *CategorySe
 	return &CategoryService{categoryRepo: categoryRepo}
 }
 
-// CategoryListResult carries the list + total for paginated handler responses.
 type CategoryListResult struct {
 	Items []model.DocCategory
 	Total int64
 }
 
-// GetList — GET /doc/category
 func (s *CategoryService) GetList(req *dto.GetCategoriesRequest) *CategoryListResult {
 	items, total := s.categoryRepo.FindPaginated(req.Keyword, req.Page, req.Limit)
 	return &CategoryListResult{Items: items, Total: total}
 }
 
-// Create — POST /doc/category
 func (s *CategoryService) Create(req *dto.CreateCategoryRequest) (*model.DocCategory, *errors.AppError) {
 	category := &model.DocCategory{
 		Slug:        req.Slug,
@@ -44,7 +41,6 @@ func (s *CategoryService) Create(req *dto.CreateCategoryRequest) (*model.DocCate
 	return category, nil
 }
 
-// Update — PUT /doc/category
 func (s *CategoryService) Update(req *dto.UpdateCategoryRequest) *errors.AppError {
 	if err := s.categoryRepo.UpdateFields(req.CategoryID, map[string]any{
 		"slug":        req.Slug,
@@ -58,12 +54,6 @@ func (s *CategoryService) Update(req *dto.UpdateCategoryRequest) *errors.AppErro
 	return nil
 }
 
-// Delete — DELETE /doc/category
-//
-// Guards against the DB-level CASCADE: the legacy Prisma schema declared
-// `doc_article.category_id` with `onDelete: Cascade`, so a raw DELETE
-// here would silently take down every article in the category. Reject
-// before that happens — admins must move / delete articles first.
 func (s *CategoryService) Delete(categoryID int) *errors.AppError {
 	if count := s.categoryRepo.CountArticles(categoryID); count > 0 {
 		return errors.ErrBadRequest(

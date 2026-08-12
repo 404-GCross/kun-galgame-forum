@@ -8,10 +8,14 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-# Build command
-cmd = "go build -o ./tmp/server ./cmd/server"
-# Binary entrypoint to run
-entrypoint = "./tmp/server"
+# The `.exe` suffix is carried on every OS, not just Windows. Air has no
+# per-OS config section (cfgBuild has no such field, and an unknown TOML table
+# is silently dropped), so the choice is one name everywhere or none that
+# works: on Windows os/exec resolves the entrypoint through PATHEXT and refuses
+# a suffix-less binary, while on Linux/macOS the name is cosmetic and the file
+# runs regardless. tmp/ is gitignored, so nothing about it is user-facing.
+cmd = "go build -o ./tmp/server.exe ./cmd/server"
+entrypoint = ["./tmp/server.exe"]
 # Watch these extensions
 include_ext = ["go", "tpl", "tmpl", "html", "env"]
 # Exclude directories

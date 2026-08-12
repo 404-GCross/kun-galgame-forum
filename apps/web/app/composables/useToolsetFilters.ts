@@ -1,12 +1,5 @@
 import { useRouteQuery } from '@vueuse/router'
 
-// URL-backed filter state for the toolset list — the same pattern as
-// useGalgameFilters (replaces the old useTempToolsetStore Pinia store).
-// Every consumer (Nav, Container) reads/writes the same query keys, so
-// the filtered toolset view is shareable, survives refresh, and supports
-// browser back/forward. mode:'replace' keeps filter churn out of history;
-// default values are dropped from the URL. URL keys === BE /toolset query
-// keys, so Container spreads them straight into the fetch.
 type ToolsetType =
   | 'all'
   | 'emulator'
@@ -38,8 +31,6 @@ export const useToolsetFilters = () => {
   )
   const sortOrder = useRouteQuery<KunOrder>('sortOrder', 'desc', opts)
 
-  // Keyword search across name + aliases + description + version. URL-backed
-  // like the other filters; empty string = no keyword filter (URL-omitted).
   const query = useRouteQuery<string>('query', '', opts)
 
   const limit = 24

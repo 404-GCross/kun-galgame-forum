@@ -9,32 +9,13 @@ import (
 	"kun-galgame-api/pkg/catalogclient"
 )
 
-// GalgameUserStats is the per-user contribution snapshot the profile page, the
-// daily submission quota and creator eligibility all read.
-//
-// It used to come from one wiki endpoint that counted rows in the wiki's own
-// tables. There is no such endpoint any more, and there should not be: the
-// registry has no owner column and cannot have one, because a registry row
-// outlives any account. So each number is derived from what the user actually
-// DID — their claim transitions and their merged edits — which is the same
-// definition the old counts were trying to express.
 type GalgameUserStats struct {
-	// Published is how many entries of this user's are live.
-	Published int64 `json:"published"`
-	// PublishedToday counts the claims this user first touched today, which is
-	// what the daily submission quota is measured against.
-	PublishedToday int `json:"published_today"`
-	// Contributed is how many DISTINCT entries this user has landed an edit on.
-	// Distinct, not merged-proposal count: "参与编辑的 Galgame" is a number of
-	// games, and five edits to one game is one game.
-	Contributed int `json:"contributed"`
-	// MergedEdits is the raw merged-proposal count — the creator-eligibility
-	// threshold, which is about volume of accepted work rather than breadth.
-	MergedEdits int64 `json:"merged_edits"`
+	Published      int64 `json:"published"`
+	PublishedToday int   `json:"published_today"`
+	Contributed    int   `json:"contributed"`
+	MergedEdits    int64 `json:"merged_edits"`
 }
 
-// GalgameUserStatsService derives the snapshot and the two profile lists that
-// go with it.
 type GalgameUserStatsService struct {
 	catalog       *catalogclient.Client
 	galgameClient *client.GalgameClient
@@ -48,20 +29,10 @@ func NewGalgameUserStatsService(
 }
 
 const (
-	// dailyClaimScan is how far back the "today" count looks. The list is
-	// ordered by most recent activity, so today's rows are always at its head;
-	// this is the ceiling on how many submissions one user can make in a day
-	// before the count saturates, not a page size the caller pages through.
-	dailyClaimScan = 100
-	// contributedScan bounds the distinct-entry walk. A contributor past this
-	// many merged edits is far beyond every threshold that reads the number.
+	dailyClaimScan  = 100
 	contributedScan = 200
 )
 
-// Stats builds the snapshot. Every field degrades independently: a face that
-// is unreachable yields a zero for its own number and a warning, never an error
-// for the whole profile — these are decorations on a page that has other
-// reasons to render.
 func (s *GalgameUserStatsService) Stats(ctx context.Context, uid int64) GalgameUserStats {
 	var out GalgameUserStats
 	if s.catalog == nil || !s.catalog.Configured() {
@@ -73,8 +44,6 @@ func (s *GalgameUserStatsService) Stats(ctx context.Context, uid int64) GalgameU
 	}); err != nil {
 		slog.Warn("user stats: 读取已发布计数失败", "uid", uid, "error", err)
 	} else {
-		// The total is counted under the same filter and is independent of the
-		// cursor — which is exactly what lets one list face answer a statistic.
 		out.Published = page.Total
 	}
 
@@ -105,12 +74,6 @@ func (s *GalgameUserStatsService) Stats(ctx context.Context, uid int64) GalgameU
 	return out
 }
 
-// countToday counts the claims this user first acted on since local midnight.
-//
-// FirstActedAt is the user's OWN first transition on that claim, not the
-// claim's last event — so a moderator approving yesterday's submission today
-// does not consume today's quota, and re-touching an old submission does not
-// either.
 func countToday(items []catalogclient.UserClaimItem) int {
 	now := time.Now()
 	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -123,7 +86,6 @@ func countToday(items []catalogclient.UserClaimItem) int {
 	return count
 }
 
-// distinctEntityIDs collapses a proposal list onto the entries it touched.
 func distinctEntityIDs(items []catalogclient.EditProposal) []int64 {
 	seen := make(map[int64]struct{}, len(items))
 	out := make([]int64, 0, len(items))
@@ -138,18 +100,8 @@ func distinctEntityIDs(items []catalogclient.EditProposal) []int64 {
 	return out
 }
 
-// maxClaimPageWalk bounds how deep the offset-paged profile tab may reach into
-// a cursor-paged face. The two paginations do not compose — a cursor page is
-// only reachable by walking to it — so the walk is capped rather than allowed
-// to turn a deep-link into an unbounded fan-out.
 const maxClaimPageWalk = 20
 
-// PublishedGIDs is the "已发布的 Galgame" tab: the entries this user has live,
-// most recent activity first, brought home to kungal ids.
-//
-// The offset page is walked over the cursor face rather than translated: a
-// cursor page is only reachable through the ones before it, and pretending
-// otherwise is how a list starts skipping rows while it is being written to.
 func (s *GalgameUserStatsService) PublishedGIDs(
 	ctx context.Context, uid int64, page, limit int,
 ) ([]int, int64, error) {
@@ -179,7 +131,6 @@ func (s *GalgameUserStatsService) claimGIDs(
 		}
 		total, items, before = p.Total, p.Items, p.NextBefore
 		if before == 0 {
-			// Tail reached: a later page is empty, not an error.
 			if i < page-1 {
 				return []int{}, total, nil
 			}
@@ -188,8 +139,6 @@ func (s *GalgameUserStatsService) claimGIDs(
 	}
 	gids := make([]int, 0, len(items))
 	for i := range items {
-		// The claim's product id IS the gid — it is the id kungal told the
-		// registry to record. No bridge lookup needed on this lane.
 		if id := items[i].ProductWorkID; id != nil && *id > 0 {
 			gids = append(gids, int(*id))
 		}
@@ -197,10 +146,6 @@ func (s *GalgameUserStatsService) claimGIDs(
 	return gids, total, nil
 }
 
-// ContributedGIDs is the "参与编辑的 Galgame" tab: the entries this user has
-// landed an edit on. Unlike the claim lane these are REGISTRY ids, so they go
-// back through the bridge — an entity_id used as a gid would link to a
-// different game without erroring.
 func (s *GalgameUserStatsService) ContributedGIDs(ctx context.Context, uid int64) ([]int, error) {
 	items, err := s.catalog.ListEditProposals(ctx, catalogclient.EditProposalFilter{
 		EntityType: catalogclient.EntityTypeWork, ProposerUID: uid,
@@ -214,8 +159,6 @@ func (s *GalgameUserStatsService) ContributedGIDs(ctx context.Context, uid int64
 	if appErr != nil {
 		return nil, appErr
 	}
-	// Order follows the proposals (most recent first); works kungal no longer
-	// claims simply drop out.
 	gids := make([]int, 0, len(workIDs))
 	for _, id := range workIDs {
 		if gid, ok := gidByWork[id]; ok {

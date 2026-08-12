@@ -9,12 +9,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// rawJSON wraps a DB-stored JSON string into a json.RawMessage.
-//
-// Falls back to an empty array (`[]`) rather than `null` because the
-// only call site is `GalgameType` and the FE declares the field as
-// `string[]` — historic rows with NULL or "" galgame_type would
-// otherwise crash the FE on `data.galgameType.map(...)` / JSON-LD.
 func rawJSON(s string) json.RawMessage {
 	if s == "" {
 		return json.RawMessage("[]")
@@ -22,7 +16,6 @@ func rawJSON(s string) json.RawMessage {
 	return json.RawMessage(s)
 }
 
-// rowToScores pulls the per-axis scores off a rating row.
 func rowToScores(r model.GalgameRatingRow) dto.RatingScores {
 	return dto.RatingScores{
 		Art: r.Art, Story: r.Story, Music: r.Music, Character: r.Character,
@@ -31,7 +24,6 @@ func rowToScores(r model.GalgameRatingRow) dto.RatingScores {
 	}
 }
 
-// ratingRowToCard maps a rating row + user + brief to the list card DTO.
 func ratingRowToCard(
 	r model.GalgameRatingRow,
 	user userclient.User,
@@ -62,7 +54,6 @@ func ratingRowToCard(
 	}
 }
 
-// nextMoeOfficialsToDTO maps galgame official relations into the response format.
 func nextMoeOfficialsToDTO(rels []dto.NextMoeOfficialRel) []dto.RatingOfficial {
 	out := make([]dto.RatingOfficial, len(rels))
 	for i, rel := range rels {
@@ -83,7 +74,6 @@ func nextMoeOfficialsToDTO(rels []dto.NextMoeOfficialRel) []dto.RatingOfficial {
 	return out
 }
 
-// containsInt reports whether needle appears in haystack.
 func containsInt(haystack []int, needle int) bool {
 	if needle == 0 {
 		return false

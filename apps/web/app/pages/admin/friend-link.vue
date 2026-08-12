@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { FRIEND_LINK_CATEGORIES } from '~/constants/friendLink'
 
-// Mirrors the API's RequirePermission(friend_link.create/edit/delete) gates on
-// the /admin/friend-link routes. UX guard — the real boundary is the API.
 definePageMeta({
   middleware: 'permission',
   permissions: ['friend_link.create', 'friend_link.edit', 'friend_link.delete']
@@ -10,7 +8,6 @@ definePageMeta({
 
 useKunDisableSeo('友链管理')
 
-// Same public endpoint the display page uses; refetched after every mutation.
 const { data, refresh } = await useKunFetch<GroupedFriendLinks>('/friend-link')
 
 const isModalOpen = ref(false)

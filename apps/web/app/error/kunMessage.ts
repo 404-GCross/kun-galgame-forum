@@ -1,11 +1,3 @@
-/*
- * Code number
- * 1. User Part
- * 2. Topic Part
- * 3. Auth Part
- * 5. Galgame Part
- */
-
 export const infoMessages: Record<number, string> = {
   10101: '密码更改成功',
   10102: '错误的图片数据',

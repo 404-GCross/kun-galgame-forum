@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// Compact list view for the /galgame-quiz browse page. Left = the viewer's own
-// status (对/错/出题/未答); middle = title + author/time + 题型/分类; right =
-// 难度 + 正确率.
 import {
   KUN_QUIZ_TYPE_MAP,
   KUN_QUIZ_TYPE_ICON_MAP,
@@ -28,7 +25,6 @@ const correctRate = (q: GalgameQuizCard) =>
       :to="`/galgame-quiz/${quiz.id}`"
       class="hover:bg-default-100 flex items-center gap-3 px-2 py-3 transition-colors"
     >
-      <!-- left: the viewer's own status -->
       <div class="flex w-6 shrink-0 justify-center text-lg">
         <KunIcon
           v-if="quiz.my_status === 'correct'"
@@ -53,7 +49,6 @@ const correctRate = (q: GalgameQuizCard) =>
         <KunIcon v-else name="lucide:circle-dashed" class="text-default-400" />
       </div>
 
-      <!-- middle: title + meta -->
       <div class="min-w-0 flex-1">
         <KunContent
           :content="quiz.question_html"
@@ -101,7 +96,6 @@ const correctRate = (q: GalgameQuizCard) =>
         </div>
       </div>
 
-      <!-- right: difficulty + correct rate -->
       <div class="flex shrink-0 flex-col items-end gap-1">
         <KunChip
           :color="kunQuizDifficultyColor(quiz.difficulty)"

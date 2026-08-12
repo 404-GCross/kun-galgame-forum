@@ -1,9 +1,6 @@
 import type { ForumPermission } from '~/composables/useCan'
 
 export const KUN_ADMIN_OVERVIEW_STATS_MODEL_ITEM = [
-  // No 'user' stat — the legacy local user table is obsolete after the OAuth
-  // cutover, so a registration count off it is misleading (kept off the BE
-  // catalog too, see admin/service/overview_service.go).
   'topic',
   'topic_reply',
   'topic_comment',
@@ -52,14 +49,6 @@ export const KUN_ADMIN_PAGE_ROUTE = [
 
 export type KUN_ADMIN_PAGE_ROUTE_TYPE = (typeof KUN_ADMIN_PAGE_ROUTE)[number]
 
-// What a viewer must hold for an entry to be worth showing them.
-//   permissions — ANY ONE of these pure-forum keys (useCan, so per-user
-//                 overrides count). Use the key the page's write routes really
-//                 check, not the tier its middleware happens to use.
-//   role        — for INFRA-PROXY surfaces, whose authority lives in infra and
-//                 so has no local permission key, plus the two admin consoles
-//                 that are deliberately RequireAdmin (a permission gate there
-//                 could lock an admin out of the tool that repairs permissions).
 export interface KunAdminPageAsideItem {
   name: KUN_ADMIN_PAGE_ROUTE_TYPE
   label: string
@@ -67,8 +56,6 @@ export interface KunAdminPageAsideItem {
   router?: KUN_ADMIN_PAGE_ROUTE_TYPE
   permissions?: ForumPermission[]
   role?: 'moderator' | 'admin'
-  // Absolute path for a staff surface that does NOT live under /admin. The rail
-  // navigates here verbatim instead of to /admin/<router>.
   to?: string
 }
 
@@ -120,11 +107,6 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     permissions: ['doc.create', 'doc.edit', 'doc.delete']
   },
   {
-    // Not an /admin page: 更新日志 and 待办 are edited in place on their public
-    // pages. The console links out to them anyway — they are staff-only writes
-    // gated on update_log.*, and someone looking for "where do I add a 待办"
-    // looks in 管理系统 first, finds nothing, and concludes they lack the
-    // permission. (They may well also lack it: it is revocable like any other.)
     name: 'update',
     label: '更新日志与待办',
     icon: 'lucide:list-checks',

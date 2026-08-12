@@ -1,16 +1,5 @@
 import type { Ref } from 'vue'
 
-// Hydrates rendered quote chips (`<span class="kun-quote" data-reply-id data-floor>`)
-// inside a content container into interactive references:
-//   - click  → smooth-scroll to that floor's reply in-page + a brief highlight.
-//   - hover  → lazily fetch the referenced reply and show a preview card.
-// Mirrors useSpoilerContent's delegated-listener + flush:'post' watch pattern, so
-// it re-binds whenever KunContent (re)renders. Cross-page jump is out of scope
-// (replies are lazily paginated — see docs/proj/mention.md §10); a floor not on
-// the current page surfaces a hint instead.
-
-// Reply previews are immutable enough for a session — cache by id so re-hovering
-// the same quote never refetches.
 const previewCache = new Map<number, TopicReply | null>()
 
 export interface QuotePreviewState {
@@ -36,7 +25,6 @@ export const useQuoteContent = (containerRef: Ref<HTMLElement | null>) => {
   })
 
   let hideTimer: ReturnType<typeof setTimeout> | null = null
-  // Guards a stale fetch from overwriting a newer hover's result.
   let fetchSeq = 0
 
   const clearHideTimer = () => {
@@ -46,9 +34,6 @@ export const useQuoteContent = (containerRef: Ref<HTMLElement | null>) => {
     }
   }
 
-  // Reply wrappers are anchored as `id="<floor>.<preview>"` (see Reply.vue), so
-  // match on the `<floor>.` prefix — exact per floor (10. ≠ 1.). Highlight with
-  // the same outline classes as the existing scrollPage helper for consistency.
   const FLASH = [
     'outline-2',
     'outline-offset-2',
@@ -94,8 +79,6 @@ export const useQuoteContent = (containerRef: Ref<HTMLElement | null>) => {
     preview.loading = false
   }
 
-  // Debounced so moving the cursor from the chip onto the card (which cancels
-  // the timer via keepPreview) doesn't flicker it away.
   const hidePreview = () => {
     clearHideTimer()
     hideTimer = setTimeout(() => {

@@ -1,15 +1,9 @@
 <script setup lang="ts">
-// 查看历史: every reaction on a topic OR a single reply — reactor avatar + name,
-// the reaction icon, and when. A row links to that user's profile. Fetched
-// lazily on first open. The caller passes exactly one of topicId / replyId.
 import { reactionAsset } from '~/constants/reaction'
 
 const props = defineProps<{ topicId?: number; replyId?: number }>()
 
 const isReply = computed(() => !!props.replyId)
-// The reply feed is a query param off the topic-scoped route; :tid is unused by
-// the handler (the reply id already resolves the topic), so 0 stands in for it —
-// the same placeholder the reaction toggle uses.
 const endpoint = computed(() =>
   props.replyId
     ? `/topic/0/reply/reaction/history?reply_id=${props.replyId}`

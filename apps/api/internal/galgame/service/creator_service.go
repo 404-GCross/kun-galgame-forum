@@ -10,21 +10,15 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// Forum creator-eligibility thresholds. This is the forum's OWN policy — change
-// freely here; OAuth and the galgame are untouched (the role + queue live in
-// OAuth, the contribution data in the galgame). A user may apply if ANY criterion
-// is met. Cross-service contract owned by OAuth (not yet mirrored under docs/).
 const (
-	creatorMinMergedPRs   = 5    // 合并的 PR 数（数据源:galgame /user/:id/stats）
-	creatorMinGalgames    = 10   // 已发布 galgame 数（数据源:galgame）
-	creatorMinReviews     = 5    // 简评(≥100 字)数（数据源:本论坛 galgame_rating）
-	creatorReviewMinLen   = 100  // 简评字数门槛
-	creatorMinMoemoepoint = 2000 // 萌萌点（数据源:OAuth 权威余额，单一来源）
+	creatorMinMergedPRs   = 5
+	creatorMinGalgames    = 10
+	creatorMinReviews     = 5
+	creatorReviewMinLen   = 100
+	creatorMinMoemoepoint = 2000
 	creatorSource         = "forum"
 )
 
-// CreatorEligibility is the forum-side eligibility snapshot (current counts vs
-// thresholds) — drives the "离创作者还差…" UI and gates Apply.
 type CreatorEligibility struct {
 	Eligible          bool  `json:"eligible"`
 	MergedPRs         int64 `json:"merged_prs"`
@@ -37,9 +31,6 @@ type CreatorEligibility struct {
 	NeedMoemoepoint   int   `json:"need_moemoepoint"`
 }
 
-// CreatorService computes forum-side creator eligibility and proxies the
-// application to the central OAuth queue. The forum owns the POLICY; OAuth owns
-// the queue + admin review + role grant.
 type CreatorService struct {
 	ratingRepo *repository.RatingRepository
 	stats      *GalgameUserStatsService
@@ -51,18 +42,11 @@ func NewCreatorService(ratingRepo *repository.RatingRepository, stats *GalgameUs
 }
 
 func (s *CreatorService) eligibility(ctx context.Context, userID int) (*CreatorEligibility, *errors.AppError) {
-	// The two galgame criteria are derived from the registry now: accepted edits
-	// are merged proposals, published entries are live claims. Both degrade to 0
-	// rather than failing the snapshot — eligibility is a disjunction, so a
-	// missing criterion must not deny the ones that are present.
 	stats := s.stats.Stats(ctx, int64(userID))
 	reviews, rErr := s.ratingRepo.CountReviewsWithMinLength(userID, creatorReviewMinLen)
 	if rErr != nil {
 		return nil, errors.ErrInternal("统计简评失败")
 	}
-	// Authoritative OAuth balance (single-sourced, C3). A fetch miss degrades to
-	// 0 — this is one of several OR criteria, so it shouldn't fail the whole
-	// snapshot; the user can still qualify via PR / galgame / 简评.
 	moe, _ := s.userClient.GetMoemoepoint(ctx, userID)
 	e := &CreatorEligibility{
 		MergedPRs:         stats.MergedEdits,
@@ -81,13 +65,6 @@ func (s *CreatorService) eligibility(ctx context.Context, userID int) (*CreatorE
 	return e, nil
 }
 
-// Status returns the user's eligibility snapshot, current OAuth application
-// (nil if never applied), and whether they ALREADY hold the creator role.
-//
-// isCreator is the source of truth (the role), separate from the application:
-// it covers an admin granting the role directly (no approved application) and
-// the window after approval before the role cache refreshes. A user-lookup miss
-// degrades to false — the apply flow still works (OAuth's 17001 guards a dup).
 func (s *CreatorService) Status(ctx context.Context, userID int, token string) (*CreatorEligibility, *userclient.CreatorApplication, bool, *errors.AppError) {
 	e, appErr := s.eligibility(ctx, userID)
 	if appErr != nil {
@@ -104,9 +81,6 @@ func (s *CreatorService) Status(ctx context.Context, userID int, token string) (
 	return e, app, isCreator, nil
 }
 
-// Apply enforces the forum eligibility gate, then files the application on the
-// central OAuth queue with evidence. OAuth's own guards (already-creator /
-// one-pending / cooldown) surface via the returned message.
 func (s *CreatorService) Apply(ctx context.Context, userID int, token, message string) (*userclient.CreatorApplication, *errors.AppError) {
 	e, appErr := s.eligibility(ctx, userID)
 	if appErr != nil {

@@ -7,9 +7,6 @@ import {
   getReleaseDateText
 } from './time'
 
-// formatTimeDifference reads `new Date()` for "now"; fake timers pin
-// it to a fixed point so the boundary thresholds (10s / 60s / 60m /
-// 24h / 30d / 365d) are deterministic across CI / dev hosts.
 const NOW = new Date('2026-06-15T12:00:00Z')
 
 beforeEach(() => {
@@ -84,9 +81,6 @@ describe('hourDiff', () => {
 })
 
 describe('formatDate', () => {
-  // Use UTC date that local TZ won't shift across day boundaries —
-  // pick a mid-day point so HH stays sensible across normal TZ offsets.
-  // Assertions are TZ-independent by checking pattern, not exact HH.
   const d = new Date('2026-06-15T12:00:00Z')
 
   it('default: MM-dd', () => {

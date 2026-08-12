@@ -6,9 +6,6 @@ import (
 	"kun-galgame-api/pkg/imageclient"
 )
 
-// The whole point of the shape lookup is telling "unknown" apart from a number.
-// A zero-sized meta published as 0×0 would reach the browser as a real ratio
-// and collapse the frame; it has to be absent so the renderer falls back.
 func TestArtMetaDTO_UnknownIsAbsentNotZero(t *testing.T) {
 	if got := ArtMetaDTO(ArtMeta{}); got != nil {
 		t.Errorf("ArtMetaDTO(zero) = %+v, want nil", got)
@@ -22,9 +19,6 @@ func TestArtMetaDTO_UnknownIsAbsentNotZero(t *testing.T) {
 	}
 }
 
-// The roster is sized in ONE batch for the whole cast, keyed back by URL, and a
-// character whose hash image_service has never seen keeps an empty shape rather
-// than borrowing someone else's.
 func TestHydrateRosterArt_OneBatchKeyedByURL(t *testing.T) {
 	const bust = "https://cdn.test/aa/bb/aabbhash1.webp"
 	const figure = "https://cdn.test/cc/dd/ccddhash2.webp"
@@ -56,15 +50,11 @@ func TestHydrateRosterArt_OneBatchKeyedByURL(t *testing.T) {
 	if chars[0].FigureMeta.Thumbhash != "hash" {
 		t.Errorf("thumbhash = %q, want it carried for the blur-up", chars[0].FigureMeta.Thumbhash)
 	}
-	// An unanswered hash and no picture at all both stay zero — and both publish
-	// as nothing, so neither can be mistaken for a measured shape.
 	if chars[1].FigureMeta != (ArtMeta{}) || chars[2].ImageMeta != (ArtMeta{}) {
 		t.Errorf("unresolved art = %+v / %+v, want zero", chars[1].FigureMeta, chars[2].ImageMeta)
 	}
 }
 
-// No resolver wired (image_service unconfigured, and every other test) must be
-// a no-op rather than a panic: dimensions are an enhancement, not a dependency.
 func TestHydrateRosterArt_NoResolverIsANoOp(t *testing.T) {
 	c := New("https://catalog.test", "nm_test_key", "")
 	chars := []catWorkCharacter{{ID: 1, Image: "https://cdn.test/aa/bb/hash.webp"}}

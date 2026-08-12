@@ -7,8 +7,6 @@ import type {
   DiscussionForumPosting
 } from 'schema-dts'
 
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -141,9 +139,6 @@ if (toolset) {
 
 <template>
   <div>
-    <!-- Single real root box, NOT `display: contents` (see user.vue): a box-less
-         root trips Nuxt's "does not have a single root node" and skips the
-         page-transition enter, so the page teleports in. -->
     <ToolsetDetail v-if="data" :toolset="data" :id="id" />
     <KunNull v-else description="未找到该工具资源" />
   </div>

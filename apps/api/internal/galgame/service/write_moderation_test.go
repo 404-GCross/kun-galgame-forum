@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,25 +12,18 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
+	"kun-galgame-api/internal/testdb"
 	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
-
-	"github.com/joho/godotenv"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-// scriptedChecker is a gate.Checker fake returning a fixed decision.
 type scriptedChecker struct{ decision string }
 
 func (c scriptedChecker) Check(_ context.Context, _ trustclient.CheckRequest) (*trustclient.CheckResult, error) {
 	return &trustclient.CheckResult{Decision: c.decision, Matched: []string{"坏词"}}, nil
 }
 
-// captureScanner records the last scan request and signals completion (ScanBg
-// runs off a goroutine, so tests wait on done).
 type captureScanner struct {
 	got  trustclient.ScanRequest
 	done chan struct{}
@@ -42,11 +34,6 @@ func (s *captureScanner) Scan(_ context.Context, req trustclient.ScanRequest) (*
 	s.done <- struct{}{}
 	return &trustclient.ScanResult{ScanID: 1}, nil
 }
-
-// ──────────────────────────────────────────
-// Quiz answer free-text extraction (surface 7 rule): choice/judge answers carry
-// NO user free text, so both check + scan are skipped; only fill + essay do.
-// ──────────────────────────────────────────
 
 func TestQuizAnswerModerationText(t *testing.T) {
 	cases := []struct {
@@ -72,8 +59,6 @@ func TestQuizAnswerModerationText(t *testing.T) {
 	}
 }
 
-// The authored-content free text (surface 6) pulls option texts / fill accepted
-// answers / essay reference, never the answer-key indexes/booleans.
 func TestQuizAuthoringModerationText(t *testing.T) {
 	text := quizAuthoringModerationText(
 		"题目问题", "题目描述", "答案解析",
@@ -84,31 +69,15 @@ func TestQuizAuthoringModerationText(t *testing.T) {
 			t.Fatalf("authoring text %q missing %q", text, want)
 		}
 	}
-	// judge content has no free text → only question/description/explanation.
 	judge := quizContentModerationText(quizTypeJudge, json.RawMessage(`{"answer":true}`))
 	if judge != "" {
 		t.Fatalf("judge content should carry no free text, got %q", judge)
 	}
 }
 
-// ──────────────────────────────────────────
-// Rating create: deny blocks (nothing persisted) + allow fires the shadow scan
-// after commit with the galgame_rating kind, the new row id, and the RAW
-// short_summary. DB-gated (mirrors enforce_test.go) — skips without a dev DB.
-// ──────────────────────────────────────────
-
 func TestRatingCreateDenyAndScan(t *testing.T) {
-	_ = godotenv.Load("../../../.env")
-	dsn := os.Getenv("KUN_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("KUN_DATABASE_URL not set")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	db := testdb.Open(t)
 
-	// Reserved-high ids so we never collide with a real galgame / user.
 	const gid = 2_000_000_777
 	const uid = 2_000_000_778
 	cleanup := func() {
@@ -119,8 +88,6 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 	defer cleanup()
 
 	ratingRepo := repository.NewRatingRepository(db)
-	// Inert clients: post-commit hydration fast-fails to zero values (no panic,
-	// no network wait) — irrelevant to what we assert here.
 	galgameClient := client.New("", "nm_test", "")
 	uc := userclient.New(userclient.Config{})
 
@@ -132,7 +99,6 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 		}
 	}
 
-	// DENY: nothing persisted.
 	denySvc := NewRatingService(ratingRepo, galgameClient, uc,
 		gate.NewCheckService(scriptedChecker{decision: gate.DecisionDeny}),
 		gate.NewScanService(nil))
@@ -145,7 +111,6 @@ func TestRatingCreateDenyAndScan(t *testing.T) {
 		t.Fatalf("deny persisted %d rating row(s), want 0", cnt)
 	}
 
-	// ALLOW: create commits and the scan fires after commit.
 	fs := &captureScanner{done: make(chan struct{}, 1)}
 	okSvc := NewRatingService(ratingRepo, galgameClient, uc,
 		gate.NewCheckService(scriptedChecker{decision: gate.DecisionAllow}),

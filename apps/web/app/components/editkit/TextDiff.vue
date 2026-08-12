@@ -1,13 +1,4 @@
 <script setup lang="ts">
-// One unified word-level diff block: the text once, with only the changed runs
-// tinted. Shared by both revision viewers in the forum — the galgame editing
-// engine's field diff (EditkitFieldDiff) and the taxonomy snapshot diff
-// (GalgameSnapshotDiff), which previously each carried their own hand-rolled
-// LCS and their own before/after columns.
-//
-// Rendered as plain text nodes, never v-html: the old side-by-side renderer had
-// to escape every character by hand because it built an HTML string. There is
-// no markup here to escape.
 import { computed, ref } from 'vue'
 import {
   diffTextSegments,
@@ -20,9 +11,6 @@ const props = withDefaults(
   defineProps<{
     from: string
     to: string
-    // Multi-line text (wiki intros, markdown notes) keeps its own line
-    // structure. Collapsing newlines is half of why a prose diff turns
-    // unreadable.
     preWrap?: boolean
   }>(),
   { preWrap: false }

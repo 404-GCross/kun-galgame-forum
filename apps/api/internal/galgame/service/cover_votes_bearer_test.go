@@ -1,17 +1,5 @@
 package service
 
-// The best-cover facet was the last read where the forum could ask the catalog
-// "has THIS person voted" about a uid it picked itself (wave 176's ?uid=).
-// Wave 180 replaced that with the viewer's own token — but only for viewers who
-// have one: the detail page is optionally authed and the tallies are public, so
-// the S2S read survives for logged-out visitors, with nobody named.
-//
-// Both halves are pinned here because either one degrades silently. A logged-in
-// viewer served by the anonymous path sees vote counts with their own ballot
-// missing (the star never lights up, and the bug reads as "voting is broken"),
-// while an anonymous viewer routed through the user face would lose the counts
-// entirely on a 401.
-
 import (
 	"encoding/json"
 	"io"
@@ -27,16 +15,13 @@ import (
 )
 
 type coverPlaneRecorder struct {
-	mu    sync.Mutex
-	path  string
-	query string
-	auth  string
-	// staleToken makes the user face answer the pre-scope 403 (code 233),
-	// the way the catalog denies a session minted before catalog:edit existed.
+	mu         sync.Mutex
+	path       string
+	query      string
+	auth       string
 	staleToken bool
 }
 
-// server answers the gid→work bridge (gid 1 = work 1000) and both cover faces.
 func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -97,7 +82,6 @@ func TestCoverVotesReadAsTheViewerWhenTheyHaveAToken(t *testing.T) {
 	if rec.auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the viewer's own bearer", rec.auth)
 	}
-	// A uid here would mean the ballot was still being asked for by name.
 	if strings.Contains(rec.query, "uid=") {
 		t.Errorf("the viewer is the token, not a query parameter: %q", rec.query)
 	}
@@ -114,9 +98,6 @@ func TestCoverVotesFallBackToPublicCountsOnAStaleToken(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	// The scope denial is the one failure the viewer can't do anything about
-	// mid-session, so it must not cost them the public half of the facet: the
-	// read retries on the S2S face and the counts still render (ballot unlit).
 	if rec.path != "/api/v1/catalog/works/1000" {
 		t.Errorf("stale-token covers read landed on %q, want the S2S fallback", rec.path)
 	}
@@ -136,9 +117,6 @@ func TestCoverVotesStayAnonymousWithoutAToken(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	// The public tallies are worth rendering for a logged-out visitor, so this
-	// half deliberately did NOT move: there is no token, and inventing a uid is
-	// the thing wave 180 removed.
 	if rec.path != "/api/v1/catalog/works/1000" {
 		t.Errorf("anonymous covers read hit %q, want the S2S face", rec.path)
 	}

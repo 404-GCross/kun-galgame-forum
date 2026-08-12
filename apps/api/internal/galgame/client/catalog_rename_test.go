@@ -9,17 +9,6 @@ import (
 	"testing"
 )
 
-// Two identity keys move during the W1 window — the source-12 key that anchors
-// gid lookups (galgame_wiki -> curated) and the claim site (galgame_wiki ->
-// kungal). Both are read here, both are written elsewhere, and both fail
-// SILENTLY when reader and data disagree: an unmatched source resolves no gid
-// at all, and an unmatched site yields gid 0, which strips a card's link and
-// its local stats without raising anything.
-//
-// So the reader accepts both spellings rather than being flipped in lockstep
-// with the data. These tests pin that tolerance in both directions; when the
-// legacy halves are eventually removed, they are what should fail first.
-
 func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 	cases := []struct {
 		site string
@@ -43,10 +32,7 @@ func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 	}
 }
 
-// The batch lookup must ask for every source key in flight, so it resolves on
-// either side of the rename without a coordinated deploy.
 func TestAnchorLookupAsksForEverySourceKey(t *testing.T) {
-	// Only the LEGACY key answers, i.e. the state before the infra rename.
 	var asked []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var body struct {
@@ -86,7 +72,6 @@ func TestAnchorLookupAsksForEverySourceKey(t *testing.T) {
 	}
 }
 
-// And the post-rename side resolves too, from a cold cache.
 func TestAnchorLookupResolvesAfterTheRename(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var body struct {
@@ -119,17 +104,6 @@ func TestAnchorLookupResolvesAfterTheRename(t *testing.T) {
 	}
 }
 
-// The registry issues kungal's ids now, and a work minted that way carries NO
-// external_ref anchor — an anchor records the id an upstream issued, and a
-// brand-new submission has no upstream. The anchor lookup therefore answers
-// nothing for it, and answers it as "no such work" rather than as an error, so
-// every page of every new entry would 404 in silence.
-//
-// These pin the identity route that closes it, and the round-trip check that
-// makes the route safe.
-
-// adoptedStub serves the two bridge calls: the anchor lookup finds nothing, and
-// the works fetch returns whatever `rows` says.
 func adoptedStub(t *testing.T, rows map[int64]string) *GalgameClient {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -170,8 +144,6 @@ func adoptedStub(t *testing.T, rows map[int64]string) *GalgameClient {
 	return New(srv.URL, "nm_test_key", "")
 }
 
-// The adopted case: the claim's product id IS the work's own id, so the row
-// points back at what was asked for.
 func TestAdoptedIDResolvesWithoutAnAnchor(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
 		90210: `{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}`,
@@ -186,13 +158,8 @@ func TestAdoptedIDResolvesWithoutAnAnchor(t *testing.T) {
 	}
 }
 
-// The reason the route needs a guard at all: a legacy gid is a syntactically
-// valid work id too. Resolving it by reading that work would hand back a
-// DIFFERENT game, and nothing would report an error.
 func TestIdentityRouteRefusesAWorkThatNamesSomethingElse(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
-		// Work 42 exists and is ours, but its claim points at gid 7 — so work
-		// 42 is NOT the entry gid 42 refers to.
 		42: `{"id":42,"claimed_by":{"site":"kungal","work_id":7,"state":"live"}}`,
 	})
 	ids, appErr := c.catalogIDsForGIDs(t.Context(), []int{42})
@@ -205,7 +172,6 @@ func TestIdentityRouteRefusesAWorkThatNamesSomethingElse(t *testing.T) {
 	}
 }
 
-// Another product's claim is not ours to resolve, however the ids line up.
 func TestIdentityRouteRefusesAForeignClaim(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
 		500: `{"id":500,"claimed_by":{"site":"moyu","work_id":500,"state":"live"}}`,
@@ -219,7 +185,6 @@ func TestIdentityRouteRefusesAForeignClaim(t *testing.T) {
 	}
 }
 
-// An unclaimed registry row is not an entry either.
 func TestIdentityRouteRefusesAnUnclaimedWork(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
 		600: `{"id":600,"claimed_by":null}`,

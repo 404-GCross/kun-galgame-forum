@@ -17,31 +17,16 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// LikeResult is the toggle outcome for the frontend heart: the new "我赞过" state
-// plus the refreshed local like count.
 type LikeResult struct {
 	Liked     bool `json:"liked"`
 	LikeCount int  `json:"like_count"`
 }
 
-// LocateResult maps an old galgame_comment id to its migrated community post
-// (deep-link continuity).
 type LocateResult struct {
 	PostID   int64 `json:"post_id"`
 	ThreadID int64 `json:"thread_id"`
 }
 
-// ──────────────────────────────────────────
-// CreateComment
-// ──────────────────────────────────────────
-
-// CreateComment resolves the galgame's comments thread (get-or-create) and
-// appends a post. replyToPostID is optional; the primitive derives the
-// root/target pointers from the parent. After a successful reply it maintains
-// the local display counter (galgame.comment_count += 1) and fans out @mention
-// notifications deep-linked to the new post (?comment=<post_id> — the old query
-// shape, post ids). A held reply (TL0 first-post hold) comes back with held=true
-// so the frontend can show "审核中".
 func (s *CommunityCommentService) CreateComment(ctx context.Context, userID, galgameID int, content string, replyToPostID *int64) (*CommunityPostItem, *errors.AppError) {
 	thread, err := s.community.ResolveComments(ctx, communityclient.ResolveCommentsRequest{
 		AnchorKind: communityclient.AnchorSiteGame, AnchorID: strconv.Itoa(galgameID), ContentRating: communityclient.RatingAll,
@@ -60,22 +45,13 @@ func (s *CommunityCommentService) CreateComment(ctx context.Context, userID, gal
 
 	s.afterCreate(userID, galgameID, content, post)
 
-	// Render through the same read pipeline so held state / pointers / author are
-	// consistent with the list (viewer = author, so a held post is visible to it).
 	items := s.renderPosts(ctx, galgameID, userID, []communityclient.PostView{*post})
 	if len(items) == 0 {
-		// The author just authenticated, so this is only reachable if identity
-		// resolution transiently failed; build a minimal item rather than 500.
 		return buildCommunityItem(*post, galgameID, s.userClient.Hydrate(ctx, []int{userID})[userID], 0, false), nil
 	}
 	return items[0], nil
 }
 
-// afterCreate maintains the local bookkeeping after a reply lands: the lazy
-// galgame stub (so the counter UPDATE hits a row), comment_count += 1, and the
-// @mention notifications. Best-effort: a failure here never fails the reply (the
-// content already committed in the primitive; the display counter tolerates
-// drift — charter ruling 11).
 func (s *CommunityCommentService) afterCreate(userID, galgameID int, content string, post *communityclient.PostView) {
 	root := post.ID
 	if post.RootPostID != 0 {
@@ -99,22 +75,10 @@ func (s *CommunityCommentService) afterCreate(userID, galgameID int, content str
 	if err != nil {
 		slog.Warn("community comment post-create bookkeeping failed (best-effort)", "galgame_id", galgameID, "post_id", post.ID, "error", err)
 	}
-	// Activity-feed parity (charter ruling 22): the galgame_comment feed trigger
-	// carries the galgame id in the gid slot and links the game page.
 	feedParityUpsert(s.db, feedTypeGalgameComment, post.ID, userID, galgameID,
 		content, "/galgame/"+strconv.Itoa(galgameID), false, post.CreatedAt)
 }
 
-// ──────────────────────────────────────────
-// UpdateComment
-// ──────────────────────────────────────────
-
-// UpdateComment edits a post's body (author-only; a moderator rides the
-// mod-actor variant to edit others). galgameID (from the ?gid hint) enables the
-// edit-introduced @mention re-fan + populates the returned item; when absent the
-// core edit still succeeds and only the local enrichment is skipped. The caller's
-// roles are passed through (not a precomputed bool) so the mod-edit authority is
-// resolved against THIS post's surface (see resolveModEdit).
 func (s *CommunityCommentService) UpdateComment(ctx context.Context, userID int, roles []string, postID int64, galgameID *int, content string) (*CommunityPostItem, *errors.AppError) {
 	canModerate := s.resolveModEdit(ctx, userID, roles, postID)
 
@@ -137,9 +101,6 @@ func (s *CommunityCommentService) UpdateComment(ctx context.Context, userID int,
 	return buildCommunityItem(*post, gid, author, lc, liked), nil
 }
 
-// refanMentions re-sends mention notifications for the mentions an edit
-// introduced (dedup per link stops re-spam; mirrors the old UpdateComment).
-// Best-effort, non-transactional.
 func (s *CommunityCommentService) refanMentions(userID, galgameID int, content string, post *communityclient.PostView) {
 	root := post.ID
 	if post.RootPostID != 0 {
@@ -151,16 +112,6 @@ func (s *CommunityCommentService) refanMentions(userID, galgameID int, content s
 	}
 }
 
-// resolveModEdit decides whether this edit rides as a moderator action. This
-// edit route is SHARED by all four comment surfaces, each with its own
-// comment.*.edit key (which runtime overrides can make diverge), so authority
-// must be checked against THIS post's surface — not a union. Nothing else in the
-// edit flow carries the anchor (EditPost's returned PostView has none), so it
-// costs one dedicated S2S read to fetch it. If the anchor can't be resolved (post
-// not visible, read failed, or an unrecognized anchor) it falls back to the
-// DEFENSIVE union of all four edit keys, so authority is never silently widened
-// or dropped. A non-moderator author still edits via EditPost's author match
-// (canModerate stays false), so owner-editing-own-comment is untouched.
 func (s *CommunityCommentService) resolveModEdit(ctx context.Context, userID int, roles []string, postID int64) bool {
 	if resolved, err := s.community.ResolvePosts(ctx, []int64{postID}); err == nil {
 		for _, ap := range resolved.Posts {
@@ -180,11 +131,6 @@ func (s *CommunityCommentService) resolveModEdit(ctx context.Context, userID int
 		perm.CanUser(userID, roles, perm.CommentQuizEdit)
 }
 
-// commentEditPermForAnchor maps a post's community anchor to the pure-forum edit
-// permission that governs its surface: galgame comments anchor site_game, while
-// the resource areas ride site_resource with a prefixed anchor id (rating: /
-// website: / toolset: / resource: / quiz:). ok=false for an anchor we don't
-// recognize (the caller then applies the defensive union).
 func commentEditPermForAnchor(anchorKind int32, anchorID string) (perm.Permission, bool) {
 	switch anchorKind {
 	case communityclient.AnchorSiteGame:
@@ -206,14 +152,6 @@ func commentEditPermForAnchor(anchorKind int32, anchorID string) (perm.Permissio
 	return "", false
 }
 
-// ──────────────────────────────────────────
-// DeleteComment
-// ──────────────────────────────────────────
-
-// DeleteComment tombstones a post (author self-delete, or a moderator via the
-// mod-actor variant; replies are preserved). It decrements the local display
-// counter when the ?gid hint is present (charter ruling 11 tolerates the drift
-// when absent).
 func (s *CommunityCommentService) DeleteComment(ctx context.Context, userID int, canModerate bool, postID int64, galgameID *int) *errors.AppError {
 	if err := s.community.DeletePost(ctx, postID, int64(userID), canModerate); err != nil {
 		return mapCommunityError(err)
@@ -221,15 +159,11 @@ func (s *CommunityCommentService) DeleteComment(ctx context.Context, userID int,
 	if galgameID != nil {
 		s.bumpCommentCount(*galgameID, -1)
 	}
-	// Activity-feed parity (charter ruling 22), including the legacy-keyed row an
-	// imported comment carries (its frozen-table DELETE trigger can never fire).
 	feedParityDelete(s.db, feedTypeGalgameComment, postID)
 	feedParityDeleteLegacyGalgame(s.db, postID)
 	return nil
 }
 
-// bumpCommentCount adjusts the local display counter, floored at 0 (a tolerated
-// display counter; charter ruling 11). Best-effort.
 func (s *CommunityCommentService) bumpCommentCount(galgameID, delta int) {
 	if err := s.db.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
 		Update("comment_count", gorm.Expr("GREATEST(comment_count + ?, 0)", delta)).Error; err != nil {
@@ -237,16 +171,6 @@ func (s *CommunityCommentService) bumpCommentCount(galgameID, delta int) {
 	}
 }
 
-// ──────────────────────────────────────────
-// ToggleLike (the triple write)
-// ──────────────────────────────────────────
-
-// ToggleLike toggles the like on a community post. The community reaction is the
-// AUTHORITATIVE driver: its added/removed result decides all three writes
-// (charter ruling 8) — the local galgame_post_like row (display count + "我赞过"),
-// the moemoepoint ±1 (self-like not rewarded, matching today), and the "liked"
-// notification. Idempotent: the local row uses ON CONFLICT DO NOTHING / a
-// no-op delete, so it converges to the primitive's state even after drift.
 func (s *CommunityCommentService) ToggleLike(ctx context.Context, userID int, postID int64) (*LikeResult, *errors.AppError) {
 	res, err := s.community.ToggleReaction(ctx, postID, communityclient.ReactionToggleRequest{
 		UserID: int64(userID), Kind: communityclient.ReactionLike,
@@ -273,10 +197,6 @@ func (s *CommunityCommentService) ToggleLike(ctx context.Context, userID int, po
 	}
 	if notify {
 		if gid := parseAnchorGid(res.AnchorID); gid > 0 {
-			// The reaction response carries no post content, and there is no
-			// single-post fetch endpoint, so the preview is empty — the link +
-			// dedup (per sender/receiver/galgame) are unchanged, so the "liked"
-			// notification still fires and deep-links correctly.
 			s.helpers.CreateGalgameMessageWithContent(s.db, userID, int(res.AuthorID), "liked", "", gid)
 		}
 	}
@@ -285,11 +205,6 @@ func (s *CommunityCommentService) ToggleLike(ctx context.Context, userID int, po
 	return &LikeResult{Liked: res.Added, LikeCount: lc}, nil
 }
 
-// likeEffects derives the three side effects of a community reaction toggle from
-// its authoritative added/removed result: whether the local like row should be
-// present, the moemoepoint delta (+1 on add / -1 on remove), and whether the
-// "liked" notification fires. A self-like (author == liker) rewards nothing and
-// notifies no one (today's semantics). Pure — unit-tested.
 func likeEffects(added bool, authorID int64, userID int) (localPresent bool, awardDelta int, notify bool) {
 	self := authorID == int64(userID)
 	if added {
@@ -304,8 +219,6 @@ func likeEffects(added bool, authorID int64, userID int) (localPresent bool, awa
 	return false, -1, false
 }
 
-// parseAnchorGid reads a galgame id out of a site_game anchor_id (decimal text);
-// 0 on a malformed/absent value (the like notification is then skipped).
 func parseAnchorGid(anchorID string) int {
 	id, err := strconv.Atoi(anchorID)
 	if err != nil || id <= 0 {
@@ -314,12 +227,6 @@ func parseAnchorGid(anchorID string) int {
 	return id
 }
 
-// ──────────────────────────────────────────
-// FlagComment / Locate
-// ──────────────────────────────────────────
-
-// FlagComment reports a post to the community moderation queue (governance
-// change-over; the UI mount is step 04). reason is the 0-4 enum, note ≤500.
 func (s *CommunityCommentService) FlagComment(ctx context.Context, userID int, postID int64, reason int, note string) *errors.AppError {
 	if reason < communityclient.FlagReasonSpam || reason > communityclient.FlagReasonNsfwMislabel {
 		return errors.ErrValidation("非法的举报理由")
@@ -332,9 +239,6 @@ func (s *CommunityCommentService) FlagComment(ctx context.Context, userID int, p
 	return nil
 }
 
-// Locate resolves an old galgame_comment id to its migrated community post so
-// old deep-links / anchors keep working (step 04 consumes it). 404 when the id
-// was never migrated.
 func (s *CommunityCommentService) Locate(legacyID int) (*LocateResult, *errors.AppError) {
 	row, err := s.posts.FindMapByLegacyID(legacyID)
 	if err != nil {

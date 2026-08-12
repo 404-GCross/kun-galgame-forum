@@ -6,8 +6,6 @@ import {
   KUN_ACTIVITY_ICON_MAP
 } from '~/constants/activity'
 
-// Keyset (cursor) pagination + infinite scroll — see activity/Timeline.vue for
-// why the old numbered pages duplicated / skipped rows.
 const selectedType = ref('TOPIC_CREATION')
 
 const items = ref<ActivityItem[]>([])
@@ -17,8 +15,6 @@ const isLoadingMore = ref(false)
 
 const settings = usePersistSettingsStore()
 
-// First page renders on the server. The computed query re-fetches whenever the
-// category or the show_no_resource toggle changes; the watch re-seeds the feed.
 const { data, status } = await useKunFetch<{
   items: ActivityItem[]
   next_cursor: string
@@ -42,8 +38,6 @@ watch(
   { immediate: true }
 )
 
-// Category picker is a grouped dropdown (18 flat tabs overflowed). Selecting a
-// category swaps the feed (the computed query refetches) and closes the popover.
 const categoryPopover = ref<{ close: () => void } | null>(null)
 const selectCategory = (type: string) => {
   selectedType.value = type

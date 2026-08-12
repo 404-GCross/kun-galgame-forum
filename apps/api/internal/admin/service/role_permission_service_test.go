@@ -11,8 +11,6 @@ import (
 	"kun-galgame-api/pkg/perm"
 )
 
-// fakeStore is an in-memory overrideStore for validating the service without a
-// database. ReplaceForRole mirrors the real replace-all-for-role semantics.
 type fakeStore struct {
 	rows       []model.RolePermissionOverride
 	listErr    error
@@ -23,7 +21,6 @@ func (f *fakeStore) ListAll(_ context.Context) ([]model.RolePermissionOverride, 
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	// Return a copy so callers can't mutate our backing slice.
 	return append([]model.RolePermissionOverride{}, f.rows...), nil
 }
 
@@ -45,8 +42,6 @@ func (f *fakeStore) ReplaceForRole(_ context.Context, role string, rows []model.
 	return nil
 }
 
-// resetPerm restores the pure baseline after any test that calls ReplaceOverrides
-// (which write-through Loads into the global pkg/perm table).
 func resetPerm(t *testing.T) {
 	t.Helper()
 	t.Cleanup(func() {
@@ -55,17 +50,12 @@ func resetPerm(t *testing.T) {
 	})
 }
 
-// emptyUserStore is a no-op user-override lister so the shared sync can refresh
-// the (empty) user layer during role-service tests.
 type emptyUserStore struct{}
 
 func (emptyUserStore) ListAll(_ context.Context) ([]model.UserPermissionOverride, error) {
 	return nil, nil
 }
 
-// newSvc builds a RolePermissionService whose write-through reloads from the SAME
-// fakeStore via a real PermissionOverrideSync, so perm.Can reflects a replace
-// immediately — exactly as the production wiring does.
 func newSvc(store *fakeStore) *RolePermissionService {
 	return NewRolePermissionService(store, NewPermissionOverrideSync(store, emptyUserStore{}))
 }
@@ -77,13 +67,8 @@ func revoke(p perm.Permission) dto.ReplaceOverrideItem {
 	return dto.ReplaceOverrideItem{Permission: string(p), Effect: perm.EffectRevoke}
 }
 
-// renOperatorRoles is a ren operator (rank 4, holds the full catalog): it clears
-// both delegation guards (rank + possession) for every subject, so the pre-Change-2
-// tests keep asserting exactly their original expectations. Rank/possession-specific
-// behavior is covered by the dedicated delegation tests below.
 var renOperatorRoles = []string{"ren"}
 
-// TestReplaceRejectsRen proves ren is not editable — pinned to the full catalog.
 func TestReplaceRejectsRen(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -96,8 +81,6 @@ func TestReplaceRejectsRen(t *testing.T) {
 	}
 }
 
-// TestReplaceRejectsUserAndUnknownRole proves user (implicit) and any unknown
-// role are not manageable.
 func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -108,7 +91,6 @@ func TestReplaceRejectsUserAndUnknownRole(t *testing.T) {
 	}
 }
 
-// TestReplaceRejectsUnknownKey proves an out-of-catalog permission is rejected.
 func TestReplaceRejectsUnknownKey(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -119,8 +101,6 @@ func TestReplaceRejectsUnknownKey(t *testing.T) {
 	}
 }
 
-// TestReplaceRejectsInvalidEffect proves an effect other than grant/revoke is
-// rejected.
 func TestReplaceRejectsInvalidEffect(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -131,25 +111,19 @@ func TestReplaceRejectsInvalidEffect(t *testing.T) {
 	}
 }
 
-// TestReplaceRejectsNoop proves granting a baseline key or revoking a
-// non-baseline key is a validation error (the FE computes true deltas).
 func TestReplaceRejectsNoop(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
-	// moderator already holds topic.hide → granting it is a no-op.
 	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "moderator",
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)}); appErr == nil {
 		t.Error("granting a baseline permission must be rejected as a no-op")
 	}
-	// creator holds nothing → revoking topic.hide is a no-op.
 	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, "creator",
 		[]dto.ReplaceOverrideItem{revoke(TopicHideKey)}); appErr == nil {
 		t.Error("revoking a non-baseline permission must be rejected as a no-op")
 	}
 }
 
-// TestReplaceRejectsDuplicate proves a duplicated permission in one request is
-// rejected.
 func TestReplaceRejectsDuplicate(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -160,9 +134,6 @@ func TestReplaceRejectsDuplicate(t *testing.T) {
 	}
 }
 
-// TestReplaceContainmentViolation proves the moderator ⊆ admin invariant is
-// enforced: with admin having revoked user.purge_content, granting it to
-// moderator would make moderator exceed admin → 400.
 func TestReplaceContainmentViolation(t *testing.T) {
 	resetPerm(t)
 	store := &fakeStore{rows: []model.RolePermissionOverride{
@@ -179,9 +150,6 @@ func TestReplaceContainmentViolation(t *testing.T) {
 	}
 }
 
-// TestReplaceHappyPath proves a valid replace persists, write-through Loads into
-// pkg/perm (Can reflects it at once), and returns a matrix showing the effective
-// recompute.
 func TestReplaceHappyPath(t *testing.T) {
 	resetPerm(t)
 	store := &fakeStore{}
@@ -193,15 +161,12 @@ func TestReplaceHappyPath(t *testing.T) {
 		t.Fatalf("valid replace failed: %v", appErr)
 	}
 
-	// Persisted with the operator stamp.
 	if len(store.rows) != 1 || store.rows[0].UpdatedBy != 7 {
 		t.Fatalf("expected 1 row stamped by operator 7, got %+v", store.rows)
 	}
-	// Write-through: the global resolver reflects the grant immediately.
 	if !perm.Can([]string{"creator"}, TopicHideKey) {
 		t.Error("creator should hold topic.hide immediately after a valid replace")
 	}
-	// Matrix reflects the override + the effective recompute.
 	creator := matrix.Roles["creator"]
 	if len(creator.Overrides) != 1 || creator.Overrides[0].Permission != string(TopicHideKey) {
 		t.Errorf("matrix creator overrides = %+v, want one topic.hide grant", creator.Overrides)
@@ -209,22 +174,17 @@ func TestReplaceHappyPath(t *testing.T) {
 	if !contains(creator.Effective, string(TopicHideKey)) {
 		t.Errorf("matrix creator effective %v missing topic.hide", creator.Effective)
 	}
-	// creator baseline is empty — the grant is an override, not a baseline key.
 	if len(creator.Baseline) != 0 {
 		t.Errorf("creator baseline should be empty, got %v", creator.Baseline)
 	}
-	// ren row is locked and full.
 	if !matrix.Roles["ren"].Locked {
 		t.Error("ren must be marked locked in the matrix")
 	}
-	// Pins the matrix to the full pkg/perm vocabulary (perm_test.go's totalPerms).
 	if want := len(perm.Catalog()); len(matrix.Catalog) != want {
 		t.Errorf("matrix catalog has %d keys, want %d", len(matrix.Catalog), want)
 	}
 }
 
-// TestReplaceResetRestoresBaseline proves an empty override set resets a role to
-// its baseline (delete-only) and clears its effect on pkg/perm.
 func TestReplaceResetRestoresBaseline(t *testing.T) {
 	resetPerm(t)
 	store := &fakeStore{rows: []model.RolePermissionOverride{
@@ -242,16 +202,8 @@ func TestReplaceResetRestoresBaseline(t *testing.T) {
 	}
 }
 
-// ──────────────────────────────────────────
-// Change 2 — delegation guard (rank + possession)
-// ──────────────────────────────────────────
-
-// adminOperatorRoles is a non-ren operator (rank 3) used to exercise the guards a
-// ren operator would clear.
 var adminOperatorRoles = []string{"admin"}
 
-// TestReplaceRankAdminCannotEditAdminRole proves an admin (rank 3) may not edit the
-// admin role (rank 3) — only a strictly-higher operator (ren) can.
 func TestReplaceRankAdminCannotEditAdminRole(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -262,8 +214,6 @@ func TestReplaceRankAdminCannotEditAdminRole(t *testing.T) {
 	}
 }
 
-// TestReplaceRankRenCanEditAdminRole proves ren (rank 4) may edit the admin role
-// (rank 3): revoking an admin-only key that no lower role holds keeps containment.
 func TestReplaceRankRenCanEditAdminRole(t *testing.T) {
 	resetPerm(t)
 	svc := newSvc(&fakeStore{})
@@ -273,9 +223,6 @@ func TestReplaceRankRenCanEditAdminRole(t *testing.T) {
 	}
 }
 
-// TestReplacePossessionAddedRow proves an operator cannot ADD an override for a key
-// they do not themselves hold: an admin with a personal revoke of topic.hide may
-// not grant it to creator.
 func TestReplacePossessionAddedRow(t *testing.T) {
 	resetPerm(t)
 	perm.SetUserOverrides(map[int][]perm.Override{
@@ -292,10 +239,6 @@ func TestReplacePossessionAddedRow(t *testing.T) {
 	}
 }
 
-// TestReplacePossessionCarriedOverPasses proves a row set earlier by a higher-ranked
-// operator (a creator grant of topic.hide) survives an admin operator's unrelated
-// edit — even though the admin does not hold topic.hide, the carried-over row is not
-// a delta, so only the newly-added key (which the admin does hold) is judged.
 func TestReplacePossessionCarriedOverPasses(t *testing.T) {
 	resetPerm(t)
 	perm.SetUserOverrides(map[int][]perm.Override{
@@ -316,9 +259,6 @@ func TestReplacePossessionCarriedOverPasses(t *testing.T) {
 	}
 }
 
-// TestReplacePossessionRemovalChecked proves the possession guard also covers
-// REMOVALS: an admin who does not hold topic.hide may not remove creator's
-// existing topic.hide grant.
 func TestReplacePossessionRemovalChecked(t *testing.T) {
 	resetPerm(t)
 	perm.SetUserOverrides(map[int][]perm.Override{
@@ -338,7 +278,6 @@ func TestReplacePossessionRemovalChecked(t *testing.T) {
 	}
 }
 
-// Local aliases so the test reads clearly without importing perm constants twice.
 const (
 	TopicHideKey = perm.TopicHide
 	UserPurgeKey = perm.UserPurgeContent

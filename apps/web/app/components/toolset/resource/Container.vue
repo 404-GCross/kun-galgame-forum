@@ -16,8 +16,6 @@ const { moemoepoint, dailyToolsetUploadBytes } = storeToRefs(
 
 const MB = 1024 * 1024
 
-// Daily byte budget = 100MB + moemoepoint·MB (server enforces the same; admins
-// are unbounded). Drives the gauge below.
 const dailyUploadBudget = computed(
   () => USER_DAILY_UPLOAD_LIMIT + moemoepoint.value * MB
 )
@@ -28,9 +26,6 @@ const uploadResult = ref<ToolsetUploadResult>({
   size: 0
 })
 
-// The API accrues daily_toolset_upload_bytes by the uploaded file size on each
-// successful complete — mirror that locally (by bytes, not a count) so the
-// gauge reflects the new state without refetching the profile.
 const handleUploadSuccess = (value: ToolsetUploadResult) => {
   uploadResult.value = value
   dailyToolsetUploadBytes.value += value.size
@@ -60,7 +55,6 @@ const handleUploadSuccess = (value: ToolsetUploadResult) => {
       />
     </div>
 
-    <!-- Collapsed by default (no defaultValue) — click the header to expand. -->
     <KunAccordion variant="bordered">
       <KunAccordionItem
         value="notice"

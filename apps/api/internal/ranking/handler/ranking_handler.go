@@ -17,8 +17,6 @@ func NewRankingHandler(rankingService *service.RankingService) *RankingHandler {
 	return &RankingHandler{rankingService: rankingService}
 }
 
-// GetGalgameRanking returns galgame ranking by local interaction fields.
-// GET /api/ranking/galgame
 func (h *RankingHandler) GetGalgameRanking(c fiber.Ctx) error {
 	var req dto.GalgameRankingRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -27,8 +25,6 @@ func (h *RankingHandler) GetGalgameRanking(c fiber.Ctx) error {
 	return response.OK(c, h.rankingService.GetGalgameRanking(c.Context(), &req, utils.IsSFW(c)))
 }
 
-// GetTopicRanking returns topic ranking.
-// GET /api/ranking/topic
 func (h *RankingHandler) GetTopicRanking(c fiber.Ctx) error {
 	var req dto.TopicRankingRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -37,8 +33,6 @@ func (h *RankingHandler) GetTopicRanking(c fiber.Ctx) error {
 	return response.OK(c, h.rankingService.GetTopicRanking(c.Context(), &req, utils.IsSFW(c)))
 }
 
-// GetUserRanking returns user ranking.
-// GET /api/ranking/user
 func (h *RankingHandler) GetUserRanking(c fiber.Ctx) error {
 	var req dto.UserRankingRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {

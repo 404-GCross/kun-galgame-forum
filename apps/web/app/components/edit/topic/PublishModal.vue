@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// The publish step for a topic: everything that used to sit in the left column
-// of the edit page (category / section / NSFW / covers / the read-rules) now
-// lives here, opened by the 发布话题 button. The edit page itself is just the
-// title + editor (a Tencent-Docs-style writing surface).
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 import { useTopicSubmitter } from '~/composables/topic/useTopicSubmitter'
 import type {
@@ -45,8 +41,6 @@ const availableSections = computed(() =>
   category.value ? TOPIC_SECTIONS[category.value] : {}
 )
 
-// Section is multi-select (1..3), so it uses KunUI's multi-select KunCheckBoxGroup
-// (the `max` prop enforces the cap) — KunTab is single-select and can't.
 const sectionOptions = computed<KunCheckBoxGroupOption[]>(() =>
   Object.entries(availableSections.value).map(([value, label]) => ({
     value,
@@ -77,7 +71,6 @@ const confirmText = computed(() => {
       </header>
 
       <div class="flex-1 space-y-8 overflow-y-auto px-1 py-1">
-        <!-- Category -->
         <section class="space-y-3">
           <h3 class="flex items-center gap-2 font-semibold">
             <KunIcon name="lucide:layout-grid" class="h-5 w-5" />
@@ -93,7 +86,6 @@ const confirmText = computed(() => {
           />
         </section>
 
-        <!-- Section (contextual to category) -->
         <Transition
           enter-active-class="transition-all duration-300 ease-out"
           enter-from-class="opacity-0 -translate-y-2"
@@ -120,10 +112,8 @@ const confirmText = computed(() => {
           </section>
         </Transition>
 
-        <!-- Contextual seek/help notices (moemoepoint cost) -->
         <EditTopicSpecialNotice />
 
-        <!-- NSFW -->
         <section class="space-y-3">
           <h3 class="flex items-center gap-2 font-semibold">
             <KunIcon name="lucide:shield-alert" class="h-5 w-5" />
@@ -141,12 +131,10 @@ const confirmText = computed(() => {
           </p>
         </section>
 
-        <!-- Covers -->
         <section class="space-y-3">
           <EditTopicCoverPicker />
         </section>
 
-        <!-- Read-rules gate for low-moemoepoint users -->
         <section v-if="needRules" class="space-y-3">
           <h3 class="flex items-center gap-2 font-semibold">
             <KunIcon name="lucide:circle-alert" class="h-5 w-5" />

@@ -22,11 +22,27 @@ const textMap: Record<number, string> = {
   3: 'text-danger'
 }
 
+const statusFilters = [
+  { value: undefined, label: '全部', icon: 'lucide:list-filter', text: '' },
+  ...Object.entries(KUN_UPDATE_LOG_STATUS_MAP).map(([key, label]) => ({
+    value: Number(key),
+    label,
+    icon: iconMap[Number(key)]!,
+    text: textMap[Number(key)]!
+  }))
+]
+
 const pageData = ref({
   page: 1,
   limit: 30,
-  language: 'zh-cn'
+  language: 'zh-cn',
+  status: undefined as number | undefined
 })
+
+const setStatusFilter = (status?: number) => {
+  pageData.value.status = status
+  pageData.value.page = 1
+}
 
 const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
   '/update/todo',
@@ -36,11 +52,6 @@ const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
 const showTodoModal = ref(false)
 const editingTodo = ref<UpdateTodoPayload>({} as UpdateTodoPayload)
 
-// 创建待办 must CLEAR the edit target first. The modal reads todo_id off
-// initial-data to decide create-vs-edit, and this ref keeps the last edited
-// todo, so once you had opened 编辑 even to look, every later 创建待办 reopened
-// that todo — same title, same fields — and submitting PUT-overwrote it instead
-// of creating anything.
 const openCreateTodoModal = () => {
   editingTodo.value = {} as UpdateTodoPayload
   showTodoModal.value = true
@@ -88,6 +99,31 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       </template>
     </KunHeader>
 
+    <KunCard :is-hoverable="false" :is-transparent="false">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <KunButton
+            v-for="filter in statusFilters"
+            :key="filter.label"
+            size="sm"
+            :variant="pageData.status === filter.value ? 'solid' : 'flat'"
+            :color="pageData.status === filter.value ? 'primary' : 'default'"
+            @click="setStatusFilter(filter.value)"
+          >
+            <KunIcon
+              :name="filter.icon"
+              :class="
+                cn('h-4 w-4', pageData.status !== filter.value && filter.text)
+              "
+            />
+            {{ filter.label }}
+          </KunButton>
+        </div>
+
+        <span class="text-default-500 text-sm">共 {{ data.total }} 项</span>
+      </div>
+    </KunCard>
+
     <KunCard
       :is-hoverable="false"
       :is-transparent="false"
@@ -134,15 +170,20 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       </div>
     </KunCard>
 
+    <KunNull v-if="!data.todos.length" description="当前筛选条件下没有待办" />
+
     <UpdateTodoModal
       v-model="showTodoModal"
       :initial-data="editingTodo"
       @submit="handleTodoAction"
     />
 
-    <KunCard :is-hoverable="false" :is-transparent="false">
+    <KunCard
+      v-if="data.total > pageData.limit"
+      :is-hoverable="false"
+      :is-transparent="false"
+    >
       <KunPagination
-        v-if="data"
         v-model:current-page="pageData.page"
         :total-page="Math.ceil(data.total / pageData.limit)"
         :is-loading="status === 'pending'"

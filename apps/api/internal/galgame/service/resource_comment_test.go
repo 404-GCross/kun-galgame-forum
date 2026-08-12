@@ -6,7 +6,6 @@ import (
 	"kun-galgame-api/pkg/communityclient"
 )
 
-// TestResourceAnchorID pins the site_resource anchor construction per area.
 func TestResourceAnchorID(t *testing.T) {
 	cases := []struct {
 		src  CommentSource
@@ -24,8 +23,6 @@ func TestResourceAnchorID(t *testing.T) {
 	}
 }
 
-// TestResourceSourceMetadata pins the accessor→strategy wiring and the feed types
-// that the create/delete paths must project (charter ruling 22).
 func TestResourceSourceMetadata(t *testing.T) {
 	cases := []struct {
 		src      CommentSource
@@ -43,13 +40,10 @@ func TestResourceSourceMetadata(t *testing.T) {
 	}
 }
 
-// post is a tiny PostView builder for the notification-plan cases.
 func post(replyTo, target int64) *communityclient.PostView {
 	return &communityclient.PostView{ReplyToPostID: replyTo, TargetUserID: target}
 }
 
-// TestResourceNotifyPlan pins the per-area notification parity (charter ruling
-// 20): who is notified, the message type, and the suppression rules.
 func TestResourceNotifyPlan(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -61,25 +55,19 @@ func TestResourceNotifyPlan(t *testing.T) {
 		wantType     string
 		wantOK       bool
 	}{
-		// rating: "commented" → the explicit target; self-notification suppressed.
 		{"rating to target", sourceRating, 1, post(0, 2), 0, 2, "commented", true},
 		{"rating self-suppress", sourceRating, 1, post(0, 1), 0, 0, "", false},
 		{"rating no target", sourceRating, 1, post(0, 0), 0, 0, "", false},
 
-		// website: notify ONLY on a reply, to the parent author.
 		{"website top-level notifies nobody", sourceWebsite, 1, post(0, 0), 0, 0, "", false},
 		{"website reply to parent", sourceWebsite, 1, post(5, 2), 0, 2, "commented", true},
 		{"website reply self-suppress", sourceWebsite, 2, post(5, 2), 0, 0, "", false},
 
-		// toolset: "commented" → owner (top-level), "replied" → parent (reply).
 		{"toolset top-level to owner", sourceToolset, 1, post(0, 0), 9, 9, "commented", true},
 		{"toolset reply to parent", sourceToolset, 1, post(5, 3), 9, 3, "replied", true},
 		{"toolset owner-is-self suppress", sourceToolset, 9, post(0, 0), 9, 0, "", false},
 		{"toolset no owner", sourceToolset, 1, post(0, 0), 0, 0, "", false},
 
-		// resource / quiz: introduced on the primitive, so no legacy notifier to
-		// match — they deliberately adopt the toolset shape (owner on a top-level
-		// comment, parent author on a reply).
 		{"resource top-level to uploader", sourceResource, 1, post(0, 0), 9, 9, "commented", true},
 		{"resource reply to parent", sourceResource, 1, post(5, 3), 9, 3, "replied", true},
 		{"resource uploader-is-self suppress", sourceResource, 9, post(0, 0), 9, 0, "", false},
@@ -103,7 +91,6 @@ func TestResourceNotifyPlan(t *testing.T) {
 	}
 }
 
-// TestContainsPost pins the owner-delete membership scan's element check.
 func TestContainsPost(t *testing.T) {
 	posts := []communityclient.PostView{{ID: 10}, {ID: 20}, {ID: 30}}
 	if !containsPost(posts, 20) {

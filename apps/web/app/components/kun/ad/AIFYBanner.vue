@@ -10,7 +10,6 @@ const props = withDefaults(
   }
 )
 
-// Hidden for any role beyond `user` (版主/管理员/创作者…); see useAdVisible.
 const showAd = useAdVisible()
 </script>
 

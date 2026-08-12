@@ -19,10 +19,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// AuthService handles the OAuth-callback session bootstrap and a few
-// session-lifecycle ops. Identity (name / avatar / email / bio / status)
-// is owned by OAuth — kungal only persists per-site state in
-// kungal_user_state (moemoepoint, daily counters).
 type AuthService struct {
 	stateRepo   *repository.StateRepository
 	rdb         *redis.Client
@@ -44,21 +40,12 @@ func NewAuthService(
 	}
 }
 
-// OAuthCallback exchanges the authorization code for tokens, fetches user
-// info from OAuth (which is the single source of truth for identity), and
-// creates a kungal session. Idempotently ensures kungal_user_state(userID)
-// exists so the new user starts with the default 7 moemoepoint balance.
 func (s *AuthService) OAuthCallback(
 	ctx context.Context,
 	req *dto.OAuthCallbackRequest,
 ) (*dto.SessionResponse, *errors.AppError) {
 	tokenResp, err := s.oauthClient.ExchangeCode(req.Code, req.CodeVerifier)
 	if err != nil {
-		// OAuth can reject the token exchange with 10014 if the user was
-		// banned between issuing the authorization code and exchanging it,
-		// or on some upstream paths that allow code issuance for soon-to-be-
-		// banned accounts. Surface distinctly so the frontend doesn't bounce
-		// the user back through /oauth/authorize (a loop they can't break).
 		if oauth.IsBanned(err) {
 			return nil, errors.ErrAccountBanned()
 		}
@@ -73,33 +60,21 @@ func (s *AuthService) OAuthCallback(
 		return nil, errors.ErrBadRequest(fmt.Sprintf("获取 OAuth 用户信息失败: %v", err))
 	}
 	if oauthUser.ID <= 0 {
-		// Hard-fail if the OAuth server hasn't yet been updated to include
-		// the integer `id` field on /oauth/userinfo. See the comment on
-		// oauth.UserInfo for the rationale.
 		return nil, errors.ErrInternal(
 			"OAuth /oauth/userinfo 未返回用户 id; 请确认 OAuth server 已更新",
 		)
 	}
 
-	// First-time login on this site: create the kungal-state row. No-op
-	// for returning users.
 	if err := s.stateRepo.Ensure(oauthUser.ID); err != nil {
 		return nil, errors.ErrInternal("初始化用户状态失败")
 	}
 
-	// Pull moemoepoint for the SessionResponse so the frontend can show it
-	// immediately without a follow-up /user/status call.
 	state, _ := s.stateRepo.FindByID(oauthUser.ID)
 	moe := 0
 	if state != nil {
 		moe = state.Moemoepoint
 	}
 
-	// /oauth/userinfo's `picture` only carries the legacy avatar URL (empty for
-	// users who set a new image_service avatar). Resolve through userclient,
-	// which maps avatar_image_hash → the image_service URL, and fall back to
-	// `picture` if the lookup fails — otherwise the top-bar avatar shows blank
-	// right after login for anyone on a new avatar.
 	avatar := oauthUser.Picture
 	if u, ok, uerr := s.userClient.User(ctx, oauthUser.ID); uerr == nil && ok && u.Avatar != "" {
 		avatar = u.Avatar
@@ -110,12 +85,6 @@ func (s *AuthService) OAuthCallback(
 		return nil, errors.ErrInternal("生成会话令牌失败")
 	}
 
-	// The login-response user the FE writes into its store. Roles is the
-	// EFFECTIVE set (global ∪ this-site's site_roles, 12-site-roles §5.1); the
-	// persisted session reuses the SAME slice so server enforcement and the FE
-	// store can't diverge — else a site moderator is enforced server-side yet
-	// never sees the moderator UI. Pure builder → the merge is unit-tested
-	// (newLoginUserProfile) without a Login round-trip.
 	respUser := newLoginUserProfile(oauthUser, avatar, moe)
 
 	sessionData := middleware.SessionData{
@@ -143,12 +112,6 @@ func (s *AuthService) OAuthCallback(
 	}, nil
 }
 
-// newLoginUserProfile builds the login-response user the FE writes into its
-// store. Roles is the EFFECTIVE set = the user's global roles UNIONed with this
-// site's site_roles (contract docs/oauth/12-site-roles.md §5.1) — the same set
-// persisted on the session — so a site moderator/creator gets BOTH server
-// enforcement and the matching UI. Pure so the merge is unit-tested without the
-// OAuth / Redis / DB round-trips the full Login needs.
 func newLoginUserProfile(u *oauth.UserInfo, avatar string, moe int) *dto.UserProfile {
 	return &dto.UserProfile{
 		ID:          u.ID,
@@ -157,11 +120,10 @@ func newLoginUserProfile(u *oauth.UserInfo, avatar string, moe int) *dto.UserPro
 		Avatar:      avatar,
 		Roles:       role.Union(u.Roles, u.SiteRoles),
 		Moemoepoint: moe,
-		Bio:         "", // bio is OAuth-owned, available via /auth/me
+		Bio:         "",
 	}
 }
 
-// Logout deletes the session from Redis and revokes the OAuth token.
 func (s *AuthService) Logout(ctx context.Context, sessionToken string) error {
 	val, err := s.rdb.Get(ctx, middleware.SessionKey(sessionToken)).Result()
 	if err == nil {
@@ -173,9 +135,6 @@ func (s *AuthService) Logout(ctx context.Context, sessionToken string) error {
 	return s.rdb.Del(ctx, middleware.SessionKey(sessionToken)).Err()
 }
 
-// GetProfile returns the full profile for the currently logged-in user.
-// Identity fields come from OAuth (via userclient); moemoepoint and other
-// per-site state come from kungal_user_state. Used by GET /api/auth/me.
 func (s *AuthService) GetProfile(
 	ctx context.Context,
 	userID int,
@@ -199,8 +158,6 @@ func (s *AuthService) GetProfile(
 		Roles:       u.Roles,
 		Moemoepoint: moe,
 		Bio:         u.Bio,
-		// Sub isn't in the userclient brief — the /auth/me handler fills it from
-		// the session identity.
 	}, nil
 }
 

@@ -1,13 +1,3 @@
-// One-off reference-ping of every forum content image hash (the /image/<hash>
-// tokens in topic / reply / chat / comment). Runs the exact same logic as the
-// daily cron (cron.RunReferencePing) — exposed as a command because forum has no
-// admin job-run endpoint, so the FIRST ping (right after the migration) and any
-// future manual re-ping go through the tools image.
-//
-// `updated` should come back ≈ the current distinct content-image hash count;
-// that confirms image_service recognised them and reset their GC clock.
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools image-refping
 package main
 
 import (

@@ -20,8 +20,6 @@ const props = defineProps<{
 const { id: userId } = usePersistUserStore()
 const canDeleteAnyRating = useCan('rating.delete_any')
 
-// Even on the detail page (which the reader opened deliberately), a 严重剧透
-// review stays behind a one-click frosted overlay; 部分剧透 / 无剧透 show直接.
 const spoilerRevealed = ref(false)
 const isSummaryMasked = computed(
   () => props.data.spoiler_level === 'serious' && !spoilerRevealed.value

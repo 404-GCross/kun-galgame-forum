@@ -5,11 +5,11 @@ const sanitizeMarkdown = (markdown: string) => {
     return ''
   }
   return markdown
-    .replace(/`{3}[\s\S]*?`{3}/g, ' ') // remove fenced code blocks
-    .replace(/`[^`]+`/g, ' ') // remove inline code
-    .replace(/!\[.*?\]\(.*?\)/g, ' ') // remove images
-    .replace(/\[[^\]]*?\]\(.*?\)/g, ' ') // remove links, keep text
-    .replace(/[^\w\s\u4e00-\u9fa5-]/g, ' ') // remove punctuation but keep CJK
+    .replace(/`{3}[\s\S]*?`{3}/g, ' ')
+    .replace(/`[^`]+`/g, ' ')
+    .replace(/!\[.*?\]\(.*?\)/g, ' ')
+    .replace(/\[[^\]]*?\]\(.*?\)/g, ' ')
+    .replace(/[^\w\s\u4e00-\u9fa5-]/g, ' ')
 }
 
 export const computeReadingMinute = (markdown: string) => {

@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// goldmark runs with html.WithUnsafe(); these assert the bluemonday pass strips
-// the dangerous markup that raw user HTML can smuggle through.
 func TestRenderStripsXSS(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -34,7 +32,6 @@ func TestRenderStripsXSS(t *testing.T) {
 	}
 }
 
-// Assert every feature the pipeline produces survives the sanitizer.
 func TestRenderPreservesFeatures(t *testing.T) {
 	cases := []struct {
 		name string
@@ -64,11 +61,6 @@ func TestRenderPreservesFeatures(t *testing.T) {
 	}
 }
 
-// Regression: a no-language fenced block used to get the `.kun-code-container`
-// closing `</div>` without an opening one, leaving a STRAY `</div>` that the
-// browser used to close an ancestor early — diverging the SSR DOM from the
-// client and cascading hydration mismatches through the rest of the post.
-// Every code block (lang or not) must be div-balanced.
 func TestRenderCodeBlocksDivBalanced(t *testing.T) {
 	cases := map[string]string{
 		"no lang":         "before\n\n```\nplain\n```\n\nafter",
@@ -87,9 +79,6 @@ func TestRenderCodeBlocksDivBalanced(t *testing.T) {
 	}
 }
 
-// Mention: [@name](kungal-user:id) → a sanitizer-surviving link carrying the id
-// (data-uid). The raw custom-scheme token must NOT leak (it would be a broken,
-// scheme-stripped link otherwise).
 func TestRenderMention(t *testing.T) {
 	out := Render("hi [@白狐](kungal-user:123) there")
 	for _, w := range []string{`class="kun-mention"`, `data-uid="123"`, "@白狐"} {
@@ -102,8 +91,6 @@ func TestRenderMention(t *testing.T) {
 	}
 }
 
-// Quote: [#floor](kungal-reply:id) → a quote span the frontend hydrates into a
-// card. Carries the target reply id + floor; raw token must not leak.
 func TestRenderQuote(t *testing.T) {
 	out := Render("see [#12](kungal-reply:456)")
 	for _, w := range []string{`class="kun-quote"`, `data-reply-id="456"`, `data-floor="12"`, "#12"} {
@@ -116,9 +103,6 @@ func TestRenderQuote(t *testing.T) {
 	}
 }
 
-// With a site base set, the mention href is absolute (UGCPolicy strips relative
-// URLs, so a relative href would be dropped) and points at the profile page
-// (/user/<id>/info, the actual user home route).
 func TestRenderMentionAbsoluteHref(t *testing.T) {
 	SetContentSiteBase("https://www.kungal.com")
 	defer SetContentSiteBase("")
@@ -132,7 +116,7 @@ func TestExtractMentionIDs(t *testing.T) {
 	got := ExtractMentionIDs(
 		"hi [@a](kungal-user:5) and [@b](kungal-user:12), and [@a again](kungal-user:5)",
 	)
-	want := []int{5, 12} // unique, first-seen order; the dup 5 is dropped
+	want := []int{5, 12}
 	if len(got) != len(want) {
 		t.Fatalf("want %v, got %v", want, got)
 	}
@@ -146,10 +130,6 @@ func TestExtractMentionIDs(t *testing.T) {
 	}
 }
 
-// Server-side name resolution: a renamed user's mention shows the current name,
-// an unresolved id keeps its snapshot, the id is preserved, and the name is
-// HTML-escaped. Runs against the real Render output (so it also asserts the
-// regex survives the sanitizer's attribute handling).
 func TestResolveMentionNames(t *testing.T) {
 	html := Render("[@旧名](kungal-user:5) and [@x](kungal-user:9)")
 
@@ -176,10 +156,6 @@ func TestResolveMentionNames(t *testing.T) {
 		t.Errorf("nil names should be a no-op")
 	}
 
-	// The Phase-4 migration emits EMPTY-name mention tokens — [@](kungal-user:id)
-	// — relying on ResolveMentionNames to fill the current name at render. Guard
-	// that the empty-text link still renders a mention chip (+ a coexisting quote)
-	// and resolves to the current name.
 	mig := Render("[@](kungal-user:30) [#1](kungal-reply:14)")
 	for _, w := range []string{
 		`class="kun-mention"`, `data-uid="30"`,

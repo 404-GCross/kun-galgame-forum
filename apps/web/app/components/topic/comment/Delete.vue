@@ -54,8 +54,6 @@ const handleDeleteComment = async () => {
 </script>
 
 <template>
-  <!-- A ⋯ menu row (the comment's edit / delete / report live there now), so it
-       matches ReportButton's `menu` shape rather than a bare icon button. -->
   <KunButton
     v-if="canDelete"
     variant="light"

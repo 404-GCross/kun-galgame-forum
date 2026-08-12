@@ -1,16 +1,11 @@
 package model
 
-// UserBrief is the (id, name, avatar) projection embedded into list/detail
-// DTOs. Identity is owned by OAuth post-migration; this struct is populated
-// by hydrating user_id values through pkg/userclient — never by reading from
-// a local "user" table.
 type UserBrief struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
 }
 
-// UserStats is a projection for aggregated user statistics.
 type UserStats struct {
 	Topic                  int64 `gorm:"column:topic"`
 	TopicPoll              int64 `gorm:"column:topic_poll"`

@@ -3,9 +3,6 @@ import { ref } from 'vue'
 
 const MAX_IMAGE_HISTORY = 24
 
-// Recently inserted / uploaded image srcs (a /image/<hash> token from an upload,
-// or a pasted URL), so a user can re-insert a previously used image from the
-// editor's image dialog. Persisted per browser; newest first, deduped, capped.
 export const usePersistImageHistoryStore = defineStore(
   'KUNGalgameImageHistory',
   () => {

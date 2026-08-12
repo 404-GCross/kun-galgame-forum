@@ -12,9 +12,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// ToolsetHandler handles the core toolset CRUD routes.
-// Sub-domains (comments, practicality, resources, uploads) each live in their
-// own handler file to keep each small and focused.
 type ToolsetHandler struct {
 	toolsetService *service.ToolsetService
 }
@@ -23,8 +20,6 @@ func NewToolsetHandler(toolsetService *service.ToolsetService) *ToolsetHandler {
 	return &ToolsetHandler{toolsetService: toolsetService}
 }
 
-// GetList returns a paginated list of toolsets with filters.
-// GET /api/toolset
 func (h *ToolsetHandler) GetList(c fiber.Ctx) error {
 	var req dto.ToolsetListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -41,9 +36,6 @@ func (h *ToolsetHandler) GetList(c fiber.Ctx) error {
 	return response.Paginated(c, items, total)
 }
 
-// GetUserToolsets returns one user's authored toolsets (their profile 工具
-// section). Reuses the list assembly, scoped by user_id.
-// GET /api/user/:id/toolsets
 func (h *ToolsetHandler) GetUserToolsets(c fiber.Ctx) error {
 	userID := fiber.Params[int](c, "id")
 	if userID <= 0 {
@@ -65,8 +57,6 @@ func (h *ToolsetHandler) GetUserToolsets(c fiber.Ctx) error {
 	return response.Paginated(c, items, total)
 }
 
-// Create creates a new toolset.
-// POST /api/toolset
 func (h *ToolsetHandler) Create(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -85,8 +75,6 @@ func (h *ToolsetHandler) Create(c fiber.Ctx) error {
 	return response.OK(c, toolset)
 }
 
-// GetDetail returns toolset detail.
-// GET /api/toolset/:id
 func (h *ToolsetHandler) GetDetail(c fiber.Ctx) error {
 	id := fiber.Params[int](c, "id")
 	if id <= 0 {
@@ -100,8 +88,6 @@ func (h *ToolsetHandler) GetDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// Update updates a toolset.
-// PUT /api/toolset/:id
 func (h *ToolsetHandler) Update(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -124,8 +110,6 @@ func (h *ToolsetHandler) Update(c fiber.Ctx) error {
 	return response.OKMessage(c, "工具更新成功")
 }
 
-// Delete deletes a toolset.
-// DELETE /api/toolset/:id
 func (h *ToolsetHandler) Delete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

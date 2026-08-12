@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// Fallback feed card for activity types without a rich card yet — just the
-// content under the shared header (avatar · username · time).
 defineProps<{ activity: ActivityItem }>()
 </script>
 

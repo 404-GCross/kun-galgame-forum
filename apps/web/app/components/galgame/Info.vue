@@ -10,15 +10,10 @@ defineProps<{
   series: GalgameDetailSeriesRef[]
   originalLanguage: string
   ageLimit: 'all' | 'r18'
-  // U1: nil/'' = unknown release; TBA flag is independent. Rendering
-  // logic in shared/utils/getReleaseDateText.ts.
   releaseDate?: string | null
   releaseDateTBA?: boolean
 }>()
 
-// E3b: the legacy 编辑历史/更新请求 modal retired — history lives on the
-// engine-backed /galgame/:gid/history page. The detail object is provided
-// at the page root (the link needs the gid).
 const galgame = inject<GalgameDetail>('galgame')
 
 const getLanguageName = getGalgameOriginalLanguageName
@@ -34,10 +29,6 @@ const getLanguageName = getGalgameOriginalLanguageName
     <dl class="space-y-5">
       <GalgameDetailOfficial :official="official" />
 
-      <!-- 系列: the grouping entity, linked because the question it answers
-           ("还有哪几部") lives on the series page, not here. Identity only —
-           the member count belongs to that page, and a second number here
-           would eventually disagree with it. -->
       <div v-if="series && series.length > 0">
         <dt class="text-default-500 dark:text-default-400 text-sm font-medium">
           所属系列
@@ -75,8 +66,6 @@ const getLanguageName = getGalgameOriginalLanguageName
             class-name="text-foreground hover:text-primary text-base font-semibold"
           >
             {{ item.name }}
-            <!-- No count (upstream not yet publishing one, or a genuinely
-                 unused engine) ⇒ no badge and no tooltip, never "+ 0". -->
             <KunTooltip
               v-if="item.galgame_count > 0"
               :text="`${item.galgame_count} 个 Galgame 使用此引擎制作`"
@@ -125,8 +114,6 @@ const getLanguageName = getGalgameOriginalLanguageName
       </div>
     </dl>
 
-    <!-- The engine-backed revision history page (includes the migrated
-         pre-engine history + any-two-versions diff). -->
     <KunButton
       v-if="galgame"
       variant="flat"

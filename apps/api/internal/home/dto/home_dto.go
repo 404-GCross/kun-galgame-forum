@@ -2,10 +2,6 @@ package dto
 
 import "time"
 
-// ──────────────────────────────────────────
-// Responses
-// ──────────────────────────────────────────
-
 type LocaleName struct {
 	EnUS string `json:"en-us"`
 	JaJP string `json:"ja-jp"`
@@ -20,22 +16,18 @@ type UserBrief struct {
 }
 
 type HomeGalgame struct {
-	ID                 int        `json:"id"`
-	Name               LocaleName `json:"name"`
-	Banner             string     `json:"banner"`
-	User               UserBrief  `json:"user"`
-	ContentLimit       string     `json:"content_limit"`
-	View               int        `json:"view"`
-	LikeCount          int        `json:"like_count"`
-	ResourceUpdateTime string     `json:"resource_update_time"`
-	Platform           []string   `json:"platform"`
-	Language           []string   `json:"language"`
-	// U2: derived banner. effective_banner_url is injected by
-	// client.rewriteBanners on every galgame response — dropping it here
-	// forces the FE card to fall back to the legacy `banner` field,
-	// which is empty for newly-uploaded (covers-only) galgames.
-	EffectiveBannerHash string `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string `json:"effective_banner_url,omitempty"`
+	ID                  int        `json:"id"`
+	Name                LocaleName `json:"name"`
+	Banner              string     `json:"banner"`
+	User                UserBrief  `json:"user"`
+	ContentLimit        string     `json:"content_limit"`
+	View                int        `json:"view"`
+	LikeCount           int        `json:"like_count"`
+	ResourceUpdateTime  string     `json:"resource_update_time"`
+	Platform            []string   `json:"platform"`
+	Language            []string   `json:"language"`
+	EffectiveBannerHash string     `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL  string     `json:"effective_banner_url,omitempty"`
 }
 
 type HomeTopic struct {

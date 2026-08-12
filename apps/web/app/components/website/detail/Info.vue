@@ -8,7 +8,6 @@ defineProps<{
   data: WebsiteDetail
 }>()
 
-// Tag the outbound domain jumps with utm_source=<current domain>.
 const utmLink = useUtmLink()
 </script>
 

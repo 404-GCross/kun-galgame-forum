@@ -4,16 +4,6 @@ import {
   getGalgameCharacterSourceName
 } from '~/constants/galgameCharacter'
 
-// `id` is a CATALOG character id — the id the 登场角色 roster on every game
-// detail page already carries, so the link needs no lookup.
-//
-// The page answers the question the game-page popup deliberately does not: not
-// "who is she" but "where else have I seen her". Everything below the header is
-// the appearance list, rendered through the site's ordinary galgame card.
-//
-// What is NOT here is as deliberate: the catalog's public lane publishes no
-// 性别 / 生日 / 三围 for a character (those live on the staff-side face only),
-// so this page does not have them and will not invent them from elsewhere.
 const route = useRoute()
 const characterId = computed(() => Number((route.params as { id: string }).id))
 
@@ -32,12 +22,6 @@ const { data } = await useKunFetch<GalgameCharacterDetail>(
   { method: 'GET', query: { limit: PAGE_SIZE }, watch: false }
 )
 
-// A merged character keeps its old id addressable, but only as a 301:
-// `moved_to` arrives instead of the record, never alongside it. `navigateTo` is
-// NOT an early return on the server — it parks the redirect and hands control
-// back — so everything below that touches the record is gated on `moved`, and
-// so is the template root (the moved payload's works/traits are null, and an
-// ungated spread would 500 over the parked 301).
 const moved = !!data.value?.moved_to
 if (data.value?.moved_to) {
   await navigateTo(`/galgame/character/${data.value.moved_to}`, {
@@ -54,8 +38,6 @@ if (!data.value) {
   })
 }
 
-// The appearance list is offset-paged with no total, so this is a 加载更多
-// rather than a pager: we know whether ANOTHER page exists, never how many.
 const works = ref<GalgameCharacterWork[]>(moved ? [] : [...data.value.works])
 const nextOffset = ref<number | null>(moved ? null : data.value.next_offset)
 const loadingMore = ref(false)
@@ -77,16 +59,11 @@ const loadMore = async () => {
   nextOffset.value = res.next_offset
 }
 
-// A voice credit names its language only on the character face. Japanese is the
-// unmarked case in this medium, so only the others are labelled: a 中文配音 row
-// standing beside a seiyuu is a second performance, not a recast, and an
-// unlabelled pair reads as the latter.
 const voiceLabel = (voice: GalgameDetailCharacterVoice) =>
   voice.lang && voice.lang.toLowerCase() !== 'ja'
     ? `${voice.name}（${getGalgameCharacterLangName(voice.lang)}）`
     : voice.name
 
-// The romanization, for a reader who cannot read the credited form.
 const voiceTitle = (voices: GalgameDetailCharacterVoice[]) =>
   voices.map((v) => v.latin || v.name).join(' / ')
 
@@ -97,20 +74,12 @@ const subtitle = computed(() => {
   return parts.join(' · ')
 })
 
-// The header art: the 立绘 when there is one, because a standing figure is the
-// picture of a character — the bust then rides beside it at thumbnail size.
-// Both are opened full-size by the lightbox, and each is framed by its own
-// measured shape; neither is cropped into the other's frame, and neither is
-// forced into a guessed one when image_service could not size it.
 const figureFrame = computed(() => artFrame(data.value?.figure_meta))
 const bustFrame = computed(() => artFrame(data.value?.image_meta))
 
 const leadIntro = computed(() =>
   data.value?.intros.find((i) => i.intro === data.value?.intro)
 )
-// Attribution and the machine-translation marker travel together: both answer
-// "where did this paragraph come from", and a reader deciding how much to trust
-// a bio wants them in one line rather than two.
 const introCredit = computed(() => {
   const parts: string[] = []
   if (leadIntro.value?.source) {
@@ -127,7 +96,6 @@ const otherIntros = computed(() =>
   (data.value?.intros ?? []).filter((i) => i.intro !== data.value?.intro)
 )
 
-// Spoiler traits ride along with the response and wait for one explicit click.
 const isTraitSpoilerRevealed = ref(false)
 const traits = computed(() => {
   const all = data.value?.traits ?? []
@@ -166,10 +134,6 @@ if (!moved) {
       <template v-if="data.figure || data.image" #headerEndContent>
         <KunLightboxGallery>
           <div class="flex shrink-0 items-start gap-2">
-            <!-- Each picture stands alone here, so each is framed by its OWN
-                 measured shape: a 立绘 is cut out against a flat field and
-                 arrives at whatever ratio the source drew it, and nothing is
-                 cropped to fit a frame it was never drawn for. -->
             <KunLightboxGalleryItem
               v-if="data.figure"
               :src="data.figure"
@@ -232,8 +196,6 @@ if (!moved) {
             </p>
           </div>
 
-          <!-- The other languages, collapsed. One bio is what a reader wants;
-               the originals are what a reader occasionally wants. -->
           <KunAccordion v-if="otherIntros.length">
             <KunAccordionItem
               v-for="intro in otherIntros"
@@ -259,9 +221,6 @@ if (!moved) {
             >
               <p class="text-default-400 text-xs">{{ group.name }}</p>
               <div class="flex flex-wrap gap-1.5">
-                <!-- VNDB's own English vocabulary, as published: the catalog
-                     has no Chinese localization for it, and a hand-rolled one
-                     here would drift from the source it came from. -->
                 <KunChip
                   v-for="trait in group.traits"
                   :key="trait.id"
@@ -302,8 +261,6 @@ if (!moved) {
                 {{ link.name }}
                 <KunIcon name="lucide:external-link" class="inline size-3" />
               </KunLink>
-              <!-- No verified character-page template for this source. Showing
-                   the name without a link beats guessing a URL that 404s. -->
               <span v-else class="text-default-400 text-sm">{{
                 link.name
               }}</span>
@@ -319,10 +276,6 @@ if (!moved) {
       </template>
     </KunHeader>
 
-    <!-- The site's ordinary galgame card, not a lookalike. What this page adds
-         through the #meta slot is the one thing an appearance list needs on
-         top: who voiced her in THAT game — a recast between an original and its
-         remake is a real event, and a single CV line would erase it. -->
     <GalgameCard v-if="works.length" :galgames="works" :is-transparent="false">
       <template #meta="{ galgame }">
         <p

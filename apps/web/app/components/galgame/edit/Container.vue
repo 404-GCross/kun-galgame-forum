@@ -1,10 +1,4 @@
 <script setup lang="ts">
-// The schema-driven galgame editor (E3a): bootstrap = the entity-aware
-// capability projection + current values; the form emits only the dirty
-// subset. Submission files an edit proposal; a reviewer's own change
-// (admin/ren via perm, or the game's owner via owner-review) automerges —
-// a direct edit — while everyone else's enters the kungal review queue. The
-// save bar + outcome message reflect whichever applies to this edit.
 import {
   createGalgameEditConfig,
   GALGAME_EDIT_GROUP_ORDER,
@@ -23,9 +17,6 @@ const { data: bootstrap, status } = await useKunFetch<GalgameEditBootstrap>(
   { method: 'GET', watch: false }
 )
 
-// The galgame detail already ships tag/official/engine/series resolved with
-// NAMES — we build id→name maps off it so the relation pickers show names for
-// the CURRENT values (new picks carry their own names from search).
 const { data: detail } = await useKunFetch<GalgameDetail>(
   `/galgame/${gid.value}`,
   { method: 'GET', watch: false }
@@ -50,9 +41,6 @@ const { data: mine, refresh: refreshMine } =
     query: { gid: gid.value }
   })
 
-// Open proposals on this game (public read). For a reviewer — a moderator OR
-// the game's creator (owner-review, E3b) — the ones from other users render
-// as an inline review surface linking to the workbench.
 const { data: pending, refresh: refreshPending } =
   await useKunFetch<GalgameEditProposalList>(
     `/galgame/${gid.value}/edit/proposals`,
@@ -69,31 +57,19 @@ const reviewable = computed(() => {
   )
 })
 
-// Proxy-face: the "审核队列" entry link points at the review queue, whose gate
-// mirrors the infra editing-engine review capability (truth = infra, not
-// pkg/perm). Per-edit direct-edit/automerge rights come from the bootstrap
-// can_review / would_automerge projection above. Stays on useRole, not useCan.
 const { canModerate } = useRole()
 
-// Bootstrap values are catalog.work.* fields — display_name is the single
-// cross-site name the registry derives from the official titles.
 const gameName = computed(() =>
   String(bootstrap.value?.values['catalog.work.display_name'] ?? '')
 )
 
 const patch = ref<Record<string, unknown>>({})
 const note = ref('')
-// Expanded by default so users are nudged to describe their change.
 const showNote = ref(true)
 const submitting = ref(false)
 
 const dirtyCount = computed(() => Object.keys(patch.value).length)
 
-// The engine automerges a proposal only when EVERY changed field would
-// automerge for this user (all-or-nothing). Mirror that off the per-field
-// projection so the save bar promises exactly what will happen: a direct edit
-// (admin/ren, or the game's owner) applies immediately; a mixed or ordinary
-// edit enters the review queue.
 const automergeByKey = computed(() => {
   const map: Record<string, boolean> = {}
   for (const field of bootstrap.value?.fields ?? []) {
@@ -192,8 +168,6 @@ const handleWithdraw = async (id: number) => {
         </div>
       </KunCard>
 
-      <!-- Open proposals from OTHER users, for reviewers: moderators and the
-           game's creator (owner-review, E3b) adjudicate in the workbench -->
       <div v-if="reviewable.length" class="space-y-2">
         <EditkitProposalCard
           v-for="item in reviewable"
@@ -220,7 +194,6 @@ const handleWithdraw = async (id: number) => {
         </EditkitProposalCard>
       </div>
 
-      <!-- Pending proposals of MINE on this galgame -->
       <div v-if="mine?.items.length" class="space-y-2">
         <EditkitProposalCard
           v-for="item in mine.items.filter((p) => p.status === 'open')"
@@ -260,12 +233,7 @@ const handleWithdraw = async (id: number) => {
         />
       </KunCard>
 
-      <!-- Sticky save bar: keeps submit reachable across the tabbed form, with
-           an optional edit note. -->
       <div class="sticky bottom-0 z-20 pb-3">
-        <!-- Floating save bar: pin the surface to alpha 1 (bg-content1 carries
-             the --kun-surface-opacity glass alpha, so a lowered 透明度 setting
-             would otherwise let the scrolling form show through). -->
         <KunCard
           :is-hoverable="false"
           :is-transparent="false"

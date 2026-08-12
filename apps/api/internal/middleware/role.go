@@ -9,8 +9,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// RequireModerator gates a route to holders of the management capability
-// (moderator ⊂ admin ⊂ ren per docs/oauth/11-roles.md). 403 otherwise.
 func RequireModerator() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := GetUser(c)
@@ -24,8 +22,6 @@ func RequireModerator() fiber.Handler {
 	}
 }
 
-// RequireAdmin gates a route to holders of the site-administration capability
-// (admin ⊂ ren). 403 otherwise.
 func RequireAdmin() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := GetUser(c)
@@ -39,11 +35,6 @@ func RequireAdmin() fiber.Handler {
 	}
 }
 
-// RequirePermission gates a route to holders of a named PURE-FORUM permission
-// (pkg/perm — the forum's own resolver is the authoritative boundary for these
-// operations). Same shape as RequireModerator: nil user → auth-expired, missing
-// permission → 403. INFRA-PROXY operations do NOT use this — they stay on
-// RequireModerator/RequireAdmin with a mirror comment.
 func RequirePermission(p perm.Permission) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := GetUser(c)

@@ -17,18 +17,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// MaxCollectionsPerUser bounds how many collections one user can keep.
 const MaxCollectionsPerUser = 100
 
-// previewCoversPerCollection is how many game covers a grid card shows.
 const previewCoversPerCollection = 4
 
-// CollectionService owns galgame collections (收藏夹): CRUD, visibility/access,
-// and the membership write path that carries the favorite_count + owner
-// moemoepoint/notification economics (first-add / last-remove).
-//
-// It delegates galgame-card hydration and owner-name lookup to the core
-// GalgameService (same package) so none of the galgame/OAuth fusion is duplicated.
 type CollectionService struct {
 	collectionRepo *repository.GalgameCollectionRepository
 	galgameService *GalgameService
@@ -57,11 +49,6 @@ func NewCollectionService(
 	}
 }
 
-// ──────────────────────────────────────────
-// CRUD
-// ──────────────────────────────────────────
-
-// Create makes a new collection for userID.
 func (s *CollectionService) Create(ctx context.Context, userID int, req *dto.CreateCollectionRequest) (int, *errors.AppError) {
 	count, err := s.collectionRepo.CountByUser(userID)
 	if err != nil {
@@ -71,8 +58,6 @@ func (s *CollectionService) Create(ctx context.Context, userID int, req *dto.Cre
 		return 0, errors.ErrBadRequest("收藏夹数量已达上限")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): name + description.
-	// deny blocks (nothing persisted); hold publishes+logs; fail-open on error.
 	moderationText := gate.ComposeText(req.Name, req.Description)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -106,15 +91,6 @@ func (s *CollectionService) Create(ctx context.Context, userID int, req *dto.Cre
 	return c.ID, nil
 }
 
-// Update mutates a collection (partial). The default collection can be renamed
-// / re-described / re-privacied, but not deleted (see Delete).
-//
-// The owner may always edit their own; canEditAny (perm.CollectionEditAny) lets
-// staff fix someone else's — a public collection's name and description are
-// site-visible free text, so a takedown must not be the only remedy. Note that
-// every owner-derived value below reads c.UserID, never the caller: under a
-// staff edit the two differ, and attributing the moderation record or the
-// viewer allow-list to the moderator would be wrong.
 func (s *CollectionService) Update(ctx context.Context, userID int, canEditAny bool, cid int, req *dto.UpdateCollectionRequest) *errors.AppError {
 	c, err := s.loadForMutation(cid, userID, canEditAny)
 	if err != nil {
@@ -132,10 +108,6 @@ func (s *CollectionService) Update(ctx context.Context, userID int, canEditAny b
 		c.Visibility = *req.Visibility
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). PATCH is partial, so compose from the EFFECTIVE new name +
-	// description (post-override). author_id is the owner, who is not necessarily
-	// the caller once perm.CollectionEditAny is in play.
 	moderationText := gate.ComposeText(c.Name, c.Description)
 	authorID := int64(ownerID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -149,11 +121,8 @@ func (s *CollectionService) Update(ctx context.Context, userID int, canEditAny b
 		}
 		switch {
 		case c.Visibility != model.CollectionRestricted:
-			// Not restricted anymore → drop any stale allow-list.
 			return s.collectionRepo.ReplaceViewers(tx, cid, nil)
 		case req.ViewerIDs != nil:
-			// Restricted + a new list supplied → replace it. (A restricted update
-			// that omits viewer_ids keeps the existing allow-list untouched.)
 			return s.collectionRepo.ReplaceViewers(tx, cid, sanitizeViewerIDs(*req.ViewerIDs, ownerID))
 		default:
 			return nil
@@ -170,13 +139,6 @@ func (s *CollectionService) Update(ctx context.Context, userID int, canEditAny b
 	return nil
 }
 
-// loadForMutation resolves the collection a mutation targets and answers "may
-// this caller touch it?" in one place, so Update and Delete cannot drift apart.
-//
-// Without the permission the lookup itself is owner-scoped, which keeps the
-// long-standing 404-for-not-yours behaviour: a stranger learns nothing about
-// whether the id exists. With it the lookup is by id alone — staff are allowed
-// to know, and a 404 would be a lie.
 func (s *CollectionService) loadForMutation(cid, userID int, canMutateAny bool) (*model.GalgameCollection, *errors.AppError) {
 	var (
 		c   *model.GalgameCollection
@@ -196,17 +158,6 @@ func (s *CollectionService) loadForMutation(cid, userID int, canMutateAny bool) 
 	return c, nil
 }
 
-// Delete removes a collection. The default collection is protected.
-// favorite_count is kept accurate for games held only in this collection; owner
-// moemoepoints are intentionally NOT reversed for a bulk collection delete (a
-// rare action; the small drift only over-credits owners, never the actor).
-//
-// canDeleteAny (perm.CollectionDeleteAny) lets staff take down someone else's.
-// The favorite_count arithmetic below is scoped to the OWNER, not the caller:
-// "games held in no other collection" is a fact about whose shelf this is, and
-// asking it about the moderator would decrement counts for games they never
-// touched. The default-collection guard applies to staff too — it is a
-// data-model invariant (every user keeps exactly one), not a question of rank.
 func (s *CollectionService) Delete(userID int, canDeleteAny bool, cid int) *errors.AppError {
 	c, appErr := s.loadForMutation(cid, userID, canDeleteAny)
 	if appErr != nil {
@@ -243,22 +194,12 @@ func (s *CollectionService) Delete(userID int, canDeleteAny bool, cid int) *erro
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Membership (the collection-picker write path)
-// ──────────────────────────────────────────
-
-// SetMembership sets the FULL set of the user's collections that contain a
-// galgame, diffing against current membership. On the user's FIRST collection
-// gaining this game it bumps favorite_count + rewards the owner (+1 moemoe,
-// `favorite` notification); on the LAST losing it, it reverses. Middle changes
-// (still in >=1 collection) touch nothing economic.
 func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID int, targetIDs []int) *errors.AppError {
 	targetIDs = dedupInts(targetIDs)
 	if !s.collectionRepo.OwnsAll(userID, targetIDs) {
 		return errors.ErrForbidden("收藏夹不存在或不属于您")
 	}
 
-	// Owner + display name resolved via galgame OUTSIDE the tx (network call).
 	ownerID, name := s.galgameService.fetchOwnerAndName(ctx, galgameID)
 
 	txErr := s.collectionRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -295,7 +236,6 @@ func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID
 			}
 		}
 
-		// Owner economics: skip on unknown owner (galgame miss) or self.
 		if ownerID != 0 && ownerID != userID {
 			if firstAdd {
 				s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
@@ -314,10 +254,6 @@ func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID
 	return nil
 }
 
-// GetMyCollectionsForGalgame powers the picker modal: the user's collections,
-// each flagged whether it already contains this galgame. Lazily creates the
-// default collection so the modal is never empty (mirrors the migration's
-// per-user default).
 func (s *CollectionService) GetMyCollectionsForGalgame(userID, galgameID int) ([]dto.MyCollectionForGalgame, *errors.AppError) {
 	count, err := s.collectionRepo.CountByUser(userID)
 	if err != nil {
@@ -351,11 +287,7 @@ func (s *CollectionService) GetMyCollectionsForGalgame(userID, galgameID int) ([
 	return out, nil
 }
 
-// ensureDefault creates the user's default collection. A concurrent create is
-// blocked by the partial-unique index; we treat that as success (best-effort).
 func (s *CollectionService) ensureDefault(userID int) {
-	// Empty name: the UI renders "<用户名>的收藏夹" for is_default rows (the username
-	// is OAuth-owned and not stored here). Matches the migration 043 backfill.
 	c := &model.GalgameCollection{
 		UserID:      userID,
 		Name:        "",
@@ -368,13 +300,6 @@ func (s *CollectionService) ensureDefault(userID int) {
 	})
 }
 
-// ──────────────────────────────────────────
-// Reads (detail + list)
-// ──────────────────────────────────────────
-
-// GetDetail returns a collection + one page of its games, access-checked. A
-// collection the viewer may not see returns 404 (not 403) to avoid leaking
-// existence; a banned owner's collection is hidden from everyone but the owner.
 func (s *CollectionService) GetDetail(ctx context.Context, viewerID, cid, page, limit int, isSFW bool) (*dto.CollectionDetail, *errors.AppError) {
 	c, err := s.collectionRepo.GetByID(cid)
 	if err != nil {
@@ -398,7 +323,6 @@ func (s *CollectionService) GetDetail(ctx context.Context, viewerID, cid, page, 
 	}
 	cards, appErr := s.galgameService.HydrateCardsByIDs(ctx, ids, isSFW)
 	if appErr != nil {
-		// Degrade to an empty game list rather than failing the whole page.
 		cards = []dto.GalgameListCard{}
 	}
 
@@ -432,8 +356,6 @@ func (s *CollectionService) GetDetail(ctx context.Context, viewerID, cid, page, 
 	}, nil
 }
 
-// ListForUser returns a page of a user's collections visible to the viewer, each
-// with up to a few cover previews.
 func (s *CollectionService) ListForUser(ctx context.Context, ownerID, viewerID, page, limit int, isSFW bool) ([]dto.CollectionSummary, int64, *errors.AppError) {
 	owner, _, _ := s.userClient.User(ctx, ownerID)
 	if !userclient.IsRenderable(owner) && viewerID != ownerID {
@@ -467,8 +389,6 @@ func (s *CollectionService) ListForUser(ctx context.Context, ownerID, viewerID, 
 	return out, total, nil
 }
 
-// resolvePreviewCovers gathers up to N cover URLs per collection in one galgame
-// batch. Best-effort: a galgame miss just yields no covers (empty collage).
 func (s *CollectionService) resolvePreviewCovers(ctx context.Context, cols []model.GalgameCollection, isSFW bool) map[int][]string {
 	result := make(map[int][]string, len(cols))
 	colIDs := make([]int, len(cols))
@@ -509,7 +429,6 @@ func (s *CollectionService) resolvePreviewCovers(ctx context.Context, cols []mod
 	return result
 }
 
-// canView reports whether viewerID may see a collection.
 func (s *CollectionService) canView(c *model.GalgameCollection, viewerID int) bool {
 	if viewerID == c.UserID {
 		return true
@@ -519,14 +438,10 @@ func (s *CollectionService) canView(c *model.GalgameCollection, viewerID int) bo
 		return true
 	case model.CollectionRestricted:
 		return s.collectionRepo.IsViewer(c.ID, viewerID)
-	default: // private
+	default:
 		return false
 	}
 }
-
-// ──────────────────────────────────────────
-// small int-set helpers
-// ──────────────────────────────────────────
 
 func dedupInts(in []int) []int {
 	seen := make(map[int]struct{}, len(in))
@@ -549,7 +464,6 @@ func toIntSet(in []int) map[int]bool {
 	return m
 }
 
-// diffIntSets returns (target − current, current − target).
 func diffIntSets(target, current []int) (toAdd, toRemove []int) {
 	cur := toIntSet(current)
 	tgt := toIntSet(target)
@@ -566,7 +480,6 @@ func diffIntSets(target, current []int) (toAdd, toRemove []int) {
 	return
 }
 
-// sanitizeViewerIDs de-dups and drops the owner (implicitly always a viewer).
 func sanitizeViewerIDs(ids []int, ownerID int) []int {
 	out := make([]int, 0, len(ids))
 	seen := make(map[int]struct{}, len(ids))

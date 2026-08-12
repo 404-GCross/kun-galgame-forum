@@ -9,14 +9,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// Reaction data access for topics + replies (unified 'like'/'dislike'/emoji).
-// Write methods take the caller's tx so toggles stay atomic with count + side
-// effects. Read/aggregate methods land in a later step.
-
-// ──────────────────────────────────────────
-// Topic reactions
-// ──────────────────────────────────────────
-
 func (r *TopicRepository) HasReaction(tx *gorm.DB, topicID, userID int, reaction string) (bool, error) {
 	var count int64
 	err := tx.Model(&model.TopicReaction{}).
@@ -34,10 +26,6 @@ func (r *TopicRepository) RemoveReaction(tx *gorm.DB, topicID, userID int, react
 	return tx.Where("topic_id = ? AND user_id = ? AND reaction = ?", topicID, userID, reaction).
 		Delete(&model.TopicReaction{}).Error
 }
-
-// ──────────────────────────────────────────
-// Reply reactions
-// ──────────────────────────────────────────
 
 func (r *ReplyRepository) HasReplyReaction(tx *gorm.DB, replyID, userID int, reaction string) (bool, error) {
 	var count int64
@@ -57,24 +45,14 @@ func (r *ReplyRepository) RemoveReplyReaction(tx *gorm.DB, replyID, userID int, 
 		Delete(&model.TopicReplyReaction{}).Error
 }
 
-// ──────────────────────────────────────────
-// Reaction aggregates (read / display)
-// ──────────────────────────────────────────
-
-// reactionAvatarCap bounds reactor ids fetched (and shown as avatars) per
-// reaction; the remainder collapse to a "+N" overflow badge on the FE.
 const reactionAvatarCap = 3
 
-// ReactionRow is a windowed reactor row: the reaction key, one reactor, and the
-// reaction's total count (repeated across the group's rows).
 type ReactionRow struct {
 	Reaction string `gorm:"column:reaction"`
 	UserID   int    `gorm:"column:user_id"`
 	Cnt      int    `gorm:"column:cnt"`
 }
 
-// GetTopicReactions returns up to reactionAvatarCap reactor ids per reaction for
-// a topic, each row carrying that reaction's total count.
 func (r *TopicRepository) GetTopicReactions(topicID int) ([]ReactionRow, error) {
 	var rows []ReactionRow
 	err := r.db.Raw(`
@@ -87,7 +65,6 @@ func (r *TopicRepository) GetTopicReactions(topicID int) ([]ReactionRow, error) 
 	return rows, err
 }
 
-// GetUserTopicReactions returns the reaction keys the user holds on a topic.
 func (r *TopicRepository) GetUserTopicReactions(topicID, userID int) ([]string, error) {
 	if userID <= 0 {
 		return nil, nil
@@ -98,15 +75,12 @@ func (r *TopicRepository) GetUserTopicReactions(topicID, userID int) ([]string, 
 	return keys, err
 }
 
-// ReactionHistoryRow is one reaction event: who reacted, with what key, and when.
 type ReactionHistoryRow struct {
 	UserID   int       `gorm:"column:user_id"`
 	Reaction string    `gorm:"column:reaction"`
 	Created  time.Time `gorm:"column:created"`
 }
 
-// GetTopicReactionHistory returns a topic's reaction events newest-first, capped,
-// for the 查看历史 list — one row per reaction event.
 func (r *TopicRepository) GetTopicReactionHistory(topicID, limit int) ([]ReactionHistoryRow, error) {
 	var rows []ReactionHistoryRow
 	err := r.db.Model(&model.TopicReaction{}).
@@ -118,7 +92,6 @@ func (r *TopicRepository) GetTopicReactionHistory(topicID, limit int) ([]Reactio
 	return rows, err
 }
 
-// GetReplyReactionHistory is GetTopicReactionHistory for a single reply.
 func (r *ReplyRepository) GetReplyReactionHistory(replyID, limit int) ([]ReactionHistoryRow, error) {
 	var rows []ReactionHistoryRow
 	err := r.db.Model(&model.TopicReplyReaction{}).
@@ -130,7 +103,6 @@ func (r *ReplyRepository) GetReplyReactionHistory(replyID, limit int) ([]Reactio
 	return rows, err
 }
 
-// ReplyReactionRow is GetRepliesReactions' windowed row (adds the reply id).
 type ReplyReactionRow struct {
 	TopicReplyID int    `gorm:"column:topic_reply_id"`
 	Reaction     string `gorm:"column:reaction"`
@@ -138,7 +110,6 @@ type ReplyReactionRow struct {
 	Cnt          int    `gorm:"column:cnt"`
 }
 
-// GetRepliesReactions batches GetTopicReactions across a list of replies.
 func (r *ReplyRepository) GetRepliesReactions(replyIDs []int) ([]ReplyReactionRow, error) {
 	out := []ReplyReactionRow{}
 	if len(replyIDs) == 0 {
@@ -154,7 +125,6 @@ func (r *ReplyRepository) GetRepliesReactions(replyIDs []int) ([]ReplyReactionRo
 	return out, err
 }
 
-// GetUserRepliesReactions returns the reaction keys the user holds, per reply.
 func (r *ReplyRepository) GetUserRepliesReactions(replyIDs []int, userID int) (map[int][]string, error) {
 	out := map[int][]string{}
 	if userID <= 0 || len(replyIDs) == 0 {
@@ -175,10 +145,6 @@ func (r *ReplyRepository) GetUserRepliesReactions(replyIDs []int, userID int) (m
 	return out, nil
 }
 
-// findReactionStatus resolves which of `ids` the user reacted to with `reaction`
-// in `table` (the reaction-aware sibling of findInteractionStatus; shared by the
-// topic + reply like/dislike status reads now that those live in the reaction
-// tables).
 func findReactionStatus(db *gorm.DB, table, fkCol, reaction string, userID int, ids []int) (map[int]bool, error) {
 	out := make(map[int]bool)
 	if len(ids) == 0 || userID == 0 {

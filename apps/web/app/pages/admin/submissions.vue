@@ -1,27 +1,11 @@
 <script setup lang="ts">
-// Galgame submission review queue: the entries whose claim is `pending`, with
-// the four verdicts.
-//
-// It used to list MESSAGES — a log of things that had happened, read as a
-// worklist by convention — which meant the queue and reality could disagree.
-// This lists the CLAIMS themselves, so an entry leaves the queue because its
-// state moved and for no other reason. There is no "mark as handled" because
-// there is nothing to mark.
-//
-// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator
-// entry gate. UX guard only — the real boundary is the API, and behind it the
-// registry re-checks the acting user against catalog.claim.review.
 definePageMeta({ middleware: 'moderator' })
 
 useKunDisableSeo('Galgame 审核')
 
-// One pending entry, as the registry's works list renders it.
 interface PendingClaim {
   id: number
   display_name: string
-  // claimed_by.work_id IS the gid: the id kungal told the registry to record,
-  // and therefore the id every action and link here is keyed by. The registry
-  // work id is NOT interchangeable with it — the two ranges overlap.
   claimed_by: { site: string; work_id: number; state: string } | null
   names?: Record<string, string>
   updated?: string
@@ -32,9 +16,6 @@ interface PendingQueueEnvelope {
   next_cursor: string | null
 }
 
-// The queue reads the LIVE list, not the search index: a search index reflects
-// a claim-state change only at the next rebuild, and a moderation queue showing
-// entries somebody approved an hour ago is worse than no queue.
 const pageData = reactive({
   cursor: '',
   limit: 30
@@ -47,8 +28,6 @@ const { data, status, refresh } = await useKunFetch<PendingQueueEnvelope>(
 
 const gidOf = (row: PendingClaim) => row.claimed_by?.work_id ?? 0
 
-// Row title: the entry's localized name, falling back to the registry's own
-// display name and then to the gid.
 const displayName = (row: PendingClaim): string => {
   const localized = row.names
     ? getPreferredLanguageText({
@@ -63,10 +42,6 @@ const displayName = (row: PendingClaim): string => {
 
 const isActing = ref<Record<number, boolean>>({})
 
-// Reason-capture modal state. KunUI doesn't have a built-in prompt
-// dialog and useComponentMessageStore only exposes a confirm-style
-// `alert`, so we inline a small KunModal + KunTextarea here for the
-// two flows that need a free-text reason (decline / ban).
 type ReasonAction = 'decline' | 'ban'
 
 interface ReasonContext {
@@ -105,17 +80,12 @@ const openReasonModal = (action: ReasonAction, target: PendingClaim) => {
 
 const closeReasonModal = () => {
   isReasonModalOpen.value = false
-  // Clear the context after the leave-transition so the title/desc
-  // computeds don't blink to empty mid-animation.
   setTimeout(() => {
     reasonContext.value = null
     reasonText.value = ''
   }, 300)
 }
 
-// One verdict. The action IS the vocabulary — there is no status integer to
-// PUT — so "who decided this and why" is recorded by the write itself rather
-// than by a reviewer remembering to note it somewhere.
 const applyVerdict = async (
   row: PendingClaim,
   action: 'approve' | 'decline' | 'ban',
@@ -193,11 +163,6 @@ const handleConfirmReason = async () => {
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-          <!-- Preview the entry as a reader sees it, not the proposal editor:
-               a reviewer decides on the PAGE (cover, screenshots, intro,
-               links), and the detail header carries 编辑资料 for the cases
-               that need a fix before approval. A pending claim renders as a
-               draft here — only `hidden` is withheld from the detail face. -->
           <KunLink :to="`/galgame/${gidOf(row)}`" target="_blank">
             <KunButton size="sm" variant="flat">查看</KunButton>
           </KunLink>

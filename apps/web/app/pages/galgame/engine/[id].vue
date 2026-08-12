@@ -1,27 +1,9 @@
 <script setup lang="ts">
-// `id` is a CATALOG ENGINE id (A2-3 / doc 106 R1), carried bare — this namespace
-// needs no discriminator segment.
-//
-// The retired `/galgame-engine/` space did need one (`/galgame-engine/c/{n}`,
-// doc 146): there a bare number was a WIKI id, and the wiki/catalog ranges
-// overlap, so one path serving both meanings would silently render the wrong
-// engine. `/galgame/engine/` never served wiki ids, so the ambiguity cannot
-// arise. The old space survives only as 301 shells — and note that mapping is
-// NOT the identity: 52 of the 189 engines landed on a different catalog id
-// (server/middleware/legacy-taxonomy.ts).
-//
-// Staff affordances (edit / delete / revision history) are deliberately NOT
-// here any more: those write ops address WIKI rows and this page no longer
-// knows a wiki id. They live in the admin taxonomy console, which stays
-// wiki-ids end to end (doc 106 R11).
 const route = useRoute()
 const engine_id = computed(() => {
   return Number((route.params as { id: string }).id)
 })
 
-// A junk segment (/galgame/engine/null, crawler-made) becomes NaN and used to
-// ride all the way upstream, where the catalog answered 400 — pointless round
-// trips for a URL that can only ever be a 404. Answer it here.
 if (!Number.isInteger(engine_id.value) || engine_id.value <= 0) {
   throw createError({
     statusCode: 404,
@@ -30,10 +12,6 @@ if (!Number.isInteger(engine_id.value) || engine_id.value <= 0) {
   })
 }
 
-// Shared browse filter Nav with the tag + official detail pages:
-// the entity detail lists the forum-LOCAL subset of the engine's catalogue, so
-// the same 类型/语言/平台/作品类型 filters + sorts as /galgame apply (backend runs
-// them locally over the engine's member ids — see entity_filter.buildEntityFilter).
 const {
   page,
   limit,
@@ -46,13 +24,8 @@ const {
 } = useGalgameFilters()
 
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
-// SFW mode mirrors the server's IsSFW (cookie showKUNGalgameContentLimit !==
-// 'nsfw'): the catalog then hides r18 works from BOTH the list and the
-// (content-aware) count, so an NSFW-heavy entity can look emptier than it is.
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-// "未发布的游戏": catalog works built with this engine that no product has an
-// entry for yet. Public claim funnel — open to everyone, not just moderators.
 const showDraftsModal = ref(false)
 
 const { data, status } = await useKunFetch<GalgameEngineDetail>(
@@ -73,9 +46,6 @@ const { data, status } = await useKunFetch<GalgameEngineDetail>(
   }
 )
 
-// An unknown id is a real 404, not an empty 200 shell: this namespace went live
-// with no legacy id space behind it, so a miss means the entity does not exist
-// and a crawler must be told exactly that rather than indexing a blank page.
 if (!data.value) {
   throw createError({
     statusCode: 404,

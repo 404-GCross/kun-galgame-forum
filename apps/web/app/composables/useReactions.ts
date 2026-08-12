@@ -1,16 +1,9 @@
 import type { InjectionKey, Ref, ComputedRef } from 'vue'
 
-// Shared reaction state for a single topic / reply. The owning component
-// (Master.vue / Reply.vue) creates it and provides it via reactionsKey so the
-// chips (TopicReactionBar) and the trigger button (TopicReactionTrigger) — which
-// may live apart, e.g. the trigger in the desktop footer — stay in sync.
 export interface ReactionsState {
   list: Ref<KunReaction[]>
   mineKeys: ComputedRef<string[]>
   toggle: (key: string) => Promise<void>
-  // Exactly one of these identifies what the reactions hang off; the trigger
-  // passes whichever it got to the 查看历史 modal so it fetches the right feed.
-  // Both are absent on the feed card, which has no history row.
   topicId?: number
   replyId?: number
 }
@@ -22,17 +15,10 @@ interface UseReactionsOptions {
   replyId?: number
   targetUserId: number
   reactions: KunReaction[]
-  // Optional reactive source: re-seed the list when it emits (used by the feed
-  // card, whose per-viewer "mine" hydrates after mount). Stops after the first
-  // user toggle so it never clobbers an optimistic change.
   sync?: () => KunReaction[]
-  // When true (topic/reply detail), chips show up to MAX_AVATARS reactor avatars
-  // + a "+N" overflow, so every chip has the same height. The feed leaves this
-  // off and renders emoji + count instead (it doesn't ship reactors).
   showReactors?: boolean
 }
 
-// Max reactor avatars shown per chip; the rest collapse to a "+N" badge.
 const MAX_AVATARS = 3
 
 export const useReactions = (opts: UseReactionsOptions): ReactionsState => {
@@ -44,8 +30,6 @@ export const useReactions = (opts: UseReactionsOptions): ReactionsState => {
   const list = ref<KunReaction[]>(opts.reactions ? clone(opts.reactions) : [])
   const inflight = new Set<string>()
 
-  // Re-seed from the reactive source (late "mine" hydration) until the viewer
-  // first interacts — after that the local list is authoritative.
   let userTouched = false
   if (opts.sync) {
     watch(opts.sync, (v) => {
@@ -95,7 +79,6 @@ export const useReactions = (opts: UseReactionsOptions): ReactionsState => {
         reactors: opts.showReactors ? [{ id, name, avatar }] : undefined
       })
     }
-    // like ⇄ dislike are mutually exclusive — drop the opposite if it was mine.
     const opposite =
       key === 'like' ? 'dislike' : key === 'dislike' ? 'like' : null
     if (opposite) {

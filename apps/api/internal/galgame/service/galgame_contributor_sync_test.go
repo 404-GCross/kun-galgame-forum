@@ -14,8 +14,6 @@ func revision(id int64, gid *int64, actor int64, amender *int64, at time.Time) c
 	}
 }
 
-// One page folds into one row per (galgame, person), counting revisions and
-// widening the first/last window as it goes.
 func TestContributorTouchesFoldsAPage(t *testing.T) {
 	t0 := time.Date(2025, 7, 20, 21, 58, 23, 0, time.UTC)
 	t1 := t0.Add(48 * time.Hour)
@@ -44,7 +42,6 @@ func TestContributorTouchesFoldsAPage(t *testing.T) {
 	}
 }
 
-// A reviewer who amends a proposal contributed to it; the filer still did too.
 func TestContributorTouchesCreditsBothIdentities(t *testing.T) {
 	now := time.Now().UTC()
 	gid := ptr(int64(77))
@@ -56,8 +53,6 @@ func TestContributorTouchesCreditsBothIdentities(t *testing.T) {
 		t.Fatalf("touches = %d, want the actor and the amender credited separately", len(touches))
 	}
 
-	// Amending one's OWN proposal is one contribution — the engine records a
-	// rebase that way, and paying it twice would rank self-amenders first.
 	self, _ := contributorTouches([]catalogclient.WorkRevisionFeedItem{
 		revision(2, gid, 100, ptr(int64(100)), now),
 	})
@@ -66,8 +61,6 @@ func TestContributorTouchesCreditsBothIdentities(t *testing.T) {
 	}
 }
 
-// Without a product anchor there is no gid to attribute the edit to, and the
-// work id must never stand in for one.
 func TestContributorTouchesSkipsUnanchoredRevisions(t *testing.T) {
 	now := time.Now().UTC()
 	for _, gid := range []*int64{nil, ptr(int64(0))} {
@@ -78,8 +71,6 @@ func TestContributorTouchesSkipsUnanchoredRevisions(t *testing.T) {
 			t.Errorf("anchor %v yielded %d touches / %d gids, want none", gid, len(touches), len(gids))
 		}
 	}
-	// A revision by nobody (a system-minted row) is inert for the same reason:
-	// user 0 is not a contributor.
 	if touches, _ := contributorTouches([]catalogclient.WorkRevisionFeedItem{
 		revision(2, ptr(int64(77)), 0, nil, now),
 	}); len(touches) != 0 {
@@ -87,8 +78,6 @@ func TestContributorTouchesSkipsUnanchoredRevisions(t *testing.T) {
 	}
 }
 
-// The cursor is the largest id SEEN, so a page that arrives out of order can
-// never rewind it — and an empty page leaves it exactly where it was.
 func TestMaxRevisionIDNeverRewinds(t *testing.T) {
 	now := time.Now().UTC()
 	gid := ptr(int64(1))

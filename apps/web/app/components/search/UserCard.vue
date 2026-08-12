@@ -15,12 +15,6 @@ defineProps<{
       {{ user.bio }}
     </pre>
 
-    <!--
-      BE `UserItem` (search/dto) currently leaves `moemoepoint`+`created`
-      zero (kungal_user_state not joined at search time). Guard each
-      block so we don't render "0 萌点" / "Date(zero)". Drop the whole
-      row when neither is available.
-    -->
     <div
       v-if="user.moemoepoint || user.created"
       class="mt-2 flex items-center justify-between text-sm"

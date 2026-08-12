@@ -1,11 +1,8 @@
 <script setup lang="ts">
-// The 题库 tab on a galgame detail page — quizzes bound to this game, plus an
-// 出题 entry that pre-binds the new quiz to the game (galgameId).
 const route = useRoute()
 const gid = computed(() => parseInt((route.params as { gid: string }).gid))
 
 const emit = defineEmits<{
-  // Surface fetch state so the tab panel dims while (re)loading.
   'update:loading': [boolean]
 }>()
 

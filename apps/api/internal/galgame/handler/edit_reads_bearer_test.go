@@ -1,15 +1,5 @@
 package handler
 
-// Wave 180's half of the migration: the human-serving READS.
-//
-// A read that kept the S2S credential is the hardest kind of miss to notice —
-// it returns the right rows, the page renders, nothing 500s. What it quietly
-// does is answer "who is asking" with "the forum", which is exactly what the
-// user plane exists to stop. So these tests assert the REQUEST rather than the
-// response: every edit-face call a logged-in reader triggers must be the Bearer
-// face carrying that reader's own token, with no `site` and no `proposer_uid`
-// anywhere on the wire.
-
 import (
 	"net/http"
 	"strings"
@@ -18,9 +8,6 @@ import (
 	"kun-galgame-api/internal/middleware"
 )
 
-// editFaceCalls returns the recorded requests that hit either catalog edit
-// face, ignoring the id-bridge traffic (a different server, a different
-// question).
 func editFaceCalls(f *fakeEditFace) []recordedRequest {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -33,10 +20,6 @@ func editFaceCalls(f *fakeEditFace) []recordedRequest {
 	return out
 }
 
-// TestEditReadsRideTheUserPlane: bootstrap, the review queue, "my proposals"
-// and the proposal workbench each reach the catalog as the caller — no lane
-// left on the Basic-authed face, and every one of them carrying the session's
-// own token.
 func TestEditReadsRideTheUserPlane(t *testing.T) {
 	for _, tc := range []struct {
 		name, path string
@@ -72,9 +55,6 @@ func TestEditReadsRideTheUserPlane(t *testing.T) {
 	}
 }
 
-// "Mine" is the token's subject, spelled `mine=true`. The uid this handler used
-// to write into the query was its last assertion, and a filter that silently
-// went missing would hand every user everybody else's drafts.
 func TestEditMineAsksForItsOwn(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)
@@ -90,10 +70,6 @@ func TestEditMineAsksForItsOwn(t *testing.T) {
 	}
 }
 
-// The queue is the same face WITHOUT the flag: it asks for everybody's
-// proposals, and the catalog refuses unless the token carries the review
-// permission. A `mine` here would silently turn the moderator queue into the
-// moderator's own drafts.
 func TestEditQueueAsksForEverybodys(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, moderatorUser)
@@ -112,9 +88,6 @@ func TestEditQueueAsksForEverybodys(t *testing.T) {
 	}
 }
 
-// A queue read the catalog refuses because the token lacks the review
-// permission must reach the browser as a plain 403 — the local RequireModerator
-// is only which nav entry opens, and infra's answer is the one that counts.
 func TestEditQueueRelaysTheInfraDenial(t *testing.T) {
 	fake := &fakeEditFace{userStatus: http.StatusForbidden,
 		userBody: `{"code":233,"message":"permission denied: catalog.edit.review"}`}

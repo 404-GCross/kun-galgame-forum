@@ -1,15 +1,6 @@
 <script setup lang="ts">
-// The single community-comment flag modal (charter ruling 13). Replaces the
-// legacy ReportButton → trust direct-report path on community comments: a report
-// now goes to the community moderation primitive (TL-weighted, auto-hide on
-// threshold). Region-agnostic — the flag route is post-addressed, so all four
-// comment areas mount this once per section and drive it through
-// useGalgameCommentFlag(). Follows the KunModal + KunSelect + KunTextarea shape
-// of the shared report/Modal.vue.
 const { isOpen, targetPostId } = useGalgameCommentFlag()
 
-// Reason enum mirrors the backend (0=spam … 4=nsfw_mislabel); the labels are
-// the product copy the reporter sees.
 const REASON_OPTIONS = [
   { value: 0, label: '垃圾信息' },
   { value: 1, label: '辱骂骚扰' },
@@ -22,7 +13,6 @@ const reason = ref<number | null>(null)
 const note = ref('')
 const isSubmitting = ref(false)
 
-// Reset the form whenever the modal opens for a fresh target.
 watch(isOpen, (open) => {
   if (open) {
     reason.value = null

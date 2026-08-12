@@ -1,22 +1,3 @@
-// Backfill friend_link.banner: re-upload the legacy static /friends/<name>.webp
-// banners through image_service and replace the column with the returned CDN URL,
-// so every friend link's image matches what the admin form now produces (the
-// `topic` preset — WebP q77, EXIF stripped — via /image/topic).
-//
-// Source bytes are read from a local dir (default /app/friends) that the
-// tools image bakes from apps/web/public/friends — fetching the originals over
-// HTTP from inside the cluster proved unreliable (public domain doesn't hairpin;
-// the internal web container's port isn't reachable over the overlay net). A
-// `-base` HTTP fallback is kept for ad-hoc use.
-//
-// Idempotent: only rows whose banner starts with "/friends/" are touched. Once
-// migrated the banner is a CDN URL, so a re-run skips it. Per-row failures are
-// logged and skipped (the row keeps its old static banner), never aborting.
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  backfill-friend-link-banners                 # do it (read /app/friends, topic preset)
-//	  backfill-friend-link-banners --dry-run        # report, no upload/writes
-//	  backfill-friend-link-banners --preset=galgame_banner
 package main
 
 import (
@@ -75,7 +56,6 @@ func main() {
 		Banner string
 	}
 	var rows []row
-	// Only legacy static banners; CDN URLs / empty / external are left as-is.
 	if err := db.Table("friend_link").
 		Select("id, name, banner").
 		Where("banner LIKE ?", "/friends/%").
@@ -97,7 +77,7 @@ func main() {
 	updated, failed := 0, 0
 
 	for _, r := range rows {
-		fname := filepath.Base(r.Banner) // /friends/acgngame.webp → acgngame.webp
+		fname := filepath.Base(r.Banner)
 
 		var (
 			body []byte

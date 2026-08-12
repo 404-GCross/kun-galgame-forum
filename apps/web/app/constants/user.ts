@@ -42,8 +42,6 @@ export const GALGAME_NAV_CONFIG: Record<
   galgame_comment_like: { text: '点赞评论', path: 'galgame-comment-like' }
 }
 
-// The 收藏 top-level tab bundles galgame collections (收藏夹) + topic favorites
-// into one place. Its two sub-tabs live at /user/:id/collection/<type>.
 export const COLLECTION_NAV_CONFIG: Record<
   (typeof KUN_USER_PAGE_COLLECTION_TYPE)[number],
   _NavItemData
@@ -75,8 +73,6 @@ const createUserPageNavItems = <T extends string>(
 }
 
 export const kunUserTopicNavItem = (userId: number): KunTabItem[] => {
-  // topic_favorite is still a valid list type (rendered under the 收藏 tab), but
-  // it's dropped from the 话题 group's sub-nav so favorites live in ONE place.
   return createUserPageNavItems(
     userId,
     'topic',
@@ -158,7 +154,6 @@ export const KUN_USER_PAGE_GALGAME_TYPE = [
   'galgame_comment_like'
 ] as const
 
-// Sub-tabs of the 收藏 top-level tab.
 export const KUN_USER_PAGE_COLLECTION_TYPE = ['galgame', 'topic'] as const
 
 export const KUN_USER_PAGE_GALGAME_RESOURCE_TYPE = [
@@ -167,12 +162,6 @@ export const KUN_USER_PAGE_GALGAME_RESOURCE_TYPE = [
   'galgame_resource_like'
 ] as const
 
-// The profile's TOP-LEVEL tab strip (the horizontal bar under the header).
-// 动态 (activity) is the landing tab; 话题 groups topic/reply/comment and
-// Galgame groups galgame/rating/resource (each surfaced by a pill sub-nav
-// below); 关于 (info) holds the full stats panel; 设置 is owner-only. `value` is
-// the group key so the active tab can be derived from the route via
-// userSegmentGroup(); grouped tabs point at their default child.
 export const kunUserMainNav = (
   userId: number,
   isOwner: boolean
@@ -191,9 +180,6 @@ export const kunUserMainNav = (
   return items
 }
 
-// Group sub-nav (rendered as a KunRadioGroup `pill` — single-select choice
-// chips) shown under the main tab for the 话题 / Galgame groups. `value` is the
-// URL segment; navigation is handled by the caller via userSegmentHref().
 export const userTopicGroupOptions = [
   { value: 'topic', label: '话题', icon: 'lucide:square-gantt-chart' },
   { value: 'reply', label: '回复', icon: 'carbon:reply' },
@@ -207,9 +193,6 @@ export const userGalgameGroupOptions = [
   { value: 'toolset', label: '工具', icon: 'lucide:wrench' }
 ]
 
-// Map any profile URL segment → its top-level group tab (for the main-nav
-// highlight). 话题 groups topic/reply/comment; Galgame groups galgame/rating/
-// resource(/toolset). Everything else maps to itself.
 export const userSegmentGroup = (segment: string): string => {
   if (['topic', 'reply', 'comment'].includes(segment)) return 'topic'
   if (['galgame', 'rating', 'quiz', 'resource', 'toolset'].includes(segment))
@@ -217,11 +200,7 @@ export const userSegmentGroup = (segment: string): string => {
   return segment
 }
 
-// 收藏 has its own two sub-tabs rendered inside the page (like the galgame
-// sub-tabs), so it needs no group pill — the segment maps straight to itself.
 
-// A segment → its default landing route (segments with type sub-tabs resolve to
-// their default child). Powers the pill sub-nav's navigation on select.
 export const userSegmentHref = (userId: number, segment: string): string => {
   const base = `/user/${userId}`
   const map: Record<string, string> = {
@@ -238,8 +217,6 @@ export const userSegmentHref = (userId: number, segment: string): string => {
   return map[segment] ?? `${base}/${segment}`
 }
 
-// OAuth named roles → display label (docs/oauth/11-roles.md). `user` is implicit
-// (an empty role set) and has no entry — see managementRoleLabel's 普通用户 fallback.
 export const KUN_USER_ROLE_MAP: Record<string, string> = {
   ren: '莲',
   admin: '管理员',
@@ -247,9 +224,6 @@ export const KUN_USER_ROLE_MAP: Record<string, string> = {
   creator: '创作者'
 }
 
-// The single management-role label for a user's role set, picking the highest of
-// the inclusive management axis (ren > admin > moderator). `creator` is orthogonal
-// and rendered as its own chip, so it's excluded here; an empty set is 普通用户.
 export const managementRoleLabel = (roles: string[]): string =>
   roles.includes('ren')
     ? KUN_USER_ROLE_MAP.ren!

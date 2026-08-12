@@ -12,7 +12,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// fakeUserStore is an in-memory userOverrideStore (+ ListAll for the sync).
 type fakeUserStore struct {
 	rows []model.UserPermissionOverride
 }
@@ -46,15 +45,12 @@ func (f *fakeUserStore) ReplaceForUser(_ context.Context, uid int, rows []model.
 	return nil
 }
 
-// emptyRoleStore is a no-op role-override lister so the sync can refresh the
-// (empty) role layer during user-service tests.
 type emptyRoleStore struct{}
 
 func (emptyRoleStore) ListAll(_ context.Context) ([]model.RolePermissionOverride, error) {
 	return nil, nil
 }
 
-// fakeUserClient is a stubbed target-role lookup.
 type fakeUserClient struct {
 	roles []string
 	found bool
@@ -77,7 +73,6 @@ func newUserSvc(store *fakeUserStore, client userLookup) *UserPermissionService 
 
 const targetUID = 4242
 
-// TestUserReplaceRejectsRenHolder proves a target holding ren cannot be adjusted.
 func TestUserReplaceRejectsRenHolder(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"ren"}, found: true})
@@ -87,24 +82,18 @@ func TestUserReplaceRejectsRenHolder(t *testing.T) {
 	}
 }
 
-// TestUserReplaceFailClosed proves a lookup error OR a nonexistent user both abort
-// (fail closed) — we never adjust permissions for an unverifiable identity.
 func TestUserReplaceFailClosed(t *testing.T) {
 	resetPerm(t)
-	// Lookup error.
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{err: errors.New("oauth down")})
 	if _, appErr := svc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, nil); appErr == nil {
 		t.Error("a lookup error must fail closed")
 	}
-	// Nonexistent user (found=false).
 	svc2 := newUserSvc(&fakeUserStore{}, fakeUserClient{found: false})
 	if _, appErr := svc2.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID, nil); appErr == nil {
 		t.Error("a nonexistent user must fail closed")
 	}
 }
 
-// TestUserReplaceRejectsUnknownKeyAndEffect proves out-of-catalog keys and bad
-// effects are rejected.
 func TestUserReplaceRejectsUnknownKeyAndEffect(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{found: true})
@@ -118,7 +107,6 @@ func TestUserReplaceRejectsUnknownKeyAndEffect(t *testing.T) {
 	}
 }
 
-// TestUserReplaceRejectsDuplicate proves a duplicated permission is rejected.
 func TestUserReplaceRejectsDuplicate(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{found: true})
@@ -128,18 +116,13 @@ func TestUserReplaceRejectsDuplicate(t *testing.T) {
 	}
 }
 
-// TestUserReplaceRejectsNoop proves no-ops are judged against the target's
-// ROLE-DERIVED set: granting a key the role already holds, or revoking a key the
-// role doesn't hold, is a 400.
 func TestUserReplaceRejectsNoop(t *testing.T) {
 	resetPerm(t)
-	// A moderator holds topic.hide by role → granting it personally is a no-op.
 	modSvc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"moderator"}, found: true})
 	if _, appErr := modSvc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{grant(TopicHideKey)}); appErr == nil {
 		t.Error("granting a role-held permission must be rejected as a no-op")
 	}
-	// A roleless user's role doesn't hold topic.hide → revoking it is a no-op.
 	plainSvc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: nil, found: true})
 	if _, appErr := plainSvc.ReplaceOverrides(context.Background(), 1, renOperatorRoles, targetUID,
 		[]dto.ReplaceOverrideItem{revoke(TopicHideKey)}); appErr == nil {
@@ -147,9 +130,6 @@ func TestUserReplaceRejectsNoop(t *testing.T) {
 	}
 }
 
-// TestUserReplaceGrantToRoleless proves the Plan A core: a personal grant to a
-// roleless user persists, write-through makes perm.CanUser reflect it, and the
-// view carries the override with an empty role_effective.
 func TestUserReplaceGrantToRoleless(t *testing.T) {
 	resetPerm(t)
 	store := &fakeUserStore{}
@@ -163,7 +143,6 @@ func TestUserReplaceGrantToRoleless(t *testing.T) {
 	if len(store.rows) != 1 || store.rows[0].UpdatedBy != 9 {
 		t.Fatalf("expected 1 row stamped by operator 9, got %+v", store.rows)
 	}
-	// Write-through: CanUser reflects the personal grant immediately.
 	if !perm.CanUser(targetUID, nil, TopicHideKey) {
 		t.Error("roleless user should hold topic.hide immediately after the grant")
 	}
@@ -178,8 +157,6 @@ func TestUserReplaceGrantToRoleless(t *testing.T) {
 	}
 }
 
-// TestUserReplaceResetRestores proves an empty override set clears the user's
-// personal deltas and CanUser falls back to the role decision.
 func TestUserReplaceResetRestores(t *testing.T) {
 	resetPerm(t)
 	store := &fakeUserStore{rows: []model.UserPermissionOverride{
@@ -201,8 +178,6 @@ func TestUserReplaceResetRestores(t *testing.T) {
 	}
 }
 
-// TestUserReplaceRankAdminCannotEditPeerAdmin proves an admin (rank 3) may not edit
-// another admin's (rank 3) personal permissions — only ren outranks an admin.
 func TestUserReplaceRankAdminCannotEditPeerAdmin(t *testing.T) {
 	resetPerm(t)
 	svc := newUserSvc(&fakeUserStore{}, fakeUserClient{roles: []string{"admin"}, found: true})

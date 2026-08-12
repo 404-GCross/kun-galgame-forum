@@ -1,10 +1,6 @@
 <script setup lang="ts">
-// Standalone "子网站" page: the KUN Galgame family of sites. Two-row, three-column
-// card grid; each card carries the site's intro + (when open-source) its GitHub
-// link. All info comes from kunSubSites (mirrors the nav project).
 import { kunSubSites } from '~/constants/layout'
 
-// Tag outbound site links with utm_source=<current domain>, like friend links.
 const utmLink = useUtmLink()
 </script>
 

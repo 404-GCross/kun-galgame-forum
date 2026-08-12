@@ -8,17 +8,10 @@ import type {
 
 const userId = storeToRefs(usePersistUserStore()).id.value
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
 
-// "NSFW mode" = cookie says nsfw or all. Used together with `userId` to
-// decide whether to short-circuit the NSFW interstitial:
-//   logged-in           → show directly (better UX for known visitors)
-//   anonymous + NSFW on → show directly (the user opted in)
-//   anonymous + SFW     → confirm interstitial (default browser policy)
 const isNsfwMode = computed(
   () =>
     showKUNGalgameContentLimit.value === 'nsfw' ||
@@ -41,10 +34,6 @@ const isShowGalgame = ref(true)
 if (galgame) {
   if (galgame.content_limit === 'nsfw') {
     const title = getPreferredLanguageText(galgame.name)
-    // Disable SEO meta either way — NSFW pages should never feed
-    // OpenGraph / rich-result hints to crawlers, regardless of who's
-    // looking. Title is suppressed entirely for the SFW-cookie anonymous
-    // case so even the document.title can't leak.
     const trustedVisitor = !!userId || isNsfwMode.value
     useKunDisableSeo(trustedVisitor ? title : '')
 
@@ -58,8 +47,6 @@ if (galgame) {
       jaTitle && titleBase !== jaTitle ? `${titleBase} | ${jaTitle}` : titleBase
     const pageUrl = `${kungal.domain.main}${route.path}`
 
-    // Encyclopedia-style fallback so the meta description is never thin when the
-    // wiki intro is empty.
     const developer = galgame.official[0]?.name
     const releaseYear = galgame.release_date
       ? new Date(galgame.release_date).getFullYear()
@@ -106,7 +93,6 @@ if (galgame) {
 
       ...(galgame.platform.length && { gamePlatform: galgame.platform }),
 
-      // Star rich-result: averaged over all local player ratings (overall 1-10).
       ...(galgame.ratings.length && {
         aggregateRating: {
           '@type': 'AggregateRating',

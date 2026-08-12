@@ -2,8 +2,6 @@
 import { watchDebounced } from '@vueuse/core'
 import { useRouteQuery } from '@vueuse/router'
 
-// Page lives in the URL (?page=N) so the list is shareable / survives
-// refresh + back-forward. Default 1 is omitted from the URL. limit is fixed.
 const page = useRouteQuery('page', 1, { mode: 'replace', transform: Number })
 const limit = 100
 

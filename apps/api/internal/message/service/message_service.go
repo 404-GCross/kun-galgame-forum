@@ -25,7 +25,6 @@ func NewMessageService(
 	return &MessageService{messageRepo: messageRepo, stateRepo: stateRepo, userClient: userClient}
 }
 
-// localMutedFor returns the user's muted local message.type set (migration 053).
 func (s *MessageService) localMutedFor(userID int) []string {
 	state, err := s.stateRepo.FindByID(userID)
 	if err != nil || state == nil {
@@ -35,8 +34,6 @@ func (s *MessageService) localMutedFor(userID int) []string {
 	return local
 }
 
-// hydrateMessageRows resolves each row's sender and drops rows whose sender is
-// banned/deleted. Shared by the notice + muted lists.
 func (s *MessageService) hydrateMessageRows(ctx context.Context, rows []repository.MessageRow) []dto.MessageResponse {
 	uids := userclient.CollectIDs(rows, func(r repository.MessageRow) int { return r.SenderID })
 	userMap := s.userClient.Hydrate(ctx, uids)
@@ -61,8 +58,6 @@ func (s *MessageService) hydrateMessageRows(ctx context.Context, rows []reposito
 	return messages
 }
 
-// GetMessages returns the notice list, EXCLUDING muted categories — those live
-// in the separate muted view (migration 053).
 func (s *MessageService) GetMessages(
 	ctx context.Context,
 	userID int,
@@ -77,9 +72,6 @@ func (s *MessageService) GetMessages(
 	return &dto.MessageListResponse{Messages: s.hydrateMessageRows(ctx, rows), Total: total}, nil
 }
 
-// GetMutedMessages returns messages of muted categories (the "已静音的消息" view).
-// With req.Type set to a currently-muted category it filters to that one;
-// otherwise it returns every muted category. An empty muted set yields nothing.
 func (s *MessageService) GetMutedMessages(
 	ctx context.Context,
 	userID int,
@@ -94,8 +86,6 @@ func (s *MessageService) GetMutedMessages(
 
 	onlyTypes := localMuted
 	if req.Type != "" {
-		// A specific category tab: only honour it while it's actually muted, so
-		// the muted view can never surface a non-muted category.
 		if !slices.Contains(localMuted, req.Type) {
 			return empty, nil
 		}
@@ -131,9 +121,6 @@ func (s *MessageService) GetSystemMessages(ctx context.Context, userID int) ([]d
 		return nil, errors.ErrInternal("获取系统消息失败")
 	}
 
-	// Per-user HWM cursor: every row whose id <= cursor has been read by
-	// this user. A missing cursor row returns 0 (everything unread),
-	// which matches "I just signed up, show me the backlog."
 	cursor, _ := s.messageRepo.GetSystemReadCursor(userID)
 
 	uids := userclient.CollectIDs(rows, func(r repository.SystemMessageRow) int { return r.UserID })
@@ -158,9 +145,6 @@ func (s *MessageService) GetSystemMessages(ctx context.Context, userID int) ([]d
 	return messages, nil
 }
 
-// MarkAllSystemRead advances the caller's HWM cursor to MAX(id) so every
-// existing broadcast becomes "read" for this user only. Broadcasts
-// posted later still appear as unread (id > cursor) until the next call.
 func (s *MessageService) MarkAllSystemRead(ctx context.Context, userID int) *errors.AppError {
 	maxID, err := s.messageRepo.GetMaxSystemMessageID()
 	if err != nil {
@@ -173,8 +157,6 @@ func (s *MessageService) MarkAllSystemRead(ctx context.Context, userID int) *err
 }
 
 func (s *MessageService) GetNavSummary(ctx context.Context, userID int) ([]map[string]any, *errors.AppError) {
-	// Muted categories are excluded from the notice badge — they live in the
-	// separate muted view now (migration 053).
 	result, err := s.messageRepo.GetNavSummary(userID, s.localMutedFor(userID))
 	if err != nil {
 		return nil, errors.ErrInternal("获取消息概要失败")

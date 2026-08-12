@@ -8,7 +8,6 @@ import {
 import type { CreateWebsitePayload, UpdateWebsitePayload } from './types'
 import type { KunSelectOption } from '@kungal/ui-vue'
 
-// `icon_url` is preview-only (resolved CDN url) — not part of the submit payload.
 type WebsiteData = CreateWebsitePayload & {
   website_id?: number
   icon_url?: string
@@ -48,8 +47,6 @@ const getInitialFormData = (): WebsiteData => ({
   name: '',
   url: '',
   description: '',
-  // Keep the legacy URL so editing an un-migrated site preserves it; the hash
-  // drives the new uploader.
   icon: '',
   icon_image_hash: '',
   icon_url: '',
@@ -64,7 +61,6 @@ const getInitialFormData = (): WebsiteData => ({
 
 const formData = reactive<WebsiteData>(getInitialFormData())
 
-// Resolved CDN url of the edited site's icon — preview only (empty on create).
 const initialIconUrl = computed(() => props.initialData?.icon_url ?? '')
 
 const { data, status } = useKunFetch<WebsiteTag[]>('/website-tag')

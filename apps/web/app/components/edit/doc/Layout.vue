@@ -6,9 +6,6 @@ const props = withDefaults(
   defineProps<{
     mode: DocEditorMode
     initialArticle?: DocArticleDetail | null
-    // When used standalone (the old /edit/doc pages) we navigate to the saved
-    // article. When hosted inside the admin modal we emit `saved` instead so
-    // the manager can close the modal + refresh its list in place.
     redirectOnSuccess?: boolean
   }>(),
   {
@@ -79,8 +76,6 @@ const applyArticleToForm = (article: DocArticleDetail) => {
   form.title = article.title
   form.slug = article.slug
   form.description = article.description
-  // Keep the legacy URL so submitting an un-migrated doc preserves it; the hash
-  // drives the new uploader.
   form.banner = article.banner || ''
   form.banner_image_hash = article.banner_image_hash ?? ''
   form.status = article.status
@@ -211,9 +206,6 @@ provideDocEditorContext({
   <div class="contents">
     <ClientOnly>
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <!-- min-w-0: the editor track sizes from its content (long unbroken
-             markdown lines), which would otherwise widen it and squeeze the
-             metadata column as the user types. -->
         <div class="order-2 min-w-0 space-y-6 sm:order-1 lg:col-span-1">
           <EditDocMetadataForm />
           <EditDocSubmitActions />

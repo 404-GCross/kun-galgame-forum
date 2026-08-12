@@ -14,9 +14,6 @@ import (
 	"kun-galgame-api/pkg/catalogclient"
 )
 
-// revFeedStub serves the engine revision feed as a paginated, ascending,
-// exclusive-cursor stream over `total` rows, recording every `since` it was
-// asked for.
 type revFeedStub struct {
 	mu    sync.Mutex
 	total int64
@@ -53,10 +50,6 @@ func (f *revFeedStub) server(t *testing.T) *catalogclient.Client {
 	})
 }
 
-// feedHead is what protects the timeline from being rewritten on the first run
-// after the switch: the engine's table holds the whole imported edit history,
-// so a fresh cursor must land on the CURRENT last id — walking every page and
-// stopping on a short one — rather than at 0.
 func TestFeedHeadWalksToTheLastID(t *testing.T) {
 	stub := &revFeedStub{total: 250, page: 100}
 	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil, nil)
@@ -69,8 +62,6 @@ func TestFeedHeadWalksToTheLastID(t *testing.T) {
 	if head != 250 {
 		t.Errorf("head = %d, want 250 (the feed's last id)", head)
 	}
-	// 0 → 100 → 200 → 250(short page, stop). A cursor that failed to advance
-	// would loop until the page cap and hammer the service.
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	want := []int64{0, 100, 200}
@@ -84,8 +75,6 @@ func TestFeedHeadWalksToTheLastID(t *testing.T) {
 	}
 }
 
-// An empty feed seeds at 0 without erroring: a kungal instance whose engine has
-// no galgame revisions yet must still start syncing from the beginning.
 func TestFeedHeadOnEmptyFeed(t *testing.T) {
 	stub := &revFeedStub{total: 0, page: 100}
 	s := NewGalgameEditRevisionSync(stub.server(t), nil, nil, nil)
@@ -100,10 +89,6 @@ func TestFeedHeadOnEmptyFeed(t *testing.T) {
 	}
 }
 
-// The action filter decides what a timeline card can claim. `created` is the
-// entity's birth, not an edit — 9,694 of the engine's 12,581 galgame revisions
-// are creations, so admitting them would flood the feed with cards for games
-// nobody edited.
 func TestOnlyEditsReachTheTimeline(t *testing.T) {
 	cases := []struct {
 		action int16
@@ -122,10 +107,6 @@ func TestOnlyEditsReachTheTimeline(t *testing.T) {
 	}
 }
 
-// The wire shape the sync depends on is the engine's, not the wiki's: entity_id
-// carries the gid and seq carries the per-galgame revision number. This pins
-// the two so a contract drift upstream fails here rather than as a timeline of
-// cards whose diff link 404s.
 func TestFeedItemCarriesGIDAndRevisionNumber(t *testing.T) {
 	var item catalogclient.EditRevisionFeedItem
 	raw := `{"id":41,"entity_family":"galgame","entity_type":"galgame.game",

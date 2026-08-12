@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// Trust & Safety moderation inbox. Proxies the infra trust admin API through
-// kungal's BFF (/admin/trust/*, RequireModerator, site forced to kungal). A
-// moderator lists review items, opens the evidence (reports + snapshots),
-// claims, then dismisses or applies an enforcement action (which fires the
-// signed callback back to kungal / the IdP).
 import {
   TRUST_REVIEW_STATUS,
   TRUST_REVIEW_SOURCE,
@@ -12,9 +7,6 @@ import {
   trustSubjectHref
 } from '~/constants/trust'
 
-// Moderator+ (moderator ⊂ admin ⊂ ren): mirrors the API's RequireModerator gate
-// on the /admin/trust/review-items routes. UX guard — the real boundary is the
-// API (and the infra trust admin API behind it).
 definePageMeta({ middleware: 'moderator' })
 
 useKunDisableSeo('内容审核')
@@ -41,7 +33,6 @@ const { data, status, refresh } = await useKunFetch<ReviewItemPage>(
 
 const kindLabel = (k: string) => TRUST_SUBJECT_KIND[k] ?? k
 
-// ── Detail modal ──
 const isDetailOpen = ref(false)
 const detail = ref<ReviewItemDetail | null>(null)
 const detailLoading = ref(false)
@@ -71,9 +62,6 @@ const isOpen = computed(() => {
   return s === 0 || s === 1
 })
 
-// The deep-link to the reported content: prefer the reporter-carried subject_url
-// (works for every kind, incl. reply/comment), fall back to reconstructing one
-// from subject_kind + id (top-level kinds only).
 const subjectHref = computed(() => {
   if (!detail.value) {
     return undefined
@@ -225,7 +213,6 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
           >
         </div>
 
-        <!-- Reports (evidence) -->
         <div class="space-y-2">
           <span class="text-default-600 text-sm font-medium">
             举报记录（{{ detail.reports.length }}）
@@ -250,7 +237,6 @@ const actionOptions = TRUST_ACTIONS.map((a) => ({
           </div>
         </div>
 
-        <!-- Decision -->
         <template v-if="isOpen">
           <KunDivider />
           <div class="space-y-3">

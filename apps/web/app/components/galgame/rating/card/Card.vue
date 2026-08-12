@@ -9,8 +9,6 @@ import {
 withDefaults(
   defineProps<{
     ratings: GalgameRatingCard[]
-    // Transparent by default (the main rating list floats over the page
-    // background); pass false on solid surfaces such as the user profile.
     isTransparent?: boolean
   }>(),
   { isTransparent: true }

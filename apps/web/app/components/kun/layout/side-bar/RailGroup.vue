@@ -1,15 +1,4 @@
 <script setup lang="ts">
-// One desktop rail group: an icon tile whose hover reveals a flyout of links to
-// its RIGHT. kun-ui 2.17 KunPopover owns the whole behaviour now:
-//   - trigger="hover" → coordinate safe-triangle (travel diagonally into the
-//     panel without it closing) + open/close delays; never steals focus, touch
-//     falls back to tapping the tile link.
-//   - group="kun-sidebar-rail" → the tiles switch instantly like a menu bar,
-//     only one open at a time.
-//   - position="right-start" + autoPosition → collision-aware: flip()/shift()
-//     keep it on-screen and size() caps the height to the available space and
-//     scrolls, so a tall menu near the viewport bottom no longer clips.
-// This replaces the old hand-rolled `absolute left-full` + `max-h-[80vh]`.
 import type { KunRailGroup } from '~/constants/layout'
 
 const props = defineProps<{

@@ -1,15 +1,4 @@
 <script setup lang="ts">
-// GALGAME_EDIT — the actor edited a galgame; shows the embedded galgame preview
-// plus the revision's field diff (the editing engine's read — same renderer as
-// the /galgame/:gid/history page), lazily loaded and collapsed to 100px with a
-// 显示更多 toggle (mirrors the resource-note card).
-//
-// E3b: this card rode the old-wire diff proxy; it now reads the engine. The
-// wiki revision NUMBER the activity row carries IS the engine seq (the E2
-// transform adopted the per-galgame revision numbers as seqs, and the feed
-// keeps emitting them 1:1), so the diff is seq-1 → seq. Legacy activity rows
-// carrying only the revision ROW id resolve it through the engine list's
-// legacy_id (wire id = COALESCE(legacy_id, id)).
 import {
   galgameEditFieldConfig,
   galgameEditLabel
@@ -39,7 +28,6 @@ const loadDiff = async () => {
         (r) => (r.legacy_id ?? r.id) === rowId
       )?.seq
     }
-    // seq 1 is the entity's birth — there is no previous version to diff.
     if (!seq || seq <= 1) return
     const res = await kunFetch<GalgameEditDiff>(
       `/galgame/${gid}/edit/diff?from=${seq - 1}&to=${seq}`
@@ -51,7 +39,6 @@ const loadDiff = async () => {
 }
 onMounted(loadDiff)
 
-// Collapse the diff to 100px with a 显示更多 toggle (resource-note pattern).
 const DIFF_COLLAPSED_MAX_HEIGHT = 100
 const diffRef = ref<HTMLElement | null>(null)
 const isExpanded = ref(false)

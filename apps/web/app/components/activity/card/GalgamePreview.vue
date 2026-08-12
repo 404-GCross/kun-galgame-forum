@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// Shared "embedded galgame preview" frame for feed cards: a bordered, clickable
-// row with the galgame cover (16:9, matching the canonical galgame card) on the
-// LEFT and type-specific info in the default slot on the RIGHT. Used by the
-// new-galgame card and the galgame-reference card (edit / PR / comment / rating /
-// resource). The cover loads the lightweight `mini` variant from the CDN.
 defineProps<{
   to: string
   coverHash?: string

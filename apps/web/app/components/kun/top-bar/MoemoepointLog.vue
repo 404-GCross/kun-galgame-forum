@@ -1,15 +1,4 @@
 <script setup lang="ts">
-// 萌萌点明细 modal. Opened from the avatar menu (UserInfo.vue) via the
-// temp-store flag `showKUNGalgameMoemoepointLog`, and rendered at the app.vue
-// root (a stable, NON-scoped node) — NOT inside the avatar popover, whose
-// content is v-if'd and unmounts the instant the user clicks into the modal
-// (which would tear the modal down with it). app.vue (vs the <style scoped>
-// avatar bar) also keeps Vue from warning about the scope id it can't stamp
-// onto this component's <KunModal> teleport root.
-//
-// The ledger is the UNIFIED moemoepoint history from OAuth: every earn / spend
-// across all sites (鲲 Galgame / 补丁 / TouchGal / 贴纸 …) shows up here, since
-// the balance is a single source of truth. Cursor pagination by `before_id`.
 interface MoemoepointLogEntry {
   id: number
   delta: number
@@ -17,8 +6,6 @@ interface MoemoepointLogEntry {
   source_app: string
   ref: string
   created_at: string
-  // Granted by THIS site (source_app == our client_id) → its ref resolves to a
-  // local page, so only these get a clickable id.
   is_local: boolean
 }
 
@@ -29,8 +16,6 @@ const { showKUNGalgameMoemoepointLog: isOpen } = storeToRefs(
 )
 const { moemoepoint } = storeToRefs(usePersistUserStore())
 
-// reason is OAuth's small stable enum (06-moemoepoint.md §2). admin_* /
-// migration are server-side only but can still appear in a user's history.
 const REASON_META: Record<string, { label: string; icon: string }> = {
   daily_checkin: { label: '每日签到', icon: 'lucide:calendar-check' },
   liked: { label: '内容被点赞', icon: 'lucide:heart' },
@@ -42,11 +27,6 @@ const REASON_META: Record<string, { label: string; icon: string }> = {
   register_gift: { label: '注册礼物', icon: 'lucide:party-popper' }
 }
 
-// source_app is whatever OAuth derives from the calling client. Today OAuth
-// returns the raw client_id (an opaque 32-hex hash), so a friendly name can't
-// be resolved client-side for cross-site entries — only OAuth owns the
-// client→app registry. We map known readable slugs (in case OAuth starts
-// sending them) and HIDE anything opaque rather than print a hash.
 const SOURCE_LABEL: Record<string, string> = {
   kungal: '鲲 Galgame',
   moyu: '鲲补丁',
@@ -77,25 +57,14 @@ const reasonMeta = (reason: string) =>
     icon: 'lucide:lollipop'
   }
 
-// OAuth keeps a tiny generic reason enum; the concrete behavior is carried by
-// the ref-kind (06-moemoepoint.md §2). So the PRIMARY label is derived from
-// (reason, ref-kind): a precise override first, else a composed form — for
-// `content_approved` (earned by producing content) that's "创建了新的<内容>", for
-// the rest a "<内容><动作>" suffix — else the bare reason label.
-// Suffix action per reason, keyed by delta sign. `liked` is bidirectional — a
-// cancelled like arrives as a negative delta — so a −1 that still read "被点赞"
-// was the bug this fixes. content_removed is always negative.
 const REASON_ACTION: Record<string, { pos: string; neg: string }> = {
   liked: { pos: '被点赞', neg: '取消点赞' },
   content_removed: { pos: '被移除', neg: '被移除' }
 }
 
 const BEHAVIOR_LABEL: Record<string, string> = {
-  // Non-create content_approved rows, where "创建了新的…" would be wrong:
-  // answering a quiz correctly, and the owner's credit when their topic is推.
   'content_approved:galgame_quiz_answer': '答对了题目',
   'content_approved:topic_upvote': '话题被推荐',
-  // 推话题 cost: a distinct ref-kind so it reads as 推话题消耗 (not 话题被移除).
   'content_removed:topic_upvote': '推话题消耗'
 }
 
@@ -107,8 +76,6 @@ const behaviorLabel = (entry: MoemoepointLogEntry): string => {
   if (specific) return specific
   const kindLabel = REF_KIND_LABEL[kind]
   if (kindLabel) {
-    // content_approved is earned by producing content (+); a negative delta is
-    // that reward being reversed, which reads as a removal.
     if (entry.reason === 'content_approved') {
       return entry.delta < 0 ? `${kindLabel}被移除` : `创建了新的${kindLabel}`
     }
@@ -118,8 +85,6 @@ const behaviorLabel = (entry: MoemoepointLogEntry): string => {
   return reasonMeta(entry.reason).label
 }
 
-// Ref-kinds whose id maps directly to a page on THIS site. Others (comment /
-// reply / rating / answer / resource) carry a child id with no standalone page.
 const REF_LINK_BASE: Record<string, string> = {
   topic: '/topic',
   topic_upvote: '/topic',
@@ -129,8 +94,6 @@ const REF_LINK_BASE: Record<string, string> = {
   toolset: '/toolset'
 }
 
-// A page URL for the entry's ref — only for locally-granted entries (a remote
-// site's topic:5 must not link to OUR /topic/5).
 const refHref = (entry: MoemoepointLogEntry): string => {
   if (!entry.is_local) return ''
   const base = REF_LINK_BASE[refKindOf(entry.ref)]
@@ -147,15 +110,11 @@ const sourceLabel = (app: string): string => {
   return isOpaqueId(slug) ? '' : slug
 }
 
-// The ref-kind is now shown in the primary label, so the sub-line only adds
-// the entity id (#123) for disambiguation — empty when the ref has no id.
 const refId = (refValue: string): string => {
   const id = refValue.split(':')[1]
   return id ? `#${id}` : ''
 }
 
-// One muted line under the behavior: "source · #id · time", omitting empties.
-// Segmented (not a joined string) so the #id can render as a link to its page.
 const metaSegments = (
   entry: MoemoepointLogEntry
 ): { text: string; href?: string }[] => {
@@ -198,7 +157,6 @@ const fetchPage = async (more = false) => {
   status.value = 'idle'
 }
 
-// Refetch on each open so a just-earned point (e.g. fresh check-in) shows.
 watch(isOpen, (open) => {
   if (!open) return
   entries.value = []

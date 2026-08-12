@@ -7,8 +7,6 @@ definePageMeta({
 
 useKunDisableSeo('已静音的消息')
 
-// Which local categories the user currently mutes → drives the per-category
-// tabs (chat / wiki are separate streams and never appear in this list).
 const { data: prefs } = await useKunFetch<NotificationPreference>(
   '/user/notification-preferences'
 )
@@ -26,7 +24,6 @@ const pageData = reactive({
   page: 1,
   limit: 30,
   sort_order: 'desc',
-  // '' = all muted categories; otherwise a single category key.
   type: ''
 })
 

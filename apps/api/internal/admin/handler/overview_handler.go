@@ -17,8 +17,6 @@ func NewOverviewHandler(overviewService *service.OverviewService) *OverviewHandl
 	return &OverviewHandler{overviewService: overviewService}
 }
 
-// GetOverview returns counts for all major models.
-// GET /api/admin/overview/all
 func (h *OverviewHandler) GetOverview(c fiber.Ctx) error {
 	items, appErr := h.overviewService.GetOverview(c.Context())
 	if appErr != nil {
@@ -27,8 +25,6 @@ func (h *OverviewHandler) GetOverview(c fiber.Ctx) error {
 	return response.OK(c, items)
 }
 
-// GetStats returns daily counts for the last N days.
-// GET /api/admin/overview/stats
 func (h *OverviewHandler) GetStats(c fiber.Ctx) error {
 	var req dto.GetStatsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {

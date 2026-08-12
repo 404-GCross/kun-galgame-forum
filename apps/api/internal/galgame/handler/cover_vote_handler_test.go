@@ -1,14 +1,5 @@
 package handler
 
-// Route-layer tests for the best-cover vote BFF (wave 176), over a bare Fiber
-// app wired like router.go and backed by an httptest fake catalog. They pin the
-// three things this face must guarantee:
-//   - the write travels as the USER (the session's bearer, never kungal's Basic)
-//     and addresses the REGISTRY work id, not the kungal gid;
-//   - a stale grant (missing catalog:edit) comes back as its own house code, so
-//     the frontend can say "log out and back in" instead of "no permission";
-//   - an unconfigured catalog degrades to 503 with no traffic at all.
-
 import (
 	"encoding/json"
 	"io"
@@ -25,14 +16,11 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// fakeVoteFace records the vote calls and serves a canned reply (or the denial
-// the test asked for).
 type fakeVoteFace struct {
 	mu       sync.Mutex
 	requests []recordedRequest
-	// status/body override the success reply when set.
-	status int
-	body   string
+	status   int
+	body     string
 }
 
 func (f *fakeVoteFace) server(t *testing.T) *httptest.Server {
@@ -60,8 +48,6 @@ func (f *fakeVoteFace) server(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// voteTestApp wires the two vote routes exactly like router.go, over the shared
-// gid ⇄ work-id bridge fake (gid 1 ⇄ registry work 1000).
 func voteTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
@@ -82,9 +68,6 @@ func voteTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 	return app
 }
 
-// TestCoverVoteTravelsAsTheUser: the bearer is the session's token, the path is
-// the user plane, and the work id is the TRANSLATED registry id — a gid there
-// would vote on a different game.
 func TestCoverVoteTravelsAsTheUser(t *testing.T) {
 	fake := &fakeVoteFace{}
 	app := voteTestApp(t, fake.server(t).URL, plainUser)
@@ -125,9 +108,6 @@ func TestCoverUnvoteUsesDelete(t *testing.T) {
 	}
 }
 
-// A grant that predates the scope is the ONE denial the user can fix. It must
-// arrive as code 235 — not 233 (no permission) and not 205 (which would log a
-// perfectly good session out).
 func TestCoverVoteStaleGrantAsksForReauth(t *testing.T) {
 	fake := &fakeVoteFace{status: http.StatusForbidden,
 		body: `{"code":233,"message":"missing required scope: catalog:edit"}`}
@@ -149,7 +129,6 @@ func TestCoverVoteStaleGrantAsksForReauth(t *testing.T) {
 	}
 }
 
-// Everything else keeps its ordinary meaning.
 func TestCoverVoteErrorPassThrough(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -181,7 +160,6 @@ func TestCoverVoteErrorPassThrough(t *testing.T) {
 	}
 }
 
-// An unknown gid has no work to vote on — 404 before any catalog traffic.
 func TestCoverVoteUnknownEntry(t *testing.T) {
 	fake := &fakeVoteFace{}
 	app := voteTestApp(t, fake.server(t).URL, plainUser)
@@ -202,7 +180,7 @@ func TestCoverVoteRequiresLogin(t *testing.T) {
 }
 
 func TestCoverVoteDegradesWhenUnconfigured(t *testing.T) {
-	app := voteTestApp(t, "", plainUser) // empty base URL = not configured
+	app := voteTestApp(t, "", plainUser)
 	if status, raw := doJSON(t, app, "PUT", "/api/galgame/1/cover/88/vote", ""); status != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d body %s, want 503", status, raw)
 	}

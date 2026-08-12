@@ -12,12 +12,6 @@ const route = useRoute()
 const userStore = usePersistUserStore()
 const isLoggedIn = computed(() => !!userStore.id)
 
-// Browse state lives entirely in the URL query — the project-wide idiom (see
-// topic/Container.vue and useGalgameFilters). It makes the filtered/paged view
-// shareable + refresh-stable, and lets a quiz's 返回题库 restore it with a plain
-// browser-history round-trip (router.back in Play.vue). `mode:'replace'` keeps
-// filter tweaks out of the history stack; values equal to the default are
-// dropped, so an unfiltered browse stays a clean /galgame-quiz.
 const opts = { mode: 'replace' as const }
 const page = useRouteQuery('page', 1, { ...opts, transform: Number })
 const tab = useRouteQuery<'all' | 'mine'>('tab', 'all', opts)
@@ -28,8 +22,6 @@ const sortField = useRouteQuery<string>('sort_field', 'update_time', opts)
 const sortOrder = useRouteQuery<'asc' | 'desc'>('sort_order', 'desc', opts)
 const limit = 50
 
-// `mine` is self-only (login-gated); a shared ?tab=mine opened while logged out
-// falls back to the public list instead of hitting the auth-required endpoint.
 const activeTab = computed(() => (isLoggedIn.value ? tab.value : 'all'))
 const requestUrl = computed(() =>
   activeTab.value === 'mine' ? '/galgame-quiz/mine/answered' : '/galgame-quiz/all'
@@ -46,9 +38,6 @@ const { data, status, refresh } = await useKunFetch<QuizListPage>(requestUrl, {
     type,
     difficulty
   },
-  // Don't auto-refetch on every query-ref change: opening a quiz navigates to
-  // /galgame-quiz/:id, which resets the URL-backed refs and would fire a wasted
-  // fetch right before unmount. Refetch manually, ONLY while still on this list.
   watch: false
 })
 
@@ -62,9 +51,6 @@ watch(
   }
 )
 
-// Any filter / tab change returns to page 1. useRouteQuery batches the writes
-// within a tick, so the page reset and the filter write land as one route update
-// → one refetch (no self-clobber, no double fetch).
 watch([category, type, difficulty, sortField, sortOrder, tab], () => {
   page.value = 1
 })

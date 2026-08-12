@@ -12,8 +12,6 @@ const onCancel = () => navigateTo('/galgame-quiz')
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <!-- Client-only: the form embeds the Milkdown editor (no SSR) and restores a
-         localStorage draft, both of which would otherwise mismatch on hydrate. -->
     <ClientOnly>
       <GalgameQuizForm @published="onPublished" @cancel="onCancel" />
       <template #fallback>

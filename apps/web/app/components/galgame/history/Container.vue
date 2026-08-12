@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// The engine-backed revision history page (E3a): the full log — including
-// the 11,860 migrated pre-engine rows with their honest legacy_action
-// provenance — plus any-two-versions field diff.
 import {
   GALGAME_EDIT_LEGACY_ACTION_LABELS,
   galgameEditFieldConfig,
@@ -32,9 +29,6 @@ const handleDiff = async (fromSeq: number, toSeq: number) => {
   diffLoading.value = false
 }
 
-// Revert (E3b — engine-backed): shown only when the BFF says the session user
-// may revert — admin ⊂ ren, or the game's owner (moderators excluded, matching
-// the engine's per-field review rule).
 const latestSeq = computed(() => data.value?.items?.[0]?.seq ?? 0)
 const revertTarget = ref<number | null>(null)
 const revertOpen = computed({

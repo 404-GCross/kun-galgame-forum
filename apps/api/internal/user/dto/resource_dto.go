@@ -1,6 +1,5 @@
 package dto
 
-// UserResourceItem is an entry in GET /api/user/:userID/resources.
 type UserResourceItem struct {
 	ID          int         `json:"id"`
 	GalgameID   int         `json:"galgame_id"`
@@ -17,7 +16,6 @@ type UserResourceItem struct {
 	Created     string      `json:"created"`
 }
 
-// UserResourcesResponse is the payload for GET /api/user/:userID/resources.
 type UserResourcesResponse struct {
 	Resources []UserResourceItem `json:"resources"`
 	Total     int64              `json:"total"`

@@ -14,9 +14,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// resourceIDFromQueryOrBody pulls galgameResourceId from either body or query
-// — useful for status PUT endpoints that the frontend hits with body params.
-
 type ResourceHandler struct {
 	resourceService *service.ResourceService
 }
@@ -25,13 +22,6 @@ func NewResourceHandler(resourceService *service.ResourceService) *ResourceHandl
 	return &ResourceHandler{resourceService: resourceService}
 }
 
-// GetResourceList returns the latest galgame resources.
-// GET /api/galgame-resource
-// GetResourceList — GET /galgame-resource
-//
-// SFW-default. Crawlers and cookie-less visitors see only resources
-// attached to content_limit=sfw galgames; logged-in users with the NSFW
-// switch enabled see everything.
 func (h *ResourceHandler) GetResourceList(c fiber.Ctx) error {
 	var req dto.ResourceListRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -45,8 +35,6 @@ func (h *ResourceHandler) GetResourceList(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
-// GetResourceDetail returns a single resource with galgame info and recommendations.
-// GET /api/galgame-resource/:id
 func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -59,14 +47,11 @@ func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 	if notFound != nil {
-		// Legacy "not found" string response expected by the frontend.
 		return response.OK(c, "not found")
 	}
 	return response.OK(c, detail)
 }
 
-// GetResourceDownloadDetail returns resource detail with download links.
-// GET /api/galgame-resource/:id/detail
 func (h *ResourceHandler) GetResourceDownloadDetail(c fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -81,8 +66,6 @@ func (h *ResourceHandler) GetResourceDownloadDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// GetGalgameResources returns resources for a specific galgame.
-// GET /api/galgame/:gid/resource/all
 func (h *ResourceHandler) GetGalgameResources(c fiber.Ctx) error {
 	var req dto.GalgameResourcesRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -96,8 +79,6 @@ func (h *ResourceHandler) GetGalgameResources(c fiber.Ctx) error {
 	return response.OK(c, cards)
 }
 
-// optionalUID returns the logged-in user's ID from OptionalAuth middleware,
-// or 0 if not authenticated.
 func optionalUID(c fiber.Ctx) int {
 	if user := middleware.GetUser(c); user != nil {
 		return user.ID
@@ -105,7 +86,6 @@ func optionalUID(c fiber.Ctx) int {
 	return 0
 }
 
-// CreateResource — POST /api/galgame/:gid/resource
 func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -121,7 +101,6 @@ func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	return response.OKMessage(c, "资源创建成功")
 }
 
-// UpdateResource — PUT /api/galgame/:gid/resource
 func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -137,7 +116,6 @@ func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	return response.OKMessage(c, "资源更新成功")
 }
 
-// DeleteResource — DELETE /api/galgame/:gid/resource
 func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -153,14 +131,10 @@ func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 	return response.OKMessage(c, "资源已删除")
 }
 
-// setResourcePublishBanRequest is the body for the moderator ban toggle.
 type setResourcePublishBanRequest struct {
 	Banned bool `json:"banned"`
 }
 
-// SetResourcePublishBan — PUT /api/admin/galgame/:gid/resource-publish-ban
-// (moderator+ only, gated at the route group). Toggles the resource-publish
-// kill-switch: while banned, CreateResource / UpdateResource are rejected.
 func (h *ResourceHandler) SetResourcePublishBan(c fiber.Ctx) error {
 	gid, err := strconv.Atoi(c.Params("gid"))
 	if err != nil || gid <= 0 {
@@ -179,7 +153,6 @@ func (h *ResourceHandler) SetResourcePublishBan(c fiber.Ctx) error {
 	return response.OKMessage(c, "已解除本游戏的资源发布禁止")
 }
 
-// ToggleLike — PUT /api/galgame/:gid/resource/like
 func (h *ResourceHandler) ToggleLike(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -195,7 +168,6 @@ func (h *ResourceHandler) ToggleLike(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// MarkValid — PUT /api/galgame/:gid/resource/valid
 func (h *ResourceHandler) MarkValid(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -211,7 +183,6 @@ func (h *ResourceHandler) MarkValid(c fiber.Ctx) error {
 	return response.OKMessage(c, "资源已标记为有效")
 }
 
-// MarkExpired — PUT /api/galgame/:gid/resource/expired
 func (h *ResourceHandler) MarkExpired(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

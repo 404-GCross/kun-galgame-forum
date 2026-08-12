@@ -4,8 +4,6 @@ export interface TopicCard {
   view: number
   section: string[]
   cover_images: string[]
-  // Per-cover-token metadata (dims + ThumbHash), keyed by the /image/<hash>
-  // token in cover_images — for no-CLS aspect ratio + blur-up. Absent pre-backfill.
   cover_image_meta?: Record<string, KunImageMeta>
   user: KunUser
   status: number
@@ -25,10 +23,6 @@ export interface TopicAside {
   tid: number
 }
 
-// Slim best-answer projection embedded directly in TopicDetail (BE
-// populates from topic.best_answer_id during /topic/:tid). Used by the
-// detail page to render JSON-LD `acceptedAnswer` schema during SSR
-// without a second /reply fetch.
 export interface TopicBestAnswerSummary {
   id: number
   floor: number
@@ -48,10 +42,7 @@ export interface TopicDetail {
   is_nsfw: boolean
   category: string
   section: string[]
-  // Optional 1..9 cover images as /image/<hash> tokens; used to prefill the
-  // cover picker when editing, and (empty = none) for the feed card.
   cover_images: string[]
-  // See TopicCard.cover_image_meta — keyed by the /image/<hash> cover token.
   cover_image_meta?: Record<string, KunImageMeta>
   user: KunUser & { moemoepoint: number }
 
@@ -73,7 +64,5 @@ export interface TopicDetail {
   edited: Date | string | null
   created: Date | string
 
-  // Embedded by BE when topic.best_answer_id is set; omitted otherwise.
-  // Drives JSON-LD `acceptedAnswer` for SEO on the topic detail page.
   best_answer?: TopicBestAnswerSummary
 }

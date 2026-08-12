@@ -23,20 +23,15 @@ import (
 )
 
 type ResourceService struct {
-	resourceRepo  *repository.ResourceRepository
-	galgameClient *client.GalgameClient
-	userClient    *userclient.Client
-	check         *gate.CheckService
-	scan          *gate.ScanService
-	helpers       InteractionHelpers
-	// linkChecker gates "report expired" on an objective netdisk-API verdict.
-	// nil when unconfigured → MarkExpired falls back to the legacy flow.
-	linkChecker *linkcheck.Client
-	// dlsiteLinkTemplate is the affiliate purchase-link template for the 补票
-	// prompt. Empty = no purchase link is emitted.
+	resourceRepo       *repository.ResourceRepository
+	galgameClient      *client.GalgameClient
+	userClient         *userclient.Client
+	check              *gate.CheckService
+	scan               *gate.ScanService
+	helpers            InteractionHelpers
+	linkChecker        *linkcheck.Client
 	dlsiteLinkTemplate string
-	// dlsiteCouponURL is the partnership's (already shortened) coupon page.
-	dlsiteCouponURL string
+	dlsiteCouponURL    string
 }
 
 func NewResourceService(
@@ -61,11 +56,6 @@ func NewResourceService(
 	}
 }
 
-// dlsiteLinks builds the 补票 block's two links for a galgame brief: the per-work
-// purchase URL and the global coupon URL. Both are empty when the galgame has no
-// DLsite work number or the affiliate template is unconfigured — the coupon rides
-// along because the notice presents them as one offer, so emitting a coupon with
-// nothing to buy would be a dead end.
 func (s *ResourceService) dlsiteLinks(b client.GalgameBrief) (purchase, coupon string) {
 	purchase = dlsite.LinkFor(s.dlsiteLinkTemplate, b.ID, b.DlsiteWorkno())
 	if purchase == "" {
@@ -74,8 +64,6 @@ func (s *ResourceService) dlsiteLinks(b client.GalgameBrief) (purchase, coupon s
 	return purchase, s.dlsiteCouponURL
 }
 
-// resourceModerationText composes the RAW text the trust gate sees for a galgame
-// resource: the uploader note + every share link, blank fragments skipped.
 func resourceModerationText(note string, links []string) string {
 	parts := make([]string, 0, 1+len(links))
 	parts = append(parts, note)
@@ -83,16 +71,6 @@ func resourceModerationText(note string, links []string) string {
 	return gate.ComposeText(parts...)
 }
 
-// ──────────────────────────────────────────
-// GetResourceList — GET /galgame-resource
-// ──────────────────────────────────────────
-
-// GetResourceList returns the public resource list. SFW gating is
-// delegated to galgame via content_limit per docs/galgame_wiki/00-handbook
-// §16 — galgame only returns briefs for galgames matching the requested
-// content_limit, so any row whose galgame is filtered shows up as
-// "no brief returned" below. `total` over-reports in SFW mode (it's the
-// count of kungal-side rows, not the post-filter remainder).
 func (s *ResourceService) GetResourceList(
 	ctx context.Context,
 	req *dto.ResourceListRequest,
@@ -106,9 +84,6 @@ func (s *ResourceService) GetResourceList(
 	briefMap := s.fetchGalgameBriefsPublic(ctx, galgameIDs, isSFW)
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 
-	// Batch lookup of "did current user already like" so the FE can
-	// hydrate the heart icon correctly on first render. Anonymous /
-	// userID=0 yields an empty set without hitting the DB.
 	resourceIDs := make([]int, len(rows))
 	for i, r := range rows {
 		resourceIDs[i] = r.ID
@@ -122,8 +97,6 @@ func (s *ResourceService) GetResourceList(
 			continue
 		}
 		b, hasBrief := briefMap[r.GalgameID]
-		// Galgame dropped this row's galgame (didn't match content_limit
-		// or doesn't exist) → resource is unrenderable in this mode.
 		if !hasBrief {
 			continue
 		}
@@ -136,20 +109,8 @@ func (s *ResourceService) GetResourceList(
 	return &dto.ResourceListPage{Resources: cards, Total: total}, nil
 }
 
-// ──────────────────────────────────────────
-// GetResourceDetail — GET /galgame-resource/:id
-// Returns (detail, nil) on success or (nil, nil) for "not found" (legacy format).
-// ──────────────────────────────────────────
-
-// NotFoundSentinel is returned by GetResourceDetail when the resource doesn't exist.
-// The handler serialises it to the JSON string "not found" for backwards compat.
 type ResourceNotFound struct{}
 
-// GetResourceDetail returns the resource detail. NSFW is NOT gated here —
-// the parent galgame's content_limit reaches the FE in the page payload,
-// and the FE decides whether to show an "click to confirm" interstitial
-// (same UX as galgame detail). Cross-detail behaviour stays consistent
-// rather than 404-ing only on certain paths.
 func (s *ResourceService) GetResourceDetail(
 	ctx context.Context,
 	resourceID, currentUserID int,
@@ -159,15 +120,11 @@ func (s *ResourceService) GetResourceDetail(
 		return nil, &ResourceNotFound{}, nil
 	}
 
-	// A banned owner's resource is hidden even by direct link — treat as
-	// not-found before counting a view.
 	ownerUser, _, _ := s.userClient.User(ctx, row.UserID)
 	if !userclient.IsRenderable(ownerUser) {
 		return nil, &ResourceNotFound{}, nil
 	}
 
-	// Fire-and-forget view increment. We add 1 to the returned value too so
-	// the client sees the freshly-incremented count without re-fetching.
 	s.resourceRepo.IncrementView(resourceID)
 	row.View++
 
@@ -176,16 +133,12 @@ func (s *ResourceService) GetResourceDetail(
 
 	resource := rowToMeta(row, links, isLiked, ownerUser)
 
-	// 补票 purchase link for this resource's galgame (empty when it has no DLsite
-	// work number or the affiliate template is unconfigured).
 	if b, ok := s.fetchGalgameBriefs(ctx, []int{row.GalgameID})[row.GalgameID]; ok {
 		resource.DlsitePurchaseURL, resource.DlsiteCouponURL = s.dlsiteLinks(b)
 	}
 
-	// Galgame summary
 	galgameSummary := s.buildGalgameSummary(ctx, row.GalgameID)
 
-	// Recommendations (max 6)
 	recRows := s.resourceRepo.FindRecommendations(row.GalgameID, resourceID, 6)
 	recommendations := s.buildRecommendations(ctx, recRows, row.GalgameID, currentUserID)
 
@@ -196,11 +149,6 @@ func (s *ResourceService) GetResourceDetail(
 	}, nil, nil
 }
 
-// ──────────────────────────────────────────
-// GetResourceDownloadDetail — GET /galgame-resource/:id/detail
-// Bumps the download counter and returns links/code/password.
-// ──────────────────────────────────────────
-
 func (s *ResourceService) GetResourceDownloadDetail(
 	ctx context.Context,
 	resourceID, currentUserID int,
@@ -210,8 +158,6 @@ func (s *ResourceService) GetResourceDownloadDetail(
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
-	// A banned owner's resource is hidden even by direct link — 404 before
-	// counting a download.
 	owner, _, _ := s.userClient.User(ctx, row.UserID)
 	if !userclient.IsRenderable(owner) {
 		return nil, errors.ErrNotFound("未找到该资源")
@@ -227,10 +173,6 @@ func (s *ResourceService) GetResourceDownloadDetail(
 	return &detail, nil
 }
 
-// ──────────────────────────────────────────
-// GetGalgameResources — GET /galgame/:gid/resource/all
-// ──────────────────────────────────────────
-
 func (s *ResourceService) GetGalgameResources(
 	ctx context.Context,
 	req *dto.GalgameResourcesRequest,
@@ -245,14 +187,8 @@ func (s *ResourceService) GetGalgameResources(
 		resourceIDs[i] = r.ID
 	}
 	userMap := s.userClient.Hydrate(ctx, userIDs)
-	// Per-row like state for the logged-in viewer; anonymous → empty set.
 	likedSet := s.resourceRepo.FindLikedSet(currentUserID, resourceIDs)
 
-	// Every row here belongs to the SAME galgame, so one brief covers the whole
-	// list — it is fetched only for the 补票 purchase link the download modal
-	// renders (this list feeds the modal from the galgame detail page, where no
-	// galgame object is in scope). Empty on any miss; the prompt then renders as
-	// it does today.
 	dlsiteURL, dlsiteCoupon := "", ""
 	if len(rows) > 0 {
 		if b, ok := s.fetchGalgameBriefs(ctx, []int{req.GalgameID})[req.GalgameID]; ok {
@@ -273,24 +209,14 @@ func (s *ResourceService) GetGalgameResources(
 	return cards, nil
 }
 
-// ──────────────────────────────────────────
-// CreateResource — POST /galgame/:gid/resource
-// Creates the resource row + links + provider tags in a single transaction,
-// awarding +3 moemoepoint and bumping local resource_count.
-// ──────────────────────────────────────────
-
 func (s *ResourceService) CreateResource(
 	ctx context.Context,
 	userID int,
 	req *dto.CreateGalgameResourceRequest,
 ) *errors.AppError {
-	// Moderator kill-switch: no publishing under a banned game (copyright /
-	// third-party takedown — migration 061). Checked before anything else.
 	if s.resourceRepo.IsResourcePublishBanned(req.GalgameID) {
 		return errors.ErrForbidden("该游戏已被禁止发布下载资源")
 	}
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): note + links. deny
-	// blocks (nothing persisted); hold publishes+logs; fail-open on error/timeout.
 	moderationText := resourceModerationText(req.Note, req.Link)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -313,9 +239,6 @@ func (s *ResourceService) CreateResource(
 	}
 
 	txErr := s.resourceRepo.DB().Transaction(func(tx *gorm.DB) error {
-		// Lazy-create stub before incrementing — see decision 2 in the
-		// kungal/wiki integration plan (pending submissions don't get
-		// a kungal stub, so the first interaction must INSERT one).
 		tx.Clauses(clause.OnConflict{DoNothing: true}).
 			Create(&model.GalgameLocal{ID: req.GalgameID})
 		if err := s.resourceRepo.Create(tx, res); err != nil {
@@ -333,9 +256,6 @@ func (s *ResourceService) CreateResource(
 		if err := s.resourceRepo.AdjustLocalResourceCount(tx, req.GalgameID, 1); err != nil {
 			return err
 		}
-		// Publishing a resource is a content update → bump
-		// galgame.resource_update_time so it rises in the "sort by update time"
-		// list (the count adjust above does not, by design — see TouchGalgameUpdated).
 		if err := s.resourceRepo.TouchGalgameUpdated(tx, req.GalgameID); err != nil {
 			return err
 		}
@@ -354,20 +274,12 @@ func (s *ResourceService) CreateResource(
 	return nil
 }
 
-// SetResourcePublishBan flips the moderator kill-switch (migration 061) that
-// forbids publishing / editing download resources under a galgame. Upserts the
-// local row so a not-yet-ingested galgame game can be pre-banned.
 func (s *ResourceService) SetResourcePublishBan(galgameID int, banned bool) *errors.AppError {
 	if err := s.resourceRepo.SetResourcePublishBanned(galgameID, banned); err != nil {
 		return errors.ErrInternal("更新资源发布禁止状态失败")
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// UpdateResource — PUT /galgame/:gid/resource
-// Replaces all links, recomputes providers, patches scalar fields.
-// ──────────────────────────────────────────
 
 func (s *ResourceService) UpdateResource(
 	ctx context.Context,
@@ -381,14 +293,10 @@ func (s *ResourceService) UpdateResource(
 	if row.UserID != userID && !canModerate {
 		return errors.ErrForbidden("您没有权限更新这个 Galgame 资源")
 	}
-	// Same ban kill-switch as create — an edit replaces links, so it can
-	// (re)introduce download links under a banned game.
 	if s.resourceRepo.IsResourcePublishBanned(row.GalgameID) {
 		return errors.ErrForbidden("该游戏已被禁止发布下载资源")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (row.UserID).
 	moderationText := resourceModerationText(req.Note, req.Link)
 	authorID := int64(row.UserID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -424,7 +332,6 @@ func (s *ResourceService) UpdateResource(
 		if err := s.resourceRepo.ReplaceProviderNames(tx, req.GalgameResourceID, providerNames); err != nil {
 			return err
 		}
-		// Editing a published resource is a content update → bump galgame.resource_update_time.
 		return s.resourceRepo.TouchGalgameUpdated(tx, row.GalgameID)
 	})
 	if txErr != nil {
@@ -437,12 +344,6 @@ func (s *ResourceService) UpdateResource(
 	s.scan.ScanBg(gate.SubjectKindGalgameResource, strconv.Itoa(req.GalgameResourceID), moderationText, int64(row.UserID))
 	return nil
 }
-
-// ──────────────────────────────────────────
-// DeleteResource — DELETE /galgame/:gid/resource
-// Deducts 5 + like_count moemoepoint from the original uploader and decrements
-// the galgame resource_count. Cascade deletes links/likes via FK.
-// ──────────────────────────────────────────
 
 func (s *ResourceService) DeleteResource(
 	userID int, canModerate bool, resourceID int,
@@ -468,12 +369,6 @@ func (s *ResourceService) DeleteResource(
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// ToggleLike — PUT /galgame/:gid/resource/like
-// Self-like is rejected. Toggles the like row + maintains like_count and a +/-1
-// moemoepoint swing on the liker (matches existing nitro behaviour).
-// ──────────────────────────────────────────
 
 func (s *ResourceService) ToggleLike(
 	userID int,
@@ -523,12 +418,6 @@ func (s *ResourceService) ToggleLike(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// MarkValid / MarkExpired — PUT valid|expired
-// MarkValid is restricted to the original uploader; MarkExpired is open.
-// MarkExpired sends a non-deduped notification to the uploader.
-// ──────────────────────────────────────────
-
 func (s *ResourceService) MarkValid(userID int, resourceID int) *errors.AppError {
 	row, ok := s.resourceRepo.FindByID(resourceID)
 	if !ok || row.UserID != userID {
@@ -551,13 +440,6 @@ func (s *ResourceService) MarkExpired(ctx context.Context, userID int, resourceI
 
 	links := s.resourceRepo.FindLinks(resourceID)
 
-	// Objective gate: don't let one subjective click expire a resource. Ask the
-	// link-live-checker (when configured AND the resource has links) using the
-	// share passcode (Code = 提取码; Password = 解压码 is irrelevant to access).
-	//   alive   → verifiably reachable → reject (NOT an error: marked=false).
-	//   dead    → every link verified gone → expire (one report suffices).
-	//   unknown → unsupported netdisk / no passcode / rate-limited / checker
-	//             down / mixed → fall through to the legacy single-report flow.
 	verdict := ""
 	if s.linkChecker != nil && len(links) > 0 {
 		verdict = string(s.linkChecker.CheckShare(ctx, links, row.Code))
@@ -586,10 +468,6 @@ func (s *ResourceService) MarkExpired(ctx context.Context, userID int, resourceI
 	return &dto.ReportExpireResult{Verdict: verdict, Marked: true}, nil
 }
 
-// ──────────────────────────────────────────
-// Internal helpers
-// ──────────────────────────────────────────
-
 func (s *ResourceService) fetchGalgameBriefs(
 	ctx context.Context,
 	galgameIDs []int,
@@ -604,11 +482,6 @@ func (s *ResourceService) fetchGalgameBriefs(
 	return briefMap
 }
 
-// fetchGalgameBriefsPublic is the SFW-aware variant — for public list paths
-// that must honour content_limit per docs/galgame_wiki/00-handbook §16.
-// The unfiltered fetchGalgameBriefs above is kept for internal call sites
-// where the caller already knows the IDs are safe to show (e.g.,
-// detail-page-internal lookups by ID the user already navigated to).
 func (s *ResourceService) fetchGalgameBriefsPublic(
 	ctx context.Context,
 	galgameIDs []int,

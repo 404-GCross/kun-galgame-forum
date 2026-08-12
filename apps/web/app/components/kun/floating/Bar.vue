@@ -73,10 +73,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Always the compact vertical stack (the former mobile layout). The desktop
-       variant was a WIDE horizontal pill (100px progress bar + percent +
-       button) that extended left from the corner and overlapped page buttons on
-       large touch screens (iPad). The progress % now lives on the round button. -->
   <div
     v-if="isVisible"
     :class="

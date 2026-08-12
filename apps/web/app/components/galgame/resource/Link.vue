@@ -17,18 +17,11 @@ const props = defineProps<{
 const isFetching = ref(false)
 const { id } = usePersistUserStore()
 
-// Captured at setup. Vue's template event handlers don't restore the
-// Nuxt app via getCurrentInstance, so any composable call inside
-// (useRuntimeConfig in kunFetch, useState in getRandomSticker, etc.)
-// can hit `$nuxt of null`. runWithContext re-enters the app handle
-// captured here whenever we cross an await boundary.
 const nuxtApp = useNuxtApp()
 
 const isExpired = computed(() => props.resource.status === 1)
 const isOwner = computed(() => id === props.resource.user.id)
 
-// Backend-computed labels (e.g. "百度网盘 / OneDrive"). Falls back to the
-// raw domain when the resource pre-dates the backfill or matches no rule.
 const providerName = computed(() => {
   const names = props.resource.provider_names
   return names && names.length > 0
@@ -36,8 +29,6 @@ const providerName = computed(() => {
     : props.resource.link_domain
 })
 
-// Long notes collapse behind a "展开全部" toggle: anything taller than this
-// (px) is clamped, and the full text is only shown once expanded.
 const NOTE_COLLAPSED_MAX_HEIGHT = 100
 const noteRef = ref<HTMLElement | null>(null)
 const isNoteExpanded = ref(false)
@@ -50,13 +41,9 @@ const measureNoteOverflow = () => {
     isNoteOverflowing.value = false
     return
   }
-  // scrollHeight reports the full content height even while max-height clamps
-  // the box, so this stays accurate in the collapsed state.
   isNoteOverflowing.value = el.scrollHeight > NOTE_COLLAPSED_MAX_HEIGHT
 }
 
-// Hard-clamp the bottom edge only while collapsed (no fade mask — house rule
-// forbids gradients). The "展开全部" toggle is the affordance that more exists.
 const noteStyle = computed(() => {
   if (!isNoteOverflowing.value || isNoteExpanded.value) return undefined
   return {
@@ -67,8 +54,6 @@ const noteStyle = computed(() => {
 
 onMounted(() => {
   if (!noteRef.value) return
-  // Re-measure on re-wrap (viewport resize, late font load) so the toggle
-  // appears / disappears as the height crosses the threshold.
   noteResizeObserver = new ResizeObserver(() => measureNoteOverflow())
   noteResizeObserver.observe(noteRef.value)
   measureNoteOverflow()
@@ -79,7 +64,6 @@ onBeforeUnmount(() => {
   noteResizeObserver = null
 })
 
-// The resource may be swapped in place on a parent refresh — reset + re-measure.
 watch(
   () => props.resource.note,
   () => {
@@ -92,11 +76,6 @@ const isDetailOpen = ref(false)
 const isOpeningDetail = ref(false)
 const detailModalRef = ref<{ prefetch: () => Promise<unknown> } | null>(null)
 
-// Fetch FIRST, then open the modal. The prefetch() call must be wrapped
-// in runWithContext: Vue 3 template event handlers don't bind the Nuxt
-// app to the call site, so useRuntimeConfig inside kunFetch sees a null
-// `$nuxt` and crashes. The button stays in :loading while the detail
-// request is in flight.
 const openDetail = async () => {
   if (isOpeningDetail.value) return
   isOpeningDetail.value = true
@@ -185,10 +164,6 @@ const handleMarkValid = async () => {
     </div>
 
     <div v-if="resource.note" class="space-y-1.5">
-      <!-- Compact list card shows a plain-text excerpt of the (now Markdown)
-           note — markdownToText strips syntax/images so the card stays tight
-           and the existing clamp / 展开 toggle keeps working. The full rich
-           render lives in LinkDetailModal / the detail page (KunContent). -->
       <p
         ref="noteRef"
         :style="noteStyle"

@@ -4,19 +4,6 @@ import {
   type KUN_USER_PAGE_GALGAME_TYPE
 } from '~/constants/user'
 
-// Single component, two rendering modes:
-//
-//   - galgame_publish / galgame_contributed / galgame_like
-//     → GET /user/:id/galgames returns galgame cards (cover + name +
-//       counts). Same shape the rest of the site uses.
-//
-//   - galgame_comment / galgame_comment_like
-//     → GET /user/:id/galgame-comments returns comment rows
-//       (content + author + created + parent galgame id). Rendered
-//       in a minimal comment-card style — same UX as
-//       /user/:id/comment/ for topic comments. Earlier this branch
-//       reused the galgame-card endpoint so you saw the parent
-//       galgame instead of the actual comment text.
 const props = defineProps<{
   userId: number
   type: (typeof KUN_USER_PAGE_GALGAME_TYPE)[number]
@@ -43,18 +30,9 @@ interface UserGalgameCommentItem {
   content_html: string
   user: { id: number; name: string; avatar: string }
   created: string
-  // The liked tab surfaces placeholder rows for comments that were since
-  // deleted/hidden — render a tombstone instead of the (blanked) body.
   deleted: boolean
 }
 
-// Two parallel fetches gated by `isCommentMode`. We swap the endpoint
-// (and the result shape) instead of branching client-side on a single
-// union response — keeps the wire payload tight and the typing clean.
-// Global "显示没有下载资源的 Galgame" preference (cookie-persisted, SSR-safe).
-// Off (default) hides resource-less galgames; added to the query + watch so a
-// toggle re-fetches. (Comment-mode fetch below is unaffected — it lists
-// comments, not galgame cards.)
 const settings = usePersistSettingsStore()
 const { data: galgameData, status: galgameStatus } = await useKunFetch<{
   items: GalgameCard[]
@@ -73,9 +51,6 @@ const { data: galgameData, status: galgameStatus } = await useKunFetch<{
   server: !isCommentMode.value
 })
 
-// Comment mode uses keyset (cursor) pagination: the first page renders on the
-// server, then `加载更多` appends pages via `after=<next_cursor>` until the
-// cursor comes back empty (galgame-card mode above keeps numbered pages).
 const comments = ref<UserGalgameCommentItem[]>([])
 const commentCursor = ref('')
 const commentHasMore = ref(true)
@@ -143,7 +118,6 @@ const loadMoreComments = async () => {
       scrollable
     />
 
-    <!-- Galgame-card mode (galgame_publish / galgame_contributed / galgame_like) -->
     <template v-if="!isCommentMode">
       <div
         v-if="galgameData && galgameData.items.length"
@@ -165,7 +139,6 @@ const loadMoreComments = async () => {
       />
     </template>
 
-    <!-- Comment-card mode (galgame_comment / galgame_comment_like) -->
     <template v-else>
       <div v-if="comments.length" class="flex flex-col space-y-3">
         <KunCard
@@ -175,8 +148,6 @@ const loadMoreComments = async () => {
           :is-hoverable="!!c.galgame_id"
           content-class="space-y-2"
         >
-          <!-- Tombstone: keep the row, gray the body (matches the community
-               comment view's [已删除]). -->
           <p v-if="c.deleted" class="text-default-400 text-sm italic">
             [已删除]
           </p>

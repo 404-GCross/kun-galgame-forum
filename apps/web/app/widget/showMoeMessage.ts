@@ -1,14 +1,6 @@
 import { kungal } from '~/config/kungal'
 
 export const showMoeMessage = () => {
-  //   const asciiArt = `
-  // ██╗  ██╗██╗   ██╗███╗   ██╗       ██████╗  █████╗ ██╗      ██████╗  █████╗ ███╗   ███╗███████╗
-  // ██║ ██╔╝██║   ██║████╗  ██║      ██╔════╝ ██╔══██╗██║     ██╔════╝ ██╔══██╗████╗ ████║██╔════╝
-  // █████═╝ ██║   ██║██╔██╗ ██║      ██║  ███╗███████║██║     ██║  ███╗███████║██╔████╔██║█████╗
-  // ██╔═██╗ ██║   ██║██║╚██╗██║      ██║   ██║██╔══██║██║     ██║   ██║██╔══██║██║╚██╔╝██║██╔══╝
-  // ██║ ╚██╗╚██████╔╝██║ ╚████║      ╚██████╔╝██║  ██║███████╗╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗
-  // ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝
-  // `
 
   const asciiArt = `
 ██╗  ██╗██╗   ██╗███╗   ██╗       ██████╗  █████╗ ██╗
@@ -19,9 +11,10 @@ export const showMoeMessage = () => {
 ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═════╝ ╚═╝  ╚═╝╚══════╝
 `
 
+  // The `ascii` entry below carries a SANCTIONED EXCEPTION to 铁律 #1 (no
+  // gradients): the console startup banner's text gradient. Listed in
+  // CLAUDE.md; do NOT remove it in a no-gradient sweep.
   const styles = {
-    // Sanctioned exception to the no-gradient house rule: the console ASCII
-    // startup banner uses a text gradient (see CLAUDE.md iron rule #2).
     ascii: `
       font-family: monospace;
       font-weight: bold;

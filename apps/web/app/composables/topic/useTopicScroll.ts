@@ -1,16 +1,3 @@
-// Smooth-scroll to a topic reply (by floor) or comment (by id), optionally
-// flashing a brief highlight — the shared deep-link landing behaviour. Anchors:
-//   - reply wrapper: id="<floor>.<slug>" (Reply.vue) → matched by the `<floor>.`
-//     prefix, exact per floor (10. ≠ 1.).
-//   - comment row:   id="comment-<id>"   (Comment.vue).
-// Each returns whether the element was found, so the caller can surface a "target
-// may be deleted / off-page" hint instead of silently doing nothing.
-//
-// `flash` (default true) is the transient pulse used when posting / jumping to a
-// reply. The deep-link landing passes `false`: the target reply already carries a
-// PERSISTENT ring (Detail.vue's activeFloor → Reply.vue), so a transient flash on
-// top would just double the outline for a moment, then vanish. Client-only (uses
-// document); call from onMounted.
 const FLASH = ['outline-2', 'outline-offset-2', 'outline-primary', 'rounded-lg']
 
 const scrollTo = (el: HTMLElement, flash: boolean) => {

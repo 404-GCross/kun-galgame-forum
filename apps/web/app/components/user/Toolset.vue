@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// A user's authored Galgame 工具 (toolsets) — the 工具 chip of the Galgame group.
-// Reuses the shared ToolsetCard grid; data comes from GET /user/:id/toolsets
-// (the toolset list scoped to this author).
 const props = defineProps<{
   userId: number
 }>()

@@ -6,9 +6,6 @@ import {
   KUN_ADMIN_OVERVIEW_STATS_MODEL_MAP
 } from '~/constants/admin'
 
-// Mirrors the API's RequirePermission(admin.dashboard) gate on
-// /admin/overview/all + /admin/overview/stats — that route is permission-gated,
-// not RequireAdmin. UX guard — the real boundary is the API.
 definePageMeta({ middleware: 'permission', permissions: ['admin.dashboard'] })
 
 interface AdminOverviewAll {

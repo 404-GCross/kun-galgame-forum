@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// Topic 收藏 — a thin binding of the shared FavoriteToggle to the topic endpoint.
 const props = defineProps<{
   topicId: number
   favoriteCount: number

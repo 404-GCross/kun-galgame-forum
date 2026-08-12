@@ -1,9 +1,3 @@
-// Daily rollup of the windowed view stats (view_7d / view_30d) for galgame /
-// topic / galgame-quiz, plus a prune of old daily buckets. The forum has no
-// in-app scheduler, so this is a command an external scheduler runs once a day
-// (like cmd/image-refping).
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools view-rollup
 package main
 
 import (

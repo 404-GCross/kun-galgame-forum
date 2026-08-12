@@ -65,7 +65,6 @@ const startDrag = (e: MouseEvent | TouchEvent) => {
 
 const onDrag = (e: MouseEvent | TouchEvent) => {
   if (!isDragging.value) return
-  e.preventDefault()
   const currentX =
     e instanceof MouseEvent
       ? e.clientX
@@ -80,7 +79,11 @@ const onDrag = (e: MouseEvent | TouchEvent) => {
 const endDrag = () => {
   if (!isDragging.value) return
   if (Math.abs(dragOffset.value) > DRAG_THRESHOLD) {
-    dragOffset.value > 0 ? prevSlide() : nextSlide()
+    if (dragOffset.value > 0) {
+      prevSlide()
+    } else {
+      nextSlide()
+    }
   }
   isDragging.value = false
   dragOffset.value = 0
@@ -88,12 +91,20 @@ const endDrag = () => {
 }
 
 const manualSlide = (direction: 'next' | 'prev') => {
-  direction === 'next' ? nextSlide() : prevSlide()
+  if (direction === 'next') {
+    nextSlide()
+  } else {
+    prevSlide()
+  }
   startAutoplay()
 }
 
 watch(isOutside, (outside) => {
-  outside ? startAutoplay() : stopAutoplay()
+  if (outside) {
+    startAutoplay()
+  } else {
+    stopAutoplay()
+  }
 })
 
 onMounted(() => startAutoplay())
@@ -101,88 +112,91 @@ onBeforeUnmount(() => stopAutoplay())
 </script>
 
 <template>
-  <KunCard
-    :is-hoverable="false"
-    ref="carouselRef"
-    @mousedown="startDrag"
-    @mousemove="onDrag"
-    @mouseup="endDrag"
-    @mouseleave="endDrag"
-    @touchstart.passive="startDrag"
-    @touchmove.passive="onDrag"
-    @touchend="endDrag"
-    class-name="group relative cursor-grab overflow-hidden p-0"
-  >
-    <template v-if="pinnedPosts.length">
-      <div
-        class="flex"
-        :style="{
-          transform: `translateX(${-currentSlide * 100 + dragOffset}%)`,
-          transition: isDragging ? 'none' : 'transform 300ms ease-in-out'
-        }"
-      >
+  <KunCard :is-hoverable="false" class-name="overflow-hidden p-0">
+    <div
+      ref="carouselRef"
+      class="group relative cursor-grab touch-pan-y overflow-hidden"
+      @mousedown="startDrag"
+      @mousemove="onDrag"
+      @mouseup="endDrag"
+      @mouseleave="endDrag"
+      @dragstart.prevent
+      @touchstart.passive="startDrag"
+      @touchmove.passive="onDrag"
+      @touchend="endDrag"
+      @touchcancel="endDrag"
+    >
+      <template v-if="pinnedPosts.length">
         <div
-          v-for="(post, index) in pinnedPosts"
-          :key="post.path"
-          class="w-full flex-shrink-0"
+          class="flex"
+          :style="{
+            transform: `translateX(${-currentSlide * 100 + dragOffset}%)`,
+            transition: isDragging ? 'none' : 'transform 300ms ease-in-out'
+          }"
         >
-          <div class="relative h-40 w-full select-none">
-            <KunImageNative
-              :src="post.banner_url || '/kungalgame.webp'"
-              :alt="post.title"
-              :loading="index === 0 ? 'eager' : 'lazy'"
-              :fetchpriority="index === 0 ? 'high' : undefined"
-              class-name="pointer-events-none h-full w-full object-cover select-none"
-            />
-            <div
-              class="bg-content1/85 absolute right-0 bottom-0 left-0 m-2 space-y-1 rounded-lg p-2.5 backdrop-blur-sm"
-            >
-              <KunLink
-                underline="none"
-                class-name="text-foreground hover:text-primary text-base font-bold transition-colors"
-                :to="post.path"
+          <div
+            v-for="(post, index) in pinnedPosts"
+            :key="post.path"
+            class="w-full flex-shrink-0"
+          >
+            <div class="relative h-40 w-full select-none">
+              <KunImageNative
+                :src="post.banner_url || '/kungalgame.webp'"
+                :alt="post.title"
+                :loading="index === 0 ? 'eager' : 'lazy'"
+                :fetchpriority="index === 0 ? 'high' : undefined"
+                class-name="pointer-events-none h-full w-full object-cover select-none"
+              />
+              <div
+                class="bg-content1/85 absolute right-0 bottom-0 left-0 m-2 space-y-1 rounded-lg p-2.5 backdrop-blur-sm"
               >
-                <h2 class="line-clamp-1">{{ post.title }}</h2>
-              </KunLink>
-              <p class="text-default-700 line-clamp-2 text-xs">
-                {{ post.description }}
-              </p>
+                <KunLink
+                  underline="none"
+                  class-name="text-foreground hover:text-primary text-base font-bold transition-colors"
+                  :to="post.path"
+                >
+                  <h2 class="line-clamp-1">{{ post.title }}</h2>
+                </KunLink>
+                <p class="text-default-700 line-clamp-2 text-xs">
+                  {{ post.description }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <KunButton
-        :is-icon-only="true"
-        color="default"
-        variant="flat"
-        @click="manualSlide('prev')"
-        class-name="absolute hidden group-hover:flex top-1/2 left-2 -translate-y-1/2 rounded-full"
-      >
-        <KunIcon name="lucide:chevron-left" />
-      </KunButton>
-      <KunButton
-        :is-icon-only="true"
-        color="default"
-        variant="flat"
-        @click="manualSlide('next')"
-        class-name="absolute hidden group-hover:flex top-1/2 right-2 -translate-y-1/2 rounded-full"
-      >
-        <KunIcon name="lucide:chevron-right" />
-      </KunButton>
+        <KunButton
+          :is-icon-only="true"
+          color="default"
+          variant="flat"
+          @click="manualSlide('prev')"
+          class-name="absolute hidden group-hover:flex top-1/2 left-2 -translate-y-1/2 rounded-full"
+        >
+          <KunIcon name="lucide:chevron-left" />
+        </KunButton>
+        <KunButton
+          :is-icon-only="true"
+          color="default"
+          variant="flat"
+          @click="manualSlide('next')"
+          class-name="absolute hidden group-hover:flex top-1/2 right-2 -translate-y-1/2 rounded-full"
+        >
+          <KunIcon name="lucide:chevron-right" />
+        </KunButton>
 
-      <div class="absolute top-2 left-1/2 flex -translate-x-1/2 space-x-1.5">
-        <span
-          v-for="(_, index) in pinnedPosts"
-          :key="index"
-          class="h-1.5 w-1.5 rounded-full transition-colors"
-          :class="
-            currentSlide === index ? 'bg-foreground/50' : 'bg-foreground/20'
-          "
-        />
-      </div>
-    </template>
+        <div class="absolute top-2 left-1/2 flex -translate-x-1/2 space-x-1.5">
+          <span
+            v-for="(_, index) in pinnedPosts"
+            :key="index"
+            class="h-1.5 w-1.5 rounded-full transition-colors"
+            :class="
+              currentSlide === index ? 'bg-foreground/50' : 'bg-foreground/20'
+            "
+          />
+        </div>
+      </template>
 
-    <KunNull v-else description="暂时没有置顶文档" />
+      <KunNull v-else description="暂时没有置顶文档" />
+    </div>
   </KunCard>
 </template>

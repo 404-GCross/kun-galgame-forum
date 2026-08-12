@@ -12,7 +12,6 @@ const props = defineProps<{
 
 const user = computed(() => props.user)
 
-// Server-rendered list + client-only scrollspy (see useTopicTOC).
 const source = inject(TOPIC_TOC_SOURCE)!
 const { headings, activeIds } = useTopicTOC(source)
 
@@ -21,10 +20,9 @@ const headingItems = computed(() =>
 )
 const replyItems = computed(() => headings.value.filter((h) => h.type === 'reply'))
 
-// ── Scroll phase, read off the reply toolbar (#comments-anchor) ──────────────
 const TOP_BAR_OFFSET = 88
-const isPastPoll = ref(false) // poll/article scrolled above → collapse author+TOC
-const isPastReplyTool = ref(false) // toolbar scrolled above → show the jump button
+const isPastPoll = ref(false)
+const isPastReplyTool = ref(false)
 let ticking = false
 
 const updatePhase = () => {
@@ -48,15 +46,12 @@ const onScroll = () => {
   requestAnimationFrame(updatePhase)
 }
 
-// The anchor's scroll-mt-20 lands the toolbar below the fixed top bar.
 const scrollToReplyTool = () => {
   document
     .getElementById('comments-anchor')
     ?.scrollIntoView({ behavior: 'smooth' })
 }
 
-// ── Center the active run within ITS OWN scroll box (each section scrolls
-// separately now), never the page. ──────────────────────────────────────────
 const railRef = ref<HTMLElement | null>(null)
 
 const getScrollParent = (el: HTMLElement): HTMLElement | null => {
@@ -119,15 +114,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- Desktop-only rail. Block A (author + 文章目录) collapses once you scroll past
-       the poll into the replies, so block B (回复列表) takes the whole rail. Each
-       section has its OWN scroll box with a fixed header, so the 回复列表 title +
-       jump button stay put instead of the list scrolling under them. -->
   <div
     ref="railRef"
     class="sticky top-20 hidden max-h-[calc(100dvh-6rem)] w-52 shrink-0 flex-col gap-3 overflow-hidden lg:flex"
   >
-    <!-- Block A: author + 文章目录, smoothly collapsing (grid-rows trick). -->
     <div
       class="grid shrink-0 transition-all duration-500 ease-out"
       :class="
@@ -135,9 +125,6 @@ onBeforeUnmount(() => {
       "
     >
       <div class="flex min-h-0 flex-col items-center gap-3 overflow-hidden">
-        <!-- size="original" applies a fixed w-40 h-40; w-full widens it but the
-             h-40 would stay (→ squished). aspect-square + h-auto drop that fixed
-             height so it's a true full-width square the image fills. -->
         <KunAvatar
           :disable-floating="true"
           class-name="aspect-square h-auto w-full hover:scale-100"
@@ -169,11 +156,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Block B: 回复列表 — fixed header (title + jump button); items scroll BELOW
-         it (own scroll box), so the header never gets covered. -->
     <div v-if="replyItems.length" class="flex min-h-0 flex-1 flex-col">
-      <!-- Once block A has collapsed (scrolled into the replies), keep the author
-           visible here as a compact row: circular avatar · name · 萌萌点. -->
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
         enter-from-class="-translate-y-1 opacity-0"
@@ -206,8 +189,6 @@ onBeforeUnmount(() => {
         </KunLink>
       </Transition>
 
-      <!-- Only the jump button is fixed here; the 回复列表 title scrolls with the
-           list below (it lives inside the scroll box). -->
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
         enter-from-class="-translate-y-1 opacity-0"

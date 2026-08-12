@@ -1,15 +1,10 @@
 <script setup lang="ts">
-// The 动态 tab = a profile OVERVIEW (not an infinite feed): the latest few from
-// each section, each block linking to its full tab. Reuses the existing
-// per-section endpoints + the rich Galgame/评分 cards; text sections render as
-// compact rows via UserOverviewSection.
 const props = defineProps<{
   userId: number
 }>()
 
 const settings = usePersistSettingsStore()
 const uid = props.userId
-// How many items to preview per section.
 const N = 4
 
 const [topics, galgames, ratings, resources, replies, comments] = await Promise.all([

@@ -1,8 +1,5 @@
 package dto
 
-// Categories are the 3 fixed display groups (mirror the frontend headers).
-// oneof= in the validate tags below is the source of truth enforced per-request.
-
 type CreateRequest struct {
 	Category        string `json:"category" validate:"required,oneof=official galgame others"`
 	Name            string `json:"name" validate:"required,max=100"`
@@ -28,8 +25,6 @@ type DeleteRequest struct {
 	ID int `query:"id" validate:"required,min=1"`
 }
 
-// ReorderRequest carries one category's full new ordering (the dragged list of
-// ids, top → bottom). sort_order is rewritten to each id's index.
 type ReorderRequest struct {
 	Category string `json:"category" validate:"required,oneof=official galgame others"`
 	IDs      []int  `json:"ids" validate:"required,min=1,dive,min=1"`

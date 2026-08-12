@@ -1,4 +1,3 @@
-// Pure formatter — no Nuxt context needed, so the default happy-dom env is fine.
 import { describe, it, expect } from 'vitest'
 import { formatFuzzyDate } from './fuzzyDate'
 
@@ -7,7 +6,6 @@ describe('formatFuzzyDate', () => {
     expect(formatFuzzyDate(1990, 3, 4)).toBe('1990年3月4日')
     expect(formatFuzzyDate(1990, 3, null)).toBe('1990年3月')
     expect(formatFuzzyDate(1990, null, null)).toBe('1990年')
-    // The common 誕生日-without-birth-year case.
     expect(formatFuzzyDate(null, 3, 4)).toBe('3月4日')
     expect(formatFuzzyDate(null, 3, null)).toBe('3月')
   })
@@ -24,7 +22,6 @@ describe('formatFuzzyDate', () => {
   })
 
   it('treats out-of-range parts as absent', () => {
-    // Zero is what an unset backend int looks like once it stops being null.
     expect(formatFuzzyDate(0, 0, 0)).toBe('')
     expect(formatFuzzyDate(1990, 13, 4)).toBe('1990年')
     expect(formatFuzzyDate(1990, 3, 32)).toBe('1990年3月')

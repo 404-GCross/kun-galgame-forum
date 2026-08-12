@@ -40,7 +40,5 @@ export const getRankClasses = (index: number) => {
   if (index === 2) {
     return 'bg-info-400/20 border-info-500/50'
   }
-  // Past the podium: an opaque surface (like the other content cards) instead of
-  // a see-through row.
   return 'bg-content1'
 }

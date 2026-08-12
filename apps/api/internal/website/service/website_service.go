@@ -19,10 +19,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// marshalDomain produces a jsonb-compatible payload for the website's
-// alternate-domain list. The column is a jsonb default '[]', so we
-// always emit a JSON array (never null) — nil input becomes "[]" so
-// downstream readers don't crash on json.Unmarshal.
 func marshalDomain(domains []string) json.RawMessage {
 	if len(domains) == 0 {
 		return json.RawMessage("[]")
@@ -39,11 +35,8 @@ type WebsiteService struct {
 	categoryRepo *repository.CategoryRepository
 	tagRepo      *repository.TagRepository
 	userClient   *userclient.Client
-	// community serves the detail comment embed off the primitive (charter step
-	// 06a); the legacy galgame_website_comment reader was retired.
-	community *communityclient.Client
-	// cdnBase resolves a stored icon_image_hash into a full CDN URL on read.
-	cdnBase string
+	community    *communityclient.Client
+	cdnBase      string
 }
 
 func NewWebsiteService(
@@ -64,10 +57,6 @@ func NewWebsiteService(
 	}
 }
 
-// ──────────────────────────────────────────
-// GetList — GET /website
-// ──────────────────────────────────────────
-
 func (s *WebsiteService) GetList(isSFW bool) []dto.WebsiteCard {
 	rows := s.websiteRepo.FindAll(isSFW)
 	catMap := s.categoryRepo.FindNamesByIDs(collectCategoryIDs(rows))
@@ -75,12 +64,7 @@ func (s *WebsiteService) GetList(isSFW bool) []dto.WebsiteCard {
 	return websiteCardsFromRows(rows, catMap, levelMap, s.cdnBase)
 }
 
-// ──────────────────────────────────────────
-// Create — POST /website
-// ──────────────────────────────────────────
-
 func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *errors.AppError {
-	// Domain parse is left in place for parity with the old handler (unused).
 	_, _ = url.Parse(req.URL)
 
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -108,10 +92,6 @@ func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *erro
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// GetDetail — GET /website/:domain
-// ──────────────────────────────────────────
 
 func (s *WebsiteService) GetDetail(
 	ctx context.Context,
@@ -181,15 +161,8 @@ func (s *WebsiteService) GetDetail(
 	}, nil
 }
 
-// websiteDetailCommentCap bounds the SEO comment embed to the first page.
 const websiteDetailCommentCap = 20
 
-// resolveDetailComments returns the first page (≤20) of the website's community
-// comments for the detail response, mapped onto the existing WebsiteDetailComment
-// shape (id = post id, content = raw markdown rendered to plain text, identity
-// hydrated). BEST-EFFORT: any S2S error (or unconfigured client) yields an empty
-// slice + a warn — the detail page must always render (its only consumer is the
-// JSON-LD block).
 func (s *WebsiteService) resolveDetailComments(ctx context.Context, websiteID int) []dto.WebsiteDetailComment {
 	out := []dto.WebsiteDetailComment{}
 	thread, err := s.community.ResolveComments(ctx, communityclient.ResolveCommentsRequest{
@@ -213,7 +186,7 @@ func (s *WebsiteService) resolveDetailComments(ctx context.Context, websiteID in
 			break
 		}
 		if p.Status != communityclient.PostVisible {
-			continue // never embed a held/tombstoned post in the SEO block
+			continue
 		}
 		u := userMap[int(p.AuthorID)]
 		if !userclient.IsRenderable(u) {
@@ -233,10 +206,6 @@ func (s *WebsiteService) resolveDetailComments(ctx context.Context, websiteID in
 	}
 	return out
 }
-
-// ──────────────────────────────────────────
-// Update — PUT /website/:domain
-// ──────────────────────────────────────────
 
 func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError {
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -261,20 +230,12 @@ func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError 
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Delete — DELETE /website/:domain
-// ──────────────────────────────────────────
-
 func (s *WebsiteService) Delete(websiteID int) *errors.AppError {
 	if err := s.websiteRepo.DeleteByID(websiteID); err != nil {
 		return errors.ErrInternal("删除网站失败")
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Interactions — PUT /website/:domain/{like,favorite}
-// ──────────────────────────────────────────
 
 func (s *WebsiteService) ToggleLike(userID, websiteID int) *errors.AppError {
 	s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {

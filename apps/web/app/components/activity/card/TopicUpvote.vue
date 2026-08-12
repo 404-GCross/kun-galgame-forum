@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// 推话题 (TOPIC_UPVOTE) — a user pushed a topic. The shell shows who (avatar +
-// name + time); this card adds:
-//   top    — 推了这个话题，<blurb> (the user's one-liner, or a stable random
-//            default, in secondary — the playful "why I pushed it")
-//   middle — the pushed topic's title + preview (links to the topic)
-//   bottom — the same footer as the new-topic card (收藏 + reactions · 浏览 +
-//            查看详情). Reuses the topic enrichment payload (data), filled by the
-//            backend from the upvote's topic id.
 import { randomUpvoteDescription } from '~/constants/upvote'
 
 const props = defineProps<{ activity: ActivityItem }>()
@@ -17,9 +9,6 @@ const data = computed(
 const topicId = computed(() => data.value?.topic_id ?? 0)
 const covers = computed(() => (data.value?.cover_images ?? []).slice(0, 3))
 
-// The blurb: the user's one-liner, else a stable random default seeded by the
-// upvote id (uniqueId = "TOPIC_UPVOTE:<id>") — varies across the feed, never
-// flickers per item.
 const seed = computed(() => {
   const n = Number(props.activity.unique_id.split(':').pop())
   return Number.isFinite(n) ? n : topicId.value
@@ -28,7 +17,6 @@ const blurb = computed(
   () => props.activity.content || randomUpvoteDescription(seed.value)
 )
 
-// Per-viewer 收藏 + reaction state (the shared feed can't carry it).
 const { isFavorited, reactionKeysOf, ensureLoaded } = useMyTopicInteractions()
 onMounted(ensureLoaded)
 
@@ -83,10 +71,6 @@ provide(
         />
       </KunLink>
 
-      <!-- Footer: same shape as the new-topic card — reactions on their own row,
-           then 收藏 + reaction trigger on the left, 浏览 + 查看详情 on the right.
-           They used to share one row here, so the two topic cards in the same
-           feed wrapped differently. TopicReactionBar self-hides when empty. -->
       <div class="space-y-2">
         <TopicReactionBar />
 

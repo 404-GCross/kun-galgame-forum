@@ -1,14 +1,5 @@
 package catalogclient
 
-// Contract tests for the editing engine on the user-token plane — the
-// contributor lanes (wave 177) and the adjudication lanes (wave 178).
-// The axes are the ones a wrong implementation gets wrong SILENTLY: which
-// credential travels (a Basic header here would restore the S2S posture and
-// void the whole point), which fields do NOT travel (an actor or a site in the
-// body is a claim this plane does not make), and the error mapping — above all
-// the scope denial, the difference between "log out and back in" and "you are
-// not allowed".
-
 import (
 	"context"
 	"encoding/json"
@@ -20,7 +11,6 @@ import (
 	"testing"
 )
 
-// captured is what a recording fake saw on the one request it served.
 type captured struct {
 	method string
 	path   string
@@ -52,9 +42,6 @@ func userClient(baseURL string) *Client {
 	return New(Config{BaseURL: baseURL, ClientID: "cid", ClientSecret: "sec"})
 }
 
-// TestCreateEditProposalUser_TravelsAsTheUser: the bearer is the user's, the
-// path is the user plane, and the body carries NEITHER actor NOR site — the
-// catalog derives both from the token, and sending them would be a claim.
 func TestCreateEditProposalUser_TravelsAsTheUser(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"merged":false,`+
 		`"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal",`+
@@ -93,9 +80,6 @@ func TestCreateEditProposalUser_TravelsAsTheUser(t *testing.T) {
 	}
 }
 
-// An admin's token still automerges upstream — the roles ride IN the token, so
-// the plane does not decide the outcome and the merged shape must decode whole
-// (the revision included, or the caller cannot report what landed).
 func TestCreateEditProposalUser_DecodesAutomerge(t *testing.T) {
 	srv, _ := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"merged":true,`+
 		`"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},`+
@@ -126,8 +110,6 @@ func TestWithdrawEditProposalUser(t *testing.T) {
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
-	// The proposer is the token subject; a withdraw body that named an actor
-	// would be asking to close somebody else's proposal.
 	if _, ok := got.body["actor"]; ok {
 		t.Fatalf("withdraw must assert no actor: %v", got.body)
 	}
@@ -136,8 +118,6 @@ func TestWithdrawEditProposalUser(t *testing.T) {
 	}
 }
 
-// The schema projection is entity-aware but actor-FREE: uid, roles and site all
-// come off the token, so entity_id is the only query parameter there is.
 func TestGetEditSchemaUser(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"entity_type":"catalog.work",`+
 		`"fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline",`+
@@ -162,7 +142,6 @@ func TestGetEditSchemaUser(t *testing.T) {
 	}
 }
 
-// TestUserEditErrorMapping pins the branches the handler branches on.
 func TestUserEditErrorMapping(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -188,9 +167,6 @@ func TestUserEditErrorMapping(t *testing.T) {
 	}
 }
 
-// A policy denial and a validation failure must keep the upstream's own wording:
-// they are the reasons a contributor can act on, and collapsing them into a
-// sentinel is how an editor stops being able to say what was wrong.
 func TestUserEditKeepsActionableReplies(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -221,7 +197,6 @@ func TestUserEditKeepsActionableReplies(t *testing.T) {
 	}
 }
 
-// No token, no call: an empty access token is the caller's own dead session.
 func TestUserEditWithoutTokenNeverCalls(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
@@ -248,15 +223,6 @@ func TestUserEditUnconfigured(t *testing.T) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 }
-
-// ── the adjudication lanes (wave 178) ──
-//
-// These moved onto the token because the catalog now derives ENTITY OWNERSHIP
-// from it, which was the one input the forum used to have to assert. So the
-// axis here is the same one as above and one more: the amend/merge/decline/
-// revert bodies must carry the operation and nothing about who is performing
-// it — no actor, and (revert) no site either, since the acting tenant is the
-// token's too.
 
 func TestAmendEditProposalUser(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":1,"seq":1,`+
@@ -289,9 +255,6 @@ func TestAmendEditProposalUser(t *testing.T) {
 	}
 }
 
-// An empty delta must not put empty `set` / `unset` keys on the wire — the
-// engine reads a present-but-empty unset as "reject nothing" vs absent, and
-// the note is optional in the same way.
 func TestAmendEditProposalUserOmitsEmptyParts(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7}}`)
 	if _, err := userClient(srv.URL).AmendEditProposalUser(context.Background(), "user-jwt", 7,
@@ -326,8 +289,6 @@ func TestMergeEditProposalUser(t *testing.T) {
 	if got.body["note"] != "looks right" {
 		t.Fatalf("note lost: %v", got.body)
 	}
-	// The amender is what marks a reviewer correction on the merged notice, so
-	// it has to survive the decode.
 	if rev.Seq != 4 || rev.AmenderUID == nil || *rev.AmenderUID != 42 {
 		t.Fatalf("revision decoded wrong: %+v", rev)
 	}
@@ -377,7 +338,6 @@ func TestRevertEditEntityUser(t *testing.T) {
 	if _, ok := got.body["actor"]; ok {
 		t.Fatalf("the user plane asserts no actor: %v", got.body)
 	}
-	// The acting tenant comes off the token like everything else.
 	if _, ok := got.body["site"]; ok {
 		t.Fatalf("the user plane asserts no site: %v", got.body)
 	}
@@ -390,9 +350,6 @@ func TestRevertEditEntityUser(t *testing.T) {
 	}
 }
 
-// The detail read is a GET with no body, and it must decode the two parts only
-// the detail carries: the amendment log and the effective patch (what a merge
-// would actually land, which is what the workbench predicts can_decide from).
 func TestGetEditProposalUser(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":7,`+
 		`"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,`+
@@ -422,8 +379,6 @@ func TestGetEditProposalUser(t *testing.T) {
 	}
 }
 
-// Every new lane shares the error taxonomy — above all the scope denial, which
-// is the only 403 a user can fix themselves.
 func TestUserEditAdjudicationErrorMapping(t *testing.T) {
 	lanes := map[string]func(c *Client) error{
 		"amend": func(c *Client) error {
@@ -467,8 +422,6 @@ func TestUserEditAdjudicationErrorMapping(t *testing.T) {
 				}
 			})
 		}
-		// A plain permission denial and a closed proposal keep the upstream's own
-		// wording and status — a maintainer has to be able to read why.
 		t.Run(lane+"/plain denial", func(t *testing.T) {
 			srv, _ := recordingServer(t, http.StatusForbidden, `{"code":233,"message":"field review denied"}`)
 			err := call(userClient(srv.URL))
@@ -491,7 +444,6 @@ func TestUserEditAdjudicationErrorMapping(t *testing.T) {
 	}
 }
 
-// No token, no call — on every new lane too.
 func TestUserEditAdjudicationWithoutTokenNeverCalls(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
@@ -514,7 +466,6 @@ func TestUserEditAdjudicationWithoutTokenNeverCalls(t *testing.T) {
 	}
 }
 
-// An unconfigured client refuses before the token is even considered.
 func TestUserEditAdjudicationUnconfigured(t *testing.T) {
 	c := New(Config{})
 	if _, err := c.MergeEditProposalUser(context.Background(), "user-jwt", 7, ""); !errors.Is(err, ErrNotConfigured) {

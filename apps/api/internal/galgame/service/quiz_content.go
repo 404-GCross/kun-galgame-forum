@@ -7,13 +7,6 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// This file owns the quiz `content` JSONB payload: its per-type shape, the
-// server-side validation on create, the answer-key stripping for read paths,
-// and the grading. The correct-answer key lives only in the stored `content`
-// and is NEVER sent to a client that has not answered — grading happens here,
-// on the server.
-
-// Stored `content` shapes (authored payload, incl. the answer key).
 type (
 	quizSingleContent struct {
 		Options []string `json:"options"`
@@ -37,7 +30,6 @@ type (
 	}
 )
 
-// Submitted answer shapes (from the client).
 type (
 	quizSingleSubmit struct {
 		Value int `json:"value"`
@@ -56,7 +48,6 @@ type (
 	}
 )
 
-// Quiz type constants.
 const (
 	quizTypeSingle   = "single"
 	quizTypeMultiple = "multiple"
@@ -65,8 +56,6 @@ const (
 	quizTypeEssay    = "essay"
 )
 
-// validateQuizContent shape-checks an authored payload against its type. Keeps
-// garbage / unanswerable questions out of the table.
 func validateQuizContent(qtype string, raw json.RawMessage) *errors.AppError {
 	switch qtype {
 	case quizTypeSingle:
@@ -128,8 +117,6 @@ func validateQuizContent(qtype string, raw json.RawMessage) *errors.AppError {
 	return nil
 }
 
-// stripQuizContent returns the PUBLIC payload safe to send before answering —
-// options are kept (they are the question), the answer key is dropped.
 func stripQuizContent(qtype string, raw json.RawMessage) json.RawMessage {
 	switch qtype {
 	case quizTypeSingle:
@@ -144,13 +131,11 @@ func stripQuizContent(qtype string, raw json.RawMessage) json.RawMessage {
 		var c quizFillContent
 		_ = json.Unmarshal(raw, &c)
 		return mustJSON(map[string]any{"blank_count": len(c.Blanks)})
-	default: // judge / essay carry no pre-answer payload
+	default:
 		return json.RawMessage("{}")
 	}
 }
 
-// gradeQuiz grades a submitted answer against the stored content. Returns
-// (nil, nil) for essay (ungraded). A malformed submission is a 400.
 func gradeQuiz(qtype string, content, submitted json.RawMessage) (*bool, *errors.AppError) {
 	switch qtype {
 	case quizTypeSingle:
@@ -189,15 +174,11 @@ func gradeQuiz(qtype string, content, submitted json.RawMessage) (*bool, *errors
 			}
 		}
 		return boolPtr(true), nil
-	default: // essay — not graded
+	default:
 		return nil, nil
 	}
 }
 
-// quizAnswerSummary renders a short preview of what the answerer submitted, for
-// the quiz author's notification. Choice questions surface the chosen option
-// text (per the product ask); fill shows the filled text; judge/essay are
-// summarized. Best-effort — a malformed submission yields "".
 func quizAnswerSummary(qtype string, content, submitted json.RawMessage) string {
 	switch qtype {
 	case quizTypeSingle:
@@ -235,11 +216,6 @@ func quizAnswerSummary(qtype string, content, submitted json.RawMessage) string 
 	return ""
 }
 
-// quizContentModerationText extracts every AUTHORED free-text fragment from a
-// quiz's stored `content` JSONB (trust wave 2, surface 6): single/multiple option
-// texts, each fill blank's accepted answers, and the essay reference. judge
-// carries no free text. Malformed JSON yields "" (best-effort). The answer key
-// (indexes/booleans) is intentionally not text and is skipped.
 func quizContentModerationText(qtype string, raw json.RawMessage) string {
 	switch qtype {
 	case quizTypeSingle:
@@ -262,15 +238,11 @@ func quizContentModerationText(qtype string, raw json.RawMessage) string {
 		var c quizEssayContent
 		_ = json.Unmarshal(raw, &c)
 		return c.Reference
-	default: // judge — no free text
+	default:
 		return ""
 	}
 }
 
-// quizAnswerModerationText extracts the free-text a user SUBMITTED (trust wave 2,
-// surface 7): fill blank values + the essay answer. Choice/judge submissions are
-// indexes/booleans (no text) → "". An empty result means the answer carries no
-// user text and both check + scan are skipped by the caller.
 func quizAnswerModerationText(qtype string, submitted json.RawMessage) string {
 	switch qtype {
 	case quizTypeFill:
@@ -281,12 +253,11 @@ func quizAnswerModerationText(qtype string, submitted json.RawMessage) string {
 		var s quizEssaySubmit
 		_ = json.Unmarshal(submitted, &s)
 		return strings.TrimSpace(s.Text)
-	default: // single / multiple / judge — index/boolean answers, no free text
+	default:
 		return ""
 	}
 }
 
-// quizOptionLabel renders "A. <text>" for the i-th option (out-of-range → "?").
 func quizOptionLabel(options []string, i int) string {
 	if i < 0 || i >= len(options) {
 		return "?"
@@ -294,12 +265,6 @@ func quizOptionLabel(options []string, i int) string {
 	return string(rune('A'+i)) + ". " + options[i]
 }
 
-// ──────────────────────────────────────────
-// helpers
-// ──────────────────────────────────────────
-
-// normalizeFillAnswer canonicalizes a fill-in answer for comparison: trims,
-// lowercases, and drops all whitespace so "Fate stay night" == "fatestaynight".
 func normalizeFillAnswer(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	return strings.Join(strings.Fields(s), "")
@@ -327,8 +292,6 @@ func hasNonEmpty(ss []string) bool {
 	return false
 }
 
-// intSetEqual reports whether two int slices hold the same set (order- and
-// duplicate-insensitive).
 func intSetEqual(a, b []int) bool {
 	set := make(map[int]struct{}, len(a))
 	for _, v := range a {

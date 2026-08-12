@@ -7,8 +7,6 @@ const props = withDefaults(
   { className: '', forceExpanded: false }
 )
 
-// Desktop is ALWAYS the icon rail (the expanded desktop form was retired); only
-// the mobile drawer passes force-expanded to get the full nav. No collapse toggle.
 const isCollapsed = computed(() => !props.forceExpanded)
 
 const links = [
@@ -75,14 +73,6 @@ const links = [
         </KunLink>
       </template>
 
-      <!--
-        Sole NSFW toggle entry point (in addition to /user/:id/setting).
-        Always rendered directly under the brand so visitors immediately
-        see whether SFW filtering is hiding content — danger card when
-        off, success card when on. Mobile hamburger reuses this whole
-        component via force-expanded=true, so the expanded card form is
-        what mobile users get.
-      -->
       <KunLayoutSidebarNSFWToggle :is-collapsed="isCollapsed" />
 
       <Transition name="sidebar-switch" mode="out-in">

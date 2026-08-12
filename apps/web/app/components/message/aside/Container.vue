@@ -1,9 +1,6 @@
 <script setup lang="ts">
 const routeName = computed(() => useRoute().name)
 
-// SSR these so the aside renders with its items on first paint instead of
-// flashing empty. useKunFetch forwards the session cookie on SSR (see kunFetch
-// onRequest), so the authed nav fetch resolves server-side.
 const { data: systemNav } = useKunFetch<ChatMessageAsideItem[]>(
   '/message/nav/system'
 )
@@ -11,17 +8,6 @@ const { data: contactNav } = useKunFetch<ChatMessageAsideItem[]>(
   '/message/nav/contact'
 )
 
-// Render the chat list straight off this per-request fetch (exactly like
-// `system` below), NOT through a watch into the shared asideItems store. A
-// watch can't populate the list during SSR: on the server, watch callbacks run
-// only for the immediate tick — before the fetch resolves — and post-resolve
-// reactive changes don't fire, so the list rendered empty server-side and only
-// filled in after client hydration. Reading the fetch directly makes it SSR.
-//
-// The `as` casts pin the element type: useKunFetch's shared transform unwraps
-// every endpoint's `data`, so TS widens it toward `{}` (and Nuxt's generated
-// useFetch types can transiently resolve to `{}` mid-regeneration), which
-// otherwise flags `system[0]` / the `room` loop as un-indexable.
 const system = computed(() => systemNav.value as ChatMessageAsideItem[] | null)
 const contact = computed(
   () => (contactNav.value as ChatMessageAsideItem[] | null) ?? []

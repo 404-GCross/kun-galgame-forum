@@ -2,17 +2,13 @@ package model
 
 import "time"
 
-// ──────────────────────────────────────────
-// Notification messages
-// ──────────────────────────────────────────
 
-// Message is a user-to-user notification (like, reply, comment, etc).
 type Message struct {
 	ID         int    `gorm:"primaryKey;autoIncrement" json:"id"`
 	Content    string `gorm:"type:varchar(233);default:''" json:"content"`
 	Link       string `gorm:"type:varchar(100);default:''" json:"link"`
 	Status     string `gorm:"default:'unread'" json:"status"`
-	Type       string `gorm:"not null" json:"type"` // upvoted, liked, favorite, replied, commented, expired, solution, pin-reply, requested, merged, declined, mentioned, admin
+	Type       string `gorm:"not null" json:"type"`
 
 	SenderID   int `gorm:"column:sender_id;not null" json:"sender_id"`
 	ReceiverID int `gorm:"column:receiver_id;not null" json:"receiver_id"`
@@ -23,11 +19,6 @@ type Message struct {
 
 func (Message) TableName() string { return "message" }
 
-// SystemMessage is a broadcast from admin with multi-language content.
-//
-// Per-user read state lives in SystemMessageReadState (HWM cursor) —
-// the old row-level `status` field was dropped in migration 012 because
-// it was global across all users (one click marked everyone as read).
 type SystemMessage struct {
 	ID          int    `gorm:"primaryKey;autoIncrement" json:"id"`
 	ContentEnUS string `gorm:"column:content_en_us;type:text;default:''" json:"content_en_us"`
@@ -35,7 +26,7 @@ type SystemMessage struct {
 	ContentZhCN string `gorm:"column:content_zh_cn;type:text;default:''" json:"content_zh_cn"`
 	ContentZhTW string `gorm:"column:content_zh_tw;type:text;default:''" json:"content_zh_tw"`
 
-	UserID int `gorm:"column:user_id;not null" json:"user_id"` // sender (admin)
+	UserID int `gorm:"column:user_id;not null" json:"user_id"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
@@ -43,9 +34,6 @@ type SystemMessage struct {
 
 func (SystemMessage) TableName() string { return "system_message" }
 
-// SystemMessageReadState is the per-user "read up to" cursor for the
-// admin broadcast stream. Mirrors GalgameMessageReadState (model and
-// migration 008) — see migrations/012 for the rationale.
 type SystemMessageReadState struct {
 	UserID            int       `gorm:"column:user_id;primaryKey" json:"user_id"`
 	LastReadMessageID int64     `gorm:"column:last_read_message_id;default:0" json:"last_read_message_id"`
@@ -54,9 +42,6 @@ type SystemMessageReadState struct {
 
 func (SystemMessageReadState) TableName() string { return "system_message_read_state" }
 
-// ──────────────────────────────────────────
-// Chat system
-// ──────────────────────────────────────────
 
 type ChatRoom struct {
 	ID                    int        `gorm:"primaryKey;autoIncrement" json:"id"`

@@ -5,34 +5,10 @@ import {
   KUN_GALGAME_CHARACTER_SPOILER_MAP
 } from '~/constants/galgameCharacter'
 
-// 登场角色: the game's cast, from the catalog's character roster. The backend
-// hands it over already merged (appearance edges ∪ voice credits) and already
-// ordered (主角 → 配角 → 登场 → 未分类, then by name), so nothing here re-sorts.
-//
-// THREE surfaces, because the registry gives three different amounts of
-// material and one grid would have to lie about that:
-//
-//   · a large card for each character with a 全身立绘. Those arrive from one
-//     source only — Getchu, whose product pages give standing art to the
-//     characters the box is selling — so in practice this row is the leads.
-//     That correlation is why they get the space; it is NOT stated as a fact,
-//     because the catalog has no such field and the reader would take a 攻略
-//     label as one.
-//   · a dense BUST grid for everyone else with a picture. Busts are cropped
-//     3:4 upstream and a figure is not, so mixing the two in one grid is what
-//     made the old panel look broken — here each shape gets its own surface.
-//   · a plain name list for the rest. A character with no picture is still
-//     part of the cast, and her 声优 is the same fact it always was.
-//
-// Clicking anyone — tile, card or name — opens the same modal.
 const props = defineProps<{
   characters: GalgameDetailCharacter[]
 }>()
 
-// A spoiler here is the character's PRESENCE, so blurring the picture would not
-// help — the name gives it away just as fast. They are withheld from all three
-// surfaces and revealed together, on one explicit click. Only the VNDB lane
-// populates the level, so 0 means "nobody flagged this" rather than "safe".
 const isSpoilerRevealed = ref(false)
 const visible = computed(() =>
   isSpoilerRevealed.value
@@ -51,16 +27,8 @@ const nameOnly = computed(() =>
   visible.value.filter((c) => !c.figure && !c.image)
 )
 
-// Tiles load the `mini` variant (both catalog presets generate one). The bust
-// preset COVER-crops to 256×360, so a bust tile is safely 3:4 whatever the
-// original was; the figure preset fits INSIDE 360×360, so a figure keeps the
-// original's ratio and the frame has to be told what that is.
 const thumbOf = (url: string) => withImageVariant(url, 'mini')
 
-// One ratio for the whole 立绘 row rather than one per card — see artGridRatio.
-// Square is the fallback because it is the shape most Getchu standing art
-// arrives in, and it is only reached when image_service answered for none of
-// them.
 const figureRatio = computed(() =>
   artGridRatio(
     featured.value.map((c) => c.figure_meta),
@@ -68,10 +36,6 @@ const figureRatio = computed(() =>
   )
 )
 
-// Two rows of the widest bust grid. A long-running series' roster runs to
-// dozens of characters, and the panel sits above the screenshots — it must not
-// become the page. The figure cards are never collapsed: there are rarely more
-// than a handful, and they are the reason to look at this panel at all.
 const COLLAPSED_PORTRAITS = 12
 const isExpanded = ref(false)
 const isCollapsible = computed(
@@ -84,9 +48,6 @@ const visiblePortraits = computed(() =>
 )
 
 const kindText = (kind: string) => KUN_GALGAME_CHARACTER_KIND_MAP[kind] || ''
-// 配角 / 登场 are ordinary rows; only the main cast is coloured. An unmapped
-// billing (the catalog's `unknown`, and anything a future wave adds) draws no
-// badge at all rather than a 未知 chip nobody asked for.
 const kindColor = (kind: string) =>
   KUN_GALGAME_CHARACTER_KIND_COLOR[kind] || 'default'
 
@@ -123,10 +84,6 @@ const open = (character: GalgameDetailCharacter) => {
       </KunButton>
     </div>
 
-    <!-- The 立绘 cards. A standing figure is a tall-ish drawing on a flat
-         field and arrives at whatever ratio the source drew it, so the frame is
-         square and the art is CONTAINED in it: the picture keeps its own shape
-         and the leftover is quiet background rather than a cropped torso. -->
     <div
       v-if="featured.length"
       class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
@@ -182,8 +139,6 @@ const open = (character: GalgameDetailCharacter) => {
       </button>
     </div>
 
-    <!-- Everyone else with a picture. Busts only, so every frame here is the
-         same 3:4 and can be safely cover-cropped. -->
     <div
       v-if="visiblePortraits.length"
       class="grid grid-cols-3 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))]"
@@ -258,9 +213,6 @@ const open = (character: GalgameDetailCharacter) => {
       }}
     </KunButton>
 
-    <!-- The cast the registry has no picture for. Same rows, no tiles — the
-         alternative was a grid of empty frames, which says "missing" far louder
-         than it says "character". -->
     <div v-if="nameOnly.length" class="space-y-1.5">
       <p
         v-if="featured.length || visiblePortraits.length"

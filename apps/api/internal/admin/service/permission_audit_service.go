@@ -17,8 +17,6 @@ const (
 	auditMaxLimit     = 100
 )
 
-// PermissionAuditService serves the append-only permission-override audit read,
-// enriching each row's operator with display info (best-effort attribution).
 type PermissionAuditService struct {
 	repo       *repository.PermissionAuditRepository
 	userClient *userclient.Client
@@ -28,9 +26,6 @@ func NewPermissionAuditService(repo *repository.PermissionAuditRepository, userC
 	return &PermissionAuditService{repo: repo, userClient: userClient}
 }
 
-// List returns one page of audit rows (newest first) with an operator attribution
-// map. page/limit are sanitized (page ≥ 1; limit default 30, capped at 100). A DB
-// read error propagates; the operator lookup is best-effort (failure → empty map).
 func (s *PermissionAuditService) List(ctx context.Context, page, limit int) (dto.PermissionAuditPage, error) {
 	if page < 1 {
 		page = 1
@@ -52,9 +47,6 @@ func (s *PermissionAuditService) List(ctx context.Context, page, limit int) (dto
 	}, nil
 }
 
-// operatorMap resolves the distinct operator ids to display users (keyed by the
-// decimal-string uid), best-effort: a failed OAuth batch degrades to an empty map
-// and the UI falls back to "用户 #id".
 func (s *PermissionAuditService) operatorMap(ctx context.Context, rows []model.PermissionAuditLog) map[string]dto.PermissionAuditUser {
 	out := make(map[string]dto.PermissionAuditUser)
 	if s.userClient == nil || len(rows) == 0 {
@@ -79,8 +71,6 @@ func (s *PermissionAuditService) operatorMap(ctx context.Context, rows []model.P
 	return out
 }
 
-// auditItems maps the model rows into the wire items (before/after delta sets +
-// RFC3339 timestamp), always as a non-nil slice.
 func auditItems(rows []model.PermissionAuditLog) []dto.PermissionAuditItem {
 	out := make([]dto.PermissionAuditItem, 0, len(rows))
 	for _, r := range rows {

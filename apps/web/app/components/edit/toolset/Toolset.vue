@@ -44,10 +44,6 @@ const handleSubmit = async () => {
   }
 
   isSubmitting.value = true
-  // POST /toolset returns the full created toolset row (CreatedToolsetResponse
-  // = the GalgameToolset model), NOT a bare id. Read `.id` off it — interpolating
-  // the whole object into the URL yielded `/toolset/[object Object]`, which the
-  // detail page parsed to NaN and rendered as "未找到该工具资源".
   const created = await kunFetch<{ id: number }>('/toolset', {
     method: 'POST',
     body: form
@@ -60,9 +56,6 @@ const handleSubmit = async () => {
   }
 }
 
-// Blank entries are dropped: ''.split(',') yields [''], and an empty string
-// fails the schema's z.url() check, so clearing the link field used to block
-// the whole submit with a confusing "无效的 URL".
 const handleUpdatePageLink = (value: string | number) => {
   form.homepage = value
     .toString()

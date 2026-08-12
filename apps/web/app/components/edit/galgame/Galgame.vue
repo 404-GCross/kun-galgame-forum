@@ -1,32 +1,8 @@
 <script setup lang="ts">
-// Submission form for the "new galgame" flow (POST /galgame/submit),
-// presented as a 4-step wizard:
-//   ① 基本信息   游戏名 ×4 + 别名
-//   ② 游戏介绍   多语言 Markdown 编辑器
-//   ③ 分级与元数据  内容分级 / 年龄分级 / 原始语言
-//   ④ 预览图与提交  banner 上传 + 提交
-//
-// All field state lives in usePersistEditGalgameStore + localforage
-// (banner), so the stepper is purely presentational — every panel stays
-// mounted via v-show (no Milkdown remount churn, all sub-component state
-// preserved across step switches) and step navigation is free-form.
-// Validation happens once at submit time inside EditGalgameFooter.
-//
-// No VNDB ID field: the wiki has run `sync-vndb --full`, so every
-// VNDB-listed work is already a claimable status=2 draft. Anything
-// reaching THIS form is by definition NOT in VNDB (original / doujin /
-// indie); VNDB works go through the publish wizard's claim flow.
 
 import { useLocalStorage } from '@vueuse/core'
 import { languageItems } from '~/constants/edit'
 
-// Field content is already auto-saved as a local draft:
-//   - text fields → usePersistEditGalgameStore (pinia persist → localStorage)
-//   - banner image → useLocalforage saveImage/getImage (localforage/IndexedDB)
-// The only thing not persisted was the wizard position, so a reload bounced
-// the user back to step ① with their (preserved) content. Persist the step
-// too so the draft truly resumes where they left off. Cleared by
-// EditGalgameFooter on successful submit (alongside the store/image reset).
 const { name } = storeToRefs(usePersistEditGalgameStore())
 
 const introductionLanguage = ref<Language>('zh-cn')
@@ -40,9 +16,6 @@ const steps = [
 
 const totalSteps = steps.length
 
-// useLocalStorage is SSR-safe (returns the default on the server) and
-// reactive both ways. Guard against a stale out-of-range value (e.g. the
-// step count changed between visits).
 const step = useLocalStorage('kun-galgame-publish-step', 1)
 onMounted(() => {
   if (step.value < 1 || step.value > totalSteps) {
@@ -95,7 +68,6 @@ const goto = (n: number) => {
           description="Galgame 资料库已全量同步 VNDB。VNDB 收录的作品请回到「发布 Galgame」向导按名称搜索并认领, 不要在此重复提交。确实搜不到的原创 / 同人 / 独立作品再用本表单。"
         />
 
-        <!-- Step indicator: clickable, free navigation -->
         <nav class="flex items-center">
           <template v-for="(s, i) in steps" :key="s.n">
             <button
@@ -139,7 +111,6 @@ const goto = (n: number) => {
 
         <KunDivider />
 
-        <!-- ① 基本信息 -->
         <section v-show="step === 1" class="space-y-6">
           <div class="space-y-2">
             <h2 class="text-xl">游戏名</h2>
@@ -165,7 +136,6 @@ const goto = (n: number) => {
           </EditGalgameStepHelp>
         </section>
 
-        <!-- ② 游戏介绍 -->
         <section v-show="step === 2" class="space-y-4">
           <div class="space-y-1">
             <h2 class="text-xl">游戏介绍</h2>
@@ -192,7 +162,6 @@ const goto = (n: number) => {
           </EditGalgameStepHelp>
         </section>
 
-        <!-- ③ 分级与元数据 -->
         <section v-show="step === 3" class="space-y-6">
           <EditGalgameContentLimit type="create" />
           <EditGalgameMeta />
@@ -203,7 +172,6 @@ const goto = (n: number) => {
           />
         </section>
 
-        <!-- ④ 预览图与提交 -->
         <section v-show="step === 4" class="space-y-4">
           <EditGalgameBanner />
           <EditGalgameStepHelp title="预览图要求">
@@ -217,7 +185,6 @@ const goto = (n: number) => {
 
         <KunDivider />
 
-        <!-- Navigation -->
         <div class="flex items-center justify-between gap-3">
           <KunButton
             variant="flat"

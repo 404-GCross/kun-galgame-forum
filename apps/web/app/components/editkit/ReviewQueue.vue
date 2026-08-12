@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// The review queue's list shell: status filter tabs + the proposal list with
-// an empty state. Each row renders through the host's #item slot (falling
-// back to a bare ProposalCard), so entity naming stays a host concern.
 import { computed } from 'vue'
 import type { KunTabItem } from '@kungal/ui-vue'
 import type { EditProposal, EditUser } from './types'

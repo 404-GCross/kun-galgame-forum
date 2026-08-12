@@ -15,7 +15,6 @@ const { id } = usePersistUserStore()
 const canEditWebsite = useCan('website.edit')
 const canDeleteWebsite = useCan('website.delete')
 
-// Tag the outbound 访问网站 jump with utm_source=<current domain>.
 const utmLink = useUtmLink()
 
 const isLiked = ref(props.website.is_liked)
@@ -26,8 +25,6 @@ const loadingStates = reactive<Record<ActionType, boolean>>({
   delete: false
 })
 
-// Like is an optimistic toggle (KunReaction flips the model + count before
-// @change fires); undo on failure / when signed out.
 const likePending = ref(false)
 const revertLike = (next: boolean) => {
   isLiked.value = !next

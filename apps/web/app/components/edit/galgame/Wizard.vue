@@ -1,28 +1,4 @@
 <script setup lang="ts">
-// Publish wizard — the first stop in the "发布 Galgame" flow. Goal: keep
-// duplicate submissions out of the moderation queue by surfacing existing
-// records before the user fills out a full form.
-//
-// Two paths only (VNDB-id precise lookup was removed — the registry holds the
-// full VNDB set as unpublished drafts, so a name search already surfaces them;
-// users don't need to know VNDB ids):
-//   1. Search by name → resolve to one of:
-//        live     → 前往发布资源 (/galgame/:gid)
-//        draft    → 认领并发布 (POST /:gid/claim, +3 萌萌点)
-//        pending  → 他人投稿审核中, no action (see below)
-//   2. Nothing matches → 新建申请 → /edit/galgame/create
-//
-// Both halves are the registry's. `pending` is the caller's own backlog off the
-// per-user claim face; `items` is the registry search with
-// claim_state=live,draft,pending.
-//
-// `pending` in that list is the one worth explaining: it is somebody ELSE's
-// submission awaiting review. The wizard has to SHOW it — an entry it hides is
-// an entry that gets submitted twice, which is the whole failure this screen
-// exists to prevent — but 认领 on it would be refused, so the row is labelled
-// 审核中 and offers no action. Until the projector separates the two, such rows
-// arrive as `draft` instead and behave as they always did: the 认领 attempt is
-// what discovers the difference.
 
 interface SearchHit {
   id: number
@@ -47,8 +23,6 @@ const hasSearched = ref(false)
 const isSearching = ref(false)
 const searchResults = ref<WizardSearchResp | null>(null)
 
-// State badge + wire-name resolution are shared (shared/utils/
-// galgameClaimState.ts). Fallback (VNDB id / #id) computed per call site.
 const nameOfHit = (h: SearchHit): string =>
   galgameNameFromWire(h, h.vndb_id ? `VNDB ${h.vndb_id}` : `#${h.id}`)
 
@@ -61,8 +35,6 @@ const handleSearch = async () => {
     return
   }
   isSearching.value = true
-  // The session identifies the caller, which is what makes the `pending` half
-  // personal — it is their own claim history, not a filter over the search.
   const res = await kunFetch<WizardSearchResp>('/galgame/search/wizard', {
     method: 'GET',
     query: { q: q.value.trim(), limit: 12 }
@@ -93,8 +65,6 @@ const handleClaim = async (gid: number) => {
   }
 }
 
-// Carry the typed name over to the create form so the user doesn't
-// re-type it.
 const handleCreateNew = async () => {
   const store = usePersistEditGalgameStore()
   if (q.value.trim() && !store.name['zh-cn']) {
@@ -111,8 +81,6 @@ const noMatches = computed(
     !searchResults.value.pending?.length
 )
 
-// Arrived from a calendar "未发布" card (/edit/galgame/publish?q=<name>):
-// pre-fill + auto-search so the clicked draft surfaces straight away for 认领.
 const route = useRoute()
 onMounted(() => {
   const pre = route.query.q
@@ -162,7 +130,6 @@ onMounted(() => {
     </div>
 
     <div v-if="searchResults" class="space-y-4">
-      <!-- pending: the caller's OWN backlog, most actionable, shown first -->
       <div
         v-if="searchResults.pending && searchResults.pending.length"
         class="space-y-2"
@@ -196,15 +163,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!--
-        items: search hits. The registry surfaces unpublished entries too, so
-        the action MUST branch on claim_state:
-          live    → 前往发布资源
-          draft   → 认领并发布 (a draft has no public page; a blanket detail
-                    link would 404)
-          pending → somebody else's submission under review: shown so it is not
-                    submitted twice, but there is nothing this user may do to it
-      -->
       <div v-if="searchResults.items.length" class="space-y-2">
         <h3 class="text-default-700 text-sm font-bold">匹配的 Galgame</h3>
         <div

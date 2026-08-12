@@ -9,8 +9,6 @@ import type {
   PropertyValue
 } from 'schema-dts'
 
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -155,9 +153,6 @@ if (data.value) {
 
 <template>
   <div>
-    <!-- Single real root box, NOT `display: contents` (see user.vue): a box-less
-         root trips Nuxt's "does not have a single root node" and skips the
-         page-transition enter, so the page teleports in. -->
     <GalgameRatingDetail
       v-if="data"
       :data="data"

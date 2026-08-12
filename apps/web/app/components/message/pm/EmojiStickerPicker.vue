@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// Chat emoji + sticker picker. Emits `emoji` (inserted at the textarea caret by
-// the parent) and `sticker` (sent immediately as its own message). Reuses the
-// shared emoji data + sticker URL scheme (also used by the editor's upload
-// adapter), so there's a single source of truth for both. The segmented pill
-// toggle is a deliberately cleaner take than kun-galgame-patch's underlined tab.
 import { emojiArray } from '~/constants/emoji'
 import { stickerArray } from '~/constants/sticker'
 
@@ -17,7 +12,6 @@ const tab = ref<'emoji' | 'sticker'>('emoji')
 
 <template>
   <div class="w-72 p-2 sm:w-80">
-    <!-- Segmented pill toggle (vs. an underlined tab). -->
     <div class="bg-default-100 mb-2 flex rounded-full p-1 text-sm">
       <button
         type="button"
@@ -49,9 +43,6 @@ const tab = ref<'emoji' | 'sticker'>('emoji')
       </button>
     </div>
 
-    <!-- grid lives on an INNER div: the OS host can't be the grid itself (it
-         gets restructured into .os-viewport > .os-content). Height stays on the
-         host so the grid overflows and scrolls. -->
     <KunOverlayScroll v-show="tab === 'emoji'" class="h-56">
       <div class="grid grid-cols-8 gap-0.5">
         <button

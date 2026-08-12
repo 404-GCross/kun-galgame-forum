@@ -50,10 +50,6 @@ func NewResourceService(
 	}
 }
 
-// ──────────────────────────────────────────
-// GetResourceDetail — GET /toolset/:id/resource/detail
-// ──────────────────────────────────────────
-
 func (s *ResourceService) GetResourceDetail(
 	ctx context.Context,
 	req *dto.ResourceDetailRequest,
@@ -63,20 +59,13 @@ func (s *ResourceService) GetResourceDetail(
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
-	// A banned owner's resource is hidden even by direct link — 404 before
-	// counting a download or resolving the artifact URL.
 	uc, _, _ := s.userClient.User(ctx, resource.UserID)
 	if !userclient.IsRenderable(uc) {
 		return nil, errors.ErrNotFound("未找到该资源")
 	}
 
-	// Download +1 (fire-and-forget)
 	go s.resourceRepo.IncrementDownload(resource.ID)
 
-	// Dual-read: a new s3 resource stores only the artifact uuid; resolve its
-	// download URL at read time via the artifact service (served from
-	// dl.imoe.uk). Legacy s3 rows keep their stored Content URL; on a transient
-	// artifact error we leave Content as-is rather than fail the whole detail.
 	if resource.Type == "s3" && resource.ArtifactUUID != "" {
 		if dl, derr := s.art.Download(ctx, resource.ArtifactUUID); derr == nil {
 			resource.Content = dl.Url
@@ -93,22 +82,15 @@ func (s *ResourceService) GetResourceDetail(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// CreateResource — POST /toolset/:id/resource
-// ──────────────────────────────────────────
-
 func (s *ResourceService) CreateResource(
 	ctx context.Context,
 	userID, toolsetID int,
 	req *dto.CreateResourceRequest,
 ) (*dto.CreatedResourceResponse, *errors.AppError) {
-	// Verify toolset exists
 	if _, err := s.toolsetRepo.FindByID(toolsetID); err != nil {
 		return nil, errors.ErrNotFound("未找到该工具")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): content + note.
-	// deny blocks (nothing persisted); hold publishes+logs; fail-open on error.
 	moderationText := gate.ComposeText(req.Content, req.Note)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -133,16 +115,12 @@ func (s *ResourceService) CreateResource(
 			return err
 		}
 
-		// Moemoepoint +3 — stable key per created resource so an HTTP retry
-		// dedups instead of double-awarding.
 		adjustMoemoepoint(tx, userID, 3,
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("toolset", toolsetID),
 			moemoepoint.Key("resource_create", strconv.Itoa(resource.ID)))
 
-		// Add contributor (ignore duplicate)
 		s.toolsetRepo.AddContributor(tx, toolsetID, userID)
 
-		// Refresh resource_update_time
 		s.toolsetRepo.UpdateResourceTime(tx, toolsetID, time.Now())
 
 		return nil
@@ -159,10 +137,6 @@ func (s *ResourceService) CreateResource(
 	return &resource, nil
 }
 
-// ──────────────────────────────────────────
-// UpdateResource — PUT /toolset/:id/resource
-// ──────────────────────────────────────────
-
 func (s *ResourceService) UpdateResource(
 	ctx context.Context,
 	userID int, canModerate bool,
@@ -177,8 +151,6 @@ func (s *ResourceService) UpdateResource(
 		return nil, errors.ErrForbidden("您没有权限编辑此资源")
 	}
 
-	// Synchronous word-list gate BEFORE the write (deny blocks, hold publishes+
-	// logs, fail-open). author_id is the content author (resource.UserID).
 	moderationText := gate.ComposeText(req.Content, req.Note)
 	authorID := int64(resource.UserID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -193,8 +165,6 @@ func (s *ResourceService) UpdateResource(
 		"edited":   now,
 	}
 
-	// S3 type: only password and note can be updated.
-	// User type: all fields can be updated.
 	if resource.Type == "user" {
 		updates["content"] = req.Content
 		updates["code"] = req.Code
@@ -203,11 +173,6 @@ func (s *ResourceService) UpdateResource(
 
 	s.resourceRepo.UpdateFields(resource, updates)
 
-	// Re-read after the update so the returned row carries the fresh
-	// `edited` timestamp and any DB-side defaults. The frontend assigns
-	// this directly into the resource list item, so handing back stale
-	// fields would resurrect the NaN-time / undefined-link symptoms we
-	// just fixed.
 	refreshed, refreshErr := s.resourceRepo.FindByID(resource.ID)
 	if refreshErr != nil {
 		return nil, errors.ErrInternal("读取更新后的资源失败")
@@ -219,10 +184,6 @@ func (s *ResourceService) UpdateResource(
 	s.scan.ScanBg(gate.SubjectKindToolsetResource, strconv.Itoa(req.ResourceID), moderationText, int64(resource.UserID))
 	return refreshed, nil
 }
-
-// ──────────────────────────────────────────
-// DeleteResource — DELETE /toolset/:id/resource
-// ──────────────────────────────────────────
 
 func (s *ResourceService) DeleteResource(
 	userID int, canModerate bool,
@@ -237,9 +198,6 @@ func (s *ResourceService) DeleteResource(
 		return errors.ErrForbidden("您没有权限删除此资源")
 	}
 
-	// Storage cleanup (best-effort): new s3 rows soft-delete via the artifact
-	// service (GC reclaims the bytes); legacy s3 rows still carry their key in
-	// Code and are deleted from the old bucket directly.
 	if resource.Type == "s3" {
 		if resource.ArtifactUUID != "" {
 			if err := s.art.Delete(context.Background(), resource.ArtifactUUID); err != nil {
@@ -254,7 +212,6 @@ func (s *ResourceService) DeleteResource(
 
 	s.resourceRepo.Delete(resource)
 
-	// Moemoepoint -3 on the resource owner — stable key per deleted resource.
 	adjustMoemoepoint(s.resourceRepo.DB(), resource.UserID, -3,
 		moemoepoint.ReasonContentRemoved, moemoepoint.Ref("toolset_resource", resource.ID),
 		moemoepoint.Key("resource_delete", strconv.Itoa(resource.ID)))
@@ -262,15 +219,6 @@ func (s *ResourceService) DeleteResource(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Shared helpers
-// ──────────────────────────────────────────
-
-// adjustMoemoepoint applies a moemoepoint change via the OAuth single source
-// (terminal state — NO local +=). The Awarder mirrors the authoritative
-// balance into kungal_user_state; async/best-effort, never blocks. `db` is
-// unused (kept for call-style uniformity); the award doesn't touch the caller's
-// transaction.
 func adjustMoemoepoint(_ *gorm.DB, userID, delta int, reason, ref, idempotencyKey string) {
 	moemoepoint.Award(userID, delta, reason, ref, idempotencyKey)
 }

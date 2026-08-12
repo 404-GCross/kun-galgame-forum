@@ -3,22 +3,10 @@ import { useMediaQuery } from '@vueuse/core'
 import type { KunEditorExpose, KunHeading } from '@kungal/editor-vue'
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 import { KUN_EDITOR_TOOLBAR_ITEMS } from '~/constants/editor'
-// The topic writing surface — a Tencent-Docs-style layout: a sticky formatting
-// toolbar pinned at the top, the title below it, then the article body. All the
-// publish metadata (category / section / NSFW / covers / read-rules) moved into
-// <EditTopicPublishModal>, opened by the 发布话题 button.
-//
-// The editor's toolbar + view-switch are <KunEditor> scoped slots TELEPORTED
-// into the sticky bar: Teleport moves only the DOM, so the slot `api` closures
-// still drive the live editor. The toolbar is hidden in Markdown-source mode
-// (its commands act on the WYSIWYG doc), tracked via `editorMode`.
 const tempStore = useTempEditStore()
 const { content } = useTopicEditorStore()
 const adapters = useKunEditorAdapters()
 
-// The editor's live heading outline (emitted by <KunEditor> on every change) →
-// a faint TOC rail on the left; clicking an entry scrolls the active view (and
-// drops the caret) to that heading via the editor's scrollToHeading(index).
 const headings = ref<KunHeading[]>([])
 const editorRef = ref<KunEditorExpose | null>(null)
 
@@ -27,8 +15,6 @@ const openPublish = () => {
   isPublishOpen.value = true
 }
 
-// Drafts (server-side, private) only make sense for a NEW topic — hidden while
-// rewriting an existing one (that edits live content, not a draft).
 const isDraftOpen = ref(false)
 
 type EditorViewMode = 'wysiwyg' | 'source' | 'split'
@@ -41,22 +27,16 @@ const onSetMode = (
   apply(mode)
 }
 
-// Split view is desktop-only — it needs width for two panes and stacks awkwardly
-// on a phone, so drop it from the offered view modes below 768px.
 const isMobile = useMediaQuery('(max-width: 767px)')
 const editorViews = computed<EditorViewMode[]>(() =>
   isMobile.value ? ['wysiwyg', 'source'] : ['wysiwyg', 'source', 'split']
 )
-// Keep the local mirror in sync with <KunEditor>'s own fallback: when split stops
-// being offered (a resize to mobile while in split), it falls back to the first
-// offered view (wysiwyg).
 watch(isMobile, (mobile) => {
   if (mobile && editorMode.value === 'split') {
     editorMode.value = 'wysiwyg'
   }
 })
 
-// Ctrl+Enter opens the publish modal (category / section are chosen there now).
 const onKeydown = (event: KeyboardEvent) => {
   if (event.ctrlKey && event.key === 'Enter') {
     event.preventDefault()
@@ -67,7 +47,6 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 onBeforeRouteLeave(async () => {
-  // Vue Router 4: return false to stay, anything else to proceed.
   if (tempStore.isTopicRewriting) {
     const res = await useComponentMessageStore().alert(
       '确认离开界面吗？您的更改将不会保存。'
@@ -82,13 +61,6 @@ onBeforeRouteLeave(async () => {
 
 <template>
   <div>
-    <!-- Single REAL root box for the page transition — keep this comment INSIDE
-         the root (a leading comment would be a second root node).
-
-         Sticky formatting bar. It wraps responsively: on desktop it's one row
-         (view-switch · toolbar · 发布); on mobile the toolbar drops to its own
-         full-width, horizontally-scrollable row so it never wraps into a tall
-         block (view-switch + 发布 stay on the top row). -->
     <div
       class="et-topbar border-default-200 bg-background/90 sticky top-[72px] z-20 mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 backdrop-blur"
     >
@@ -122,12 +94,6 @@ onBeforeRouteLeave(async () => {
       </div>
     </div>
 
-    <!-- TOC rail (left) + the document card. The rail is desktop-only (lg+) and
-         appears only when the content has headings; it lives in the left blank
-         area. The card is a centered reading column (max-w-3xl); in split mode it
-         becomes flex-1 and fills the width LEFT of the rail (so the two panes get
-         room, with the rail carving out the left). title + body share one
-         shadowed surface split by a faint divider; neither draws its own border. -->
     <div class="flex justify-center gap-6">
       <aside v-if="headings.length" class="hidden w-48 shrink-0 lg:block">
         <nav class="sticky top-32 space-y-1 py-1 text-sm">

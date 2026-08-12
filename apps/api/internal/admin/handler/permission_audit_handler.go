@@ -10,7 +10,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// PermissionAuditHandler serves the append-only permission-override audit log.
 type PermissionAuditHandler struct {
 	svc *service.PermissionAuditService
 }
@@ -19,9 +18,6 @@ func NewPermissionAuditHandler(svc *service.PermissionAuditService) *PermissionA
 	return &PermissionAuditHandler{svc: svc}
 }
 
-// List returns a page of the audit log (newest first). page/limit are sanitized
-// by the service (page ≥ 1; limit default 30, capped at 100).
-// GET /api/admin/permission-audit?page=&limit=
 func (h *PermissionAuditHandler) List(c fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page"))
 	limit, _ := strconv.Atoi(c.Query("limit"))

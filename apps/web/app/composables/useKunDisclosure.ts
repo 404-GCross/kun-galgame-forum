@@ -1,6 +1,3 @@
-// Disclosure (open/close) state helper. Previously provided by the @kun/ui
-// Nuxt layer; the published @kungal/ui-* packages don't ship it, so the forum
-// owns its own copy (it's a tiny generic state composable, not a UI concern).
 import { computed, ref } from 'vue'
 
 export interface UseDisclosureProps {

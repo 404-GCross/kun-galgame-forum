@@ -1,16 +1,4 @@
 <script setup lang="ts">
-// Inline single-rating row — used on the galgame detail page when the
-// game only has a handful of ratings (< 3), where the radar chart card
-// is overkill and a flat list reads better next to the intro text.
-//
-// Layout left → right: avatar · name · 「<play_status>了此游戏，
-// 表示<recommend>，评分<overall>」. Optional one-line short summary
-// truncated to 100 chars below. Click anywhere on the row navigates to
-// the rating detail page.
-//
-// Deliberately NOT wrapped in a KunCard — the parent section already
-// frames the rating list, and a stacked-card-in-card look fights the
-// rest of the lean detail layout.
 import {
   KUN_GALGAME_RATING_RECOMMEND_MAP,
   KUN_GALGAME_RATING_RECOMMEND_COLOR_MAP,
@@ -36,7 +24,6 @@ const recommendLabel = computed(
 
 const recommendColor = computed(() => {
   const c = KUN_GALGAME_RATING_RECOMMEND_COLOR_MAP[props.rating.recommend]
-  // text-{color} class — kept as static map so Tailwind JIT picks them up.
   switch (c) {
     case 'danger':
       return 'text-danger'
@@ -88,8 +75,6 @@ const overall = computed(() => props.rating.overall.toFixed(1))
       </span>
     </div>
 
-    <!-- Spoiler-flagged ratings hide their summary here; the row links to the
-         detail page where it can be read in full. -->
     <p
       v-if="rating.short_summary && rating.spoiler_level !== 'none'"
       class="text-default-500 mt-1 ml-8 flex items-center gap-1 text-sm"

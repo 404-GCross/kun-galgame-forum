@@ -25,11 +25,9 @@ func TestVerifyCallbackSignature(t *testing.T) {
 	if VerifyCallbackSignature(secret, ts, sig, append(body, '!'), now) {
 		t.Fatal("tampered body must fail")
 	}
-	// Timestamp 6 minutes old → outside ±5min window.
 	if VerifyCallbackSignature(secret, ts, sig, body, now.Add(6*time.Minute)) {
 		t.Fatal("stale timestamp must fail")
 	}
-	// A different secret must not verify.
 	if VerifyCallbackSignature("other", ts, sig, body, now) {
 		t.Fatal("wrong secret must fail")
 	}

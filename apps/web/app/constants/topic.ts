@@ -98,8 +98,6 @@ export const topicSortFieldOptions = [
   { value: 'view', label: '浏览量' }
 ] as const
 
-// /topic list sort fields (rendered as a KunSelect). The four view metrics
-// (日/周/月/总浏览数) go at the end.
 export type TopicListSortField =
   | 'status_update_time'
   | 'created'

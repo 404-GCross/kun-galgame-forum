@@ -4,10 +4,6 @@ import {
   KUN_GALGAME_OFFICIAL_LANGUAGE_MAP
 } from '~/constants/galgameOfficial'
 
-// Renders a browse row OR a search hit. A hit carries identity only (the
-// catalog's entity search is a picker feed), so everything below the name is
-// optional here and simply absent rather than zero-filled — the card used to
-// print "+ 0" and a blank category for every search result.
 const props = defineProps<{
   official: GalgameOfficialItem | GalgameTaxonomySearchItem
 }>()
@@ -16,18 +12,9 @@ const detail = computed(() =>
   'category' in props.official ? props.official : undefined
 )
 
-// The category vocabulary is the CATALOG's (game_brand / publisher /
-// doujin_circle / …). The old three-case switch only knew the retired wiki
-// words, so every catalog kind fell through to its raw English key — the browse
-// list has been showing "publisher" and "group" chips.
 const categoryText = (category: string) =>
   KUN_GALGAME_OFFICIAL_CATEGORY_MAP[category] || category
 
-// The brand mark, at the `_mini` (360px) variant — a 64px thumbnail has no use
-// for the original. Both shapes carry it: a browse row and a search hit alike,
-// which is what lets the search results show the logo without a second lookup.
-// '' (or absent, on a maker with no logo) means render nothing and let the name
-// take the full width — an empty frame reads as a broken image.
 const logoSrc = computed(() =>
   props.official.logo ? withImageVariant(props.official.logo, 'mini') : ''
 )
@@ -40,8 +27,6 @@ const logoSrc = computed(() =>
     :href="`/galgame/official/${official.id}`"
   >
     <div class="flex items-center gap-2">
-      <!-- object-contain, never cover: a brand mark cropped to a square is a
-           different logo. The frame is omitted entirely when there is none. -->
       <KunImage
         v-if="logoSrc"
         :src="logoSrc"

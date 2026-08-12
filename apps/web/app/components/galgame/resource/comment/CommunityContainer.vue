@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// Community-primitive comment section for a galgame RESOURCE — rendered from
-// pages/galgame-resource/[id]/index.vue.
-//
-// A new area introduced directly on the primitive (no frozen local table behind
-// it), so it has no legacy parity to preserve: it renders through the shared
-// comment family and gets its paging from useCommunityCommentList. The resource's
-// uploader is notified of top-level comments and may delete any comment here (both
-// server-side), which is why this container needs no owner prop.
 const props = defineProps<{
   resourceId: number
 }>()
@@ -34,7 +26,6 @@ const target: CommunityCommentTarget = {
   resourceId: props.resourceId
 }
 
-// Scroll to a freshly published root so the author sees their own post land.
 const onPublished = (post: GalgameCommunityComment) => {
   handleNewComment(post)
   if (post.root_comment_id == null) {
@@ -89,7 +80,6 @@ const onPublished = (post: GalgameCommunityComment) => {
       </KunButton>
     </div>
 
-    <!-- Single community-comment flag modal for this section (region agnostic). -->
     <CommentCommunityFlagModal />
   </KunCard>
 </template>

@@ -13,18 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// scheduleTZ pins all cron schedules to a fixed zone so the daily-reset /
-// check-in boundary tracks the users' calendar day, not the host's local TZ
-// (servers commonly run UTC). Without this, "0 0 * * *" fires at host midnight,
-// shifting every user's daily window.
 const scheduleTZ = "Asia/Shanghai"
 
-// Start creates and starts all scheduled tasks. Returns a stop function.
-//
-// galgameClaimSync (optional, may be nil) drives the periodic ingestion of
-// claim-state transitions from the registry's claim-event feed. Scheduled
-// every 10 minutes so a reviewer's decision — and the +3 that rides on it —
-// reaches the submitter within a normal page-refresh window.
 func Start(
 	db *gorm.DB,
 	rdb *redis.Client,
@@ -40,14 +30,10 @@ func Start(
 	}
 	c := cron.New(cron.WithLocation(loc))
 
-	// Daily reset at midnight: clear daily check-in, image count, toolset upload count
 	c.AddFunc("0 0 * * *", func() {
 		resetDaily(db)
 	})
 
-	// Daily at midnight (same beat as the reset above): roll up the windowed view
-	// stats (view_7d / view_30d) from the per-day buckets, then prune old buckets.
-	// cmd/view-rollup stays as a manual one-off trigger (mirrors reference-ping).
 	c.AddFunc("0 0 * * *", func() {
 		if err := viewstats.RunRollup(db); err != nil {
 			slog.Error("浏览量滚动统计失败", "error", err)
@@ -56,15 +42,10 @@ func Start(
 		slog.Info("浏览量滚动统计完成")
 	})
 
-	// Hourly: clean up abandoned toolset upload caches
 	c.AddFunc("0 * * * *", func() {
 		cleanupUploadCache(rdb)
 	})
 
-	// Daily 04:00: reference-ping every content image hash so image-gc never
-	// reclaims a live content image (forum owns these — see RunReferencePing).
-	// Loud skip (not silent) when the image client isn't configured, so a missed
-	// env doesn't quietly leave content images on the GC clock.
 	if imgCli != nil {
 		c.AddFunc("0 4 * * *", func() {
 			distinct, updated, err := RunReferencePing(context.Background(), db, imgCli)
@@ -78,24 +59,14 @@ func Start(
 		slog.Warn("image client 未配置, 跳过内容图 reference-ping —— 内容图存在被 image-gc 回收的风险")
 	}
 
-	// Every 10 min: pull claim-state transitions and apply local side effects
-	// (seed the stub on live, drop it on hidden, +3 on approval). Skipped when
-	// the caller didn't wire a sync (e.g. tests).
 	if galgameClaimSync != nil {
 		c.AddFunc("*/10 * * * *", galgameClaimSync)
 	}
 
-	// Every 10 min: mirror editing-engine revisions into the local
-	// galgame_activity timeline source. Same cadence as the message sync.
 	if galgameRevisionSync != nil {
 		c.AddFunc("*/10 * * * *", galgameRevisionSync)
 	}
 
-	// Every 15 min: fold the same engine's work revisions into the contributor
-	// table. A slower beat than the two above on purpose — a contributor strip
-	// is not time-critical, and the first run after deploy replays the whole
-	// feed (see GalgameContributorSync.Run), which is not something to start
-	// twice in quick succession.
 	if galgameContributorSync != nil {
 		c.AddFunc("*/15 * * * *", galgameContributorSync)
 	}
@@ -110,15 +81,10 @@ func Start(
 	}
 }
 
-// resetDaily resets all users' daily counters to 0 at midnight.
-//
-// Targets `kungal_user_state`, NOT the old `"user"` table — migration 007
-// dropped the daily_* columns from the identity table and moved them to
-// the per-site state table. The original cron query (`UPDATE "user" SET
-// daily_* = 0`) silently errored every midnight after the migration
-// landed, so users who hit their daily upload caps stayed capped
-// indefinitely. See user/repository/state_repo.go ResetDailyCounters for
-// the mirrored repo helper.
+// Targets `kungal_user_state`, NOT the old `"user"` table — migration 007 moved
+// the daily_* columns. The original `UPDATE "user" SET daily_* = 0` silently
+// errored every midnight after that migration, so users who hit their daily
+// caps stayed capped indefinitely.
 func resetDaily(db *gorm.DB) {
 	result := db.Exec(`
 		UPDATE kungal_user_state SET
@@ -138,8 +104,6 @@ func resetDaily(db *gorm.DB) {
 	slog.Info("每日重置完成", "affected", result.RowsAffected)
 }
 
-// cleanupUploadCache removes abandoned toolset upload artifacts from Redis.
-// S3 cleanup is skipped here since S3 lifecycle rules handle orphaned objects.
 func cleanupUploadCache(rdb *redis.Client) {
 	ctx := context.Background()
 	keys, err := rdb.Keys(ctx, "toolset:upload:*").Result()
@@ -155,7 +119,6 @@ func cleanupUploadCache(rdb *redis.Client) {
 	deleted := 0
 	for _, key := range keys {
 		ttl, _ := rdb.TTL(ctx, key).Result()
-		// Only delete keys with no TTL (stuck) or already expired
 		if ttl <= 0 {
 			rdb.Del(ctx, key)
 			deleted++

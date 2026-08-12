@@ -88,16 +88,6 @@ export const KUN_GALGAME_PROVIDER_LABEL_MAP: Record<ProviderKey, string> = {
   other: '其他 (自建网盘等不限速)'
 }
 
-// Display-side grouping for the Galgame resource list. A resource's
-// backend-resolved `providerNames` (e.g. ["百度网盘", "OneDrive"]) is
-// matched against each bucket's `match` patterns in order; first match
-// wins. Resources with no provider match (阿里云盘 / OneDrive / Steam /
-// magnet / etc.) fall into the trailing `other` bucket so the user still
-// sees them, just grouped under "其他下载".
-//
-// `match` substrings are checked against the backend label strings (see
-// apps/api/pkg/utils/provider.go `providerNameSubstrs`). Keep them in
-// sync if backend labels change.
 export type GalgameResourceProviderBucketKey =
   | 'baidu'
   | 'quark'

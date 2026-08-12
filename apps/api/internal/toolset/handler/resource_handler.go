@@ -20,8 +20,6 @@ func NewResourceHandler(resourceService *service.ResourceService) *ResourceHandl
 	return &ResourceHandler{resourceService: resourceService}
 }
 
-// GetResourceDetail returns a resource and increments download count.
-// GET /api/toolset/:id/resource/detail
 func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 	var req dto.ResourceDetailRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -35,8 +33,6 @@ func (h *ResourceHandler) GetResourceDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// CreateResource creates a new resource for a toolset.
-// POST /api/toolset/:id/resource
 func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -60,8 +56,6 @@ func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	return response.OK(c, resource)
 }
 
-// UpdateResource updates a resource.
-// PUT /api/toolset/:id/resource
 func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -77,14 +71,9 @@ func (h *ResourceHandler) UpdateResource(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	// Return the refreshed row so the frontend can rebind the resource
-	// card immediately. An OKMessage-only response was leaving the UI
-	// with null base data after every save.
 	return response.OK(c, updated)
 }
 
-// DeleteResource deletes a resource.
-// DELETE /api/toolset/:id/resource
 func (h *ResourceHandler) DeleteResource(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

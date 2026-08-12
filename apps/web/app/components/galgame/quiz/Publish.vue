@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// Thin modal shell around GalgameQuizForm — the in-context create (the 出题
-// button on /galgame-quiz) and the edit flow (detail page ⋯ → 编辑). The
-// dedicated /edit/galgame/quiz page renders the same form without this shell.
 const props = defineProps<{
   modelValue: boolean
   galgameId?: number

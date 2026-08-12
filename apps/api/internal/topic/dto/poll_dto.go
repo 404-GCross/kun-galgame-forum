@@ -2,10 +2,6 @@ package dto
 
 import "time"
 
-// ──────────────────────────────────────────
-// Poll requests
-// ──────────────────────────────────────────
-
 type PollOptionInput struct {
 	Text string `json:"text" validate:"required,min=1,max=100"`
 }
@@ -63,10 +59,6 @@ type GetPollLogRequest struct {
 	Page   int `query:"page" validate:"min=1"`
 	Limit  int `query:"limit" validate:"min=1,max=50"`
 }
-
-// ──────────────────────────────────────────
-// Poll responses
-// ──────────────────────────────────────────
 
 type PollOptionResponse struct {
 	ID        int    `json:"id"`

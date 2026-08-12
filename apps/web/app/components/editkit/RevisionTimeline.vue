@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// The append-only revision log, newest-first: action badges (with honest
-// migrated-history provenance — the legacy_action badge), precise
-// changed-field chips, double attribution, and a pick-any-two diff selector.
 import { computed, ref, watch } from 'vue'
 import type { EditRevision, EditUser } from './types'
 import { revisionActionBadge } from './utils'
@@ -10,7 +7,6 @@ const props = defineProps<{
   items: EditRevision[]
   users?: Record<number, EditUser>
   labelFor: (key: string) => string
-  /** Extra/override labels for legacy action words (host vocabulary). */
   legacyActionLabels?: Record<string, string>
 }>()
 
@@ -22,15 +18,11 @@ const selected = ref<number[]>([])
 watch(
   () => props.items,
   (items) => {
-    // Default to the two newest versions (items are newest-first) so a diff is
-    // one click away.
     selected.value = items.slice(0, 2).map((r) => r.seq)
   },
   { immediate: true }
 )
 
-// Changed fields can be many — a wall of gray chips reads poorly. Show a muted,
-// capped label summary instead.
 const changedSummary = (keys: string[]) => {
   const labels = keys.map((k) => props.labelFor(k))
   const CAP = 8
@@ -45,7 +37,6 @@ const toggle = (seq: number) => {
     selected.value.splice(index, 1)
     return
   }
-  // Keep at most two picks: the oldest pick rolls off.
   if (selected.value.length === 2) {
     selected.value.shift()
   }
@@ -95,8 +86,6 @@ const legacyLabel = (word: string) =>
         @click="toggle(revision.seq)"
       >
         <div class="flex items-start gap-3">
-          <!-- Selection indicator, top-right corner: an empty box hints the row
-               is pickable, a primary check marks the pick (color="primary"). -->
           <KunCheckBox
             :model-value="selected.includes(revision.seq)"
             color="primary"
@@ -148,8 +137,6 @@ const legacyLabel = (word: string) =>
               {{ revision.legacy_note }}
             </p>
 
-            <!-- Attribution: the editor (actor) and, when a reviewer amended
-                 before merge, the reviewer — each an avatar + name chip. -->
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
               <span class="text-default-500 flex items-center gap-1.5 text-xs">
                 <span class="text-default-400">编辑者</span>
@@ -178,8 +165,6 @@ const legacyLabel = (word: string) =>
               </span>
             </div>
 
-            <!-- Host-supplied per-revision actions (e.g. revert), bottom-right.
-                 @click.stop so acting doesn't toggle this revision's pick. -->
             <div class="flex justify-end" @click.stop>
               <slot name="actions" :revision="revision" />
             </div>

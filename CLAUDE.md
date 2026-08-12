@@ -2,7 +2,7 @@
 
 ## 铁律 (Iron Rules — non-negotiable; these override every other guideline in this file)
 
-1. **No background gradients in any UI, ever — except two sanctioned cases.** Never use gradient backgrounds in UI design (`bg-gradient-*`, `from-*/via-*/to-*`, `linear-gradient()`, `radial-gradient()`, `conic-gradient()`, etc.); use solid colors from the project's palette. **The only two sanctioned exceptions (do NOT remove them in a "no-gradient" sweep)**: (a) the galgame card cover's bottom→top legibility scrim — `bg-gradient-to-t from-black/60 to-transparent` in `apps/web/app/components/galgame/card/Card.vue`; (b) the console ASCII startup banner's text gradient in `apps/web/app/widget/showMoeMessage.ts`. Both are annotated in-code with a comment pointing back to this rule.
+1. **No background gradients in any UI, ever — except two sanctioned cases.** Never use gradient backgrounds in UI design (`bg-gradient-*`, `from-*/via-*/to-*`, `linear-gradient()`, `radial-gradient()`, `conic-gradient()`, etc.); use solid colors from the project's palette. **The only three sanctioned exceptions (do NOT remove them in a "no-gradient" sweep)**: (a) the galgame card cover's bottom→top legibility scrim — `bg-gradient-to-t from-black/60 to-transparent` in `apps/web/app/components/galgame/card/Card.vue`; (b) the console ASCII startup banner's text gradient in `apps/web/app/widget/showMoeMessage.ts`; (c) the quiz detail panel's collapsed-state "peek then reveal" fade in `apps/web/app/components/galgame/quiz/DetailPanel.vue`. All three are annotated in-code with a comment pointing back to this rule. `rg 'gradient' apps/web/app` must return exactly these three and nothing else.
 2. **Prefer KunUI components; do not modify KunUI itself.** When adding or changing frontend UI, reach for a KunUI component (`@kungal/ui-*`) first — do not hand-roll a native/custom component unless there is genuinely no KunUI equivalent for what you need. If KunUI appears to have a bug or is missing a feature, **do not edit KunUI's code** (it is a shared upstream library) — report it to the user directly instead, and let them decide how to proceed.
 
 
@@ -27,6 +27,34 @@ This repo is one of the **downstreams of kun-galgame-infra (the OAuth / identity
 12. Reserve the scrollbar gutter globally — `html { scrollbar-gutter: stable }`, with an `overflow-y: scroll` `@supports` fallback — so the document width is constant across routes. Otherwise navigating from a scrolling page to a height-locked one (no scrollbar) removes the classic scrollbar's ~15px and the centered layout shifts sideways: a "teleport" at the tail of the page transition. This is a browser layout fact, not a transition bug. Use single-edge `stable` (`both-edges` is buggy in Chrome); it's a harmless no-op under overlay scrollbars (macOS/iOS).
 13. **One task = one Codex session; one assigned target repo = one branch = one worktree.** Never let two sessions write this checkout; prefer `codex-session new kun-galgame-forum <session>`. The launcher exposes source-repo reference material through `$CODEX_SESSION_REFS` when present; read it in place and never copy it into any worktree. A single-repo session may write only its own worktree; an explicitly coordinated cross-repo operation may write only separately assigned target worktrees. Launcher source checkouts and refs are always read-only.
 14. DB-backed tests must use only the launcher-provided, explicit, unique `TEST_DATABASE_DSN`; never discover or fall back to a DSN from `.env`, and never print the DSN. Run shared-database Go integration suites with `-count=1 -p 1`, never against a live or rehearsal database.
+
+## Comments
+
+**Default: none.** Code that can be understood by reading it gets no comment. Most code is that code. `[review]`
+
+**A comment is earned by a mistake that already happened, not by one you predict.** Do not comment while writing — you cannot tell yet which parts are traps. Comment when something went wrong there: an agent or a person got it wrong, a review caught it, a test went red, production broke. The comment records the wrong conclusion that was actually reached, so the next reader does not reach it again. If you cannot name the incident, there is no comment to write. `[review]`
+
+Two standing exceptions, where the comment is a record rather than a warning:
+
+- `apps/api/migrations/**` — a migration is history and cannot be re-read from the current schema. Say what it changes and why, including what was done about existing rows.
+- A constraint that is true but invisible from this file: a version floor, an upstream bug, a required ordering. `huma/v2 >= v2.39.0` is one; a reader who does not know it will "simplify" the dependency back and break SSE.
+
+Write the conclusion, not the mechanism. `// splitCommand takes the subcommand off before flag.Parse` is a restatement; `flag.Parse stops at the first non-flag argument, so 'migrate down -steps 1' parsed no flags and rolled back nothing` is the trap. Quote real system output verbatim when reproducing a symptom.
+
+Never write: restatements of the code, section banners, `TODO` without an owner, or doc comments that only echo the identifier (`// New creates a new X`). Exported Go identifiers get a doc comment only when the name alone is ambiguous. If a comment explains what a name means, rename the thing and delete the comment.
+
+English, and short. When in doubt, delete it — a wrong comment costs more than a missing one, and the missing one gets written the day it is needed.
+
+### Scope in this repo
+
+Applies to `.go`, `.ts`, and `.vue`. It does **not** apply to config and onboarding files (`.env.example`, `.air.toml`, `docker-compose*.yml`, CI workflows), where the comment is the only documentation surface a person reads before running anything.
+
+Four things a sweep must **not** delete, all of them the invisible-constraint exception:
+
+- The two sanctioned-gradient annotations required by 铁律 #1 (`galgame/card/Card.vue`, `widget/showMoeMessage.ts`). They are load-bearing: without them the next no-gradient sweep deletes the gradients themselves.
+- Cross-service contract invariants (C1–C5) whose evidence lives in kun-galgame-infra: identity is the same integer across three databases, the local `users.moemoepoint` is a cached view, catalog `site` and catalog source key are separate identities.
+- `docs/{oauth,image_service,artifact}/` — infra's read-only mirrors, never edited here at all.
+- Deploy-order and migration hazards (migrate-before-deploy, deploy-then-drop).
 
 ## Current catalog cutover state
 

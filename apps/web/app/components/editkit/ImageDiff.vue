@@ -1,17 +1,4 @@
 <script setup lang="ts">
-// Unified image diff: one strip of thumbnails, each tagged − or +, replacing
-// the 修改前 / 修改后 columns this started as.
-//
-// Those columns had the same flaw as the text ones — and one worse bug. Each
-// side fell back to printing the WHOLE field as text when its own side had no
-// changes, so adding a screenshot rendered the entire old gallery as a wall of
-// URLs on the left and the one new picture on the right. The reader is judging
-// "which pictures changed"; every unchanged URL in that list is noise, and a
-// URL is not a picture.
-//
-// Unchanged images are counted, not drawn. A gallery of 20 that gained 1 should
-// show one thumbnail, not 21.
-
 import { computed } from 'vue'
 import type { ImageDiffEntry } from './types'
 
@@ -49,7 +36,6 @@ const hasChange = computed(
     <div
       class="border-default-200 bg-content1 flex flex-wrap gap-2 rounded-lg border px-2 py-2"
     >
-      <!-- Removed first, then added: the same reading order as a text diff. -->
       <figure
         v-for="(entry, i) in [
           ...removed.map((e) => ({ ...e, op: 'delete' as const })),
@@ -69,7 +55,6 @@ const hasChange = computed(
               : 'border-success/60'
           "
         />
-        <!-- No preview resolvable — name the item, never dump the field. -->
         <KunChip
           v-else
           size="sm"

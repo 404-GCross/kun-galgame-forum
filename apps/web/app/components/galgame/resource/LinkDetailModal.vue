@@ -16,11 +16,6 @@ const props = defineProps<{
 
 const open = defineModel<boolean>({ required: true })
 
-// Long notes collapse behind a "展开全部" toggle, same principle as the resource
-// card (Link.vue): clamp + fade anything taller than this, reveal in full on
-// expand. The note here is rich (KunContent), and lives inside the modal — which
-// only lays out its content once open — so we measure (and start observing for
-// async image loads / re-wrap) when the modal opens, not on mount.
 const NOTE_COLLAPSED_MAX_HEIGHT = 240
 const noteRef = ref<HTMLElement | null>(null)
 const isNoteExpanded = ref(false)
@@ -33,15 +28,11 @@ const measureNoteOverflow = () => {
     isNoteOverflowing.value = false
     return
   }
-  // scrollHeight reports full content height even while max-height clamps the
-  // box, so this stays accurate in the collapsed state.
   isNoteOverflowing.value = el.scrollHeight > NOTE_COLLAPSED_MAX_HEIGHT
 }
 
 const noteStyle = computed(() => {
   if (!isNoteOverflowing.value || isNoteExpanded.value) return undefined
-  // Hard-clamp while collapsed (no fade mask — house rule forbids gradients);
-  // the "展开全部" toggle signals there's more.
   return {
     maxHeight: `${NOTE_COLLAPSED_MAX_HEIGHT}px`,
     overflow: 'hidden'
@@ -70,40 +61,18 @@ watch(open, (isOpen) => {
 
 onBeforeUnmount(teardownNoteObserver)
 
-// Capture the Nuxt app at setup; reused by every post-await branch
-// (handleReportExpire / handleDelete / handleEdit) to re-enter the
-// captured Nuxt context. After `await kunFetch` resumes the active
-// app instance is lost, so anything inside that touches
-// useRuntimeConfig / useState / useFetch().refresh() crashes with
-// "Cannot read properties of null (reading '$nuxt')" without
-// runWithContext.
 const nuxtApp = useNuxtApp()
 
 const { id: currentUserId } = usePersistUserStore()
 const canEditAnyResource = useCan('resource.edit_any')
 const canDeleteAnyResource = useCan('resource.delete_any')
 
-// Local edit-modal state. Deliberately NOT going through
-// useTempGalgameResourceStore + Resource.vue's KunModal +
-// GalgameResourcePublish anymore — that triple-hop emit/store chain
-// was where `$nuxt of null` kept resurfacing on edit-modal close (the
-// refresh hop crossed too many post-await microtasks). The new
-// LinkEditModal is fully local: own form ref, own kunFetch PUT, own
-// refresh callback. See LinkEditModal.vue's header comment.
 const isEditOpen = ref(false)
 
-// Resource link/code/password are deliberately NOT in the summary
-// payload — they're only fetched on demand to keep the list endpoint
-// lightweight and avoid leaking links into search engines (the list
-// API caches aggressively). Modal lazily fetches when opened the first
-// time; subsequent re-opens reuse the cached detail.
 const detail = ref<null | GalgameResourceDetailLink>(null)
 const isFetching = ref(false)
 const isExpired = computed(() => props.resource.status === 1)
 const isOwner = computed(() => currentUserId === props.resource.user.id)
-// The owner edits / deletes their own resource; resource.edit_any /
-// resource.delete_any extend that to anyone's — mirrors the rules on the
-// dedicated detail page (resource/detail/Info.vue).
 const canEdit = computed(() => isOwner.value || canEditAnyResource.value)
 const canDelete = computed(() => isOwner.value || canDeleteAnyResource.value)
 
@@ -129,18 +98,8 @@ const fetchDetail = async () => {
   return detail.value
 }
 
-// Exposed so the parent (Link.vue) can run the fetch BEFORE flipping
-// the modal open. Running fetch in the click handler's call stack keeps
-// the Nuxt app context alive (versus firing from `watch(open)`, which
-// runs in Vue's scheduler microtask where tryUseNuxtApp() returns null
-// and kunFetch's first useRuntimeConfig crashes). The parent also gets
-// to drive the button loading state directly off the returned promise.
 defineExpose({ prefetch: fetchDetail })
 
-// "报告失效" — delegated to useReportResourceExpired, which owns auth +
-// confirm + the gated check→mark flow (and the runWithContext dance across the
-// alert await) and exposes a status for the inline checklist below the button.
-// We keep the modal OPEN on success so the user actually sees the result.
 const { status: reportStatus, report: reportExpire } =
   useReportResourceExpired()
 const handleReportExpire = () =>
@@ -173,19 +132,11 @@ const handleDelete = async () => {
   }
 }
 
-// Edit: simply flip a local ref. detail has been fetched on modal open
-// (Link.vue's openDetail awaits prefetch first), so detail.value is
-// guaranteed non-null by the time the user sees the 编辑 button.
 const handleEdit = () => {
   if (!detail.value) return
   isEditOpen.value = true
 }
 
-// Called by LinkEditModal after a successful save: refresh the parent
-// resource list AND dismiss the detail modal so the user returns to a
-// fresh list view. Local detail.value is also nulled so the next
-// 获取资源 click re-fetches (otherwise the modal would show stale
-// values).
 const handleEditDone = () => {
   detail.value = null
   props.refresh()

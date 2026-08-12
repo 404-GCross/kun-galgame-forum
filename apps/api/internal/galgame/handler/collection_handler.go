@@ -14,8 +14,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// GalgameCollectionHandler serves the galgame collection (收藏夹) endpoints:
-// CRUD, the collection-picker read/write, per-user collection list, and detail.
 type GalgameCollectionHandler struct {
 	collectionService *service.CollectionService
 }
@@ -24,7 +22,6 @@ func NewGalgameCollectionHandler(collectionService *service.CollectionService) *
 	return &GalgameCollectionHandler{collectionService: collectionService}
 }
 
-// Create — POST /api/galgame/collection
 func (h *GalgameCollectionHandler) Create(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -41,7 +38,6 @@ func (h *GalgameCollectionHandler) Create(c fiber.Ctx) error {
 	return response.OK(c, id)
 }
 
-// Update — PATCH /api/galgame/collection/:cid
 func (h *GalgameCollectionHandler) Update(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -62,7 +58,6 @@ func (h *GalgameCollectionHandler) Update(c fiber.Ctx) error {
 	return response.OKMessage(c, "收藏夹已更新")
 }
 
-// Delete — DELETE /api/galgame/collection/:cid
 func (h *GalgameCollectionHandler) Delete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -79,7 +74,6 @@ func (h *GalgameCollectionHandler) Delete(c fiber.Ctx) error {
 	return response.OKMessage(c, "收藏夹已删除")
 }
 
-// GetDetail — GET /api/galgame/collection/:cid (optional auth for access + is_owner)
 func (h *GalgameCollectionHandler) GetDetail(c fiber.Ctx) error {
 	cid, err := strconv.Atoi(c.Params("cid"))
 	if err != nil {
@@ -95,8 +89,6 @@ func (h *GalgameCollectionHandler) GetDetail(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// MyCollectionsForGalgame — GET /api/galgame/:gid/collections/mine
-// Powers the picker modal; lazily creates the default collection.
 func (h *GalgameCollectionHandler) MyCollectionsForGalgame(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -113,8 +105,6 @@ func (h *GalgameCollectionHandler) MyCollectionsForGalgame(c fiber.Ctx) error {
 	return response.OK(c, fiber.Map{"collections": cols})
 }
 
-// SetMembership — PUT /api/galgame/:gid/collections
-// Body: { "collection_ids": [1, 5] } — the full desired membership.
 func (h *GalgameCollectionHandler) SetMembership(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -134,7 +124,6 @@ func (h *GalgameCollectionHandler) SetMembership(c fiber.Ctx) error {
 	return response.OKMessage(c, "操作成功")
 }
 
-// GetUserCollections — GET /api/user/:id/collections (optional auth for visibility)
 func (h *GalgameCollectionHandler) GetUserCollections(c fiber.Ctx) error {
 	ownerID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -150,7 +139,6 @@ func (h *GalgameCollectionHandler) GetUserCollections(c fiber.Ctx) error {
 	return response.Paginated(c, items, total)
 }
 
-// parseCollectionPage reads page/limit with sane defaults (page>=1, 1<=limit<=50).
 func parseCollectionPage(c fiber.Ctx, defLimit int) (page, limit int) {
 	page, _ = strconv.Atoi(c.Query("page"))
 	if page < 1 {

@@ -1,13 +1,5 @@
 package client
 
-// The 制作人员 panel is a display projection over the registry's credit rows,
-// and every rule it applies is one the catalog cannot apply for us: it does not
-// know that 插画 and 原画 are one job here, that two spellings are one person, or
-// that a reader wants the writer above the cast.
-//
-// Pinned because all three failures are silent — the panel still renders, just
-// with the same person listed twice under two headings, below a 53-name cast.
-
 import (
 	"strings"
 	"testing"
@@ -22,9 +14,6 @@ func creditGroup(key, name string, people ...string) catCreditGroup {
 }
 
 func TestCatalogStaff_FoldsDuplicateRolesAndSpellings(t *testing.T) {
-	// The shape a real work arrives in: the same illustrator credited through
-	// two source vocabularies, the same composer written three ways, and the
-	// brand credit the 会社 card already renders.
 	staff := catalogStaffFromCredits([]catCreditGroup{
 		creditGroup("voice-actor", "声优", "桃瀬ひな"),
 		creditGroup("developer", "开发", "アンモライト"),
@@ -61,22 +50,16 @@ func TestCatalogStaff_FoldsDuplicateRolesAndSpellings(t *testing.T) {
 	if len(music.People) != 1 {
 		t.Fatalf("three spellings of one composer = %d rows, want 1", len(music.People))
 	}
-	// The plainest written form wins: the parenthesised aliases belong to the
-	// identity layer, not to a staff list.
 	if music.People[0].Name != "水城新人" {
 		t.Errorf("composer renders as %q, want the unannotated 水城新人", music.People[0].Name)
 	}
 
-	// Authorship first, cast last — the reverse of the registry's role-id order,
-	// which is what the face hands us.
 	if got := strings.Join(keys, ","); got != "scenario,illustration,music,voice-actor" {
 		t.Errorf("panel order = %s, want the writer before the cast", got)
 	}
 }
 
 func TestCatalogStaff_VoiceActorCollectsCharacters(t *testing.T) {
-	// One VA voicing two characters is one row with two names, not two rows —
-	// the face emits one credit per (name, character) pair.
 	g := catCreditGroup{RoleKey: "voice-actor", RoleName: "声优"}
 	for _, ch := range []string{"藤田 佳奈", "ナレーション"} {
 		g.Credits = append(g.Credits, catCreditItem{ID: 7, Name: "五十嵐裕美", Character: ch})
@@ -91,8 +74,6 @@ func TestCatalogStaff_VoiceActorCollectsCharacters(t *testing.T) {
 	}
 }
 
-// other-staff is the unmapped bucket and routinely the longest group on the
-// page, so it sits below every named role however many rows it carries.
 func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
 	staff := catalogStaffFromCredits([]catCreditGroup{
 		creditGroup("other-staff", "其他", "STUDIO696", "ワムソフト", "胡太郎"),
@@ -108,16 +89,10 @@ func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
 	}
 }
 
-// Every source parks unclassifiable credits in 其他, and routinely the same
-// person it already credited under a real role on the same work — a quarter of
-// the bucket duplicates a classified row. The panel prints no raw position, so
-// the duplicate says nothing: 其他 keeps only the names it alone can show.
 func TestCatalogStaff_OtherStaffYieldsToClassifiedRoles(t *testing.T) {
 	staff := catalogStaffFromCredits([]catCreditGroup{
 		creditGroup("scenario", "脚本", "雪仁"),
 		creditGroup("原画", "原画", "一河のあ"),
-		// 雪仁 arrives spaced — the merge key is the written form, same as the
-		// in-bucket spelling merge. 胡太郎 has no classified credit and stays.
 		creditGroup("other-staff", "其他", "雪 仁", "一河のあ", "胡太郎"),
 	})
 
@@ -134,8 +109,6 @@ func TestCatalogStaff_OtherStaffYieldsToClassifiedRoles(t *testing.T) {
 	}
 }
 
-// When everyone in 其他 already holds a classified credit, the group empties
-// and must disappear rather than render an empty heading.
 func TestCatalogStaff_OtherStaffDropsWhenFullyDuplicated(t *testing.T) {
 	staff := catalogStaffFromCredits([]catCreditGroup{
 		creditGroup("scenario", "脚本", "雪仁"),
@@ -148,10 +121,6 @@ func TestCatalogStaff_OtherStaffDropsWhenFullyDuplicated(t *testing.T) {
 	}
 }
 
-// The filmography header ranks roles by KEY. Ranking the rendered labels looked
-// equivalent and was not: only four roles carry a pinned Chinese label, so every
-// other one missed the rank table and kept whatever order the registry returned
-// — 主题歌作词 landed above 作词 on a live page.
 func TestSortStaffRoleKeys_RanksUnpinnedRolesToo(t *testing.T) {
 	got := SortStaffRoleKeys([]string{
 		"other-staff", "企画", "theme-song-lyrics", "director", "lyric", "scenario",
@@ -162,14 +131,13 @@ func TestSortStaffRoleKeys_RanksUnpinnedRolesToo(t *testing.T) {
 	}
 }
 
-// A folded role reads the same on a person's page as on a game's panel.
 func TestStaffRoleLabel_AgreesWithThePanel(t *testing.T) {
 	for _, c := range []struct{ key, upstream, want string }{
 		{"原画", "原画", "原画"},
 		{"illustration", "插画", "原画"},
 		{"剧本", "剧本", "脚本"},
 		{"director-direction", "导演", "导演"},
-		{"qa", "QA", "QA"}, // unfolded: the catalog's own label stands
+		{"qa", "QA", "QA"},
 	} {
 		if got := StaffRoleLabel(c.key, c.upstream); got != c.want {
 			t.Errorf("StaffRoleLabel(%q, %q) = %q, want %q", c.key, c.upstream, got, c.want)

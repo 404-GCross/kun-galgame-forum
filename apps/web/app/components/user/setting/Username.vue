@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Username change — proxies to OAuth PATCH /auth/me { name }.
-// kungal no longer charges moemoepoint for renames; OAuth owns the
-// uniqueness + length constraint (2..17 chars, globally unique),
-// kungal validates client-side first for fast feedback.
 const userStore = usePersistUserStore()
 
 const inputValue = ref('')
@@ -25,8 +21,6 @@ const handleChangeUsername = async () => {
 
   if (result) {
     useMessage(10124, 'success')
-    // Mirror the change into the local store so the rest of the UI
-    // (top bar greeting, profile links, etc.) updates immediately.
     userStore.name = next
     inputValue.value = ''
   }

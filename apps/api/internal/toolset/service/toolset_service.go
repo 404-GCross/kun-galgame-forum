@@ -31,7 +31,6 @@ type ToolsetService struct {
 	check            *gate.CheckService
 	scan             *gate.ScanService
 
-	// Service-level helpers
 	practicalitySvc *PracticalityService
 	commentSvc      *CommentService
 }
@@ -60,8 +59,6 @@ func NewToolsetService(
 	}
 }
 
-// toolsetModerationText composes the RAW text the trust gate sees for a toolset:
-// name + description + aliases + version, blank fragments skipped.
 func toolsetModerationText(name, description string, aliases []string, version string) string {
 	parts := make([]string, 0, 3+len(aliases))
 	parts = append(parts, name, description)
@@ -70,15 +67,9 @@ func toolsetModerationText(name, description string, aliases []string, version s
 	return gate.ComposeText(parts...)
 }
 
-// userBriefFromClient maps a userclient.User to the UserBrief shape used
-// across toolset DTOs. Centralized so every call site is consistent.
 func userBriefFromClient(u userclient.User) userModel.UserBrief {
 	return userModel.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
 }
-
-// ──────────────────────────────────────────
-// GetList — GET /toolset
-// ──────────────────────────────────────────
 
 func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListRequest) ([]dto.ToolsetCard, int64) {
 	filters := repository.ListFilters{
@@ -108,9 +99,6 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 
 	avgMap := s.practicalityRepo.AveragesForToolsets(toolsetIDs)
 	dlMap := s.resourceRepo.DownloadSumsForToolsets(toolsetIDs)
-	// Comment counts come from the LIVE galgame_toolset.comment_count column
-	// (migration 059), maintained by the community BFF — the frozen
-	// galgame_toolset_comment table is no longer scanned (charter step 06a).
 	ccMap := make(map[int]int, len(toolsets))
 	for _, t := range toolsets {
 		ccMap[t.ID] = t.CommentCount
@@ -119,9 +107,6 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 
 	cards := make([]dto.ToolsetCard, 0, len(toolsets))
 	for _, t := range toolsets {
-		// Hide toolsets authored by a banned user (drop the card). Total is
-		// left as the repo count — a small over-report matching the SFW/ban
-		// filtering trade-off used across the other list mappers.
 		if !userclient.IsRenderable(userMap[t.UserID]) {
 			continue
 		}
@@ -131,18 +116,11 @@ func (s *ToolsetService) GetList(ctx context.Context, req *dto.ToolsetListReques
 	return cards, total
 }
 
-// ──────────────────────────────────────────
-// Create — POST /toolset
-// ──────────────────────────────────────────
-
 func (s *ToolsetService) Create(
 	ctx context.Context,
 	userID int,
 	req *dto.CreateToolsetRequest,
 ) (*dto.CreatedToolsetResponse, *errors.AppError) {
-	// Synchronous word-list gate BEFORE the tx (trust wave 2): name + description
-	// + aliases + version. deny blocks (nothing persisted); hold publishes+logs;
-	// fail-open on error/timeout.
 	moderationText := toolsetModerationText(req.Name, req.Description, req.Aliases, req.Version)
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -168,13 +146,10 @@ func (s *ToolsetService) Create(
 			return err
 		}
 
-		// Aliases (trim + skip empties)
 		s.toolsetRepo.ReplaceAliases(tx, toolset.ID, trimNonEmpty(req.Aliases))
 
-		// Creator → contributor
 		s.toolsetRepo.AddContributor(tx, toolset.ID, userID)
 
-		// Moemoepoint +3 — stable key per created toolset (replay-safe).
 		adjustMoemoepoint(tx, userID, 3,
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("toolset", toolset.ID),
 			moemoepoint.Key("toolset_create", strconv.Itoa(toolset.ID)))
@@ -193,10 +168,6 @@ func (s *ToolsetService) Create(
 	return &toolset, nil
 }
 
-// ──────────────────────────────────────────
-// GetDetail — GET /toolset/:id
-// ──────────────────────────────────────────
-
 func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDetailResponse, *errors.AppError) {
 	toolset, err := s.toolsetRepo.FindByID(id)
 	if err != nil {
@@ -208,24 +179,17 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 
 	practicality := s.practicalitySvc.Summary(id)
 	downloadSum := s.resourceRepo.DownloadSum(id)
-	// Live display counter (migration 059); community-maintained (charter 06a).
 	commentCount := int64(toolset.CommentCount)
 	comments := s.commentSvc.GetLatestForDetail(ctx, id, 5)
 	contributorIDs := s.toolsetRepo.FindContributorIDs(id)
 	resources := s.resourceRepo.FindByToolset(id)
 
-	// Hydrate the owner + every contributor in one batch (the owner usually
-	// is a contributor too — userclient dedups).
 	allUIDs := append([]int{toolset.UserID}, contributorIDs...)
 	userMap := s.userClient.Hydrate(ctx, allUIDs)
-	// A banned owner's toolset is hidden even by direct link — 404 like a
-	// missing row. Contributors are embedded refs (placeholder is fine).
 	if !userclient.IsRenderable(userMap[toolset.UserID]) {
 		return nil, errors.ErrNotFound("未找到该工具")
 	}
 
-	// View +1 async — after the ban gate so a hidden toolset never counts a
-	// view (consistent with the other detail endpoints).
 	go s.toolsetRepo.IncrementView(id)
 
 	user := userBriefFromClient(userMap[toolset.UserID])
@@ -234,8 +198,6 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 		contributors = append(contributors, userBriefFromClient(userMap[userID]))
 	}
 
-	// homepage is jsonb (RawMessage) on the model; flatten to []string for the
-	// frontend. Tolerate null/garbage by falling back to an empty slice.
 	homepage := []string{}
 	if len(toolset.Homepage) > 0 {
 		_ = json.Unmarshal(toolset.Homepage, &homepage)
@@ -257,7 +219,6 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 		}
 	}
 
-	// practicalityAvg is null when no one has rated yet (matches nitro).
 	var avg *float64
 	practicalityCount := int64(0)
 	for _, c := range practicality.Counts {
@@ -296,10 +257,6 @@ func (s *ToolsetService) GetDetail(ctx context.Context, id int) (*dto.ToolsetDet
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// Update — PUT /toolset/:id
-// ──────────────────────────────────────────
-
 func (s *ToolsetService) Update(
 	ctx context.Context,
 	userID int, canModerate bool, id int,
@@ -313,8 +270,6 @@ func (s *ToolsetService) Update(
 		return errors.ErrForbidden("您没有权限编辑此工具")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (toolset.UserID).
 	moderationText := toolsetModerationText(req.Name, req.Description, req.Aliases, req.Version)
 	authorID := int64(toolset.UserID)
 	decision, matched := s.check.Decision(ctx, moderationText, &authorID)
@@ -350,10 +305,6 @@ func (s *ToolsetService) Update(
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Delete — DELETE /toolset/:id
-// ──────────────────────────────────────────
-
 func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.AppError {
 	toolset, err := s.toolsetRepo.FindByID(id)
 	if err != nil {
@@ -364,7 +315,6 @@ func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.Ap
 	}
 
 	txErr := s.toolsetRepo.DB().Transaction(func(tx *gorm.DB) error {
-		// S3 cleanup: delete all s3 resources (best-effort).
 		if s.s3 != nil {
 			for _, r := range s.resourceRepo.FindS3ByToolsetTx(tx, id) {
 				if r.Code == "" {
@@ -376,12 +326,9 @@ func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.Ap
 			}
 		}
 
-		// Delete related records
 		s.toolsetRepo.DeleteAllRelated(tx, id)
-		// Delete toolset itself
 		s.toolsetRepo.DeleteByID(tx, id)
 
-		// Moemoepoint -3 on the owner — stable key per deleted toolset.
 		adjustMoemoepoint(tx, toolset.UserID, -3,
 			moemoepoint.ReasonContentRemoved, moemoepoint.Ref("toolset", id),
 			moemoepoint.Key("toolset_delete", strconv.Itoa(id)))
@@ -393,11 +340,6 @@ func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.Ap
 	return nil
 }
 
-// ──────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────
-
-// trimNonEmpty trims whitespace from each string and drops empty ones.
 func trimNonEmpty(in []string) []string {
 	out := make([]string, 0, len(in))
 	for _, s := range in {

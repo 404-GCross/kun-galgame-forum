@@ -28,9 +28,6 @@ func TestNotConfigured(t *testing.T) {
 	}
 }
 
-// TestGetData_ForwardsBasicAndPassesThrough is the core contract of the shared
-// transport: the Basic header is attached, the path + query are sent as given,
-// and the envelope's data field is returned byte-for-byte (no reshape).
 func TestGetData_ForwardsBasicAndPassesThrough(t *testing.T) {
 	var gotAuth, gotPath, gotQuery string
 	body := `{"work_id":3853,"groups":[{"role_id":1,"role_key":"scenario","role_name":"剧本","credits":[{"credit_name_id":42,"name":"丸戸史明"}]}]}`
@@ -57,7 +54,6 @@ func TestGetData_ForwardsBasicAndPassesThrough(t *testing.T) {
 	if len(gotAuth) < 6 || gotAuth[:6] != "Basic " {
 		t.Fatalf("expected Basic auth, got %q", gotAuth)
 	}
-	// The returned data must be the exact `data` sub-object, verbatim.
 	var got any
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("returned data is not valid json: %v", err)
@@ -92,12 +88,10 @@ func TestErrorMapping(t *testing.T) {
 	}
 }
 
-// TestUpstreamUnreachable proves a dead catalog degrades to ErrUpstream (never a
-// panic / hang) so the BFF can return a graceful 503 instead of 500-ing the page.
 func TestUpstreamUnreachable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	deadURL := srv.URL
-	srv.Close() // now nothing is listening
+	srv.Close()
 	c := New(Config{BaseURL: deadURL, ClientID: "cid", ClientSecret: "sec"})
 	if _, err := c.getData(context.Background(), "/api/v1/catalog/works/1/credits", nil); !errors.Is(err, ErrUpstream) {
 		t.Fatalf("want ErrUpstream, got %v", err)

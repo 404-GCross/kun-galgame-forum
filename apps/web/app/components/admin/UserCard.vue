@@ -22,8 +22,6 @@ const stats = ref<AdminUserContentStats | null>(null)
 const isLoading = ref(false)
 const purged = ref(false)
 
-// Per-user permission override panel (grant / revoke individual permissions on
-// top of the user's roles). Self-contained modal; this card only opens it.
 const isPermOpen = ref(false)
 
 const loadStats = async () => {

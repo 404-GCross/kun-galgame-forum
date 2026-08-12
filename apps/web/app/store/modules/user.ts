@@ -21,9 +21,6 @@ export const usePersistUserStore = defineStore(
       sub.value = user.sub
       name.value = user.name
       avatar.value = user.avatar
-      // withImageVariant picks the right separator per URL family:
-      // image_service hash-addressed URLs get `_100`, legacy nitro
-      // avatar paths get `-100`. Both coexist until the bulk migration.
       avatarMin.value = withImageVariant(user.avatar, '100')
       moemoepoint.value = user.moemoepoint
       roles.value = user.roles
@@ -31,11 +28,6 @@ export const usePersistUserStore = defineStore(
       dailyToolsetUploadBytes.value = user.dailyToolsetUploadBytes
     }
 
-    // Merge ONLY the display fields /auth/me returns fresh (name / avatar /
-    // roles) — used by the SWR revalidation (useRefreshMe). Unlike setUserInfo
-    // it deliberately leaves the /user/status-owned fields (moemoepoint /
-    // isCheckIn / dailyToolsetUploadBytes) untouched, so a background refetch
-    // can't reset them to their login-time defaults.
     const setProfileInfo = (profile: {
       name: string
       avatar: string

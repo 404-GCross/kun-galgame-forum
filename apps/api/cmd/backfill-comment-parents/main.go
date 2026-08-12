@@ -11,19 +11,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// Backfill parent_comment_id for legacy (pre-nesting) comments. We never recorded
-// WHICH comment a reply answered — only target_user_id (the @-mentioned user).
-// Heuristic: a comment's parent is the most recent comment by its target_user, on
-// the same reply, posted before it. Parents are therefore always older → no cycles.
-//
-// Safe + reversible:
-//   - touches ONLY rows where parent_comment_id IS NULL, so it won't disturb
-//     comments created with the new parent-aware flow, and re-running is a no-op
-//     for already-nested rows;
-//   - to undo: UPDATE topic_comment SET parent_comment_id = NULL;  (then re-run).
-//
-//	go run ./cmd/backfill-comment-parents          # dry-run — counts only
-//	go run ./cmd/backfill-comment-parents --apply  # write parent_comment_id
 func main() {
 	apply := flag.Bool("apply", false, "write the changes (default: dry-run, counts only)")
 	flag.Parse()
@@ -36,8 +23,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// The candidate parent for each currently-flat comment (NULL if none → stays
-	// top-level: it replied to the reply itself, not to another comment).
 	const candidateSQL = `
 		SELECT c1.id AS cid,
 			(SELECT c2.id FROM topic_comment c2

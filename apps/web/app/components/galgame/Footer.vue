@@ -26,8 +26,6 @@ const galgame = inject<GalgameDetail>('galgame')
         :is-favorited="galgame.is_favorited"
       />
 
-      <!-- E3b: the legacy rewrite entry retired — editing lives on the
-           engine-backed /galgame/:gid/edit page (header button). -->
       <KunButton
         variant="light"
         color="default"

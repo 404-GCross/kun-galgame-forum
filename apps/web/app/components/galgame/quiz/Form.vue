@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// The 出题 / 编辑题目 form core (mechanism). Rendered both inside the Publish
-// modal (in-context create on /galgame-quiz + edit from the detail page) and on
-// the dedicated /edit/galgame/quiz page. Owns no shell — it emits published /
-// updated / cancel and lets the host decide (close modal vs navigate).
 import {
   KUN_QUIZ_TYPE_CONST,
   KUN_QUIZ_ENABLED_TYPE_CONST,
@@ -19,9 +15,7 @@ import {
 import { createGalgameQuizSchema } from '~/validations/galgame-quiz'
 
 const props = defineProps<{
-  // Optional: bind the quiz to a specific game (passed from a galgame page).
   galgameId?: number
-  // When present, the form is in EDIT mode (pre-fill + PUT).
   editData?: QuizEditData | null
 }>()
 
@@ -38,12 +32,8 @@ const spoilerLevel = ref<QuizSpoilerLevel>('none')
 const question = ref('')
 const description = ref('')
 const explanation = ref('')
-// The galgames chosen via the picker (only when not pre-bound by the galgameId prop).
 const pickedGalgameIds = ref<number[]>([])
-// Hide the linked games until the viewer answers ("guess the game").
 const hideGalgame = ref(false)
-// Progressive disclosure: the optional explanation stays hidden until asked for.
-// (关联 Galgame is important, so it's shown up-front, not collapsed.)
 const showExplanation = ref(false)
 const isSubmitting = ref(false)
 
@@ -57,8 +47,6 @@ const editorRef = ref<{
 const initialSelected = ref<{ id: number; name: string }[]>([])
 const isEditing = computed(() => !!props.editData)
 
-// Edit mode: pre-fill the whole form + editor from editData (immediate so it
-// works whether editData is present at mount or arrives from an async fetch).
 watch(
   () => props.editData,
   async (d) => {
@@ -84,13 +72,8 @@ watch(
   { immediate: true }
 )
 
-// ── CREATE-draft persistence (localStorage via pinia) ──────────────────────
-// Create-only: editing an existing quiz seeds from editData (above) and must NOT
-// touch the create draft, so everything here is guarded on props.editData.
 const persist = usePersistEditQuizStore()
 const isRestoring = ref(false)
-// Bumped once after a restore to remount the markdown editor with the restored
-// description (it reads value-markdown at init).
 const editorKey = ref(0)
 
 watch(
@@ -124,8 +107,6 @@ const onContentChange = (content: Record<string, unknown>) => {
   persist.content = content
 }
 
-// Restore on the client (SSR-safe — onMounted runs post-hydration). Scalars
-// first, then the content editor once it's mounted.
 onMounted(async () => {
   if (props.editData) return
   isRestoring.value = true
@@ -149,10 +130,6 @@ onMounted(async () => {
   isRestoring.value = false
 })
 
-// 题型 as a pill KunCheckBoxGroup (like the topic 分区 selector). Type is
-// single-select, so the group's array v-model is adapted to a single value:
-// picking a new pill keeps only the latest, and the selected pill can't be
-// unchecked (a type is always required). fill/essay are shown disabled.
 const typeGroupOptions = KUN_QUIZ_TYPE_CONST.map((t) => {
   const enabled = (KUN_QUIZ_ENABLED_TYPE_CONST as readonly string[]).includes(t)
   return {
@@ -174,7 +151,6 @@ const categoryOptions = KUN_QUIZ_CATEGORY_CONST.map((c) => ({
   value: c,
   label: KUN_QUIZ_CATEGORY_MAP[c] ?? c
 }))
-// 分类 as a single-select pill KunCheckBoxGroup (same array adapter as 题型).
 const categorySelection = computed<QuizCategory[]>({
   get: () => [category.value],
   set: (arr) => {
@@ -221,7 +197,6 @@ const submit = async () => {
     content,
     explanation: explanation.value,
     hide_galgame: hideGalgame.value,
-    // Pre-bound (opened from a galgame page) wins; otherwise use the picker.
     galgame_ids: props.galgameId ? [props.galgameId] : pickedGalgameIds.value
   }
 
@@ -230,7 +205,6 @@ const submit = async () => {
     return
   }
 
-  // Edit mode → PUT; otherwise create → POST.
   if (isEditing.value && props.editData) {
     body.quiz_id = props.editData.id
     isSubmitting.value = true
@@ -240,7 +214,6 @@ const submit = async () => {
     )
     isSubmitting.value = false
     if (ok) {
-      // If an answer-key fix re-graded existing answers, tell the author.
       const regraded = ok.regraded ?? 0
       useMessage(
         regraded > 0
@@ -280,7 +253,6 @@ const submit = async () => {
       </p>
     </div>
 
-    <!-- 关联 Galgame — important, so it sits up top and stays visible -->
     <KunInfo
       v-if="galgameId"
       color="primary"
@@ -294,7 +266,6 @@ const submit = async () => {
       :initial-selected="initialSelected"
     />
 
-    <!-- hide the linked games until the viewer answers (guess-the-game) -->
     <div
       v-if="galgameId || pickedGalgameIds.length"
       class="flex items-center justify-between gap-3"
@@ -308,7 +279,6 @@ const submit = async () => {
       <KunSwitch v-model="hideGalgame" />
     </div>
 
-    <!-- 题型 (pill KunCheckBoxGroup, single-select) -->
     <div class="space-y-2">
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">题型</label>
@@ -327,7 +297,6 @@ const submit = async () => {
       </p>
     </div>
 
-    <!-- 2) 题干 -->
     <KunTextarea
       v-model="question"
       label="题目"
@@ -343,7 +312,6 @@ const submit = async () => {
       标记剧透, 标记内容会被打码, 点击后显示
     </p>
 
-    <!-- 题目描述 (optional markdown + image hints) -->
     <div class="space-y-2">
       <div>
         <label class="text-sm font-medium">题目描述（可选）</label>
@@ -359,7 +327,6 @@ const submit = async () => {
       />
     </div>
 
-    <!-- 3) 选项 / 答案 (correctness inline) -->
     <GalgameQuizContentEditor
       ref="editorRef"
       :type="type"
@@ -368,7 +335,6 @@ const submit = async () => {
 
     <KunDivider />
 
-    <!-- 4) 属性: 分类 (pill) + 难度 / 剧透等级 -->
     <div class="space-y-4">
       <div class="space-y-2">
         <label class="text-sm font-medium">分类</label>
@@ -411,7 +377,6 @@ const submit = async () => {
       </div>
     </div>
 
-    <!-- 解析 (progressive) -->
     <KunTextarea
       v-if="showExplanation || explanation"
       v-model="explanation"

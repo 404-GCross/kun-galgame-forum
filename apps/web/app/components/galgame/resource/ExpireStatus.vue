@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ReportExpireStatus } from '~/composables/useReportResourceExpired'
 
-// Renders the "report expired" flow as a friendly two-step checklist
-// (检测链接 → 标记失效) driven by useReportResourceExpired's status. `idle`
-// renders nothing. `error` collapses to a single failure line.
 defineProps<{ status: ReportExpireStatus }>()
 </script>
 
@@ -17,15 +14,12 @@ defineProps<{ status: ReportExpireStatus }>()
       'border-danger/20 bg-danger/5': status === 'error'
     }"
   >
-    <!-- request itself failed -->
     <div v-if="status === 'error'" class="text-danger flex items-center gap-2">
       <KunIcon name="lucide:circle-alert" class="shrink-0" />
       <span>操作失败, 请稍后重试</span>
     </div>
 
-    <!-- otherwise: check → mark checklist -->
     <template v-else>
-      <!-- step 1 — detect link liveness -->
       <div class="flex items-center gap-2">
         <KunIcon
           v-if="status === 'checking'"
@@ -40,7 +34,6 @@ defineProps<{ status: ReportExpireStatus }>()
         </span>
       </div>
 
-      <!-- step 2 — mark expired -->
       <div class="flex items-center gap-2">
         <KunIcon
           v-if="status === 'checking'"

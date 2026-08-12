@@ -59,7 +59,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create migration tracking table
 	_, err = sqlDB.Exec(`
 		CREATE TABLE IF NOT EXISTS _migrations (
 			id SERIAL PRIMARY KEY,
@@ -72,7 +71,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get applied migrations
 	rows, err := sqlDB.Query("SELECT name FROM _migrations ORDER BY id")
 	if err != nil {
 		slog.Error("查询已应用迁移失败", "error", err)
@@ -91,7 +89,6 @@ func main() {
 
 	suffix := "." + *direction + ".sql"
 
-	// Find migration files
 	files, err := filepath.Glob(filepath.Join(*migrationsDir, "*"+suffix))
 	if err != nil {
 		slog.Error("查找迁移文件失败", "error", err)
@@ -100,7 +97,6 @@ func main() {
 	sort.Strings(files)
 
 	if *direction == "down" {
-		// Reverse order for down migrations
 		for i, j := 0, len(files)-1; i < j; i, j = i+1, j-1 {
 			files[i], files[j] = files[j], files[i]
 		}
@@ -111,10 +107,8 @@ func main() {
 		base := filepath.Base(file)
 		name := strings.TrimSuffix(base, suffix)
 
-		// Extract numeric prefix (e.g. "005" from "005_cleanup_wiki_managed_data")
 		prefix := strings.SplitN(name, "_", 2)[0]
 
-		// Filter by --only or --exclude
 		if len(onlySet) > 0 {
 			if !onlySet[prefix] {
 				continue

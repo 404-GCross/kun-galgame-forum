@@ -1,21 +1,5 @@
 package handler
 
-// Route-layer tests for the editing-engine BFF: the real EditHandler over a
-// bare Fiber app wired exactly like router.go (auth stub + moderator gates),
-// backed by an httptest fake standing in for both catalog faces.
-// They pin the things the BFF must guarantee:
-//   - an unconfigured catalog client degrades every endpoint to 503 with
-//     ZERO catalog traffic (never a local fallback);
-//   - no write asserts an actor: every act rides the caller's own token, and
-//     what the caller may do is infra's answer, not a mirrored local gate;
-//   - can_decide / can_revert are COMPUTED from the caller's own capability
-//     projection, so a control only appears when the write behind it works;
-//   - local validation rejects foreign field keys before any hop;
-//   - reads are pinned to kungal's own tenant (a foreign-site proposal reads
-//     as 404) and the two remaining VIEW gates hold;
-//   - the decision side effects (notices, points, timestamp bumps) survive the
-//     migration and fire only on a landed decision.
-
 import (
 	"encoding/json"
 	"io"
@@ -34,8 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// fakeNotifier records every notification the BFF emits (E3b decision
-// notices) without touching a database.
 type fakeNotifier struct {
 	mu    sync.Mutex
 	specs []msgService.Spec
@@ -55,10 +37,6 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 	return nil
 }
 
-// fakeGalgame serves the ID BRIDGE both directions for one entry: gid 1 ⇄
-// registry work 1000. The two are deliberately different numbers — an id that
-// happened to match on both sides would hide exactly the bug the bridge exists
-// to prevent.
 func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,26 +61,15 @@ func fakeGalgame(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// fakeOwners is the submitter snapshot: entry gid 1 was created by uid 7.
 type fakeOwners map[int]int
 
 func (f fakeOwners) OwnerOf(gid int) int { return f[gid] }
 
-// fakeEditFace records every edit-face request and serves canned replies, on
-// BOTH planes: the Basic-authed S2S face and the Bearer user face (wave 177).
 type fakeEditFace struct {
-	mu       sync.Mutex
-	requests []recordedRequest
-	// userStatus/userBody override the reply on the USER plane only. Scoped to
-	// that plane deliberately: a lane that mixes the two (bootstrap reads the
-	// snapshot S2S, the projection as the user) must be able to fail exactly the
-	// half under test.
-	userStatus int
-	userBody   string
-	// userReviewable flips can_review in the USER-plane schema projection. It is
-	// the only input to can_decide / can_revert now that the forum computes both
-	// from the caller's own projection instead of from a local role test, so it
-	// is how those two are driven.
+	mu             sync.Mutex
+	requests       []recordedRequest
+	userStatus     int
+	userBody       string
 	userReviewable bool
 }
 
@@ -111,19 +78,12 @@ type recordedRequest struct {
 	Path   string
 	Query  string
 	Body   map[string]any
-	// Face is "s2s" for the Basic-authed /api/v1/catalog/edit/* face, "user" for
-	// the Bearer /api/v1/user/catalog/edit/* face, and "other" for anything else
-	// — "other" in a recorded request is itself a failure. WHICH of the two
-	// planes a lane took is the whole subject of wave 177's routing tests.
-	Face string
-	Auth string // Authorization header (Basic on S2S, Bearer on the user plane)
+	Face   string
+	Auth   string
 }
 
-// s2sFace reports whether a path targets the S2S /api/v1/catalog/edit/* face —
-// the asserted-actor channel (owner + moderation lanes).
 func s2sFace(path string) bool { return strings.HasPrefix(path, "/api/v1/catalog/edit/") }
 
-// userFace reports whether a path targets the user-token editing face.
 func userFace(path string) bool { return strings.HasPrefix(path, "/api/v1/user/catalog/edit/") }
 
 func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
@@ -157,7 +117,6 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			return
 		}
 		switch {
-		// ── the user-token plane (wave 177) ──
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/withdraw":
@@ -169,30 +128,24 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			}
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[` +
 				`{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":` + review + `,"would_automerge":false},` +
-				// A locked and a deprecated field, neither of which anybody may
-				// review: can_revert must ignore both or it could never be true.
 				`{"key":"catalog.work.vndb_id","kind":"text","diff_hint":"inline","locked":true,"can_propose":false,"can_review":false,"would_automerge":false},` +
 				`{"key":"catalog.work.legacy_alias","kind":"text","diff_hint":"inline","deprecated":true,"locked":false,"can_propose":false,"can_review":false,"would_automerge":false}` +
 				`]}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/amendments":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/merge":
-			// The merged revision carries an amender → the notice marks the correction.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/decline":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/revert":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
-		// ── the asserted-actor S2S plane ──
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/withdraw":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7":
-			// An open kungal proposal on game 1 by uid 9 — the review target.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/merge":
-			// The merged revision carries an amender → the notice marks the correction.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/decline":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
@@ -201,16 +154,12 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/revert":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/8":
-			// An open kungal proposal whose patch is EMPTY — nothing to decide.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/9":
-			// Two keys, and the EFFECTIVE patch is what counts: the amendments
-			// dropped the locked one, so a reviewer of name_zh_cn may decide it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":9,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,` +
 				`"patch":{"catalog.work.name_zh_cn":"新标题","catalog.work.vndb_id":"v1"},` +
 				`"effective_patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/55":
-			// A proposal OUTSIDE kungal's tenant — the BFF must 404 it.
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"catalog.work","entity_id":1000,"site":"letmoe","status":"open","patch":{}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/snapshot":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
@@ -231,18 +180,10 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// editTestApp wires the edit routes exactly like router.go, with a stubbed
-// session user (nil = anonymous → the auth stub rejects like middleware.Auth).
 func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
-	// The id bridge is wired for every app: it is not optional infrastructure
-	// any more, it is how a kungal route reaches an entity at all. The
-	// degradation test passes an empty catalog URL, which leaves the EDIT face
-	// unconfigured — the thing it is actually asserting.
 	return editTestAppFull(t, catalogURL, fakeGalgame(t).URL, user, nil)
 }
 
-// editTestAppFull additionally wires a fake galgame (owner lookup / naming) and
-// a notifier sink (decision notices). Empty galgameURL / nil notifier = off.
 func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
 	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
@@ -250,8 +191,6 @@ func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middlewa
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")
 	}
-	// nil user client / repo = best-effort enrichment off. The submitter lookup
-	// is a narrow port so the owner-review gates are testable without a database.
 	h := NewEditHandler(cc, galgameClient, nil, notifier, nil).
 		WithOwners(fakeOwners{1: 7})
 
@@ -261,16 +200,9 @@ func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middlewa
 			return c.Status(401).JSON(fiber.Map{"code": 205, "message": "用户登录失效"})
 		}
 		c.Locals(string(middleware.UserInfoKey), user)
-		// Mirror middleware.Auth: the session's OAuth access token is exposed for
-		// the handlers that forward it (the edit chain does not — it is S2S).
 		c.Locals(string(middleware.OAuthAccessTokenKey), "user-jwt")
 		return c.Next()
 	}
-	// optAuthStub mirrors middleware.OptionalAuth on the public reads: a session,
-	// when there is one, is exposed exactly as the authed group exposes it, and
-	// an anonymous caller passes through untouched. can_revert is projected from
-	// the token, so a public route that silently dropped it would make that
-	// projection untestable.
 	optAuthStub := func(c fiber.Ctx) error {
 		if user != nil {
 			c.Locals(string(middleware.UserInfoKey), user)
@@ -318,10 +250,8 @@ var moderatorUser = &middleware.UserInfo{ID: 42, Name: "mod", Roles: []string{"m
 var adminUser = &middleware.UserInfo{ID: 42, Name: "admin", Roles: []string{"admin"}}
 var plainUser = &middleware.UserInfo{ID: 7, Name: "user", Roles: nil}
 
-// TestEditDegradesWhenUnconfigured: every endpoint 503s on an unconfigured
-// catalog client, with zero S2S traffic (there is no server to hit).
 func TestEditDegradesWhenUnconfigured(t *testing.T) {
-	app := editTestApp(t, "", moderatorUser) // empty base URL = not configured
+	app := editTestApp(t, "", moderatorUser)
 	for _, tc := range []struct{ method, path, body string }{
 		{"GET", "/api/galgame/1/edit/bootstrap", ""},
 		{"POST", "/api/galgame/1/edit/proposals", `{"patch":{"catalog.work.name_zh_cn":"x"}}`},
@@ -336,16 +266,7 @@ func TestEditDegradesWhenUnconfigured(t *testing.T) {
 	}
 }
 
-// No edit-face write asserts an actor any more (wave 178). This is the
-// whole-chain version of that claim: whatever the lane and whoever the caller,
-// a request that reaches the edit face with an `actor` in it — or on the
-// Basic-authed plane at all — is a lane that did not migrate.
-//
-// It is asserted here rather than lane by lane because the failure it guards is
-// the silent one: an un-migrated lane still works, and only the recorded request
-// says who the catalog thought was acting.
 func TestEditNoWriteAssertsAnActor(t *testing.T) {
-	// gid 1's creator is uid 7 — the caller who used to have a lane of their own.
 	owner := &middleware.UserInfo{ID: 7, Name: "mod-owner", Roles: []string{"moderator"}}
 	for _, user := range []*middleware.UserInfo{owner, adminUser, bystander} {
 		fake := &fakeEditFace{}
@@ -382,9 +303,6 @@ func TestEditNoWriteAssertsAnActor(t *testing.T) {
 	}
 }
 
-// The patch still reaches the face untouched, and the entity id is the
-// TRANSLATED registry work id — the two things the BFF is actually responsible
-// for on a submit.
 func TestEditSubmitPassesThePatchThrough(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)
@@ -405,8 +323,6 @@ func TestEditSubmitPassesThePatchThrough(t *testing.T) {
 	}
 }
 
-// Revert's body: the registry work id, the target seq, no site (the acting
-// tenant comes off the token now).
 func TestEditRevertRidesTheUserToken(t *testing.T) {
 	fake := &fakeEditFace{}
 	nm := fakeGalgame(t)
@@ -425,8 +341,6 @@ func TestEditRevertRidesTheUserToken(t *testing.T) {
 	}
 }
 
-// Infra owns the denial now, so a revert the caller may not perform comes back
-// as infra's 403 — the forum runs no gate that could disagree with it.
 func TestEditRevertDeniedByInfra(t *testing.T) {
 	fake := &fakeEditFace{userStatus: http.StatusForbidden,
 		userBody: `{"code":233,"message":"field review denied"}`}
@@ -441,8 +355,6 @@ func TestEditRevertDeniedByInfra(t *testing.T) {
 	}
 }
 
-// TestEditSubmitLocalValidation: foreign field keys and empty patches are
-// rejected locally — the S2S face is never touched.
 func TestEditSubmitLocalValidation(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)
@@ -461,17 +373,6 @@ func TestEditSubmitLocalValidation(t *testing.T) {
 	}
 }
 
-// TestEditViewGates: what is LEFT of local gating after wave 178 — two entry
-// checks onto read surfaces, and nothing in front of a write.
-//
-//   - the queue 403s for a plain user at the route layer, with zero catalog
-//     traffic (a moderator entry, not a policy);
-//   - the proposal workbench admits moderators and the entry's creator, and a
-//     bystander 403s on the READ without any adjudication surface being
-//     consulted;
-//   - the adjudication writes themselves are ungated locally: a bystander's
-//     amend/merge/decline goes out to infra, which is the only thing entitled
-//     to refuse it.
 func TestEditViewGates(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)
@@ -483,7 +384,6 @@ func TestEditViewGates(t *testing.T) {
 		t.Fatalf("the queue gate must not reach the catalog, got %d calls", len(fake.requests))
 	}
 
-	// A plain user who does NOT own game 1 (creator uid 7, this user is 8).
 	viewFake := &fakeEditFace{}
 	nm := fakeGalgame(t)
 	app = editTestAppFull(t, viewFake.server(t).URL, nm.URL, bystander, nil)
@@ -497,8 +397,6 @@ func TestEditViewGates(t *testing.T) {
 		}
 	}
 
-	// The writes behind it carry no local gate at all — they reach infra, and
-	// infra's own 403 is what the bystander sees.
 	writeFake := &fakeEditFace{userStatus: http.StatusForbidden,
 		userBody: `{"code":233,"message":"review denied"}`}
 	app = editTestAppFull(t, writeFake.server(t).URL, nm.URL, bystander, nil)
@@ -523,9 +421,6 @@ func TestEditViewGates(t *testing.T) {
 	}
 }
 
-// can_decide is COMPUTED from the caller's own projection against the
-// proposal's own keys — no role test anywhere. It is what makes the workbench's
-// buttons a prediction of the write rather than a second opinion about it.
 func TestEditProposalDetailCanDecideFromProjection(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -535,8 +430,6 @@ func TestEditProposalDetailCanDecideFromProjection(t *testing.T) {
 	}{
 		{"every key reviewable", "7", true, true},
 		{"a key the caller may not review", "7", false, false},
-		// The effective patch is what would land; its one key is reviewable even
-		// though the ORIGINAL patch also names a locked field.
 		{"effective patch wins over the original", "9", true, true},
 		{"nothing to decide", "8", true, false},
 	} {
@@ -559,8 +452,6 @@ func TestEditProposalDetailCanDecideFromProjection(t *testing.T) {
 			if out.Data.CanDecide != tc.want {
 				t.Fatalf("can_decide = %v, want %v (body %s)", out.Data.CanDecide, tc.want, raw)
 			}
-			// The projection must be the VIEWER's own, or the prediction is about
-			// somebody else.
 			if req := fake.callTo("/api/v1/user/catalog/edit/schema/catalog.work"); req == nil {
 				t.Fatalf("the workbench projection must ride the user plane: %+v", fake.requests)
 			}
@@ -568,9 +459,6 @@ func TestEditProposalDetailCanDecideFromProjection(t *testing.T) {
 	}
 }
 
-// can_revert is the same idea on the history page: projected, not role-tested.
-// Locked and deprecated fields are excluded — nobody may review those, so
-// counting them would make the control unreachable for everyone.
 func TestEditRevisionsCanRevertFromProjection(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -589,8 +477,6 @@ func TestEditRevisionsCanRevertFromProjection(t *testing.T) {
 				user = moderatorUser
 			}
 			app := editTestApp(t, fake.server(t).URL, user)
-			// The route is optionally authed, so it is served either way; the
-			// anonymous case simply carries no token to project with.
 			status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/revisions", "")
 			if status != http.StatusOK {
 				t.Fatalf("revisions: status = %d body %s", status, raw)
@@ -610,17 +496,11 @@ func TestEditRevisionsCanRevertFromProjection(t *testing.T) {
 	}
 }
 
-// TestEditOwnerReview: the game's creator — a plain user, no roles — opens the
-// workbench, and their merge goes out on their OWN token with nothing asserted.
-// The capability that used to require asserting is_entity_owner now arrives in
-// the projection instead (userReviewable stands for infra having derived it),
-// and the merge's side effects are unchanged: the proposer is notified with the
-// correction marker, because the merged revision carries an amender.
 func TestEditOwnerReview(t *testing.T) {
 	fake := &fakeEditFace{userReviewable: true}
 	nm := fakeGalgame(t)
 	sink := &fakeNotifier{}
-	app := editTestAppFull(t, fake.server(t).URL, nm.URL, plainUser, sink) // uid 7 = the creator
+	app := editTestAppFull(t, fake.server(t).URL, nm.URL, plainUser, sink)
 
 	status, raw := doJSON(t, app, "GET", "/api/galgame-edit/proposals/7", "")
 	if status != http.StatusOK {
@@ -665,17 +545,11 @@ func TestEditOwnerReview(t *testing.T) {
 	}
 }
 
-// TestEditDeclineNotification: who may decline is infra's call now (the forum
-// used to run an admin-or-owner mirror of it, and mirrors drift). What the forum
-// still owns is the NOTICE — the decline reason travels to the proposer in full
-// (E3b ruling 1), addressed by kungal id, and only once the decline landed.
 func TestEditDeclineNotification(t *testing.T) {
 	fake := &fakeEditFace{}
 	nm := fakeGalgame(t)
 	sink := &fakeNotifier{}
 
-	// A refused decline notifies nobody: the notice hangs off the landed
-	// decision, not off the attempt.
 	deniedFake := &fakeEditFace{userStatus: http.StatusForbidden,
 		userBody: `{"code":233,"message":"review denied"}`}
 	deniedSink := &fakeNotifier{}
@@ -708,11 +582,9 @@ func TestEditDeclineNotification(t *testing.T) {
 	}
 }
 
-// TestEditGameProposals: the per-game proposal list is a public read (the
-// old wire's PR list parity).
 func TestEditGameProposals(t *testing.T) {
 	fake := &fakeEditFace{}
-	app := editTestApp(t, fake.server(t).URL, nil) // anonymous
+	app := editTestApp(t, fake.server(t).URL, nil)
 	status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/proposals", "")
 	if status != http.StatusOK {
 		t.Fatalf("game proposals: status = %d body %s", status, raw)
@@ -725,8 +597,6 @@ func TestEditGameProposals(t *testing.T) {
 	}
 }
 
-// TestEditTenantPin: a proposal on a foreign tenant (site=galgame_wiki, the
-// old wire) reads as 404 through this BFF — kungal adjudicates only its own.
 func TestEditTenantPin(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, moderatorUser)
@@ -740,8 +610,6 @@ func TestEditTenantPin(t *testing.T) {
 	}
 }
 
-// TestEditBootstrapShape: bootstrap bundles the snapshot values + the
-// capability projection; can_review reflects the projection.
 func TestEditBootstrapShape(t *testing.T) {
 	fake := &fakeEditFace{}
 	app := editTestApp(t, fake.server(t).URL, plainUser)

@@ -12,8 +12,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// UserPermissionHandler serves the per-user permission editor (read + replace)
-// and the current-user /perm/mine read.
 type UserPermissionHandler struct {
 	svc *service.UserPermissionService
 }
@@ -22,8 +20,6 @@ func NewUserPermissionHandler(svc *service.UserPermissionService) *UserPermissio
 	return &UserPermissionHandler{svc: svc}
 }
 
-// GetView returns one user's permission read model.
-// GET /api/admin/user-permissions/:uid
 func (h *UserPermissionHandler) GetView(c fiber.Ctx) error {
 	uid, ok := parseUIDParam(c.Params("uid"))
 	if !ok {
@@ -36,8 +32,6 @@ func (h *UserPermissionHandler) GetView(c fiber.Ctx) error {
 	return response.OK(c, view)
 }
 
-// Replace atomically replaces a user's personal override set and returns the
-// fresh view. PUT /api/admin/user-permissions/:uid
 func (h *UserPermissionHandler) Replace(c fiber.Ctx) error {
 	operator, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -58,8 +52,6 @@ func (h *UserPermissionHandler) Replace(c fiber.Ctx) error {
 	return response.OK(c, view)
 }
 
-// GetMine returns the CURRENT user's effective permissions — FE visibility only,
-// grants nothing. GET /api/perm/mine
 func (h *UserPermissionHandler) GetMine(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

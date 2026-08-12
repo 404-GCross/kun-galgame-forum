@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// The collection picker opened by the galgame favorite heart. Lists the user's
-// collections with a checkbox each; the 新建 button opens the full create modal
-// (GalgameCollectionEditModal). Saving sets the full membership in one PUT.
 const props = defineProps<{
   modelValue: boolean
   galgameId: number
@@ -25,8 +22,6 @@ const pending = ref(false)
 const saving = ref(false)
 const createOpen = ref(false)
 
-// preserveSelection keeps the user's in-progress checkboxes when we refetch after
-// a create; on first open we seed the selection from the server `contains` flags.
 const load = async (preserveSelection = false) => {
   pending.value = true
   const res = await kunFetch<{ collections: MyCollectionForGalgame[] }>(
@@ -61,8 +56,6 @@ const toggle = (id: number) => {
   selected.value = next
 }
 
-// After a create, refetch the list (to include the new collection) but keep the
-// current checkboxes, then auto-select the freshly created collection.
 const onCreated = async (newId?: number) => {
   await load(true)
   if (newId) {
@@ -117,8 +110,6 @@ const visibilityIcon = (v: CollectionVisibility) =>
           :key="c.id"
           class="hover:bg-default-100 flex items-center gap-1 rounded-lg pr-1 transition-colors"
         >
-          <!-- Left: the whole row toggles membership (a <button> can't wrap the
-               link below, so the two are siblings). -->
           <button
             type="button"
             class="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
@@ -146,8 +137,6 @@ const visibilityIcon = (v: CollectionVisibility) =>
             </span>
           </button>
 
-          <!-- Right: open this collection's detail page in a new tab, so the
-               picker (and the current galgame) stay put. -->
           <KunTooltip text="查看收藏夹">
             <KunLink
               :to="`/galgame/collection/${c.id}`"

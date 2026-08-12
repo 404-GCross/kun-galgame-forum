@@ -1,4 +1,3 @@
-// Label maps for the Trust & Safety moderation inbox (integer codes → zh-cn).
 type ChipColor = 'warning' | 'primary' | 'danger' | 'default'
 
 export const TRUST_REVIEW_STATUS: Record<
@@ -20,7 +19,6 @@ export const TRUST_REVIEW_SOURCE: Record<number, string> = {
   5: '人工新建'
 }
 
-// Disposition actions offered when a moderator decides `actioned`.
 export const TRUST_ACTIONS = [
   { value: 1, label: '隐藏内容' },
   { value: 2, label: '删除内容' },
@@ -39,8 +37,6 @@ export const TRUST_SUBJECT_KIND: Record<string, string> = {
   user: '用户'
 }
 
-// A page URL for a subject, when its id maps to a standalone page (reply /
-// comment ids are children with no page of their own).
 export const trustSubjectHref = (
   kind: string,
   id: string

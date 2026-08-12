@@ -8,12 +8,6 @@ import {
 } from '~/constants/permission'
 import { KUN_USER_ROLE_MAP } from '~/constants/user'
 
-// Per-user permission overrides. Opened from the admin user page: an admin
-// grants / revokes individual permissions ON TOP of what the user's roles give
-// them. The deviation reference is `role_effective` (what the roles alone would
-// grant); the PUT sends the working set's deltas vs that reference as the user's
-// full personal override set (replace semantics). Self-contained — the caller
-// only toggles `open` and passes the target user.
 const props = defineProps<{ user: SearchResultUser }>()
 const open = defineModel<boolean>({ required: true })
 
@@ -21,36 +15,24 @@ const state = ref<KunUserPermState | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 
-// WORKING effective set (local pending edits). Replaced wholesale on every
-// toggle (immutable) so Vue tracks it without a reactive Set. `initial` is the
-// loaded effective, the dirtiness reference.
 const working = ref<Set<string>>(new Set())
 const initial = ref<Set<string>>(new Set())
 
-// The ren (莲) safety anchor holds the full catalogue and the backend refuses
-// any override on it — render the whole panel read-only.
 const isRen = computed(() => state.value?.roles.includes('ren') ?? false)
 
-// Delegation guard (UX mirror of apps/api — the backend is the real boundary):
-// an operator may only adjust a user of strictly-lower rank, and only toggle keys
-// the operator themselves hold (possession). See constants/permission.ts + useCan.
 const { roles: operatorRoles } = storeToRefs(usePersistUserStore())
 const myPerms = useMyPermissions()
 const targetRoles = computed(() => state.value?.roles ?? [])
 const rankLocked = computed(
   () => kunRoleRank(operatorRoles.value) <= kunRoleRank(targetRoles.value)
 )
-// The whole panel is read-only for a ren target OR a same/higher-rank target.
 const readOnly = computed(() => isRen.value || rankLocked.value)
 
-// Cell-level possession lock: an editable-panel cell whose key the operator does
-// not hold — visible (carried-over deviations still render) but not toggleable.
 const possessionLocked = (permission: string) =>
   !readOnly.value && !myPerms.value(permission)
 const cellDisabled = (permission: string) =>
   readOnly.value || saving.value || possessionLocked(permission)
 
-// The role-derived reference set: the deviation baseline for the per-user panel.
 const roleEffective = computed(() => new Set(state.value?.role_effective ?? []))
 
 const groups = KUN_PERMISSION_GROUPS
@@ -72,8 +54,6 @@ const load = async () => {
   }
 }
 
-// (Re)load each time the modal opens; clear stale state first so a reopen never
-// flashes the previous user's grid.
 watch(open, (isOpen) => {
   if (isOpen) {
     state.value = null
@@ -95,9 +75,6 @@ const toggle = (permission: string, value: boolean) => {
 
 const isChecked = (permission: string) => working.value.has(permission)
 
-// A working state diverging from role_effective is a personal override: 'grant'
-// when the user now holds a permission their roles lack, 'revoke' when they lack
-// one their roles grant.
 const deviation = (permission: string): 'grant' | 'revoke' | null => {
   const inWork = working.value.has(permission)
   const inRole = roleEffective.value.has(permission)
@@ -105,9 +82,6 @@ const deviation = (permission: string): 'grant' | 'revoke' | null => {
   return inWork ? 'grant' : 'revoke'
 }
 
-// The full personal override set to PUT: one row per key where working diverges
-// from role_effective. Computed over the 43 keys only, so a no-op relative to
-// role_effective can never be sent (the backend rejects those too).
 const deltas = computed(() => {
   const role = roleEffective.value
   const out: { permission: string; effect: 'grant' | 'revoke' }[] = []
@@ -123,7 +97,6 @@ const deltas = computed(() => {
   return out
 })
 
-// Dirty = the working set differs from the loaded effective (what's persisted).
 const isDirty = computed(() => {
   if (working.value.size !== initial.value.size) return true
   for (const key of working.value) {
@@ -234,7 +207,6 @@ const handleReset = async () => {
           description="勾选 = 在角色之外额外授予该用户一项权限；取消勾选 = 撤销一项其角色本有的权限。带有小圆点的行即为相对角色权限的个人覆盖（绿色=个人授予，黄色=个人撤销）。"
         />
 
-        <!-- Grouped permission rows. -->
         <div class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           <div v-for="entry in groups" :key="entry.group">
             <div
@@ -292,7 +264,6 @@ const handleReset = async () => {
           </div>
         </div>
 
-        <!-- Action bar (hidden for the read-only ren / rank-locked cases). -->
         <div
           v-if="!readOnly"
           class="border-default-200 flex flex-wrap items-center justify-between gap-3 border-t pt-3"

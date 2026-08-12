@@ -1,6 +1,5 @@
 import type { KunUIColor } from '@kungal/ui-core'
 
-// Spoiler scale, mirroring galgame-rating (none / portion / serious).
 export const KUN_QUIZ_SPOILER_CONST = ['none', 'portion', 'serious'] as const
 
 export const KUN_QUIZ_SPOILER_MAP: Record<string, string> = {
@@ -23,9 +22,6 @@ export const KUN_QUIZ_TYPE_CONST = [
   'essay'
 ] as const
 
-// Types currently offered for authoring / filtering. fill & essay are
-// temporarily disabled (the backend still supports all five, so re-enabling is
-// just adding them back here).
 export const KUN_QUIZ_ENABLED_TYPE_CONST = [
   'single',
   'multiple',
@@ -56,7 +52,6 @@ export const KUN_QUIZ_TYPE_COLOR_MAP: Record<string, KunUIColor> = {
   essay: 'default'
 }
 
-// The description shown next to each type in the 出题 form.
 export const KUN_QUIZ_TYPE_DESCRIPTION_MAP: Record<string, string> = {
   single: '给出多个选项, 只有一个正确答案',
   multiple: '给出多个选项, 有一个或多个正确答案',
@@ -98,8 +93,6 @@ export const KUN_QUIZ_SORT_FIELD_CONST = [
   'answer_count'
 ] as const
 
-// Difficulty 1-10 → a short tier label + color. Tiers: 1-2 入门, 3-4 简单,
-// 5-6 普通, 7-8 困难, 9-10 地狱.
 export const kunQuizDifficultyLabel = (d: number): string => {
   if (d <= 2) return '入门'
   if (d <= 4) return '简单'

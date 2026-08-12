@@ -1,15 +1,11 @@
 <script setup lang="ts">
-// The reaction trigger: an icon-only KunReaction that opens the picker popover.
-// State is injected (shared with the chips), so reacting here updates the bar.
 const { toggle, mineKeys, list, topicId, replyId } = inject(reactionsKey)!
 
 const picker = ref<{ close: () => void } | null>(null)
 const historyOpen = ref(false)
 
-// Which subject the history feed hangs off — absent where there is none.
 const subject = topicId ? 'topic' : replyId ? 'reply' : undefined
 
-// Total reactions on the subject (sum of per-reaction counts) — the "xxx 人" count.
 const total = computed(() => list.value.reduce((sum, r) => sum + r.count, 0))
 
 const onSelect = (key: string) => {
@@ -25,11 +21,6 @@ const onViewHistory = () => {
 
 <template>
   <KunPopover ref="picker" position="top-start" opaque>
-    <!-- KunPopover wraps #trigger in an inline-block, whose line box adds a
-         descender's worth of dead space under the button. A flex span here was
-         supposed to remove it and measurably does not (the wrapper keeps its own
-         strut) — the row that hosts this trigger zeroes it with leading-none
-         instead. -->
     <template #trigger>
       <KunReaction :toggle="false" icon="lucide:smile-plus" label="表态" />
     </template>

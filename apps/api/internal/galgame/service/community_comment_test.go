@@ -7,8 +7,6 @@ import (
 	"kun-galgame-api/pkg/userclient"
 )
 
-// TestVisibleTo pins the held-self-see rule: a held (TL0) post is visible only to
-// its own author; visible + tombstoned posts always pass.
 func TestVisibleTo(t *testing.T) {
 	const author int64 = 7
 	cases := []struct {
@@ -36,8 +34,6 @@ func sampleAuthor() userclient.User {
 	return userclient.User{ID: 7, Name: "kun", Avatar: "a.webp", Status: 0}
 }
 
-// TestBuildCommunityItemDeleted proves a tombstone's body is blanked and the
-// placeholder flags are set.
 func TestBuildCommunityItemDeleted(t *testing.T) {
 	p := communityclient.PostView{ID: 100, AuthorID: 7, ContentRaw: "secret", Status: communityclient.PostDeleted, CreatedAt: "2026-07-13T00:00:00Z"}
 	item := buildCommunityItem(p, 42, sampleAuthor(), 0, false)
@@ -52,8 +48,6 @@ func TestBuildCommunityItemDeleted(t *testing.T) {
 	}
 }
 
-// TestBuildCommunityItemHeld proves a held post keeps its body (its author will
-// see it) and carries held=true; the reply/root pointers project to null when 0.
 func TestBuildCommunityItemHeld(t *testing.T) {
 	p := communityclient.PostView{ID: 101, AuthorID: 7, ContentRaw: "hi", Status: communityclient.PostHeld, ReplyToPostID: 0, RootPostID: 0}
 	item := buildCommunityItem(p, 42, sampleAuthor(), 3, true)
@@ -68,7 +62,6 @@ func TestBuildCommunityItemHeld(t *testing.T) {
 	}
 }
 
-// TestBuildCommunityItemPointers proves reply/root ids project as non-nil.
 func TestBuildCommunityItemPointers(t *testing.T) {
 	p := communityclient.PostView{ID: 102, AuthorID: 7, ContentRaw: "re", ReplyToPostID: 50, RootPostID: 40, EditedAt: "2026-07-13T01:00:00Z", EditedByModerator: true}
 	item := buildCommunityItem(p, 42, sampleAuthor(), 0, false)
@@ -83,9 +76,6 @@ func TestBuildCommunityItemPointers(t *testing.T) {
 	}
 }
 
-// TestLikeEffects pins the triple-write consistency: the local row presence, the
-// moemoepoint delta, and the notify flag all derive from the community toggle's
-// authoritative added/removed, with self-likes rewarding/notifying nothing.
 func TestLikeEffects(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -112,7 +102,6 @@ func TestLikeEffects(t *testing.T) {
 	}
 }
 
-// TestClampReadLimit pins the ≤50 read cap and the default.
 func TestClampReadLimit(t *testing.T) {
 	cases := map[int]string{0: "50", -1: "50", 1: "1", 30: "30", 50: "50", 51: "50", 999: "50"}
 	for in, want := range cases {
@@ -122,7 +111,6 @@ func TestClampReadLimit(t *testing.T) {
 	}
 }
 
-// TestParseAnchorGid pins galgame-id parsing from a site_game anchor.
 func TestParseAnchorGid(t *testing.T) {
 	cases := map[string]int{"42": 42, "": 0, "abc": 0, "0": 0, "-5": 0}
 	for in, want := range cases {

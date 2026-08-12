@@ -2,10 +2,6 @@ package dto
 
 import "time"
 
-// ──────────────────────────────────────────
-// Requests
-// ──────────────────────────────────────────
-
 type SectionTopicsRequest struct {
 	Section   string `query:"section" validate:"required"`
 	Page      int    `query:"page" validate:"min=1"`
@@ -16,10 +12,6 @@ type SectionTopicsRequest struct {
 type CategoriesRequest struct {
 	Category string `query:"category" validate:"required"`
 }
-
-// ──────────────────────────────────────────
-// Responses
-// ──────────────────────────────────────────
 
 type UserBrief struct {
 	ID     int    `json:"id"`

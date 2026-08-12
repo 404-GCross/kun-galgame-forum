@@ -37,12 +37,6 @@ if (detail.value) {
   useKunDisableSeo('未找到该收藏夹')
 }
 
-// Staff moderation of a collection someone else owns. A public collection's
-// name and description are site-visible free text, so 编辑 (fix it) and 删除
-// (take it down) both need a path that is not "ask the owner nicely". Only
-// collections the viewer can already OPEN are actionable — private/restricted
-// ones 404 at the detail endpoint, which is the right trade: the exposure being
-// moderated is precisely the public one.
 const canEditAnyCollection = useCan('collection.edit_any')
 const canDeleteAnyCollection = useCan('collection.delete_any')
 const canEdit = computed(

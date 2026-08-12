@@ -60,8 +60,6 @@ func (r *PollRepository) HasUserVoted(pollID, userID int) (bool, error) {
 	return count > 0, err
 }
 
-// FindDistinctVoterIDs returns up to `limit` distinct user IDs that have voted
-// on the poll. Identity is hydrated by the service layer via userclient.
 func (r *PollRepository) FindDistinctVoterIDs(pollID, limit int) ([]int, error) {
 	var ids []int
 	err := r.db.Table("topic_poll_vote").
@@ -89,10 +87,6 @@ func (r *PollRepository) CountTotalVotes(pollID int) (int, error) {
 	return int(count), err
 }
 
-// ──────────────────────────────────────────
-// Vote log
-// ──────────────────────────────────────────
-
 type VoteLogRow struct {
 	ID         int
 	UserID     int
@@ -118,50 +112,36 @@ func (r *PollRepository) FindVoteLogs(pollID, page, limit int) ([]VoteLogRow, in
 	return rows, total, err
 }
 
-// ──────────────────────────────────────────
-// Tx-aware write operations (for the service coordinator)
-// ──────────────────────────────────────────
-
-// CreatePoll inserts a TopicPoll row inside the caller tx.
 func (r *PollRepository) CreatePoll(tx *gorm.DB, poll *model.TopicPoll) error {
 	return tx.Create(poll).Error
 }
 
-// CreatePollOption inserts a TopicPollOption row inside the caller tx.
 func (r *PollRepository) CreatePollOption(tx *gorm.DB, opt *model.TopicPollOption) error {
 	return tx.Create(opt).Error
 }
 
-// TouchTopicStatusUpdateTime bumps topic.status_update_time for poll activity —
-// but only while the topic is still inside its bump window (see model.BumpCutoff).
-// The `created > cutoff` guard is in SQL so an aged-out topic is not matched
-// (necro-bump prevention).
 func (r *PollRepository) TouchTopicStatusUpdateTime(tx *gorm.DB, topicID int, t time.Time) error {
 	return tx.Model(&model.Topic{}).
 		Where("id = ? AND created > ?", topicID, model.BumpCutoff(t)).
 		Updates(map[string]any{"status_update_time": t}).Error
 }
 
-// DeleteUserVotes removes all of a user's votes for a given poll.
 func (r *PollRepository) DeleteUserVotes(tx *gorm.DB, pollID, userID int) error {
 	return tx.Where("poll_id = ? AND user_id = ?", pollID, userID).
 		Delete(&model.TopicPollVote{}).Error
 }
 
-// AdjustOptionVoteCount adjusts topic_poll_option.vote_count by delta.
 func (r *PollRepository) AdjustOptionVoteCount(tx *gorm.DB, optionID, delta int) error {
 	return tx.Model(&model.TopicPollOption{}).Where("id = ?", optionID).
 		Update("vote_count", gorm.Expr("vote_count + ?", delta)).Error
 }
 
-// CreateVote inserts a TopicPollVote row inside the caller tx.
 func (r *PollRepository) CreateVote(tx *gorm.DB, pollID, optionID, userID int) error {
 	return tx.Create(&model.TopicPollVote{
 		PollID: pollID, OptionID: optionID, UserID: userID,
 	}).Error
 }
 
-// DeletePollCascade removes a poll's votes, options, then the poll row itself.
 func (r *PollRepository) DeletePollCascade(tx *gorm.DB, pollID int) error {
 	if err := tx.Where("poll_id = ?", pollID).Delete(&model.TopicPollVote{}).Error; err != nil {
 		return err
@@ -172,7 +152,6 @@ func (r *PollRepository) DeletePollCascade(tx *gorm.DB, pollID int) error {
 	return tx.Delete(&model.TopicPoll{}, pollID).Error
 }
 
-// UpdatePollFields patches poll scalar columns inside a tx.
 func (r *PollRepository) UpdatePollFields(tx *gorm.DB, pollID int, fields map[string]any) error {
 	if len(fields) == 0 {
 		return nil
@@ -180,7 +159,6 @@ func (r *PollRepository) UpdatePollFields(tx *gorm.DB, pollID int, fields map[st
 	return tx.Model(&model.TopicPoll{}).Where("id = ?", pollID).Updates(fields).Error
 }
 
-// FindOptionsByIDs loads poll options by primary key.
 func (r *PollRepository) FindOptionsByIDs(ids []int) ([]model.TopicPollOption, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -190,13 +168,11 @@ func (r *PollRepository) FindOptionsByIDs(ids []int) ([]model.TopicPollOption, e
 	return opts, err
 }
 
-// UpdateOptionText patches the text of a single option.
 func (r *PollRepository) UpdateOptionText(tx *gorm.DB, optionID int, text string) error {
 	return tx.Model(&model.TopicPollOption{}).Where("id = ?", optionID).
 		Update("text", text).Error
 }
 
-// DeleteOptionsByIDs removes options by primary key (caller verifies no votes).
 func (r *PollRepository) DeleteOptionsByIDs(tx *gorm.DB, ids []int) error {
 	if len(ids) == 0 {
 		return nil

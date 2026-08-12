@@ -12,8 +12,6 @@ export interface DocEditorContext {
   resetForm: () => void
   refreshTags: () => Promise<void>
   readingMinute: ComputedRef<number>
-  // Resolved CDN url of the existing cover, for seeding the uploader preview
-  // when editing. Preview-only — never the submitted value (that is the hash).
   initialBannerUrl: string
 }
 

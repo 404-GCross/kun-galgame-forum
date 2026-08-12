@@ -18,10 +18,6 @@ const selectedOptions = ref<number[]>([])
 const isLoading = ref(false)
 const isLogModalOpen = ref(false)
 
-// `new Date()` (now) differs between server render and client hydration, so a
-// poll whose deadline is near "now" can flip ended/not-ended → a hydration
-// mismatch. Capture the server's `now`, ship it via the payload (useState),
-// then refresh after mount so it stays live without a mismatch.
 const nowMs = useState(`kun-poll-now-${useId()}`, () => Date.now())
 onMounted(() => {
   nowMs.value = Date.now()
@@ -230,12 +226,6 @@ const handleDelete = async () => {
         </div>
       </KunAvatarGroup>
 
-      <!-- Management row (投票日志 / 编辑 / 删除). isTopicAdmin was declared as a
-           prop and then never read, so this row hung on canViewResults alone:
-           every viewer of a finished poll got an 编辑 and a 删除 button on someone
-           else's poll, and the API 403'd on click. It also meant granting
-           poll.edit_any / poll.delete_any changed nothing on screen — the buttons
-           were already there for everyone. -->
       <div
         v-if="canViewResults && isTopicAdmin"
         class="border-t-default-200 flex items-center justify-end gap-1"

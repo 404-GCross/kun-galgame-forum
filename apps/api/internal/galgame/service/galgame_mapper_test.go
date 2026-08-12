@@ -6,13 +6,6 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-// Regression guard: covers/screenshots MUST carry the rewriteBanners-injected
-// `cdn_url` from the galgame parse struct through to the FE DTO. It was silently
-// dropped once — NextMoeGalgame{Cover,Screenshot} lacked the CDNURL field AND the
-// mappers didn't copy it — so the detail gallery reached the FE with no image
-// URLs and rendered nothing (falling back to a /image/<hash> redirect per
-// image). The bytes DO carry cdn_url (the client runs rewriteBanners before we
-// unmarshal); this asserts the typed detail path preserves it.
 func TestCoversFromNextMoe_CarriesCDNURL(t *testing.T) {
 	in := []dto.NextMoeGalgameCover{
 		{ImageHash: "h0", SortOrder: 0, Sexual: 1, Violence: 2,

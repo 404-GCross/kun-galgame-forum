@@ -1,13 +1,5 @@
 import { z } from 'zod'
 
-/* website */
-
-// The `url` field holds the site's BARE main domain (no scheme) — that's how
-// every row is stored and how the UI links to it (`https://${url}` in
-// website/Operation.vue). Zod's `z.url()` requires a scheme, so validating
-// `url` as a full URL rejected every existing entry and broke 编辑/创建.
-// Validate it as a domain instead, mirroring the BE's `fqdn` tag. We also
-// leniently strip a pasted scheme / path so an admin can paste either form.
 const DOMAIN_RE =
   /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]?$/i
 
@@ -15,13 +7,12 @@ const domainField = z
   .string()
   .min(1, '网站主域名不能为空')
   .max(500, '网站主域名最多 500 个字符')
-  .transform(
-    (value) =>
-      value
-        .trim()
-        .replace(/^https?:\/\//i, '') // tolerate a pasted scheme
-        .replace(/\/.*$/, '') // drop any path / trailing slash
-        .replace(/\.$/, '') // drop a trailing dot
+  .transform((value) =>
+    value
+      .trim()
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/.*$/, '')
+      .replace(/\.$/, '')
   )
   .refine((value) => DOMAIN_RE.test(value), {
     message: '无效的网站主域名 (示例: www.kungal.com)'
@@ -31,17 +22,6 @@ export const getWebsiteDetailSchema = z.object({
   domain: z.string().max(100, '网站可用域名最多 100 个字符')
 })
 
-// Length caps mirror apps/api/internal/website/dto/website_dto.go —
-// keeping the FE stricter than the BE would silently reject perfectly
-// valid input that the API would otherwise accept.
-// Field names match the BE JSON tags exactly: `categoryId`, `ageLimit`,
-// `createTime` (camelCase) but `tag_ids` (snake_case — kept this way to
-// match the existing BE tag).
-// `icon` (legacy URL) is now optional — the content-addressed `iconImageHash`
-// from the cover uploader carries the image. The legacy URL is kept and
-// submitted unchanged so editing an un-migrated row without re-uploading the
-// icon never wipes it. The site still needs an icon, enforced by `requireIcon`
-// below (one of the two must be present).
 const websiteBaseSchema = z.object({
   name: z
     .string()
@@ -74,8 +54,6 @@ const websiteBaseSchema = z.object({
   create_time: z.string().max(20, '网站创建时间描述最多 20 个字符').default('')
 })
 
-// Keep the icon effectively required: either the new hash or the legacy URL.
-// Root-level refine (no path) so the message renders cleanly on its own.
 const hasIcon = (data: { icon?: string; icon_image_hash?: string }) =>
   !!(data.icon_image_hash || data.icon)
 const ICON_REQUIRED = { message: '请上传网站图标' }
@@ -98,8 +76,6 @@ export const toggleLikeFavoriteSchema = z.object({
 export const deleteWebsiteSchema = z.object({
   website_id: z.coerce.number<number>().min(1).max(9999999)
 })
-
-/* tag */
 
 export const getWebsiteTagSchema = z.object({
   website_id: z.coerce.number<number>().min(1).max(9999999).optional()
@@ -130,8 +106,6 @@ export const updateWebsiteTagSchema = createWebsiteTagSchema.extend({
 export const deleteWebsiteTagSchema = z.object({
   tag_id: z.coerce.number<number>().min(1).max(9999999)
 })
-
-/* category */
 
 export const getWebsiteByCategorySchema = z.object({
   name: z.string().min(1, '分类名称不能为空').max(30, '分类名称最多 30 个字符')

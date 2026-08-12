@@ -1,16 +1,5 @@
 package client
 
-// Merged-label contract (doc 148). The catalog answers a detail request for an
-// id that was merged away with 301 + {code: 12, data: {current_id}}, so the
-// 会社 page can hop to the survivor in ONE redirect instead of rendering the
-// ghost the old behaviour produced (200, the dead label's name, an empty
-// catalogue — a real-looking but permanently empty company page).
-//
-// The sharp edge these tests guard is the HTTP client itself: net/http follows
-// a 301 by default, which would swallow the signal and hand back the SURVIVOR's
-// record under the DEAD id — one entity on two URLs, the exact outcome the
-// redirect exists to prevent. Hermetic: an httptest server plays the catalog.
-
 import (
 	"context"
 	"net/http"
@@ -19,9 +8,6 @@ import (
 	"testing"
 )
 
-// movedCatalog plays a catalog holding one live label (survivor) whose two
-// merged predecessors both answer 301. It records every path it is asked for,
-// which is how the "did the client follow the redirect" assertion is made.
 func movedCatalog(t *testing.T, survivor string) (*GalgameClient, *[]string) {
 	t.Helper()
 	var mu sync.Mutex
@@ -65,8 +51,6 @@ func TestCatalogLabelMergedIDReportsSurvivor(t *testing.T) {
 	if rec.DisplayName != "" {
 		t.Fatalf("the survivor's content must never travel under the dead id, got %q", rec.DisplayName)
 	}
-	// One request, to the dead id only: following the redirect would show the
-	// survivor's path here too.
 	if len(*seen) != 1 || (*seen)[0] != "/v1/catalog/labels/13323" {
 		t.Fatalf("client followed the redirect: %v", *seen)
 	}
@@ -92,8 +76,6 @@ func TestCatalogLabelLiveAndAbsentUnaffected(t *testing.T) {
 	}
 }
 
-// A chained merge is flattened upstream, so the client sees ONE 301 whose
-// current_id is already final — it must never chase a second hop of its own.
 func TestCatalogLabelChainIsResolvedUpstream(t *testing.T) {
 	c, seen := movedCatalog(t, "6935")
 

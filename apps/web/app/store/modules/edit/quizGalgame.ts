@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-// A recently-associated galgame remembered for the quiz 出题 picker. We keep the
-// resolved display name + banner + 会社 so the LRU quick-picks render the same
-// rich row as live search results.
 export interface RecentQuizGalgame {
   id: number
   name: string
@@ -14,9 +11,6 @@ export interface RecentQuizGalgame {
 
 const MAX_RECENT = 8
 
-// LRU of galgames the user recently linked to a quiz, so re-associating the same
-// game is one click. Persisted per browser; newest first, deduped by id, capped.
-// Same shape/idiom as usePersistImageHistoryStore.
 export const usePersistQuizGalgameStore = defineStore(
   'KUNGalgameQuizGalgame',
   () => {

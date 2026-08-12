@@ -2,9 +2,6 @@ package perm
 
 import "testing"
 
-// allPerms is the full 51-key vocabulary, listed explicitly so this test is a
-// second, independent copy of the matrix — if a constant is added/removed
-// without updating both this list and the bundles, a count assertion trips.
 var allPerms = []Permission{
 	TopicEditAny, TopicHide, TopicSetBestAnswer,
 	ReplyEditAny, ReplyDeleteAny, ReplyPin,
@@ -30,8 +27,6 @@ var allPerms = []Permission{
 	AdminDashboard, UserPurgeContent,
 }
 
-// adminOnly is the pair of site-administration keys that separate admin/ren
-// from moderator.
 var adminOnly = map[Permission]bool{
 	AdminDashboard:   true,
 	UserPurgeContent: true,
@@ -39,13 +34,11 @@ var adminOnly = map[Permission]bool{
 
 const (
 	totalPerms = 51
-	modPerms   = 49 // total minus the two admin-only keys
+	modPerms   = 49
 )
 
-// isAdminOnly reports whether p is one of the two admin-tier permissions.
 func isAdminOnly(p Permission) bool { return adminOnly[p] }
 
-// TestVocabularySize pins the vocabulary at exactly 51 distinct keys.
 func TestVocabularySize(t *testing.T) {
 	if len(allPerms) != totalPerms {
 		t.Fatalf("allPerms has %d keys, want %d", len(allPerms), totalPerms)
@@ -65,9 +58,6 @@ func TestVocabularySize(t *testing.T) {
 	}
 }
 
-// bundleSet returns the deduplicated permission set a role's bundle grants,
-// and fails if the bundle carried a duplicate (which would make the length
-// assertions meaningless).
 func bundleSet(t *testing.T, roleName string) map[Permission]bool {
 	t.Helper()
 	set := make(map[Permission]bool)
@@ -80,7 +70,6 @@ func bundleSet(t *testing.T, roleName string) map[Permission]bool {
 	return set
 }
 
-// TestBundleSizes pins the exact grant counts: moderator 49, admin 51, ren 51.
 func TestBundleSizes(t *testing.T) {
 	cases := []struct {
 		role string
@@ -97,13 +86,11 @@ func TestBundleSizes(t *testing.T) {
 	}
 }
 
-// TestContainment pins moderator ⊂ admin and admin == ren.
 func TestContainment(t *testing.T) {
 	mod := bundleSet(t, "moderator")
 	admin := bundleSet(t, "admin")
 	ren := bundleSet(t, "ren")
 
-	// moderator ⊂ admin: every moderator grant is an admin grant.
 	for p := range mod {
 		if !admin[p] {
 			t.Errorf("moderator holds %q but admin does not (containment broken)", p)
@@ -112,7 +99,6 @@ func TestContainment(t *testing.T) {
 	if len(mod) >= len(admin) {
 		t.Errorf("moderator (%d) must be a STRICT subset of admin (%d)", len(mod), len(admin))
 	}
-	// admin == ren.
 	if len(admin) != len(ren) {
 		t.Fatalf("admin (%d) and ren (%d) differ in size", len(admin), len(ren))
 	}
@@ -123,26 +109,17 @@ func TestContainment(t *testing.T) {
 	}
 }
 
-// wantGranted is the golden membership predicate: given a single role name and
-// a permission, does that role grant it?
-//
-//   - moderator: every non-admin-only key.
-//   - admin / ren: every key.
-//   - user / creator / any unknown name: nothing.
 func wantGranted(roleName string, p Permission) bool {
 	switch roleName {
 	case "moderator":
 		return !isAdminOnly(p)
 	case "admin", "ren":
 		return true
-	default: // user, creator, unknown, ...
+	default:
 		return false
 	}
 }
 
-// TestMatrix table-drives the entire role×permission matrix through Can: every
-// one of the 51 keys against user/creator/moderator/admin/ren/unknown, plus the
-// empty (plain logged-in user) role set.
 func TestMatrix(t *testing.T) {
 	singleRoles := []string{"user", "creator", "moderator", "admin", "ren", "unknown"}
 	for _, roleName := range singleRoles {
@@ -155,7 +132,6 @@ func TestMatrix(t *testing.T) {
 		}
 	}
 
-	// The empty role set (a plain `user` never carries a claim) grants nothing.
 	for _, p := range allPerms {
 		if Can(nil, p) {
 			t.Errorf("Can(nil, %q) = true, want false (empty roles grant nothing)", p)
@@ -166,8 +142,6 @@ func TestMatrix(t *testing.T) {
 	}
 }
 
-// TestUnknownPermission proves an unknown permission key is never granted, even
-// to the highest role.
 func TestUnknownPermission(t *testing.T) {
 	for _, roleName := range []string{"moderator", "admin", "ren"} {
 		if Can([]string{roleName}, Permission("does.not.exist")) {
@@ -176,8 +150,6 @@ func TestUnknownPermission(t *testing.T) {
 	}
 }
 
-// TestMultiRoleUnion proves Can is an OR across the caller's role set: a claim
-// carrying both a non-granting and a granting role still resolves true.
 func TestMultiRoleUnion(t *testing.T) {
 	roles := []string{"creator", "admin"}
 	if !Can(roles, UserPurgeContent) {
@@ -186,7 +158,6 @@ func TestMultiRoleUnion(t *testing.T) {
 	if !Can([]string{"user", "moderator"}, TopicHide) {
 		t.Errorf("Can([user, moderator], topic.hide) = false, want true")
 	}
-	// but a purely non-granting union still yields false.
 	if Can([]string{"user", "creator"}, TopicHide) {
 		t.Errorf("Can([user, creator], topic.hide) = true, want false")
 	}

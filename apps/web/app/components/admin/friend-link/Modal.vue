@@ -4,7 +4,6 @@ import {
   FRIEND_LINK_STATUS_OPTIONS
 } from '~/constants/friendLink'
 
-// FriendLink / FriendLinkInput / FriendLinkCategory are auto-imported (shared/types).
 const props = defineProps<{
   modelValue: boolean
   initialData?: FriendLink | null
@@ -29,8 +28,6 @@ const getInitial = (): FriendLinkInput => {
     name: d?.name ?? '',
     link: d?.link ?? '',
     description: d?.description ?? '',
-    // Keep the legacy URL so submitting an un-migrated friend preserves it; the
-    // hash drives the new uploader.
     banner: d?.banner ?? '',
     banner_image_hash: d?.banner_image_hash ?? '',
     status: d?.status ?? 'normal'
@@ -46,7 +43,6 @@ watch(
   }
 )
 
-// Resolved CDN url of the edited friend's banner — preview only (empty on create).
 const initialBannerUrl = computed(() => props.initialData?.banner_url ?? '')
 
 const handleSubmit = () => {

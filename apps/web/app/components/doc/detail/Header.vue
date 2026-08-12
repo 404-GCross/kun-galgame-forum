@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// Editing / deleting a doc now lives only in the admin doc manager
-// (/admin/doc); the public detail page is read-only.
 const props = defineProps<{
   metadata: DocArticleDetail
 }>()
@@ -11,9 +9,6 @@ const metadata = computed(() => props.metadata)
 <template>
   <KunCard :is-hoverable="false" class-name="border-none">
     <div class="relative mb-6 aspect-video h-full w-full">
-      <!-- Declarative lightbox on the cover (real <KunImage>, not
-           v-html). wrap=false so the bare <KunImage> stays the layout
-           box that fills the aspect-video container. -->
       <KunLightboxGallery>
         <KunLightboxGalleryItem
           :src="metadata.banner_url || '/kungalgame.webp'"

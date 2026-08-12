@@ -26,8 +26,6 @@ const actionsCount = computed(
       :is-n-s-f-w-topic="topic.is_nsfw_topic"
     />
 
-    <!-- Footer: avatar · name · relative publish time, then the view / like /
-         reply counts just to the right of the time (a small gap apart). -->
     <div class="text-default-600 flex flex-wrap items-center gap-2 text-sm">
       <KunAvatar
         :disable-floating="true"

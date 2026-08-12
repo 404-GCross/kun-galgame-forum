@@ -1,11 +1,4 @@
 <script setup lang="ts">
-// Creator-application modal. Mounted at the app.vue root (a stable, non-scoped
-// node) — NOT inside the avatar popover, which v-if-unmounts on click-away and
-// would tear this modal down with it (same reasoning as 退出登录 / 萌萌点明细).
-// UserInfo's "创作者申请" sets the temp-store flag; this self-binds to it.
-//
-// Replaces the old buried settings card: it surfaces the benefits + the live
-// eligibility the moment it opens, and lets an eligible user apply in one click.
 interface CreatorEligibility {
   eligible: boolean
   merged_prs: number
@@ -50,7 +43,6 @@ const load = async () => {
   loading.value = false
 }
 
-// Re-fetch on every open so eligibility is fresh; clear any stale draft.
 watch(isOpen, (open) => {
   if (open) {
     message.value = ''
@@ -70,8 +62,6 @@ const canApply = computed(
   () => isEligible.value && !isPending.value && !isCreator.value
 )
 
-// Application flow as a KunSteps stepper. current is 0-based; earlier steps
-// render done (check). 0 达成条件 · 1 提交申请 · 2 审核 · 3 成为创作者.
 const FLOW = [
   { title: '达成条件', icon: 'lucide:target' },
   { title: '提交申请', icon: 'lucide:send' },
@@ -132,7 +122,6 @@ const handleApply = async () => {
 <template>
   <KunModal v-model="isOpen" inner-class-name="max-w-xl">
     <div class="space-y-5 p-1">
-      <!-- header -->
       <div class="flex items-start gap-3">
         <KunIcon
           class="text-primary mt-0.5 size-8 shrink-0"
@@ -166,7 +155,6 @@ const handleApply = async () => {
           size="sm"
         />
 
-        <!-- already a creator (edge: just approved before the role cache caught up) -->
         <div
           v-if="isCreator"
           class="bg-success-50 text-success-700 flex items-center gap-2 rounded-xl p-4 text-sm"
@@ -176,7 +164,6 @@ const handleApply = async () => {
         </div>
 
         <template v-else>
-          <!-- benefits -->
           <section class="space-y-2">
             <h3 class="text-default-700 text-sm font-medium">创作者特权</h3>
             <ul class="text-default-700 list-disc space-y-1.5 pl-5 text-sm">
@@ -186,7 +173,6 @@ const handleApply = async () => {
 
           <KunDivider />
 
-          <!-- conditions -->
           <section class="space-y-3">
             <div class="flex items-center justify-between">
               <h3 class="text-default-700 text-sm font-medium">申请条件</h3>
@@ -218,7 +204,6 @@ const handleApply = async () => {
             </div>
           </section>
 
-          <!-- current application state -->
           <div
             v-if="isPending"
             class="bg-primary-50 text-primary-700 flex items-center gap-2 rounded-xl p-3 text-sm"
@@ -239,7 +224,6 @@ const handleApply = async () => {
             </p>
           </div>
 
-          <!-- optional message, only when actually applying -->
           <KunTextarea
             v-if="canApply"
             name="creator-message"
@@ -248,7 +232,6 @@ const handleApply = async () => {
             v-model="message"
           />
 
-          <!-- CTA -->
           <div class="flex items-center justify-end gap-2 pt-1">
             <KunButton variant="light" @click="isOpen = false">
               稍后再说

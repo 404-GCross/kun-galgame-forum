@@ -5,9 +5,6 @@ const props = defineProps<{
   userId: number
 }>()
 
-// The 答题 (answered) history is self-only — the backend endpoint reads the
-// authed user, so it's shown only when viewing your OWN profile. 出题
-// (authored) is public and works for any profile.
 const { id } = storeToRefs(usePersistUserStore())
 const isOwner = computed(() => !!id.value && id.value === props.userId)
 

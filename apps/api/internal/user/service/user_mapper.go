@@ -6,10 +6,6 @@ import (
 	"kun-galgame-api/internal/user/repository"
 )
 
-// ──────────────────────────────────────────
-// Shared helpers
-// ──────────────────────────────────────────
-
 func appendUniqueStr(slice []string, val string) []string {
 	for _, s := range slice {
 		if s == val {
@@ -37,8 +33,6 @@ func briefToLocale(b client.GalgameBrief) dto.KunLanguage {
 	}
 }
 
-// groupResourceMeta bucketises (galgame_id, platform, language) tuples into
-// per-galgame sets with insertion-order preservation and dedup.
 func groupResourceMeta(rows []repository.GalgameResourceMeta) (platforms, languages map[int][]string) {
 	platforms = make(map[int][]string)
 	languages = make(map[int][]string)
@@ -53,7 +47,6 @@ func groupResourceMeta(rows []repository.GalgameResourceMeta) (platforms, langua
 	return
 }
 
-// collectUniqueIDs extracts unique int IDs from a slice via a projection.
 func collectUniqueIDs[T any](rows []T, pick func(T) int) []int {
 	out := make([]int, 0, len(rows))
 	seen := make(map[int]bool, len(rows))

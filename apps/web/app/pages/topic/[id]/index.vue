@@ -8,8 +8,6 @@ import type {
   InteractionCounter
 } from 'schema-dts'
 
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -22,12 +20,6 @@ const isNsfwMode = computed(
     showKUNGalgameContentLimit.value === 'all'
 )
 
-// NSFW topic interstitial — same rule as galgame detail:
-//   logged-in           → show directly
-//   anonymous + NSFW on → show directly
-//   anonymous + SFW     → click-to-confirm card
-// Default `true`; only flipped to `false` below when the topic is NSFW
-// and the visitor is anonymous + SFW.
 const isShowTopic = ref(true)
 
 const { isReplyRewriting } = storeToRefs(useTempReplyStore())
@@ -45,8 +37,6 @@ const { data } = await useKunFetch<TopicDetail>(`/topic/${topicId.value}`, {
 })
 
 onBeforeRouteLeave(async () => {
-  // Vue Router 4: return a value instead of calling next() (deprecated).
-  // false = stay; anything else = proceed.
   let proceed = true
   if (isReplyRewriting.value) {
     const res =
@@ -74,20 +64,10 @@ const getFirstImageSrc = (htmlString: string) => {
   return match ? match[1] : `${kungal.domain.main}/kungalgame.webp`
 }
 
-// `'banned'` was a Nitro-era sentinel that the Go BE no longer returns
-// (banned topics now bubble up as HTTP 404). `useKunFetch<TopicDetail>`
-// hard-types data.value as `TopicDetail | null`, so the legacy check
-// was a permanent no-op string compare.
 if (data.value) {
   const topic = data.value
 
   const markdown = topic.content_markdown
-  // Social / JSON-LD image. The author's cover wins: a cover IS the topic's
-  // declared representative image, which is exactly what og:image means, and
-  // taking the first body image instead silently overrides a deliberate choice.
-  // Falls back to the body image, so the ~57% of topics that carry no cover are
-  // unaffected — and topics whose body has no image at all (25 of them today)
-  // stop sharing with no preview picture.
   const banner =
     imageTokenUrl(topic.cover_images?.[0] ?? '') ||
     getFirstImageSrc(topic.content_html)
@@ -131,10 +111,6 @@ if (data.value) {
       }
     ]
 
-    // BE embeds a slim best-answer summary directly in TopicDetail when
-    // topic.best_answer_id is set (see TopicBestAnswerSummary). Mapping
-    // it to schema.org Comment surfaces the acceptedAnswer in Google's
-    // Q&A rich result — critical for forum-style SEO.
     const ba = topic.best_answer
     const acceptedAnswerSchema: Comment | undefined = ba
       ? {

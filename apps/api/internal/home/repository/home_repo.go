@@ -14,19 +14,12 @@ func NewHomeRepository(db *gorm.DB) *HomeRepository {
 	return &HomeRepository{db: db}
 }
 
-// ──────────────────────────────────────────
-// Row projections
-// ──────────────────────────────────────────
-
 type GalgameLocalRow struct {
 	ID                 int       `gorm:"column:id"`
 	View               int       `gorm:"column:view"`
 	LikeCount          int       `gorm:"column:like_count"`
 	ResourceUpdateTime time.Time `gorm:"column:resource_update_time"`
-	// CreatorUserID is the frozen wiki-era submitter (migration 066) — the
-	// author chip's only source, since the catalog face carries no submitter.
-	// NULL = unknown, which the card renders as no chip.
-	CreatorUserID *int `gorm:"column:creator_user_id"`
+	CreatorUserID      *int      `gorm:"column:creator_user_id"`
 }
 
 type ResourcePLRow struct {
@@ -55,19 +48,10 @@ type SectionRelationRow struct {
 	SectionName string `gorm:"column:name"`
 }
 
-// ──────────────────────────────────────────
-// Queries
-// ──────────────────────────────────────────
-
-// FindRecentGalgames returns the N galgames whose CONTENT was most recently
-// updated locally — ordered by the dedicated resource_update_time column
-// (migration 018), NOT the generic audit `updated` (which likes/comments bump).
 func (r *HomeRepository) FindRecentGalgames(limit int) ([]GalgameLocalRow, error) {
 	var rows []GalgameLocalRow
 	err := r.db.Table("galgame").
 		Select("id, view, like_count, resource_update_time, creator_user_id").
-		// Local rows are minted by interaction for any gid, drafts included
-		// (migration 068) — the rail shows the ones kungal publishes.
 		Where("published").
 		Order("resource_update_time DESC").
 		Limit(limit).
@@ -75,8 +59,6 @@ func (r *HomeRepository) FindRecentGalgames(limit int) ([]GalgameLocalRow, error
 	return rows, err
 }
 
-// FindResourcePlatformLanguage returns (galgame_id, platform, language)
-// rows for the given galgame IDs.
 func (r *HomeRepository) FindResourcePlatformLanguage(galgameIDs []int) []ResourcePLRow {
 	if len(galgameIDs) == 0 {
 		return nil
@@ -89,8 +71,6 @@ func (r *HomeRepository) FindResourcePlatformLanguage(galgameIDs []int) []Resour
 	return resources
 }
 
-// FindHomeTopics returns the most recent topics (excluding some sections)
-// updated within the last 3 months.
 func (r *HomeRepository) FindHomeTopics(limit int, isSFW bool) ([]TopicRow, error) {
 	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
 	excludedSections := []string{"g-seeking", "g-other", "t-help"}
@@ -119,7 +99,6 @@ func (r *HomeRepository) FindHomeTopics(limit int, isSFW bool) ([]TopicRow, erro
 	return rows, err
 }
 
-// FindTopicSections returns section names grouped by topic ID.
 func (r *HomeRepository) FindTopicSections(topicIDs []int) []SectionRelationRow {
 	if len(topicIDs) == 0 {
 		return nil
@@ -133,11 +112,6 @@ func (r *HomeRepository) FindTopicSections(topicIDs []int) []SectionRelationRow 
 	return sections
 }
 
-// FindTopicIDsWithPoll returns the subset of topicIDs that have at
-// least one row in topic_poll. Mirrors
-// topic_repo.FindTopicIDsWithPoll so the homepage feed can render the
-// "投票" badge — it was hardcoded false on the home path even after
-// the /topic + /resource list endpoints were batched.
 func (r *HomeRepository) FindTopicIDsWithPoll(topicIDs []int) map[int]bool {
 	out := map[int]bool{}
 	if len(topicIDs) == 0 {

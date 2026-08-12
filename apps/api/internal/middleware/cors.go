@@ -6,8 +6,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 )
 
-// CORS builds the cross-origin config. v3 takes slices (not comma-separated
-// strings) for origins/methods/headers, so split the configured origin list.
 func CORS(allowOrigins string) cors.Config {
 	return cors.Config{
 		AllowOrigins:     strings.Split(allowOrigins, ","),

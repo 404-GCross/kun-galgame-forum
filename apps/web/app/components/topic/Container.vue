@@ -5,11 +5,8 @@ import {
   type TopicListSortField
 } from '~/constants/topic'
 
-// /topic list — page-based (URL ?page=), 50 per page, jump to top on page change.
 const route = useRoute()
 
-// Page + sort live in the URL so the view is shareable + survives back/forward;
-// the defaults are omitted from the URL. Number transform keeps the page numeric.
 const page = useRouteQuery('page', 1, { mode: 'replace', transform: Number })
 const sortField = useRouteQuery<TopicListSortField>(
   'sort_field',
@@ -33,14 +30,9 @@ const { data, status, refresh } = await useKunFetch<{
     sort_order: sortOrder,
     category: 'all'
   },
-  // Don't auto-refetch on every query-ref change: opening a topic navigates to
-  // /topic/:id, which resets the page ref and would otherwise fire a wasted
-  // fetch right before unmount. Refetch manually, ONLY while still on this list.
   watch: false
 })
 
-// Changing the sort always returns to the first page; the fullPath watcher
-// below is what actually refetches (page + sort all live in the query string).
 const setSortField = (
   value: TopicListSortField | TopicListSortField[] | null
 ) => {
@@ -61,7 +53,6 @@ watch(
   () => {
     if (route.path !== listPath) return
     refresh()
-    // 翻页 / 换排序后回到顶部
     if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 )
@@ -74,7 +65,6 @@ watch(
       description="鲲 Galgame 论坛的全部话题，涵盖 Galgame 讨论、技术交流、资源求助与日常闲聊，在这里和大家一起畅所欲言。"
     />
 
-    <!-- Sort toolbar: sort-field select on the left, asc/desc arrows on the right. -->
     <div class="flex items-center justify-between gap-3">
       <KunSelect
         class-name="w-44"
@@ -106,7 +96,6 @@ watch(
     </div>
 
     <template v-if="data">
-      <!-- List layout: each topic separated by a faint divider, no card chrome. -->
       <KunLoading :loading="status === 'pending'">
         <div class="divide-default-200/60 divide-y">
           <TopicCard

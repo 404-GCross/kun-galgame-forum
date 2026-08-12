@@ -9,8 +9,6 @@ import (
 	"kun-galgame-api/pkg/trustclient"
 )
 
-// fakeScanner records the last request and signals completion (ScanBg runs off a
-// goroutine, so tests wait on done).
 type fakeScanner struct {
 	got  trustclient.ScanRequest
 	err  error
@@ -39,19 +37,16 @@ func (f *fakeScanner) wait(t *testing.T) {
 	}
 }
 
-// A disabled sink (nil scanner) never dials.
 func TestScanDisabledZeroDial(t *testing.T) {
 	s := NewScanService(nil)
 	if s.Enabled() {
 		t.Fatal("nil scanner must be disabled")
 	}
-	s.ScanBg(SubjectKindTopic, "1", "x", 7) // must not panic / dial
+	s.ScanBg(SubjectKindTopic, "1", "x", 7)
 	var nilSvc *ScanService
-	nilSvc.ScanBg(SubjectKindReply, "1", "x", 7) // nil-safe
+	nilSvc.ScanBg(SubjectKindReply, "1", "x", 7)
 }
 
-// The scan payload carries the registered kind, stringified id, RAW text, and
-// author — proving text composition + subject identity reach the wire intact.
 func TestScanBgPayload(t *testing.T) {
 	fs := newFakeScanner(nil)
 	s := NewScanService(fs)
@@ -68,7 +63,6 @@ func TestScanBgPayload(t *testing.T) {
 	}
 }
 
-// author_id <= 0 is omitted (optional field).
 func TestScanBgOmitsZeroAuthor(t *testing.T) {
 	fs := newFakeScanner(nil)
 	NewScanService(fs).ScanBg(SubjectKindReply, "5", "正文", 0)
@@ -78,7 +72,6 @@ func TestScanBgOmitsZeroAuthor(t *testing.T) {
 	}
 }
 
-// A scan failure is best-effort: it logs and drops, never panics.
 func TestScanBgFailureNoPanic(t *testing.T) {
 	fs := newFakeScanner(errors.New("trust down"))
 	NewScanService(fs).ScanBg(SubjectKindTopic, "1", "x", 1)

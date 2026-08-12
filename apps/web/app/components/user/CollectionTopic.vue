@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// Topic favorites (话题收藏) under a user's 收藏 tab. Reuses the existing
-// /user/:id/topics?type=topic_favorite list, but without the 话题 group's
-// sub-nav (which UserTopic renders) — favorites live only under 收藏.
 const props = defineProps<{
   userId: number
 }>()

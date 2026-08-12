@@ -12,17 +12,11 @@ const (
 
 func TestExtractContentImageHashes(t *testing.T) {
 	contents := []string{
-		// markdown image with a token + a title
 		"看图 ![pic](/image/" + hashA + " \"标题\") 结束",
-		// two tokens in one row, one of them a repeat of hashA (must dedupe)
 		"a ![](/image/" + hashB + ") b ![](/image/" + hashA + ")",
-		// absolute URL is NOT a token (must be ignored)
 		"![](https://image.kungal.iloveren.link/78/35/" + hashA + ".webp)",
-		// a /image/ path that is not a 64-hex token (public asset) — ignored
 		"![](/image/kohaku.webp)",
-		// uppercase hex — ignored (tokens are lowercase)
 		"![](/image/" + "ABCDABCD" + ")",
-		// no images at all
 		"纯文本没有图片",
 	}
 
@@ -54,8 +48,8 @@ func TestQuoteIdent(t *testing.T) {
 	cases := map[string]string{
 		"content":              `"content"`,
 		"last_message_content": `"last_message_content"`,
-		"order":                `"order"`,                  // reserved word
-		`we"ird`:               `"we""ird"`,                // embedded quote is doubled
+		"order":                `"order"`,
+		`we"ird`:               `"we""ird"`,
 	}
 	for in, want := range cases {
 		if got := quoteIdent(in); got != want {

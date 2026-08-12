@@ -20,10 +20,6 @@ func NewUploadHandler(uploadService *service.UploadService) *UploadHandler {
 	return &UploadHandler{uploadService: uploadService}
 }
 
-// UploadInit asks the artifact service for presigned upload URL(s). The response
-// is server-driven — a single PUT URL for small files, or multipart part URLs
-// (with part_size) for large ones; the frontend obeys whichever it gets.
-// POST /api/toolset/:id/upload/init
 func (h *UploadHandler) UploadInit(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -47,8 +43,6 @@ func (h *UploadHandler) UploadInit(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// UploadComplete finalizes an upload; the artifact service verifies the real
-// size via HeadObject. POST /api/toolset/:id/upload/complete
 func (h *UploadHandler) UploadComplete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -67,10 +61,6 @@ func (h *UploadHandler) UploadComplete(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// UploadResume continues an interrupted upload: the artifact service lists the
-// parts already stored and re-presigns only the missing ones, so the frontend
-// can finish without re-sending bytes already in B2 (pause / drop / refresh).
-// POST /api/toolset/:id/upload/resume
 func (h *UploadHandler) UploadResume(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)
@@ -88,8 +78,6 @@ func (h *UploadHandler) UploadResume(c fiber.Ctx) error {
 	return response.OK(c, result)
 }
 
-// UploadAbort soft-deletes an unfinished upload (GC reclaims the bytes).
-// POST /api/toolset/:id/upload/abort
 func (h *UploadHandler) UploadAbort(c fiber.Ctx) error {
 	if _, appErr := middleware.MustGetUser(c); appErr != nil {
 		return response.Error(c, appErr)

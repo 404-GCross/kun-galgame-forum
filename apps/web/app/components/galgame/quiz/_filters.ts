@@ -31,7 +31,6 @@ export const quizTypeOptions = [
   })
 ]
 
-// value 0 = "all" (the Go DTO drops difficulty=0 via omitempty → no filter).
 export const quizDifficultyOptions = [
   { value: 0, label: '全部难度' },
   ...Array.from({ length: 10 }, (_, i) => i + 1).map((n) => ({

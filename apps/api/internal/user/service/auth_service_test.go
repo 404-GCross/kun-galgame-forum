@@ -7,18 +7,13 @@ import (
 	"kun-galgame-api/internal/user/oauth"
 )
 
-// The login response the FE writes into its store MUST carry the EFFECTIVE role
-// set (global ∪ this-site's site_roles), NOT the raw global roles. The original
-// integration gap shipped the raw roles here, so a site moderator was enforced
-// server-side but the FE store's canModerate stayed false and the moderator UI
-// was hidden. Contract docs/oauth/12-site-roles.md §5.1.
 func TestNewLoginUserProfileMergesSiteRoles(t *testing.T) {
 	u := &oauth.UserInfo{
 		ID:        7,
 		Sub:       "uuid-7",
 		Name:      "kun",
-		Roles:     []string{"creator"},   // global
-		SiteRoles: []string{"moderator"}, // site-scoped (this site)
+		Roles:     []string{"creator"},
+		SiteRoles: []string{"moderator"},
 	}
 
 	got := newLoginUserProfile(u, "avatar.webp", 42)
@@ -32,8 +27,6 @@ func TestNewLoginUserProfileMergesSiteRoles(t *testing.T) {
 	}
 }
 
-// A plain user (no global role, no site grant) surfaces an empty set — the
-// implicit `user` default is never a claim member.
 func TestNewLoginUserProfilePlainUser(t *testing.T) {
 	got := newLoginUserProfile(&oauth.UserInfo{ID: 1}, "", 0)
 	if len(got.Roles) != 0 {

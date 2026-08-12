@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// One schema-driven field control (used by EditkitSchemaForm, also standalone
-// in the review workbench's amend flow). Renders by the resolved control,
-// reflects the projection's capabilities (locked / no-propose → readonly with
-// a reason chip), and emits TYPED values upward. Extraction-ready boundary:
-// KunUI primitives + self-contained types only.
 import { computed, ref, watch } from 'vue'
 import { useSortable } from '@vueuse/integrations/useSortable'
 import type {
@@ -22,7 +17,6 @@ const props = defineProps<{
   field: EditSchemaField
   config?: EditFieldConfig
   modelValue: unknown
-  /** Force readonly regardless of capabilities (e.g. while submitting). */
   disabled?: boolean
 }>()
 
@@ -33,8 +27,6 @@ const emit = defineEmits<{
 const control = computed(() => resolveControl(props.field, props.config))
 const label = computed(() => props.config?.label ?? props.field.key)
 
-// Image kinds edit through the host's upload hook (E3b) — without one they
-// stay display-only; deprecated fields render but never edit.
 const readonlyReason = computed(() => {
   if (props.field.locked) {
     return '锁定字段'
@@ -58,10 +50,6 @@ const readonlyReason = computed(() => {
 })
 const editable = computed(() => !props.disabled && readonlyReason.value === '')
 
-// ---- typed buffers ---------------------------------------------------------
-// String-ish controls edit a text buffer and convert on emit; list controls
-// edit structured local copies. Buffers re-sync when the upstream value
-// changes identity (e.g. the form resets).
 
 const textBuffer = ref('')
 const boolBuffer = ref(false)
@@ -122,7 +110,6 @@ const onDatePicked = (
 }
 
 const emitSelect = (value: string | number | (string | number)[] | null) => {
-  // Single-select only in this form; unwrap a defensive array shape.
   emit('update:modelValue', Array.isArray(value) ? (value[0] ?? null) : value)
 }
 
@@ -150,18 +137,11 @@ const emitStringList = (items: string[]) => {
 
 const objectColumns = computed(() => props.config?.columns ?? [])
 
-// A select column edits a string, but the underlying key may be numeric (a
-// title's `kind` is an enum int). Coerce back to the option's own type so the
-// engine sees the value it declared rather than its decimal spelling.
 const coerceColumnValue = (col: EditObjectColumn, raw: string): unknown => {
   const match = (col.options ?? []).find((o) => String(o.value) === raw)
   return match ? match.value : raw
 }
 
-// A row is dropped only when EVERY declared column is blank — a title with a
-// language and no text is a mistake the user is mid-way through, not something
-// to silently discard while they type. The rest of the row is spread through
-// untouched: the engine rejects a value that lost a key it wrote.
 const emitObjectRows = () => {
   const cols = objectColumns.value
   emit(
@@ -199,7 +179,6 @@ const selectOptions = computed(() =>
   (props.config?.options ?? []).map((o) => ({ value: o.value, label: o.label }))
 )
 
-// Image rendering: single hash/URL or an item list.
 const resolveImageURL = (v: unknown) =>
   props.config?.resolveImage ? props.config.resolveImage(v) : ''
 
@@ -214,8 +193,6 @@ const imageURLs = computed(() => {
   return []
 })
 
-// ---- image editing (E3b: upload + add/remove/reorder through the host's
-// upload hook; the values stay opaque to the kit) -------------------------
 
 const imageItems = computed<unknown[]>(() =>
   Array.isArray(props.modelValue) ? (props.modelValue as unknown[]) : []
@@ -251,7 +228,6 @@ const onFilesPicked = async (event: Event) => {
       }
       return
     }
-    // image-list: sequential uploads so the progress counter is honest.
     let items = [...imageItems.value]
     for (const [i, file] of files.entries()) {
       uploadProgress.value =
@@ -279,11 +255,6 @@ const removeImageItem = (index: number) => {
   emitImageItems(imageItems.value.filter((_, i) => i !== index))
 }
 
-// Drag-to-reorder for the image list (sortablejs via @vueuse). useSortable
-// mutates the local `sortItems` mirror on drop; we push the new order up
-// through emitImageItems. The editValueEqual guards keep the mirror ↔
-// modelValue sync from looping — order is part of value identity, so a
-// reorder does change the emitted items.
 const gridRef = ref<HTMLElement | null>(null)
 const sortItems = ref<unknown[]>([...imageItems.value])
 watch(imageItems, (items) => {
@@ -302,10 +273,24 @@ useSortable(gridRef, sortItems, {
   draggable: '.ek-image-item'
 })
 
+const pinItemKey = computed(() => props.config?.pinItemFlag?.key)
+
+const isPinnedItem = (item: unknown) => {
+  const key = pinItemKey.value
+  return !!key && !!(item as Record<string, unknown> | null)?.[key]
+}
+
 const pinImageItem = (index: number) => {
-  const items = [...imageItems.value]
-  const picked = items.splice(index, 1)
-  emitImageItems([...picked, ...items])
+  const key = pinItemKey.value
+  if (!key) {
+    return
+  }
+  emitImageItems(
+    imageItems.value.map((item, i) => {
+      const { [key]: _dropped, ...rest } = item as Record<string, unknown>
+      return i === index ? { ...rest, [key]: true } : rest
+    })
+  )
 }
 </script>
 
@@ -318,7 +303,6 @@ const pinImageItem = (index: number) => {
       </KunChip>
     </div>
 
-    <!-- Host escape hatch: a custom control component (e.g. a rich editor). -->
     <template v-if="config?.component">
       <component
         :is="config.component"
@@ -331,8 +315,6 @@ const pinImageItem = (index: number) => {
       </p>
     </template>
 
-    <!-- Entity+kind picker: one row per (entity, kind) edge, so the same
-         entity can be attached twice under different kinds. -->
     <template
       v-else-if="
         control === 'entity-kind-picker' &&
@@ -357,8 +339,6 @@ const pinImageItem = (index: number) => {
       </p>
     </template>
 
-    <!-- Entity picker: search + pick by NAME, store id(s). Renders read-only
-         too (names still resolve) via :disabled. -->
     <template v-else-if="control === 'entity-picker' && config?.searchEntities">
       <EditkitEntityPicker
         :model-value="modelValue"
@@ -374,7 +354,6 @@ const pinImageItem = (index: number) => {
       </p>
     </template>
 
-    <!-- Readonly rendering: images as previews, everything else as text -->
     <template v-else-if="!editable">
       <div
         v-if="imageURLs.length"
@@ -478,8 +457,6 @@ const pinImageItem = (index: number) => {
           {{ config.description }}
         </p>
       </div>
-      <!-- Single image (E3b): preview + replace/clear through the host's
-           upload hook. The stored value stays opaque to the kit. -->
       <div v-else-if="control === 'image'" class="space-y-2">
         <img
           v-if="imageURLs[0]"
@@ -514,8 +491,6 @@ const pinImageItem = (index: number) => {
         </p>
       </div>
 
-      <!-- Image list (E3b): upload/append, remove, reorder; item 0 renders
-           the host's pinned badge (e.g. the cover set's banner). -->
       <div v-else-if="control === 'image-list'" class="space-y-2">
         <div
           ref="gridRef"
@@ -525,17 +500,13 @@ const pinImageItem = (index: number) => {
             v-for="(item, index) in sortItems"
             :key="resolveImageURL(item) || index"
             class="ek-image-item border-default-200 group relative overflow-hidden rounded border"
-            :class="{
-              'ring-primary border-primary ring-2':
-                config?.pinFirstLabel && index === 0
-            }"
+            :class="{ 'ring-primary border-primary ring-2': isPinnedItem(item) }"
           >
             <img
               :src="resolveImageURL(item)"
               loading="lazy"
-              class="aspect-video w-full object-cover"
+              class="bg-default-100 aspect-video w-full object-contain"
             />
-            <!-- Drag handle: grip to reorder (sortablejs). -->
             <div
               class="ek-drag-handle absolute top-1 left-1 flex cursor-move items-center rounded bg-black/50 p-1 text-white"
               title="拖动排序"
@@ -543,22 +514,22 @@ const pinImageItem = (index: number) => {
               <KunIcon name="lucide:grip-vertical" class="h-4 w-4" />
             </div>
             <KunChip
-              v-if="config?.pinFirstLabel && index === 0"
+              v-if="config?.pinItemFlag && isPinnedItem(item)"
               color="primary"
               variant="solid"
               size="sm"
               class="pointer-events-none absolute bottom-1 left-1"
             >
-              {{ config.pinFirstLabel }}
+              {{ config.pinItemFlag.label }}
             </KunChip>
             <div class="absolute top-1 right-1 flex gap-1">
               <KunButton
-                v-if="config?.pinFirstLabel && index > 0"
+                v-if="config?.pinItemFlag && !isPinnedItem(item)"
                 :is-icon-only="true"
                 size="sm"
                 variant="solid"
                 color="default"
-                title="设为封面"
+                :title="`设为${config.pinItemFlag.label}`"
                 @click="pinImageItem(index)"
               >
                 <KunIcon name="lucide:pin" />
@@ -576,8 +547,6 @@ const pinImageItem = (index: number) => {
             </div>
           </div>
         </div>
-        <!-- Add button lives OUTSIDE the sortable grid so it never offsets the
-             drag indices. -->
         <button
           type="button"
           class="border-default-200 text-default-400 hover:border-primary hover:text-primary flex w-full cursor-pointer items-center justify-center gap-1 rounded border border-dashed py-3 text-sm"

@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// TOOLSET_COMMENT_CREATION + GALGAME_WEBSITE_COMMENT_CREATION — a comment on a
-// toolset or a website. The comment body is in content; data.parent_name is the
-// commented entity. The type picks the icon + label; same shape as the galgame
-// comment card (body on top, a small reference line below).
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(

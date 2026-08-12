@@ -1,11 +1,4 @@
 <script setup lang="ts">
-// Community-primitive toolset comment section (charter step 08) — the
-// unconditional toolset comment UI, rendered from ToolsetDetail.vue (the legacy
-// comment components were retired in charter step 06a).
-//
-// Paging / grouping / optimistic mutation come from useCommunityCommentList; the
-// toolset owner's delete authority is a server-side superset (charter ruling 20),
-// so this container needs no owner id — the UI shows delete on author||canModerate.
 const props = defineProps<{
   toolsetId: number
 }>()
@@ -72,7 +65,6 @@ const target: CommunityCommentTarget = {
       加载更多评论
     </KunButton>
 
-    <!-- Single community-comment flag modal (reused, region agnostic). -->
     <CommentCommunityFlagModal />
   </div>
 </template>

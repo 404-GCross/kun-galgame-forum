@@ -1,5 +1,3 @@
-/* -B means backend, message error code is defined by backend */
-
 export const errorMessages: Record<number, string> = {
   10101: `用户未找到 (-B)`,
   10102: `用户密码错误 (-B)`,

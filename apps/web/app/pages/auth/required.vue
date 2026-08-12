@@ -1,17 +1,9 @@
 <script setup lang="ts">
-// Unified "you must log in" landing page. The auth route middleware bounces
-// every login-gated page here (instead of silently kicking the OAuth flow or
-// dumping users on the homepage with a toast). noindex/nofollow — this is a
-// transient gate, never something a crawler should surface.
 useKunDisableSeo('需要登录')
 
-// `redirect` carries where the user was headed so we can offer a one-click way
-// back after they sign in (the OAuth round-trip itself still lands on /, but a
-// logged-in user clicking this returns to their destination).
 const route = useRoute()
 const redirectTo = computed(() => {
   const r = (route.query.redirect as string) || ''
-  // Only honour same-site absolute paths — never an attacker-supplied URL.
   return r.startsWith('/') && !r.startsWith('//') ? r : ''
 })
 

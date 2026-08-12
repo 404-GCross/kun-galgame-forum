@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// The galgame 收藏夹 grid under a user's 收藏 tab.
 const props = defineProps<{
   userId: number
   ownerName: string

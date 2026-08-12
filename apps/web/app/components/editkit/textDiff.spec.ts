@@ -1,4 +1,3 @@
-// Word-level text diff helpers. Pure functions, no Nuxt environment needed.
 import { describe, it, expect } from 'vitest'
 import {
   diffTextSegments,
@@ -25,16 +24,11 @@ describe('diffTextSegments', () => {
   })
 
   it('isolates a one-character edit inside a long run', () => {
-    // The case the 2-column renderer could not show: 381 characters, one of
-    // them removed. Only the removed character may be tinted.
     const base = '汉'.repeat(200)
     expect(tinted(`${base}版版`, `${base}版`)).toEqual(['-版'])
   })
 
   it('segments CJK on word boundaries, not per character', () => {
-    // Without an Intl.Segmenter jsdiff falls back to character boundaries and
-    // reports 我喜[-欢][+爱]这个游戏, cutting 喜欢 in half. With the zh
-    // segmenter the whole word moves, which is what a reader parses.
     expect(tinted('我喜欢这个游戏', '我喜爱这个游戏')).toEqual([
       '-喜欢',
       '+喜爱'
@@ -60,8 +54,6 @@ describe('elideTextDiff', () => {
   const long = '文'.repeat(TEXT_DIFF_ELIDE_OVER + 100)
 
   it('does not fold a field that never changed', () => {
-    // A single equal run is "no change at all"; folding it would render the
-    // field as nothing but a fold marker.
     const segments = diffTextSegments(long, long)
     expect(isTextDiffElidable(segments)).toBe(false)
     expect(elideTextDiff(segments, false)).toEqual([
@@ -75,7 +67,6 @@ describe('elideTextDiff', () => {
 
     const folded = elideTextDiff(segments, false)
     expect(folded.some((p) => p.kind === 'elision')).toBe(true)
-    // The change itself always survives folding.
     expect(folded).toContainEqual({ kind: 'text', op: 'delete', text: '旧' })
     expect(folded).toContainEqual({ kind: 'text', op: 'insert', text: '新' })
   })

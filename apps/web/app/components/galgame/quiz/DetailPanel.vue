@@ -1,18 +1,8 @@
 <script setup lang="ts">
-// 查看题目详情 on the answer page (/galgame-quiz/:id). The FULL detail (linked
-// game + correct/wrong chart + answerer records) is always rendered; collapsed
-// it's clipped to a peek and obscured by a bottom fade, and 查看详情 just
-// removes the clip. Records are fetched once up-front so the content is complete.
 const props = defineProps<{ quiz: GalgameQuizPlay }>()
 
 const expanded = ref(false)
 const bodyRef = ref<HTMLElement | null>(null)
-// 查看详情 expand/collapse. The panel is always rendered but clipped to a 6rem
-// peek; expanding animates max-height to the content's REAL height and then
-// releases the cap (max-height:none) on transitionend, so tall detail (many
-// linked games + a long records list) is never clipped and the page scrolls past
-// it. Collapsing pins the height, then animates back down to the peek. (The old
-// fixed 48rem cap clipped taller quizzes with no scroll.)
 const maxHeight = ref('6rem')
 const expand = () => {
   const el = bodyRef.value
@@ -37,11 +27,6 @@ const loading = ref(false)
 
 const wrong = computed(() => props.quiz.answer_count - props.quiz.correct_count)
 
-// Compact one-line rendering of an answerer's own submission. Only ever shown
-// when `rec.submitted` is present — the server omits it for viewers who haven't
-// answered, so it can't leak the correct answer. Single/multiple show the chosen
-// option letter(s) (the viewer saw the options, so A/B/C is meaningful); judge /
-// fill / essay are self-contained.
 const letter = (i: number) => String.fromCharCode(65 + i)
 const formatSubmitted = (s: QuizSubmitted): string => {
   switch (props.quiz.type) {
@@ -86,7 +71,6 @@ onMounted(async () => {
         @transitionend="onTransitionEnd"
       >
         <div class="space-y-4">
-          <!-- linked galgames (or a "revealed after answering" hint) -->
           <div
             v-for="g in quiz.galgames"
             :key="g.id"
@@ -133,7 +117,6 @@ onMounted(async () => {
             关联作品已隐藏, 作答后揭晓
           </div>
 
-          <!-- correct / wrong chart -->
           <div>
             <p class="text-default-400 mb-2 text-xs">作答统计</p>
             <div v-if="quiz.answer_count > 0" class="flex items-center gap-4">
@@ -161,7 +144,6 @@ onMounted(async () => {
             <p v-else class="text-default-500 text-sm">暂无作答</p>
           </div>
 
-          <!-- answerer records -->
           <div>
             <p class="text-default-400 mb-1 text-xs">作答记录</p>
             <p v-if="loading" class="text-default-500 text-sm">加载中…</p>
@@ -205,9 +187,6 @@ onMounted(async () => {
                     错误
                   </KunChip>
                 </div>
-                <!-- Answer result, its own line — only present for a viewer who
-                     has answered (the server omits `submitted` for non-answerers,
-                     so it can never leak the correct answer). -->
                 <p
                   v-if="rec.submitted"
                   class="text-default-500 mt-0.5 pl-7 text-xs break-words whitespace-pre-wrap"
@@ -220,9 +199,9 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- bottom fade scrim (collapsed only). This transparent→background
-           gradient is a SANCTIONED EXCEPTION to 铁律 #2 (no gradients),
-           explicitly authorized for this "peek then reveal" affordance. -->
+      <!-- SANCTIONED EXCEPTION to 铁律 #1 (no gradients): the collapsed-state
+           fade for the "peek then reveal" affordance. Listed in CLAUDE.md; do
+           NOT remove it in a no-gradient sweep. -->
       <div
         v-show="!expanded"
         class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[oklch(var(--content1))] to-transparent"

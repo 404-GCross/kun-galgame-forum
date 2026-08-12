@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// MaxDraftsPerUser caps how many topic drafts one user can keep, to bound storage.
 const MaxDraftsPerUser = 30
 
 type DraftService struct {
@@ -22,9 +21,7 @@ func NewDraftService(draftRepo *repository.TopicDraftRepository) *DraftService {
 	return &DraftService{draftRepo: draftRepo}
 }
 
-// Save persists the current editor state as a NEW draft, scoped to userID.
 func (s *DraftService) Save(userID int, req *dto.SaveTopicDraftRequest) (int, *errors.AppError) {
-	// Never persist an entirely empty draft.
 	if strings.TrimSpace(req.Title) == "" && strings.TrimSpace(req.Content) == "" {
 		return 0, errors.ErrBadRequest("草稿的标题和正文不能都为空")
 	}

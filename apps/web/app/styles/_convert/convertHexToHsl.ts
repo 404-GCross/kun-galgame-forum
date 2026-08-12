@@ -1,5 +1,3 @@
-// color variables powered by heroui
-
 import fs from 'fs'
 import path from 'path'
 import { blue } from './blue'

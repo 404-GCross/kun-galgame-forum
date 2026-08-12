@@ -4,8 +4,6 @@ export interface KunLayoutItem {
   icon?: string
   router?: string
   hint?: string
-  // Hint text colour (mobile drawer NavItem). Defaults to primary; 'danger'
-  // makes a hint stand out (used for the new 发售月历 entry).
   hintColor?: 'primary' | 'danger'
   external?: boolean
   isCollapse?: boolean
@@ -27,10 +25,6 @@ export const kunLayoutItem: KunLayoutItem[] = [
         hint: '大升级'
       },
       {
-        // Points at the publish wizard (search-existing-first) rather
-        // than the bare form, to keep duplicate submissions out of the
-        // moderation queue. The form itself lives at /edit/galgame/create
-        // and is reached from the wizard's "新建申请" CTA.
         name: 'createGalgame',
         icon: 'lucide:gamepad-2',
         router: '/edit/galgame/publish',
@@ -238,21 +232,11 @@ export const kunLayoutItem: KunLayoutItem[] = [
   }
 ]
 
-// ──────────────────────────────────────────
-// KUN Galgame family — the sub-sites
-// ──────────────────────────────────────────
-// The KUN Galgame family of sites, shown on /sites (full cards), the sidebar
-// drawer, and the home footer. Names / descriptions / links / GitHub follow the
-// nav project (kun-galgame-nav-solid) — the single source of truth — EXCEPT the
-// 补丁站, which the nav project doesn't list (best-effort copy; no public repo wired).
 export interface KunSubSite {
-  // Short label for compact lists (sidebar drawer, home footer).
   short: string
-  // Full title shown on the /sites cards.
   name: string
   description: string
   link: string
-  // GitHub source, when the site is open-source.
   github?: string
   icon: string
   hint?: string
@@ -304,13 +288,6 @@ export const kunSubSites: KunSubSite[] = [
   }
 ]
 
-// ──────────────────────────────────────────
-// Desktop sidebar icon rail
-// ──────────────────────────────────────────
-// The desktop sidebar is a fixed icon rail of exactly four groups (icon + label
-// below); hovering a group reveals a flyout menu of links. Mobile is unaffected
-// (it keeps the expanded drawer driven by kunLayoutItem). See side-bar/Rail.vue.
-
 export interface KunRailLink {
   label: string
   router: string
@@ -320,7 +297,6 @@ export interface KunRailLink {
 }
 
 export interface KunRailSection {
-  // Optional subheading; used to group the long "其他" flyout.
   label?: string
   items: KunRailLink[]
 }
@@ -329,8 +305,6 @@ export interface KunRailGroup {
   name: string
   label: string
   icon: string
-  // When set, clicking the rail tile itself navigates here (话题 / Galgame have a
-  // sensible index; 发布 / 其他 are hover-only menu openers).
   router?: string
   sections: KunRailSection[]
 }

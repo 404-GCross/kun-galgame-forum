@@ -4,8 +4,6 @@ import type {
   UpdateWebsiteTagPayload
 } from '~/components/website/modal/types'
 
-// Key by path so navigating between two items of this dynamic route remounts
-// the page and re-runs setup — the detail fetch uses a static URL + watch:false.
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()

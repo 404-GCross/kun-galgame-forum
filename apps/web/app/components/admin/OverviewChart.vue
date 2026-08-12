@@ -85,7 +85,6 @@ const chartOptions = computed<ApexOptions>(() => {
   }
 })
 
-// for page transition render
 const showChart = ref(false)
 const nuxtApp = useNuxtApp()
 

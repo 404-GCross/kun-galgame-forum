@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { KUN_GALGAME_STAFF_GENDER_MAP } from '~/constants/galgameStaff'
 
-// `id` is a CATALOG CREDIT-NAME id — the id the 制作人员 panel on every game
-// detail page already carries, so the link needs no lookup.
-//
-// The page describes a NAME, and the header says so where it matters: a name
-// with published siblings shows them as "同一人的其他名义", and one without
-// simply does not claim to be the whole person. Guessing the link from spellings
-// is the one thing this page must not do — the registry's person resolution is
-// evidence-based and its visibility policy is deliberate.
 const route = useRoute()
 const staffId = computed(() => Number((route.params as { id: string }).id))
 
@@ -27,13 +19,6 @@ const { data } = await useKunFetch<GalgameStaffDetail>(
   { method: 'GET', query: { limit: PAGE_SIZE }, watch: false }
 )
 
-// A folded name (wave 171) keeps its old id addressable, but only as a 301:
-// `moved_to` arrives instead of the record, never alongside it. `navigateTo`
-// is NOT an early return on the server — it parks the redirect and hands
-// control back, so everything below that touches the record is gated on
-// `moved`, and the template root carries the same gate (the moved payload's
-// works/siblings are null, and an ungated spread would 500 over the parked
-// 301 — the exact /galgame/official/13323 failure mode).
 const moved = !!data.value?.moved_to
 if (data.value?.moved_to) {
   await navigateTo(`/galgame/staff/${data.value.moved_to}`, {
@@ -50,8 +35,6 @@ if (!data.value) {
   })
 }
 
-// The filmography is offset-paged with no total, so this is a 加载更多 rather
-// than a pager: we know whether ANOTHER page exists, never how many.
 const works = ref<GalgameStaffWork[]>(moved ? [] : [...data.value.works])
 const nextOffset = ref<number | null>(moved ? null : data.value.next_offset)
 const loadingMore = ref(false)
@@ -73,17 +56,10 @@ const loadMore = async () => {
   nextOffset.value = res.next_offset
 }
 
-// The person's own facts, which the registry publishes only where the
-// name→person link is public — a hidden link arrives zeroed, and each row is
-// then simply absent. Every field is optional on the wire as well: this page
-// renders against a catalog that may not ship them yet, and 「未知」 rows would
-// be the only thing such a reader ever saw.
 const genderText = computed(() =>
   data.value?.gender ? KUN_GALGAME_STAFF_GENDER_MAP[data.value.gender] : ''
 )
 
-// Fuzzy by design — a year alone and a month+day with no year are both whole
-// answers here, so the formatter renders from the parts rather than a Date.
 const birthdayText = computed(() =>
   formatFuzzyDate(data.value?.birth_y, data.value?.birth_m, data.value?.birth_d)
 )
@@ -108,14 +84,7 @@ if (!moved) {
 <template>
   <div v-if="data && !data.moved_to" class="space-y-6">
     <KunHeader :name="data.name" :description="subtitle">
-      <!-- The portrait describes the PERSON, and the registry publishes it only
-           where the name→person link is public — so a name with none looks
-           exactly like a name whose link is hidden. Both render as no frame at
-           all rather than an empty one. -->
       <template v-if="data.photo" #headerEndContent>
-        <!-- Full size, like the 会社 logo in the same slot: the frame is large
-             enough for a downscaled variant to show its resampling, and the
-             catalog scope promises no particular preset for a portrait. -->
         <KunImage
           :src="data.photo"
           :alt="data.name"
@@ -128,10 +97,6 @@ if (!moved) {
 
       <template #endContent>
         <div class="space-y-3">
-          <!-- Each row appears only where the registry published that fact.
-               Nothing here says 「未知」: a name whose person link is private is
-               indistinguishable from one the registry has no person for, and
-               the page does not pretend to know which it is looking at. -->
           <div
             v-if="genderText || birthdayText"
             class="text-default-500 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
@@ -143,9 +108,6 @@ if (!moved) {
           <p v-if="data.intro" class="text-default-600">{{ data.intro }}</p>
 
           <div v-if="data.roles.length" class="flex flex-wrap gap-2">
-            <!-- Roles carry no count on purpose: the filmography is paged and
-                 the catalog publishes no total, so a number here could only
-                 ever describe the page that happens to be loaded. -->
             <KunChip v-for="role in data.roles" :key="role" color="primary">
               {{ role }}
             </KunChip>
@@ -183,8 +145,6 @@ if (!moved) {
                 {{ link.name }}
                 <KunIcon name="lucide:external-link" class="inline size-3" />
               </KunLink>
-              <!-- No verified person-page template for this source. Showing the
-                   name without a link beats guessing a URL that 404s. -->
               <span v-else class="text-default-400 text-sm">{{
                 link.name
               }}</span>
@@ -201,11 +161,6 @@ if (!moved) {
       </template>
     </KunHeader>
 
-    <!-- The site's ordinary galgame card, not a lookalike: same cover framing,
-         same badges, same reader settings — and for the works the forum has
-         ingested, the same view / like / platform data. What this page adds is
-         the only thing a filmography needs on top, through the card's #meta
-         slot: what this person did on each game. -->
     <GalgameCard v-if="works.length" :galgames="works" :is-transparent="false">
       <template #meta="{ galgame }">
         <div class="mt-2 flex flex-wrap gap-1">
@@ -214,8 +169,6 @@ if (!moved) {
           </KunChip>
         </div>
 
-        <!-- For a voice actor the cast IS the credit: a bare 声优 chip says
-             nothing a reader on this page did not already know. -->
         <p
           v-if="galgame.characters?.length"
           class="text-default-500 mt-1 line-clamp-2 text-xs"

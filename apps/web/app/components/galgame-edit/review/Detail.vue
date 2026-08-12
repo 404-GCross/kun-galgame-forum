@@ -1,10 +1,4 @@
 <script setup lang="ts">
-// The review workbench (E3a's crown): per-field adjudication over one
-// proposal. For every proposed field the reviewer sees current → proposed,
-// and can (a) accept as-is, (b) CORRECT the value inline, or (c) reject just
-// that field — the Google Docs suggestion-mode mental model. Corrections and
-// rejections land as ONE amendment (double attribution on the merged
-// revision); merge/decline close the proposal.
 import { editValueEqual } from '~/components/editkit/utils'
 import {
   createGalgameEditConfig,
@@ -17,12 +11,6 @@ const proposalId = computed(() => parseInt((route.params as { id: string }).id))
 
 useKunDisableSeo('审阅提案')
 
-// Entry authorization lives in the BFF (E3b: moderators AND the game's
-// creator pass) — the page trusts the fetch outcome instead of duplicating
-// the policy client-side. Only the exit destination branches: moderators go
-// back to the site-wide queue, owners to their game's edit page. Proxy-face:
-// this VIEW gate mirrors the infra editing-engine review capability (truth =
-// infra, not pkg/perm), so it stays on useRole rather than useCan.
 const { canModerate } = useRole()
 
 const { data, status, refresh } = await useKunFetch<GalgameEditProposalDetail>(
@@ -30,10 +18,6 @@ const { data, status, refresh } = await useKunFetch<GalgameEditProposalDetail>(
   { method: 'GET', watch: false }
 )
 
-// Adjudication right (amend / merge / decline) is a per-proposal projection from
-// the engine: view (moderator+ or owner) is split from decide (admin+ or owner).
-// A plain moderator without can_decide sees the proposal read-only. Proxy-face
-// capability — sourced from the detail response, not pkg/perm.
 const canDecide = computed(() => data.value?.can_decide ?? false)
 
 const proposal = computed(() => data.value?.proposal)
@@ -48,12 +32,6 @@ const effective = computed(
 )
 const fieldOf = (key: string) => data.value?.fields.find((f) => f.key === key)
 
-// ---- relation id → name resolution -----------------------------------------
-// The reviewer adjudicates on NAMES, not registry ids. The game detail ships
-// the CURRENT tag/会社/engine/series edges resolved; any id the proposal adds
-// is fetched from that entity's own detail face. Resolution is client-side and
-// progressive — an id whose name never arrives keeps rendering as `#id`, which
-// degrades the diff, never blocks it.
 const names = ref<GalgameEditNames>({})
 const editConfig = computed(() => createGalgameEditConfig(names.value))
 const configOf = (key: string) => editConfig.value[key]
@@ -119,10 +97,6 @@ onMounted(async () => {
   names.value = maps
 })
 
-// ---- per-field review state -------------------------------------------------
-// overrides: reviewer-corrected values (amend set); rejected: field keys the
-// reviewer strikes from the patch (amend unset). Editing state is local until
-// 合并/保存修正 sends ONE amendment.
 const overrides = reactive<Record<string, unknown>>({})
 const editing = reactive<Record<string, boolean>>({})
 const rejected = reactive<Record<string, boolean>>({})
@@ -170,7 +144,6 @@ const remainingKeys = computed(() =>
 const note = ref('')
 const acting = ref(false)
 
-// One amendment (when the reviewer changed anything), then merge.
 const handleMerge = async () => {
   if (acting.value || !proposal.value) {
     return
@@ -282,7 +255,6 @@ const userName = (uid?: number) => {
         />
       </KunCard>
 
-      <!-- Amendment trail: every past correction, permanently attributed -->
       <KunCard
         v-if="proposal.amendments?.length"
         :is-hoverable="false"
@@ -325,7 +297,6 @@ const userName = (uid?: number) => {
         </div>
       </KunCard>
 
-      <!-- Per-field adjudication -->
       <KunCard
         :is-hoverable="false"
         :is-transparent="false"
@@ -392,7 +363,6 @@ const userName = (uid?: number) => {
             </KunButton>
           </div>
 
-          <!-- Inline correction editor (the crown interaction) -->
           <div
             v-if="
               isOpen &&
@@ -416,8 +386,6 @@ const userName = (uid?: number) => {
         />
       </KunCard>
 
-      <!-- View-only state: a moderator may open the proposal but only an
-           adjudicator (admin+ or the game's owner) can amend / merge / decline. -->
       <KunInfo
         v-if="isOpen && !canDecide"
         color="info"
@@ -425,7 +393,6 @@ const userName = (uid?: number) => {
         description="您可以查看此提案，但只有具备裁决权限的管理员（或该条目的创建者）可以合并、修正或拒绝。"
       />
 
-      <!-- Decision bar -->
       <KunCard
         v-if="isOpen && canDecide"
         :is-hoverable="false"

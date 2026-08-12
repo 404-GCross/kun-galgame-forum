@@ -13,7 +13,6 @@ const activeTab = computed(
       description="鲲 Galgame 论坛的更新历史与开发待办，记录每一次迭代与计划。"
     />
 
-    <!-- Nav on the left, content on the right (below the header). -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
       <div class="shrink-0 sm:w-32">
         <KunTab

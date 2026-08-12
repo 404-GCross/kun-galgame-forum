@@ -8,10 +8,6 @@ import {
 
 const SORT_ORDER_CONST = ['asc', 'desc'] as const
 
-/*
- * Topic
- */
-
 export const getTopicSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(30),
@@ -43,8 +39,6 @@ export const createTopicSchema = z.object({
     .min(1, { message: '您至少选择一个话题的分区' })
     .max(3, { message: '您至多选择三个话题的分区' }),
   is_nsfw: z.coerce.boolean({ message: '未找到话题的 NSFW 设置' }),
-  // Optional 1..9 cover images, each a /image/<64hex> content token returned by
-  // the /image/topic upload endpoint (see CoverPicker.vue). Empty = no covers.
   cover_images: z
     .array(
       z
@@ -84,10 +78,6 @@ export const updateTopicHideStatusSchema = z.object({
   topic_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
-/*
- * Reply
- */
-
 export const getReplySchema = z.object({
   topic_id: z.coerce.number<number>().min(1).max(9999999),
   page: z.coerce.number<number>().min(1).max(9999999),
@@ -99,8 +89,6 @@ export const getReplyDetailSchema = z.object({
   reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
-// A reply is a single body now (multi-target tabs retired); @mention / #quote
-// references live inline in `content` as tokens.
 export const createReplySchema = z.object({
   topic_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
@@ -135,10 +123,6 @@ export const updateReplyDislikeSchema = z.object({
 export const deleteReplySchema = z.object({
   reply_id: z.coerce.number<number>().min(1).max(9999999)
 })
-
-/*
- * Comment
- */
 
 export const createCommentSchema = z.object({
   topic_id: z.coerce.number<number>().min(1).max(9999999),

@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// Community-primitive website comment section (charter step 08) — the
-// unconditional website comment UI, rendered from pages/website/[domain].vue (the
-// legacy comment components were retired in charter step 06a).
-//
-// Paging / grouping / optimistic mutation come from useCommunityCommentList. The
-// addressing website_id rides the query; the :domain path segment is decorative
-// (read from the route — this section only ever renders on /website/[domain], so
-// the target is resolved once at setup like the paging URLs).
 const props = defineProps<{
   websiteId: number
 }>()
@@ -34,7 +26,6 @@ const {
   scrollToPost
 } = await useCommunityCommentList(target)
 
-// Scroll to + highlight a just-published root (parity with _scrollIntoComment).
 const onPublished = (post: GalgameCommunityComment) => {
   handleNewComment(post)
   if (post.root_comment_id == null) {
@@ -85,7 +76,6 @@ const onPublished = (post: GalgameCommunityComment) => {
       </KunButton>
     </div>
 
-    <!-- Single community-comment flag modal (reused, region agnostic). -->
     <CommentCommunityFlagModal />
   </KunCard>
 </template>

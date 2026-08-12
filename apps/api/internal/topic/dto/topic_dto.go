@@ -6,10 +6,6 @@ import (
 	"kun-galgame-api/pkg/imageclient"
 )
 
-// ──────────────────────────────────────────
-// Shared user projections
-// ──────────────────────────────────────────
-
 type KunUser struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
@@ -23,8 +19,6 @@ type KunUserWithMoemoepoint struct {
 	Moemoepoint int    `json:"moemoepoint"`
 }
 
-// TopicUpvoteRecord is one 推话题 record shown below a topic: who pushed it, their
-// optional one-liner (may be empty — the FE shows a random default then), when.
 type TopicUpvoteRecord struct {
 	ID          int       `json:"id"`
 	User        KunUser   `json:"user"`
@@ -32,17 +26,11 @@ type TopicUpvoteRecord struct {
 	Created     time.Time `json:"created"`
 }
 
-// ReactionHistoryItem is one reaction event for the 查看历史 modal: who reacted,
-// with which reaction key, and when. Newest first.
 type ReactionHistoryItem struct {
 	User     KunUser   `json:"user"`
 	Reaction string    `json:"reaction"`
 	Created  time.Time `json:"created"`
 }
-
-// ──────────────────────────────────────────
-// Topic list
-// ──────────────────────────────────────────
 
 type ListTopicsRequest struct {
 	Page      int    `query:"page" validate:"min=1"`
@@ -53,15 +41,11 @@ type ListTopicsRequest struct {
 }
 
 type TopicCard struct {
-	ID          int      `json:"id"`
-	Title       string   `json:"title"`
-	View        int      `json:"view"`
-	Sections    []string `json:"section"`
-	CoverImages []string `json:"cover_images"`
-	// Per-cover-token image metadata (dims + ThumbHash), keyed by the
-	// /image/<hash> token in CoverImages — lets the FE reserve each cover's
-	// aspect ratio (no CLS) and blur it up. Output-only; a token is absent when
-	// image_service is unconfigured or its thumbhash backfill hasn't run.
+	ID               int                              `json:"id"`
+	Title            string                           `json:"title"`
+	View             int                              `json:"view"`
+	Sections         []string                         `json:"section"`
+	CoverImages      []string                         `json:"cover_images"`
 	CoverImageMeta   map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
 	User             KunUser                          `json:"user"`
 	Status           int                              `json:"status"`
@@ -76,20 +60,11 @@ type TopicCard struct {
 	UpvoteTime       *time.Time                       `json:"upvote_time"`
 }
 
-// TopicListResponse is the {topics, total} envelope for GET /topic — total drives
-// the FE paginator.
 type TopicListResponse struct {
 	Topics []TopicCard `json:"topics"`
 	Total  int64       `json:"total"`
 }
 
-// ──────────────────────────────────────────
-// Topic detail
-// ──────────────────────────────────────────
-
-// ReactionSummary is one reaction key on a topic/reply: total count, whether the
-// viewer reacted (`mine`), and — only when count < 5 — the reactors, so the FE
-// shows avatars for small counts and just the emoji+count for large ones.
 type ReactionSummary struct {
 	Reaction string    `json:"reaction"`
 	Count    int       `json:"count"`
@@ -97,26 +72,22 @@ type ReactionSummary struct {
 	Reactors []KunUser `json:"reactors,omitempty"`
 }
 
-// MyTopicInteractions is the current user's favorited topic ids + the reaction
-// keys they hold per topic, returned by GET /topic/interactions/mine to hydrate
-// feed-card 收藏 + reaction state (the shared feed cache can't carry per-user).
 type MyTopicInteractions struct {
 	Favorited []int            `json:"favorited"`
 	Reactions map[int][]string `json:"reactions"`
 }
 
 type TopicDetail struct {
-	ID          int      `json:"id"`
-	Title       string   `json:"title"`
-	Content     string   `json:"content_markdown"`
-	ContentHtml string   `json:"content_html"`
-	View        int      `json:"view"`
-	Status      int      `json:"status"`
-	IsNSFW      bool     `json:"is_nsfw"`
-	Category    string   `json:"category"`
-	Sections    []string `json:"section"`
-	CoverImages []string `json:"cover_images"`
-	// See TopicCard.CoverImageMeta — keyed by the /image/<hash> cover token.
+	ID               int                              `json:"id"`
+	Title            string                           `json:"title"`
+	Content          string                           `json:"content_markdown"`
+	ContentHtml      string                           `json:"content_html"`
+	View             int                              `json:"view"`
+	Status           int                              `json:"status"`
+	IsNSFW           bool                             `json:"is_nsfw"`
+	Category         string                           `json:"category"`
+	Sections         []string                         `json:"section"`
+	CoverImages      []string                         `json:"cover_images"`
 	CoverImageMeta   map[string]imageclient.ImageMeta `json:"cover_image_meta,omitempty"`
 	User             KunUserWithMoemoepoint           `json:"user"`
 	LikeCount        int                              `json:"like_count"`
@@ -134,15 +105,9 @@ type TopicDetail struct {
 	UpvoteTime       *time.Time                       `json:"upvote_time"`
 	Edited           *time.Time                       `json:"edited"`
 	Created          time.Time                        `json:"created"`
-	// Best answer summary — populated when topic.best_answer_id is set.
-	// Embedded here (instead of forcing a second /reply fetch) so the
-	// topic detail page can render JSON-LD `acceptedAnswer` schema during
-	// SSR. nil = no best answer set.
-	BestAnswer *TopicBestAnswer `json:"best_answer,omitempty"`
+	BestAnswer       *TopicBestAnswer                 `json:"best_answer,omitempty"`
 }
 
-// TopicBestAnswer is the slim projection of the chosen reply that
-// /topic/:tid embeds for SEO (schema.org acceptedAnswer).
 type TopicBestAnswer struct {
 	ID              int       `json:"id"`
 	Floor           int       `json:"floor"`
@@ -151,10 +116,6 @@ type TopicBestAnswer struct {
 	ContentHtml     string    `json:"content_html"`
 	Created         time.Time `json:"created"`
 }
-
-// ──────────────────────────────────────────
-// Topic mutations
-// ──────────────────────────────────────────
 
 type CreateTopicRequest struct {
 	Title       string   `json:"title" validate:"required,min=1,max=233"`

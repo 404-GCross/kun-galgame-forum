@@ -12,7 +12,6 @@ import (
 
 var validate = validator.New()
 
-// ParseAndValidate parses the request body into dst and validates it.
 func ParseAndValidate(c fiber.Ctx, dst any) *errors.AppError {
 	if err := c.Bind().Body(dst); err != nil {
 		return errors.ErrBadRequest("请求格式错误")
@@ -23,7 +22,6 @@ func ParseAndValidate(c fiber.Ctx, dst any) *errors.AppError {
 	return nil
 }
 
-// ParseQueryAndValidate parses query params into dst and validates it.
 func ParseQueryAndValidate(c fiber.Ctx, dst any) *errors.AppError {
 	if err := c.Bind().Query(dst); err != nil {
 		return errors.ErrBadRequest("查询参数格式错误")
@@ -34,8 +32,6 @@ func ParseQueryAndValidate(c fiber.Ctx, dst any) *errors.AppError {
 	return nil
 }
 
-// translateValidationErrors converts validator errors to user-friendly
-// Chinese messages, avoiding exposure of internal struct/field names.
 func translateValidationErrors(err error) string {
 	validationErrors, ok := err.(validator.ValidationErrors)
 	if !ok {

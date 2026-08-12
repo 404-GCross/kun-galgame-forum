@@ -3,9 +3,6 @@ const props = defineProps<{
   userId: number
 }>()
 
-// The chat-history scroller is a <KunOverlayScroll>; its real scrolling element
-// is the overlayscrollbars viewport (NOT the host div), so every imperative
-// scrollTo / scrollHeight / scrollTop must go through the exposed getViewport().
 const historyScroll = useTemplateRef<{
   getViewport: () => HTMLElement | null
 }>('historyScroll')
@@ -15,12 +12,7 @@ const messages = ref<ChatMessage[]>([])
 const isLoadHistoryMessageComplete = ref(false)
 const isSending = ref(false)
 const isUploadingImage = ref(false)
-// Images pasted/dropped into the input are uploaded immediately and held here
-// as removable chips (NOT dumped as a raw `![](url)` into the text box). On
-// send they're appended to the message as markdown — see sendMessage.
 const pendingImages = ref<{ name: string; url: string }[]>([])
-// Textarea handle (to insert emoji at the caret) + hidden file input (the upload
-// button proxies clicks to it).
 const messageTextarea = useTemplateRef<{
   insertAtCaret: (text: string) => void
 }>('messageTextarea')
@@ -63,8 +55,6 @@ const getMessageHistory = async () => {
   return Array.isArray(histories) ? histories : ([] as ChatMessage[])
 }
 
-// POST a message and refresh the history. The isSending re-entry guard makes a
-// rapid double-fire (Enter handler + 发送 button) bail instead of POSTing twice.
 const postMessage = async (content: string): Promise<boolean> => {
   if (isSending.value) {
     return false
@@ -84,7 +74,6 @@ const postMessage = async (content: string): Promise<boolean> => {
   if (!result) {
     return false
   }
-  // Reload latest messages to get the new one
   pageData.page = 1
   messages.value = await getMessageHistory()
   nextTick(() => scrollToBottom())
@@ -97,12 +86,8 @@ const sendMessage = async () => {
     return
   }
 
-  // Compose the wire content: trimmed text plus one markdown image per pending
-  // chip (newline-joined so text and images stack in the rendered bubble).
   const text = messageInput.value.trim()
   const imageMarkdown = pendingImages.value
-    // Strip markdown-breaking chars from the filename used as alt, so a name
-    // like "a]b(c).png" can't terminate the ![alt](url) syntax early.
     .map((img) => `![${img.name.replace(/[[\]()]/g, '')}](${img.url})`)
     .join(' ')
   const content = [text, imageMarkdown].filter(Boolean).join('\n')
@@ -118,10 +103,6 @@ const sendMessage = async () => {
   }
 }
 
-// Upload pasted/dropped images to OUR image host (/image/message, the `message`
-// preset) and hold each as a chip. Uploading is the only way an image survives
-// the renderer's src allow-list (image.kungal.iloveren.link — see RenderInline
-// server-side); a pasted external image URL would just get stripped.
 const uploadImages = async (files: File[]) => {
   const images = files.filter((file) => file.type.startsWith('image/'))
   if (!images.length) {
@@ -151,18 +132,11 @@ const removePendingImage = (index: number) => {
   pendingImages.value.splice(index, 1)
 }
 
-// paste/drop are bound ONCE on the input wrapper (not on the textarea), so a
-// single paste triggers a single upload. Binding @paste on KunInput previously
-// double-fired — KunInput re-applies $attrs to BOTH its root div and inner
-// <input>, so the bubbling paste hit two listeners — which uploaded (and thus
-// sent) the image twice.
 const handlePaste = (event: ClipboardEvent) => {
   const files = Array.from(event.clipboardData?.files ?? [])
   if (!files.some((file) => file.type.startsWith('image/'))) {
     return
   }
-  // Only swallow the paste when it carries an image — plain-text pastes fall
-  // through to the textarea untouched.
   event.preventDefault()
   uploadImages(files)
 }
@@ -171,8 +145,6 @@ const handleDrop = (event: DragEvent) => {
   uploadImages(Array.from(event.dataTransfer?.files ?? []))
 }
 
-// Enter sends; Shift+Enter inserts a newline. Guard isComposing so pressing
-// Enter to confirm an IME (pinyin, etc.) candidate doesn't fire a send.
 const handleEnter = (event: KeyboardEvent) => {
   if (event.isComposing || event.shiftKey) {
     return
@@ -181,8 +153,6 @@ const handleEnter = (event: KeyboardEvent) => {
   sendMessage()
 }
 
-// 上传图片 button → proxy the click to the hidden file input → reuse the same
-// upload path as paste/drop.
 const openFilePicker = () => {
   fileInput.value?.click()
 }
@@ -192,14 +162,9 @@ const onFileChange = (event: Event) => {
   if (input.files?.length) {
     uploadImages(Array.from(input.files))
   }
-  // Reset so picking the same file again re-fires change.
   input.value = ''
 }
 
-// Emoji inserts at the textarea caret. A sticker is added to the composer as a
-// pending chip (just like an uploaded image) so it sends with the next message
-// instead of firing immediately. Sticker URLs are on sticker.kungal.com, which
-// the renderer's img allow-list permits.
 const onEmoji = (emoji: string) => {
   messageTextarea.value?.insertAtCaret(emoji)
 }
@@ -208,9 +173,6 @@ const onSticker = (url: string) => {
   pendingImages.value.push({ name: 'sticker', url })
 }
 
-// Sender-only recall: server validates ownership, but we still gate
-// locally so we don't fire the request for foreign messages or already
-// recalled ones (matches the canRecall guard inside Item.vue).
 const handleRecallContextMenu = async (payload: {
   event: MouseEvent
   message: ChatMessage
@@ -259,8 +221,6 @@ const handleLoadHistoryMessages = async () => {
     messages.value.unshift(...histories)
 
     nextTick(() => {
-      // Re-read the viewport: prepending history grew the content, so anchor the
-      // scroll to keep the user's current message in place (no visual jump).
       const next = getHistoryViewport()
       if (next) {
         const newScrollHeight = next.scrollHeight
@@ -274,12 +234,6 @@ const handleLoadHistoryMessages = async () => {
   }
 }
 
-// Enter-to-send is handled on the textarea (@keydown.enter="handleEnter").
-// A separate GLOBAL `window` keydown listener used to ALSO call sendMessage, so a
-// single Enter fired the input handler AND the window handler (and any extra
-// mounts duplicated it further) → 2-3 messages per send. It also sent on Enter
-// when the chat input wasn't even focused. Removed; the scoped textarea handler is
-// the single source of truth (plus the re-entry guard in sendMessage).
 onMounted(async () => {
   messages.value = await getMessageHistory()
 
@@ -290,11 +244,6 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- :defer="false" so overlayscrollbars initializes synchronously on mount —
-       the onMounted scroll-to-bottom reads getViewport() right after, and a
-       deferred (idle) init would leave it null and skip the initial scroll. The
-       space-y / padding live on an INNER div: they must wrap the messages, not
-       the OS host (whose direct child is the .os-viewport, not the items). -->
   <KunOverlayScroll ref="historyScroll" :defer="false" class="min-h-0 flex-1">
     <div class="space-y-3 py-3">
       <div class="flex justify-center">
@@ -328,11 +277,6 @@ onMounted(async () => {
     @drop.prevent="handleDrop"
     @dragover.prevent
   >
-    <!--
-      Pending image attachments as removable thumbnail chips, shown above the
-      textarea instead of dumping a raw markdown URL into it. The dashed box is
-      the in-flight upload indicator.
-    -->
     <div
       v-if="pendingImages.length || isUploadingImage"
       class="mb-2 flex flex-wrap gap-2"
@@ -360,14 +304,8 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!--
-      Mobile: emoji + image buttons sit on their own row ABOVE the input, and
-      the input + 发送 share one line below — keeps the cramped phone width from
-      squeezing the textarea. Desktop (sm+): everything on a single line.
-    -->
     <div class="flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-1">
       <div class="flex gap-1">
-        <!-- Emoji + sticker picker, opening above the input. -->
         <KunPopover position="top-start" :auto-position="true">
           <template #trigger>
             <KunButton
@@ -382,7 +320,6 @@ onMounted(async () => {
           <MessagePmEmojiStickerPicker @emoji="onEmoji" @sticker="onSticker" />
         </KunPopover>
 
-        <!-- Upload image (same upload path as paste/drop). -->
         <KunButton
           :is-icon-only="true"
           variant="light"

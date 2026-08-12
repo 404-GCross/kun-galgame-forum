@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// GALGAME_RATING_CREATION — rating feed card. Layout like the new-galgame card:
-// cover left; right = game title, then <通关状态> <推荐程度> <总评分>, then the
-// 简评 (or a spoiler notice), then a 点赞 button + 查看详情. Labels mirror the
-// galgame rating detail row.
 import {
   KUN_GALGAME_RATING_PLAY_STATUS_MAP,
   KUN_GALGAME_RATING_RECOMMEND_MAP,

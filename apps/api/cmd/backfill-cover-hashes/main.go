@@ -1,16 +1,3 @@
-// Backfill the forum's own cover/banner/icon URLs into content-addressed
-// image_service hashes. For every legacy-URL row that has no hash yet, either
-// parse the hash out of an existing image_service URL (no re-upload), or fetch
-// the bytes and re-upload under the `topic` preset and store the returned hash
-// in the new *_image_hash column.
-//
-// The read side prefers the hash and falls back to the legacy URL, so this is
-// safe to run anytime and is idempotent: only rows WITH a url and WITHOUT a hash
-// are touched, and image_service dedups re-uploads.
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  backfill-cover-hashes -webroot /app   # prod (tools image bakes /app/content)
-//	  backfill-cover-hashes --dry-run        # report only, no upload/writes
 package main
 
 import (
@@ -36,7 +23,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// target is one (table, legacy url column, new hash column) to migrate.
 type target struct {
 	table   string
 	urlCol  string
@@ -65,8 +51,6 @@ func main() {
 	}
 	logger.Init(cfg.Server.Mode)
 
-	// A real run uploads, so it needs credentials; --dry-run only reports (and
-	// can still parse hashes out of existing image_service URLs), so it doesn't.
 	if !*dryRun && (cfg.ImageClient.ClientID == "" || cfg.ImageClient.ClientSecret == "") {
 		slog.Error("image_service 未配置 (KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET), 无法上传")
 		os.Exit(1)
@@ -112,12 +96,11 @@ func backfillTarget(
 	slog.Info("开始回填", "table", t.table, "candidates", len(rows), "dry_run", dryRun)
 
 	for _, r := range rows {
-		r.URL = strings.TrimSpace(r.URL) // some legacy rows have stray whitespace
+		r.URL = strings.TrimSpace(r.URL)
 		if r.URL == "" {
 			continue
 		}
 
-		// Already an image_service URL → parse the hash out, no re-upload.
 		if cdnBase != "" && strings.HasPrefix(r.URL, cdnBase) {
 			hash := hashFromImageURL(r.URL)
 			if hash == "" {
@@ -137,7 +120,6 @@ func backfillTarget(
 			continue
 		}
 
-		// Arbitrary/legacy URL → get the bytes and re-upload.
 		if dryRun {
 			slog.Info("dry-run: 将抓取并上传", "table", t.table, "id", r.ID, "url", r.URL)
 			continue
@@ -175,21 +157,16 @@ func writeHash(db *gorm.DB, t target, id int, hash string) bool {
 	return true
 }
 
-// hashFromImageURL extracts the content hash from
-// {cdn}/aa/bb/<hash>[_variant].webp.
 func hashFromImageURL(u string) string {
-	base := path.Base(u)                   // <hash>.webp or <hash>_mini.webp
-	base = strings.SplitN(base, ".", 2)[0] // strip extension
-	base = strings.SplitN(base, "_", 2)[0] // strip _variant
+	base := path.Base(u)
+	base = strings.SplitN(base, ".", 2)[0]
+	base = strings.SplitN(base, "_", 2)[0]
 	if len(base) < 4 {
 		return ""
 	}
 	return base
 }
 
-// getImageBytes returns the raw bytes for a legacy cover URL. Absolute URLs are
-// fetched over HTTP; root-relative paths (e.g. /content/x/banner.avif) are read
-// from -webroot if set, else fetched from -base + path.
 func getImageBytes(ctx context.Context, hc *http.Client, rawURL, webroot, base string) ([]byte, error) {
 	if strings.HasPrefix(rawURL, "/") {
 		if webroot != "" {

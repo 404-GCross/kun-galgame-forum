@@ -71,8 +71,6 @@ export const getMessageI18n = (message: Message) => {
     return messageTemplates['zh-cn']!.admin
   }
 
-  // A @mention that carries reply text reads as a reply ("回复了您", with the
-  // text shown below); a bare mention with no body stays "提到了您".
   if (message.type === 'mentioned' && message.content?.trim()) {
     return messageTemplates['zh-cn']!.replied
   }

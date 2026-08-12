@@ -1,20 +1,8 @@
 <script setup lang="ts">
-// 制作人员: the game's credits — 脚本 / 原画 / 音乐 / 声优 — from the catalog's
-// credit graph. The backend does all the editorial work (folds the duplicate
-// role vocabularies, merges the spellings of one person, puts authorship above
-// the cast and 其他 at the bottom), so this renders the list verbatim.
-//
-// Each name links to its own page at /galgame/staff/:id — the id every row
-// carries is the catalog credit-name id that page is addressed by, so the link
-// needs no lookup. What is behind it is a NAME, not a person: the same human
-// may hold several, and the page says so rather than pretending otherwise.
 const props = defineProps<{
   staff: GalgameDetailStaff[]
 }>()
 
-// A game credits six to thirty roles, and the tail is single-name oddities
-// (QA / 协力 / 制作总指挥). Show the roles a reader came for, keep the rest one
-// click away rather than pushing the screenshots off the screen.
 const COLLAPSED_GROUPS = 6
 
 const isExpanded = ref(false)
@@ -57,8 +45,6 @@ const hiddenCount = computed(() => props.staff.length - COLLAPSED_GROUPS)
             >
               {{ person.name }}
             </KunLink>
-            <!-- Voice acting is the one role where the credit means nothing
-                 without the character it was for. -->
             <span
               v-if="person.characters?.length"
               class="text-default-400 text-sm"

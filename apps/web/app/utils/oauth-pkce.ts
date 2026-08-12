@@ -1,8 +1,3 @@
-/**
- * PKCE (Proof Key for Code Exchange) utilities for OAuth 2.0.
- * Uses Web Crypto API (available in both browser and server).
- */
-
 export const generateCodeVerifier = (): string => {
   const array = new Uint8Array(32)
   crypto.getRandomValues(array)

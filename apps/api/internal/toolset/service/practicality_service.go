@@ -16,8 +16,6 @@ func NewPracticalityService(practicalityRepo *repository.PracticalityRepository)
 	return &PracticalityService{practicalityRepo: practicalityRepo}
 }
 
-// GetPracticality returns the rating distribution for a toolset, including
-// the current user's rating (if any).
 func (s *PracticalityService) GetPracticality(toolsetID, currentUserID int) *dto.PracticalityResponse {
 	summary := s.Summary(toolsetID)
 
@@ -36,7 +34,6 @@ func (s *PracticalityService) GetPracticality(toolsetID, currentUserID int) *dto
 	}
 }
 
-// Summary returns the (counts, avg) pair for a toolset, used by the detail view.
 func (s *PracticalityService) Summary(toolsetID int) *dto.PracticalitySummary {
 	counts := map[int]int64{1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
 	for _, rc := range s.practicalityRepo.CountsByToolset(toolsetID) {
@@ -50,7 +47,6 @@ func (s *PracticalityService) Summary(toolsetID int) *dto.PracticalitySummary {
 	}
 }
 
-// UpsertPracticality creates or updates the current user's rating.
 func (s *PracticalityService) UpsertPracticality(toolsetID, userID int, req *dto.UpsertPracticalityRequest) *errors.AppError {
 	if err := s.practicalityRepo.Upsert(toolsetID, userID, req.Rate); err != nil {
 		return errors.ErrInternal("评分失败")

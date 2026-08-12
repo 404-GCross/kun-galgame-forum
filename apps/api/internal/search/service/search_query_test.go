@@ -1,14 +1,5 @@
 package service
 
-// The galgame search lane's upstream query is pinned here because the failure
-// it guards against is silent: drop `claim_state=live` and the result set
-// quietly WIDENS to every registry row — unclaimed VNDB stubs and withdrawn
-// entries included — which is the production incident of 2026-07-31 (doc 106
-// §37 revoked the whole-registry population A2-3 had opened).
-//
-// The upstream is stubbed empty on purpose: ToCards short-circuits on an empty
-// item list, so this needs neither a database nor the user service.
-
 import (
 	"context"
 	"net/http"
@@ -47,6 +38,9 @@ func (r *searchRecorder) get(key string) string {
 	return r.query.Get(key)
 }
 
+// The failure this guards is silent: drop `claim_state=live` and the result set
+// quietly WIDENS to every registry row — unclaimed VNDB stubs and withdrawn
+// entries included. That is the 2026-07-31 production incident.
 func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
 	rec := &searchRecorder{}
 	svc := rec.service(t)
@@ -57,23 +51,15 @@ func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
 	if rec.path != "/v1/catalog/works/search" {
 		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
-	// The gate itself. `live` is the exact successor of the deprecated face's
-	// status=0; anything else (including an absent parameter) puts unpublished
-	// works back in front of users.
 	if got := rec.get("claim_state"); got != "live" {
 		t.Errorf("claim_state = %q, want live — without it search leaks unpublished works", got)
 	}
-	// The gate is a REQUEST parameter, never a post-filter, so the total the
-	// pager reads is gated by the same expression as the items.
 	if got := rec.get("q"); got != "恋爱" {
 		t.Errorf("q = %q, want the raw keywords", got)
 	}
 	if got := rec.get("sort"); got != "relevance" {
 		t.Errorf("sort = %q, want relevance", got)
 	}
-	// The SFW preference travels as the EDITORIAL gate; the age gate stays open
-	// on every lane, because 94.5% of the registry is r18 and closing it deletes
-	// the catalogue instead of filtering adult presentation (doc 106 §38).
 	if got := rec.get("nsfw"); got != "1" {
 		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
 	}
@@ -95,8 +81,6 @@ func TestSearchGalgames_NSFWCallerStillOnlySeesPublished(t *testing.T) {
 	if got := rec.get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)
 	}
-	// The two gates are independent: opting into r18 must not open the
-	// lifecycle gate as a side effect.
 	if got := rec.get("claim_state"); got != "live" {
 		t.Errorf("claim_state = %q, want live for an NSFW caller too", got)
 	}

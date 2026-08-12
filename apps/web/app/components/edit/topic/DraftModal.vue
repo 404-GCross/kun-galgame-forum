@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// Topic drafts: save the current editor state as a private draft, or load a
-// previously saved one back in. Drafts are server-side and per-user (only the
-// author sees them). Opened by the 草稿 button next to 发布话题.
 import {
   useTopicDraft,
   type TopicDraftListItem
@@ -27,7 +24,6 @@ const refresh = async () => {
   isLoading.value = false
 }
 
-// (Re)load the list each time the modal opens.
 watch(open, (isOpen) => {
   if (isOpen) {
     refresh()

@@ -48,14 +48,6 @@ func NewCommentService(
 	}
 }
 
-// ──────────────────────────────────────────
-// Create comment
-// ──────────────────────────────────────────
-
-// CreateComment inserts a new comment and returns it in the frontend-expected
-// shape (full user + targetUser objects). Returning just a message body made
-// the frontend push `undefined` into its comment list, crashing on
-// `comment.user.name`.
 func (s *CommentService) CreateComment(
 	ctx context.Context,
 	userID int,
@@ -63,8 +55,6 @@ func (s *CommentService) CreateComment(
 	parentCommentID *int,
 	content string,
 ) (*dto.TopicCommentResponse, *errors.AppError) {
-	// A nested reply must point at an existing comment ON THE SAME REPLY — guards
-	// against a forged parent that would orphan the comment in another thread.
 	if parentCommentID != nil {
 		parent, err := s.commentRepo.FindCommentByID(*parentCommentID)
 		if err != nil || parent.TopicReplyID != replyID {
@@ -72,9 +62,6 @@ func (s *CommentService) CreateComment(
 		}
 	}
 
-	// Synchronous Tier0 word-list gate (trust wave 2), strictly BEFORE the tx.
-	// A comment's moderation text is its RAW body. deny blocks (nothing
-	// persisted); hold publishes normally + logs; fail-open on any error/timeout.
 	authorID := int64(userID)
 	decision, matched := s.check.Decision(ctx, content, &authorID)
 	if decision == gate.DecisionDeny {
@@ -98,10 +85,6 @@ func (s *CommentService) CreateComment(
 		if err := recomputeTopicCounts(tx, topicID); err != nil {
 			return err
 		}
-		// A new comment is topic activity → bump status_update_time so the topic
-		// resurfaces in the last-activity feeds (mirrors reply creation). Gated on
-		// the bump window in SQL: an aged-out topic is not matched, so comments no
-		// longer necro-bump it (only a re-edit does).
 		now := time.Now()
 		if err := tx.Model(&topicModel.Topic{}).
 			Where("id = ? AND created > ?", topicID, topicModel.BumpCutoff(now)).
@@ -123,15 +106,11 @@ func (s *CommentService) CreateComment(
 		return nil, errors.ErrInternal("发表评论失败")
 	}
 
-	// A suspect hold publishes normally but leaves one greppable audit line;
-	// then feed the RAW text into the async shadow scan, off the request path.
 	if decision == gate.DecisionHold {
 		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTopicComment, "subject_id", comment.ID, "author_id", userID, "matched", matched)
 	}
 	s.scan.ScanBg(gate.SubjectKindTopicComment, strconv.Itoa(comment.ID), content, int64(userID))
 
-	// Resolve author + target in one batch via OAuth so the response carries
-	// the fields the frontend TopicComment type declares.
 	userMap := s.userClient.Hydrate(ctx, []int{userID, targetUserID})
 	author := userMap[userID]
 	target := userMap[targetUserID]
@@ -150,14 +129,6 @@ func (s *CommentService) CreateComment(
 	}, nil
 }
 
-// ──────────────────────────────────────────
-// Update (edit) comment
-// ──────────────────────────────────────────
-
-// UpdateComment rewrites a comment's content and stamps `edited` (drives the
-// "(编辑于 …)" UI). Mirrors ReplyService.UpdateReply: the author may always edit
-// their own, and canEditAny (perm.CommentTopicEdit) lets staff rewrite someone
-// else's rather than having to delete the whole comment.
 func (s *CommentService) UpdateComment(
 	ctx context.Context,
 	userID int,
@@ -172,8 +143,6 @@ func (s *CommentService) UpdateComment(
 		return nil, errors.ErrForbidden("您没有权限编辑此评论")
 	}
 
-	// Synchronous word-list gate BEFORE the tx (deny blocks, hold publishes+logs,
-	// fail-open). author_id is the content author (comment.UserID).
 	authorID := int64(comment.UserID)
 	decision, matched := s.check.Decision(ctx, req.Content, &authorID)
 	if decision == gate.DecisionDeny {
@@ -196,11 +165,6 @@ func (s *CommentService) UpdateComment(
 	}
 	s.scan.ScanBg(gate.SubjectKindTopicComment, strconv.Itoa(req.CommentID), req.Content, int64(comment.UserID))
 
-	// Refresh the full DTO so the FE can replace the comment in place. isLiked
-	// must be READ, not assumed false: that shortcut only held while the editor
-	// was necessarily the author (who can't like their own comment), and
-	// perm.CommentTopicEdit now lets a moderator — who may well have liked it —
-	// edit too. Assuming false would silently un-fill their like button.
 	likeCount, _ := s.commentRepo.CountCommentLikes(req.CommentID)
 	likedMap, _ := s.commentRepo.FindCommentLikeStatus(userID, []int{req.CommentID})
 	userMap := s.userClient.Hydrate(ctx, []int{comment.UserID, comment.TargetUserID})
@@ -220,10 +184,6 @@ func (s *CommentService) UpdateComment(
 		Edited:     &now,
 	}, nil
 }
-
-// ──────────────────────────────────────────
-// Toggle comment like
-// ──────────────────────────────────────────
 
 func (s *CommentService) ToggleCommentLike(ctx context.Context, userID, commentID int) *errors.AppError {
 	err := s.replyRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -267,10 +227,6 @@ func (s *CommentService) ToggleCommentLike(ctx context.Context, userID, commentI
 	}
 	return nil
 }
-
-// ──────────────────────────────────────────
-// Delete comment
-// ──────────────────────────────────────────
 
 func (s *CommentService) DeleteComment(ctx context.Context, userID int, canModerate bool, commentID int) *errors.AppError {
 	comment, err := s.commentRepo.FindCommentByID(commentID)
@@ -321,8 +277,6 @@ func (s *CommentService) DeleteComment(ctx context.Context, userID int, canModer
 	return nil
 }
 
-// ModerationRemove hard-deletes a topic comment for a T&S `remove` enforcement
-// — no permission check, no moemoepoint penalty. Idempotent.
 func (s *CommentService) ModerationRemove(commentID int) error {
 	comment, err := s.commentRepo.FindCommentByID(commentID)
 	if err != nil {

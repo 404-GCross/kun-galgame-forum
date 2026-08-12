@@ -1,12 +1,3 @@
-<script setup lang="ts">
-// Pure content component — the 3 info blocks (docs / reward / cautions)
-// shared by every resource form. Each consumer modal renders its own
-// header (publish vs rewrite text differs), so this file does NOT emit
-// a title of its own — that decoupling is why deleting Publish.vue
-// didn't strand a now-wrong "发布 Galgame 资源提示" heading inside the
-// edit modal.
-</script>
-
 <template>
   <KunAccordion variant="bordered">
     <KunAccordionItem value="notice" title="首次发布资源必看！">

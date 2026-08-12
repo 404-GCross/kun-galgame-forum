@@ -14,10 +14,6 @@ func NewSectionRepository(db *gorm.DB) *SectionRepository {
 	return &SectionRepository{db: db}
 }
 
-// ──────────────────────────────────────────
-// Row projections
-// ──────────────────────────────────────────
-
 type SectionTopicRow struct {
 	ID           int
 	Title        string
@@ -46,11 +42,6 @@ type LatestTopicRow struct {
 	UserID  int    `gorm:"column:user_id"`
 }
 
-// ──────────────────────────────────────────
-// Queries
-// ──────────────────────────────────────────
-
-// FindSectionTopics returns paginated topics for a section plus total count.
 func (r *SectionRepository) FindSectionTopics(
 	section, sortOrder string, page, limit int,
 ) (rows []SectionTopicRow, total int64, err error) {
@@ -73,7 +64,6 @@ func (r *SectionRepository) FindSectionTopics(
 	return
 }
 
-// FindCategoryStats returns per-section topic count + view count filtered by category.
 func (r *SectionRepository) FindCategoryStats(category string) ([]SectionStatRow, error) {
 	var rows []SectionStatRow
 	err := r.db.Raw(`
@@ -90,10 +80,6 @@ func (r *SectionRepository) FindCategoryStats(category string) ([]SectionStatRow
 	return rows, err
 }
 
-// FindLatestTopicsInSection returns up to `limit` most-recent topics in a
-// section for the given category, newest first, each with its author id so the
-// caller can skip banned authors when picking the "latest topic" preview.
-// Empty slice if none match.
 func (r *SectionRepository) FindLatestTopicsInSection(sectionID int, category string, limit int) []LatestTopicRow {
 	var rows []LatestTopicRow
 	r.db.Raw(`

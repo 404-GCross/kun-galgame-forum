@@ -49,7 +49,6 @@ func TestCheckWire(t *testing.T) {
 	if gotCT != "application/json" {
 		t.Fatalf("bad content-type %q", gotCT)
 	}
-	// site is NEVER on the wire for a direct product-site caller.
 	if gotBody.Text != "标题\n\n正文" || gotBody.AuthorID == nil || *gotBody.AuthorID != 99 {
 		t.Fatalf("bad forwarded body: %+v", gotBody)
 	}
@@ -82,8 +81,6 @@ func TestScanWire(t *testing.T) {
 	}
 }
 
-// A non-zero envelope code (e.g. 422 unregistered kind) surfaces as an error the
-// gate treats as fail-open (check) / drops best-effort (scan).
 func TestModerationEnvelopeError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)

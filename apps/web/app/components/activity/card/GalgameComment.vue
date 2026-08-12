@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// GALGAME_COMMENT_CREATION — a comment on a galgame. Per spec: comment text on
-// top, the galgame name below (linked). No bordered preview box / banner — the
-// comment is the focus, the game is just a small reference line.
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(
@@ -16,14 +13,11 @@ const detailLink = computed(() =>
 <template>
   <ActivityCardShell :actor="activity.actor" :timestamp="activity.timestamp">
     <div class="space-y-1.5">
-      <!-- The comment being commented on (被评论的评论). -->
       <ActivityCardQuote
         v-if="data?.parent_comment"
         :content="data.parent_comment.content"
       />
 
-      <!-- Full comment body, rendered as Markdown (server-rendered HTML) — same
-           renderer as the galgame detail; untruncated. -->
       <KunContent
         compact
         class="text-base"

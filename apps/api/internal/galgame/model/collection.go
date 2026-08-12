@@ -2,17 +2,10 @@ package model
 
 import "time"
 
-// ──────────────────────────────────────────
-// Collections (收藏夹) — user-owned, many-to-many over galgames.
-// Replaces the flat galgame_favorite list (migration 043). A galgame can live
-// in many of a user's collections; each collection carries a privacy setting.
-// ──────────────────────────────────────────
-
-// Collection visibility values (stored in galgame_collection.visibility).
 const (
-	CollectionPublic     = "public"     // anyone
-	CollectionPrivate    = "private"    // owner only
-	CollectionRestricted = "restricted" // owner + galgame_collection_viewer allow-list
+	CollectionPublic     = "public"
+	CollectionPrivate    = "private"
+	CollectionRestricted = "restricted"
 )
 
 type GalgameCollection struct {
@@ -34,10 +27,7 @@ type GalgameCollectionItem struct {
 	ID           int `gorm:"primaryKey;autoIncrement" json:"id"`
 	CollectionID int `gorm:"column:collection_id;not null;uniqueIndex:idx_gci_unique" json:"collection_id"`
 	GalgameID    int `gorm:"column:galgame_id;not null;uniqueIndex:idx_gci_unique" json:"galgame_id"`
-	// UserID is the collection owner, denormalized so "is this game in any of my
-	// collections" + the distinct-user favorite_count run index-only (idx_gci_user_galgame).
-	// A collection's owner never changes, so this carries no consistency risk.
-	UserID int `gorm:"column:user_id;not null" json:"user_id"`
+	UserID       int `gorm:"column:user_id;not null" json:"user_id"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`

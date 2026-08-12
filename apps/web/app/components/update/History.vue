@@ -21,10 +21,6 @@ const editingUpdateLog = ref<UpdateUpdateLogPayload>(
   {} as UpdateUpdateLogPayload
 )
 
-// Clear the edit target before creating — the modal decides create-vs-edit from
-// initial-data's id, and this ref holds the last edited log, so after any 编辑
-// the 创建 button reopened that log and submitting overwrote it. Same shape as
-// Todo.vue.
 const openCreateUpdateLogModal = () => {
   editingUpdateLog.value = {} as UpdateUpdateLogPayload
   showUpdateLogModal.value = true

@@ -1,16 +1,5 @@
 package service
 
-// staleCache is the read-through cache the precomputed browse indexes share.
-//
-// Both indexes have the same shape of problem: the catalog's browse lanes are
-// keyset-paged and carry filters this product cannot express upstream, so an
-// honest page (full rows, exact total) can only be cut from the WHOLE facet —
-// which costs a walk, or a fan-out, that no single request should pay for.
-//
-// So the facet is built once and served from memory, and a stale build is
-// served while the next one runs: a browse list may lag the catalog by minutes;
-// it may not hang on a rebuild.
-
 import (
 	"context"
 	"sync"
@@ -19,21 +8,16 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-// staleCache holds the last successful build of one facet.
 type staleCache[T any] struct {
 	mu        sync.Mutex
 	rows      []T
-	ok        bool          // a build has succeeded at least once
-	built     time.Time     // when that build finished
-	buildingC chan struct{} // non-nil while a rebuild is in flight
+	ok        bool
+	built     time.Time
+	buildingC chan struct{}
 }
 
-// get returns the cached rows, rebuilding when they are missing or older than
-// ttl. Only the very first caller (or one arriving after a failed build) waits
-// for a build; everyone else is served the previous rows.
-//
 // A failed rebuild keeps the previous rows AND the previous timestamp, so the
-// next caller retries rather than caching an outage for a whole ttl.
+// next caller retries instead of caching an outage for a whole ttl.
 func (c *staleCache[T]) get(
 	ctx context.Context,
 	ttl time.Duration,
@@ -46,8 +30,6 @@ func (c *staleCache[T]) get(
 		return rows, nil
 	}
 	if building != nil {
-		// Someone is already on it: serve what we have rather than queue a
-		// second identical build behind the first.
 		c.mu.Unlock()
 		if ok {
 			return rows, nil
@@ -66,8 +48,6 @@ func (c *staleCache[T]) get(
 	c.mu.Unlock()
 
 	if ok {
-		// Stale but usable: refresh out of band, on a context that outlives this
-		// request — the caller's is cancelled the moment it responds.
 		go func() {
 			built, appErr := build(context.WithoutCancel(ctx))
 			c.finish(built, appErr, done)
@@ -83,7 +63,6 @@ func (c *staleCache[T]) get(
 	return built, nil
 }
 
-// finish publishes a build's result and releases the in-flight marker.
 func (c *staleCache[T]) finish(rows []T, appErr *errors.AppError, done chan struct{}) {
 	c.mu.Lock()
 	if appErr == nil {

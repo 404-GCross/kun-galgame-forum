@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Optional 1..9 feed-card covers for a topic. Each cover is a /image/<hash>
-// content token (same shape as body images), uploaded via the SAME /image/topic
-// endpoint the editor uses for inline images — so the token is render-ready and
-// kept alive by the reference-ping cron. Reuses the shared dropzone tile.
 import { useTopicEditorStore } from '~/composables/topic/useTopicEditorStore'
 
 const MAX_COVERS = 9
@@ -46,7 +42,6 @@ const uploadFiles = async (files: File[]) => {
       })
     )
 
-    // Append in pick order, skipping blanks + duplicates, then cap at 9.
     const next = [...coverImages.value]
     for (const token of tokens) {
       if (token && !next.includes(token)) {
@@ -66,7 +61,6 @@ const handleRemove = (index: number) => {
   coverImages.value = coverImages.value.filter((_, i) => i !== index)
 }
 
-// Swap with the neighbour in the chosen direction; grid reads left→right.
 const handleShift = (index: number, dir: -1 | 1) => {
   const target = index + dir
   if (target < 0 || target >= coverImages.value.length) return
@@ -94,8 +88,6 @@ const handleShift = (index: number, dir: -1 | 1) => {
         :key="token"
         class="group border-default-200 relative overflow-hidden rounded-lg border"
       >
-        <!-- Plain <img> on the ABSOLUTE CDN URL (imageTokenUrl): skips @nuxt/image
-             IPX (404s on the /image/<hash> token) and the /image 302 hop. -->
         <img
           :src="imageTokenUrl(token)"
           alt="封面图"
@@ -143,7 +135,6 @@ const handleShift = (index: number, dir: -1 | 1) => {
           </KunTooltip>
         </div>
 
-        <!-- first cover = the one used when only one thumbnail is shown -->
         <KunChip
           v-if="idx === 0"
           size="sm"

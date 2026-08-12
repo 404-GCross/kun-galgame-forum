@@ -1,20 +1,9 @@
 <script setup lang="ts">
-// Per-rating gallery filter (galgame detail 画廊). Two independent axes:
-//   色情 (sexual)   — gated by the global NSFW mode: NSFW shows every level,
-//                     SFW reveals only the levels opted-in here.
-//   暴力 (violence) — ALWAYS an explicit per-level opt-in (default off), shown
-//                     behind a prominent confirm. The NSFW mode does NOT unlock
-//                     it (sex and gore are separate sensitivities).
-// Each level shows HOW MANY images carry it, so the viewer knows what a toggle
-// reveals/hides. An image needs BOTH its sexual and violence levels permitted
-// to show — the actual hide/show runs in Gallery.vue; this only edits the
-// persisted level sets (remembered across pages/sessions via the settings store).
 import type { Ref } from 'vue'
 
 const props = defineProps<{
   showNsfw: boolean
   hiddenCount: number
-  // level (1/2/3) → number of screenshots carrying that rating
   sexualCounts: Record<number, number>
   violenceCounts: Record<number, number>
 }>()
@@ -30,7 +19,6 @@ const LEVELS = [
   { value: 3, label: '高' }
 ]
 
-// Only offer levels that actually have images.
 const sexualShown = computed(() =>
   LEVELS.filter((lv) => (props.sexualCounts[lv.value] ?? 0) > 0)
 )
@@ -44,13 +32,8 @@ const toggle = (arr: Ref<number[]>, level: number) => {
     : [...arr.value, level]
 }
 
-// Dedicated handler so the template never passes a ref (templates auto-unwrap
-// refs, which would hand `toggle` a plain array).
 const toggleSexual = (level: number) => toggle(sexualLevels, level)
 
-// Violence: turning it ON from the all-off state pops a confirm first; once any
-// violence level is on (or persisted from a prior session), further toggles
-// don't re-prompt.
 const warnOpen = ref(false)
 const pendingLevel = ref<number | null>(null)
 
@@ -84,7 +67,6 @@ const confirmViolence = () => {
     </template>
 
     <div class="space-y-4">
-      <!-- 色情 -->
       <div class="space-y-2">
         <p class="text-default-700 text-sm font-medium">色情评级</p>
         <p v-if="!sexualShown.length" class="text-default-400 text-xs">
@@ -108,7 +90,6 @@ const confirmViolence = () => {
 
       <KunDivider />
 
-      <!-- 暴力 -->
       <div class="space-y-2">
         <div class="flex items-center gap-1.5">
           <KunIcon name="lucide:triangle-alert" class="text-danger-500" />

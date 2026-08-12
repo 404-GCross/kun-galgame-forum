@@ -17,9 +17,6 @@ const { data, refresh } = await useKunFetch<
 if (data.value && data.value !== 'not found') {
   const titleBase = getPreferredLanguageText(data.value.galgame.name)
 
-  // NSFW resources must not feed crawlers: useKunSeoMeta below would
-  // otherwise overwrite the robots=noindex from useKunDisableSeo and
-  // leak title/description/og:image. Branch hard.
   if (data.value.galgame.content_limit === 'nsfw') {
     useKunDisableSeo(titleBase)
   } else {
@@ -54,9 +51,6 @@ if (data.value && data.value !== 'not found') {
 
       <KunAdAIFYBanner class-name="hidden lg:block" />
 
-      <!-- min-w-0 on both tracks: a `1fr` track floors at max-content, so a
-           long download link or a wide code block would push its column open
-           and shift the split as content loads. -->
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <GalgameResourceDetailPanel
           class="min-w-0 lg:col-span-2"

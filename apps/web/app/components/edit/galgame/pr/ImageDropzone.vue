@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Shared drag-drop + multi-file picker for the cover/screenshot editors.
-// Dumb: it only surfaces the picked/dropped File[]; the parent uploads +
-// de-dups (useGalgameImageUpload). Doubles as the always-visible "add" tile at
-// the end of the grid, so adding more images never reopens a separate dialog.
 withDefaults(
   defineProps<{
     label: string
@@ -27,7 +23,7 @@ const pick = () => fileInput.value?.click()
 const onChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
-  input.value = '' // reset so re-picking the same selection still fires
+  input.value = ''
   if (files.length) emit('files', files)
 }
 

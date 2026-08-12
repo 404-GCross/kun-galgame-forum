@@ -86,13 +86,11 @@ x-kungal-api-env: &kungal-api-env
   # search — key MUST == infra MEILI_MASTER_KEY
   MEILISEARCH_URL: http://meilisearch:7700
   MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (= infra 的同名值)}
-  # NextMoe catalog galgame surface (host base, no /api suffix): the client
-  # derives {base}/internal (internal-tier read face, X-API-Key) + {base}/api
-  # (legacy face for writes / admin / feeds).
+  # NextMoe catalog galgame read surface (host base with no path suffix): the
+  # client calls {base}/v1/catalog/* with X-API-Key.
   KUN_NEXTMOE_API_BASE: http://catalog:9281
-  # internal-tier devapi key for the read face (X-API-Key). REQUIRED whenever a
-  # base is set: an empty key fail-fasts at config load (the legacy /api rollback
-  # valve was retired in open-API phase 2 wave 05). Set in Dokploy; plaintext in
+  # Developer API key for the read face (X-API-Key). REQUIRED whenever a base
+  # is set: an empty key fails fast at config load. Set in Dokploy; plaintext in
   # kungal-neo /root/phase2-internal-keys.env (kungal-forum-internal-s2s).
   KUN_NEXTMOE_API_KEY: ${KUN_NEXTMOE_API_KEY:-}
   # catalog read proxy (step 36): credits / entity reverse-lookups. Reuses the

@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { kunGalgameOriginalLanguageOptions } from '~/constants/galgame'
 
-// Wiki accepts these fields on POST /galgame; defaults (ja-jp / r18) are
-// fine for most Japanese visual novels but we expose them as choices so
-// authors can correct non-default games (English VNs, all-ages titles) at
-// publish time instead of needing a follow-up PR. See audit batch 2 §10.
-//
-// U1 (release date): wiki stores a real date + TBA flag instead of a
-// free-form string. Empty input = unknown; TBA toggle is independent of
-// the date (a TBA-flagged entry can still carry a predicted date).
 
 const { age_limit, original_language, release_date, release_date_tba } = storeToRefs(
   usePersistEditGalgameStore()
@@ -19,10 +11,6 @@ const ageLimitOptions = [
   { value: 'r18', label: 'R18 (本游戏含成人内容)' }
 ] as const
 
-// Full set the wiki actually uses (Korean / Russian / French / …), shared from
-// constants so display + dropdown + validation stay in sync. A claimed draft in
-// any of these now round-trips on re-edit instead of failing the old 4-value
-// enum and forcing a manual re-pick.
 const originalLanguageOptions = kunGalgameOriginalLanguageOptions
 </script>
 

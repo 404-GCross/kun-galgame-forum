@@ -21,8 +21,6 @@ func NewTopicDraftHandler(draftService *service.DraftService) *TopicDraftHandler
 	return &TopicDraftHandler{draftService: draftService}
 }
 
-// Save stores the current editor state as a new draft.
-// POST /api/topic/draft
 func (h *TopicDraftHandler) Save(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -41,8 +39,6 @@ func (h *TopicDraftHandler) Save(c fiber.Ctx) error {
 	return response.OK(c, id)
 }
 
-// List returns the current user's drafts (metadata only), newest first.
-// GET /api/topic/draft
 func (h *TopicDraftHandler) List(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -56,8 +52,6 @@ func (h *TopicDraftHandler) List(c fiber.Ctx) error {
 	return response.OK(c, items)
 }
 
-// Get returns one draft in full, to restore into the editor.
-// GET /api/topic/draft/:id
 func (h *TopicDraftHandler) Get(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -76,8 +70,6 @@ func (h *TopicDraftHandler) Get(c fiber.Ctx) error {
 	return response.OK(c, detail)
 }
 
-// Delete removes one of the current user's drafts.
-// DELETE /api/topic/draft/:id
 func (h *TopicDraftHandler) Delete(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {

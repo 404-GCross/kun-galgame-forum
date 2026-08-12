@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Reusable cover/banner uploader for the content-addressed image service.
-// It uploads to `POST /image/cover` (multipart field `file`) and stores the
-// returned content-addressed **hash** (`update:modelValue`), keeping the
-// resolved CDN url around for preview only.
 const props = withDefaults(
   defineProps<{
     modelValue: string
@@ -19,8 +15,6 @@ const emits = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-// Local preview url: seeded from the prop and re-synced when the parent loads
-// a different item. This is preview-only — the submitted value is the hash.
 const previewUrl = ref(props.previewUrl)
 watch(
   () => props.previewUrl,
@@ -47,7 +41,6 @@ const handleFileChange = async (e: Event) => {
     watch: false
   })
   isUploading.value = false
-  // Reset the input so re-selecting the same file fires `change` again.
   input.value = ''
 
   if (res?.hash) {

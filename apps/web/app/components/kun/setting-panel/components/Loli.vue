@@ -1,20 +1,6 @@
 <script setup lang="ts">
 import { getLoli } from './getLoli'
 
-// ── Containing the 差分图 ──────────────────────────────────────────────
-// The layer JSON (public/ren.json) places every part on the ORIGINAL game
-// canvas. Across all selectable parts the assembled character occupies the
-// rectangle (137,323)→(504,925) — i.e. a 367×602 portrait whose top-left sits
-// at (137,323); the body layer is the full silhouette, the eyes/brow/mouth are
-// small overlays on the head. The old code just shoved that 600px-tall portrait
-// up-left with negative offsets so a slice peeked into the panel, which is why
-// it never "fit".
-//
-// Fixed stage window (canvas units) = the union extent, scaled to a panel-
-// friendly height (~421px). Each character is CENTERED in this window on its
-// OWN bbox (getLoli computes it), so narrower skirts no longer sit shoved to
-// one side. CANVAS spans the parts' full coordinate space so the absolutely-
-// positioned imgs get a real containing block (not crushed by a global max-width).
 const FRAME_W = 367
 const FRAME_H = 602
 const CANVAS_W = 504
@@ -42,7 +28,6 @@ const loliData = ref({
   bbox: { left: 137, top: 323, width: 367, height: 602 }
 })
 
-// Center the assembled character's bbox in the fixed FRAME window.
 const canvasStyle = computed(() => {
   const b = loliData.value.bbox
   const x0 = b.left + b.width / 2 - FRAME_W / 2
@@ -55,12 +40,6 @@ const canvasStyle = computed(() => {
   }
 })
 
-// The 5 webp layers are fetched + blob-encoded on demand. We DECODE all of them
-// before revealing, so head/eyes/brows/mouth/body paint together (no part-by-part
-// pop-in) — and nothing (no KunLoading) shows until they're ready. `ready` flips
-// true after the first successful load and stays true; a re-roll keeps the current
-// character on screen and swaps atomically once the new one is fully decoded, so
-// there's never a blank flash.
 const ready = ref(false)
 
 const decode = (src: string) => {
@@ -87,7 +66,6 @@ onMounted(reroll)
     class="hidden shrink-0 sm:block"
     :style="{ width: `${stageW}px`, height: `${stageH}px` }"
   >
-    <!-- Nothing until every layer has decoded; then all parts paint at once. -->
     <KunTooltip v-if="ready && loliData.body" text="点击换一个孩子" position="left">
       <div
         class="relative cursor-pointer overflow-hidden"

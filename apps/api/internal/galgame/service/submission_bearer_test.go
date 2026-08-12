@@ -1,21 +1,5 @@
 package service
 
-// Wave 179 moved the whole claim lifecycle off the asserted-actor S2S face and
-// onto the submitter's / moderator's own Bearer token. What that buys is only
-// real if the requests actually LOOK like it, and the failure mode is silent in
-// both directions: a lane that quietly kept the Basic credential still works
-// (as the forum, on behalf of whoever the forum named), and a moderator whose
-// console grant has not reached the token would be approved by a stale local
-// mirror. So the plane itself is pinned here — path, Authorization header, and
-// the absence of the two fields the token now answers — for one owner action,
-// one review action, and the "my claims" read.
-//
-// The error taxonomy is pinned alongside it, because the Bearer plane can
-// produce a refusal the S2S face never could: a session minted before the
-// `catalog:edit` scope existed. That MUST reach the browser as 235 ("log out
-// and back in"), not as 403 "你没有权限" — the user holds the permission; it is
-// the token that is too old, and no refresh can widen a grant.
-
 import (
 	"encoding/json"
 	"io"
@@ -38,13 +22,10 @@ type claimPlaneRecorder struct {
 	body   map[string]any
 	claimQ url.Values
 
-	// status / message, when set, make the claim-action face refuse.
 	status  int
 	message string
 }
 
-// server answers the gid→work bridge and the claim face, recording whichever
-// claim call arrives.
 func (r *claimPlaneRecorder) server(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -130,9 +111,6 @@ func TestOwnerActionSpeaksAsTheSubmitter(t *testing.T) {
 	if rec.path != "/api/v1/user/catalog/works/90210/claim-actions/withdraw" {
 		t.Errorf("withdraw hit %q, want the user plane's claim-action face", rec.path)
 	}
-	// A Basic credential here would let the service fall back to the S2S
-	// posture — the request would succeed and the ownership check would be
-	// against nobody.
 	if rec.auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the submitter's bearer alone", rec.auth)
 	}
@@ -155,8 +133,6 @@ func TestReviewVerdictSpeaksAsTheModerator(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	// The verdict is authorized against catalog.claim.review over THIS token's
-	// roles. RequireModerator on the route is only which page opens.
 	if rec.path != "/api/v1/user/catalog/works/90210/claim-actions/decline" {
 		t.Errorf("decline hit %q, want the user plane's claim-action face", rec.path)
 	}
@@ -166,7 +142,6 @@ func TestReviewVerdictSpeaksAsTheModerator(t *testing.T) {
 	if _, ok := rec.body["actor"]; ok {
 		t.Errorf("a verdict must assert no actor: %v", rec.body)
 	}
-	// The reason still travels: it is what reaches the submitter.
 	if rec.body["reason"] != "资料不足" {
 		t.Errorf("reason = %v, want it recorded on the event", rec.body["reason"])
 	}
@@ -189,25 +164,17 @@ func TestListMineIsTheTokensOwnClaims(t *testing.T) {
 	if rec.auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the caller's bearer", rec.auth)
 	}
-	// No uid in the path and no site in the query: there is nothing left for a
-	// caller to get wrong and end up reading somebody else's list.
 	if got := rec.claimQ.Get("site"); got != "" {
 		t.Errorf("site = %q, want it absent — the tenant rides the token", got)
 	}
-	// The default filter (everything not yet published) is unchanged by the
-	// plane switch.
 	if got := rec.claimQ.Get("claim_state"); got != "pending,declined,draft" {
 		t.Errorf("claim_state = %q, want the 我的提交 default", got)
 	}
-	// nil items must still serialize as [] — the page reads data.items.length.
 	if page.Items == nil || len(page.Items) != 0 {
 		t.Errorf("items = %v, want an empty array", page.Items)
 	}
 }
 
-// The two refusals only a forwarded token can produce. Both used to be
-// impossible on this face, and both would be actively misleading if folded into
-// the generic 403 the S2S mapping had.
 func TestClaimErrorsCarryTheTokenTaxonomy(t *testing.T) {
 	t.Run("a token minted before catalog:edit asks for a re-login", func(t *testing.T) {
 		rec := &claimPlaneRecorder{status: http.StatusForbidden, message: "missing required scope: catalog:edit"}
@@ -217,8 +184,6 @@ func TestClaimErrorsCarryTheTokenTaxonomy(t *testing.T) {
 		if appErr == nil {
 			t.Fatal("want a refusal")
 		}
-		// 233 here would tell a user they may not submit when in fact they may;
-		// 205 would log out a perfectly live session.
 		if appErr.Code != errors.CodeReauthRequired {
 			t.Errorf("code = %d, want %d (re-login prompt)", appErr.Code, errors.CodeReauthRequired)
 		}

@@ -1,14 +1,4 @@
 // @vitest-environment nuxt
-//
-// Pins the engine contract of the image upload hooks and the name-resolved
-// diff rendering of the relation fields.
-//
-// The image pin is the important one: the editing engine validates cover /
-// screenshot rows against a STRICT key set (infra editspec/work_media.go —
-// covers {image_hash, kind?, portrait_pinned?, sexual?, violence?}, screenshots
-// {image_hash, caption?, sexual?, violence?}) and rejects the whole submission
-// on any other key. The hooks once stamped sort_order / source / source_key
-// onto every row, which made every patch touching 封面/画廊 unsubmittable.
 import { describe, it, expect, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { createGalgameEditConfig } from './galgameEdit'

@@ -8,23 +8,8 @@ withDefaults(
   { className: '' }
 )
 
-// Match the page content's bounds exactly so the bar lines up with it: content is
-// desktop-nav:ml-[104px] (icon rail 80px + ~24px gap) and desktop-nav:mr-3 (12px),
-// i.e. spans [104px, 100%-12px]. left-[104px] + w-[calc(100%-116px)] reproduces
-// that; the inner mx-auto max-w-7xl then centers identically. Must use the SAME
-// desktop-nav gate as the rail (default.vue) — at tablet/touch widths the rail is
-// hidden, so the bar must be full-width, not offset by a phantom 104px.
 const offsetClass = 'desktop-nav:left-[104px] desktop-nav:w-[calc(100%-116px)]'
 
-// Flat + edge-to-edge + transparent at the very top; once the page scrolls it
-// eases to the inset surface (bg-content1 + border + shadow + px-3). Blur is OFF
-// by default and turns ON only when scrolled.
-//
-// Jank guard: the transition list intentionally EXCLUDES backdrop-filter —
-// animating it stutters (the reason the bar used to keep blur constant). Here
-// the blur SNAPS on at the threshold (one cheap GPU repaint, not a 200ms filter
-// animation) while bg / border / shadow / padding fade smoothly. transform-gpu
-// keeps the bar on its own layer.
 const { y } = useWindowScroll()
 const scrolled = computed(() => y.value > 8)
 </script>

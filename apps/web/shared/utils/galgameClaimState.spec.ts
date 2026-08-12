@@ -29,7 +29,6 @@ describe('galgameClaimStateBadge', () => {
     })
   })
 
-  // Guessing "已发布" here would present an unpublished entry as a public one.
   it('falls through to 未知 rather than guessing', () => {
     expect(galgameClaimStateBadge(undefined)).toEqual({
       label: '未知',
@@ -45,8 +44,6 @@ describe('galgameClaimStateBadge', () => {
     })
   })
 
-  // The wizard's whole job: offer 认领 on exactly the rows the registry will
-  // accept it for. A pending row is somebody else's submission.
   it('only a draft is claimable', () => {
     expect(isClaimableState('draft')).toBe(true)
     expect(isClaimableState('pending')).toBe(false)

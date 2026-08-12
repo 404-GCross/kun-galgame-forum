@@ -16,10 +16,8 @@ func newTestClient(baseURL string) *communityclient.Client {
 	return communityclient.New(communityclient.Config{BaseURL: baseURL, ClientID: "cid", ClientSecret: "sec"})
 }
 
-// TestNotConfigured proves an unconfigured client degrades: Configured() is
-// false and every call short-circuits to ErrNotConfigured with no network hit.
 func TestNotConfigured(t *testing.T) {
-	c := communityclient.New(communityclient.Config{BaseURL: "http://x"}) // no creds
+	c := communityclient.New(communityclient.Config{BaseURL: "http://x"})
 	if c.Configured() {
 		t.Fatal("Configured() true without creds")
 	}
@@ -28,8 +26,6 @@ func TestNotConfigured(t *testing.T) {
 	}
 }
 
-// TestResolveEnvelopeAndAuth checks the Basic auth header, the request path, and
-// that the {code,message,data} envelope decodes into the typed result.
 func TestResolveEnvelopeAndAuth(t *testing.T) {
 	var gotAuth, gotPath, gotBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +53,7 @@ func TestResolveEnvelopeAndAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveComments: %v", err)
 	}
-	if gotAuth != "Basic Y2lkOnNlYw==" { // base64("cid:sec")
+	if gotAuth != "Basic Y2lkOnNlYw==" {
 		t.Errorf("auth header = %q", gotAuth)
 	}
 	if gotPath != "/comments/resolve" {
@@ -71,14 +67,12 @@ func TestResolveEnvelopeAndAuth(t *testing.T) {
 	}
 }
 
-// TestErrorMapping proves 403→ErrForbidden, 429→ErrRateLimited, and a non-zero
-// business code (HTTP 200) surfaces as *APIError.
 func TestErrorMapping(t *testing.T) {
 	cases := []struct {
 		name   string
 		status int
 		body   map[string]any
-		want   error // sentinel, or nil to expect an *APIError
+		want   error
 	}{
 		{"forbidden site binding", http.StatusForbidden, nil, communityclient.ErrForbidden},
 		{"tl0 rate limit", http.StatusTooManyRequests, nil, communityclient.ErrRateLimited},
@@ -109,8 +103,6 @@ func TestErrorMapping(t *testing.T) {
 	}
 }
 
-// TestToggleReactionResult proves the reaction result (added + the post's
-// author/anchor context) decodes so the BFF can drive the like triple-write.
 func TestToggleReactionResult(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/posts/100/reaction" {
@@ -131,8 +123,6 @@ func TestToggleReactionResult(t *testing.T) {
 	}
 }
 
-// TestAuthorPosts proves the by-author path, the after/limit/anchor_kind query
-// params, and that the nested {post, thread} view + next_cursor decode.
 func TestAuthorPosts(t *testing.T) {
 	var gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,8 +158,6 @@ func TestAuthorPosts(t *testing.T) {
 	}
 }
 
-// TestAuthorStats proves the ids join, the ≤100 batch shape, and the empty-input
-// short-circuit (no network hit).
 func TestAuthorStats(t *testing.T) {
 	var gotQuery string
 	hit := false
@@ -189,21 +177,18 @@ func TestAuthorStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AuthorStats: %v", err)
 	}
-	if !strings.Contains(gotQuery, "ids=55%2C56") { // url-encoded "55,56"
+	if !strings.Contains(gotQuery, "ids=55%2C56") {
 		t.Errorf("query %q missing joined ids", gotQuery)
 	}
 	if len(out.Stats) != 2 || out.Stats[0].VisiblePosts != 9 {
 		t.Errorf("decoded = %+v", out)
 	}
-	// Empty input must not hit the network.
 	hit = false
 	if res, err := c.AuthorStats(context.Background(), nil); err != nil || len(res.Stats) != 0 || hit {
 		t.Errorf("empty AuthorStats hit=%v res=%+v err=%v", hit, res, err)
 	}
 }
 
-// TestAuthorPurge proves the purge path (POST, no body) and the {posts_purged,
-// reactions_deleted} decode.
 func TestAuthorPurge(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/authors/55/purge" {
@@ -224,8 +209,6 @@ func TestAuthorPurge(t *testing.T) {
 	}
 }
 
-// TestResolvePosts proves the ids body, request-order hydration, and the empty-
-// input short-circuit.
 func TestResolvePosts(t *testing.T) {
 	var gotPath, gotBody string
 	hit := false
@@ -262,8 +245,6 @@ func TestResolvePosts(t *testing.T) {
 	}
 }
 
-// TestListPostsQuery proves after/limit ride as query params and empty values
-// are omitted (community defaults then apply).
 func TestListPostsQuery(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

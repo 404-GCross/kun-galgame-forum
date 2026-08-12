@@ -1,27 +1,3 @@
-// Rewrite already-migrated ABSOLUTE image_service URLs in user content to the
-// domain-independent `/image/<hash>` token.
-//
-// Context: backfill-content-images first ran writing the absolute CDN URL
-// (https://<cdn>/<aa>/<bb>/<hash>.webp) into content — which re-hardcodes a
-// domain into every row, the exact failure mode the image_service contract
-// kills. This one-time, string-only pass converts those URLs to `/image/<hash>`,
-// resolved to the CDN at render time (markdown.resolveContentImageRef) and by
-// the /image/:hash 302 fallback.
-//
-// SAFE BY DEFAULT: -dry-run defaults TRUE (report only). Only `content` is
-// written (never `updated`, so posts aren't bounced to "recently updated").
-// Idempotent: after the rewrite a row no longer matches the absolute base, so a
-// re-run skips it.
-//
-// ORDERING (critical): deploy the resolver FIRST — the Go markdown render
-// resolution, the web /image/:hash 302 route, and uploads returning
-// `/image/<hash>`. Only AFTER that is live, run this with -dry-run=false.
-// Running it before the resolver ships would break every content image.
-//
-//	docker compose -f docker-compose.prod.yml --profile jobs run --rm tools \
-//	  rewrite-content-image-refs                  # dry-run: count rows to rewrite
-//	  rewrite-content-image-refs -dry-run=false   # apply
-//	  rewrite-content-image-refs -base=https://other-cdn   # override the matched base
 package main
 
 import (
@@ -67,7 +43,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// {base}/<aa>/<bb>/<hash>[_variant].webp  →  /image/<hash>[_variant]
 	re := regexp.MustCompile(
 		regexp.QuoteMeta(base) + `/[0-9a-f]{2}/[0-9a-f]{2}/([0-9a-f]{64})(_[a-z0-9]+)?\.webp`,
 	)
