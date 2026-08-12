@@ -60,6 +60,8 @@ export interface GalgameQuizCard extends QuizStats {
   type: QuizType
   difficulty: number
   question: string
+  // Server-rendered HTML (||spoiler|| → kun-spoiler span) for v-html display.
+  question_html: string
   created: string | Date
   updated: string | Date
   // Last-activity time (bumped on answer / author edit) — the list's 最近活跃 sort.
@@ -143,6 +145,8 @@ export interface GalgameQuizPlay extends QuizStats {
   type: QuizType
   difficulty: number
   question: string
+  // Server-rendered HTML (||spoiler|| → kun-spoiler span) for v-html display.
+  question_html: string
   content: QuizPublicContent
   // Server-rendered markdown (may embed image hints for "guess the game").
   description_html: string

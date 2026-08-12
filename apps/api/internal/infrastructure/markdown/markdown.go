@@ -232,6 +232,18 @@ func newSanitizePolicy() *bluemonday.Policy {
 	return p
 }
 
+// RenderQuestionPlain renders a quiz question (题干) into a safe inline HTML
+// fragment: only the ||spoiler|| inline markup is processed, everything else is
+// HTML-escaped. Unlike Render, it runs NO full markdown parse (no headings,
+// lists, images, code blocks) — the question is a short title-style string
+// (max 200 chars), so a heavyweight pipeline is both unnecessary and would
+// introduce unwanted block structure. The output is safe for v-html.
+func RenderQuestionPlain(source string) string {
+	escaped := string(util.EscapeHTML([]byte(source)))
+	return spoilerRegex.ReplaceAllString(escaped,
+		`<span class="kun-spoiler text-transparent kun-spoiler-hidden">$1</span>`)
+}
+
 // Render converts markdown to HTML with all custom transformations.
 func Render(source string) string {
 	html, _ := RenderWithTOC(source)

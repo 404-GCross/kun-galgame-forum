@@ -337,6 +337,11 @@ const submit = async () => {
       :show-char-count="true"
       auto-grow
     />
+    <p class="text-default-400 text-xs">
+      题干可用
+      <code class="bg-default-100 rounded px-1">||剧透内容||</code>
+      标记剧透, 标记内容会被打码, 点击后显示
+    </p>
 
     <!-- 题目描述 (optional markdown + image hints) -->
     <div class="space-y-2">

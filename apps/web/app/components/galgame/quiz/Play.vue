@@ -224,7 +224,7 @@ const correctRate = computed(() =>
         </div>
 
         <h1 class="text-xl font-bold break-words whitespace-pre-wrap">
-          {{ state.question }}
+          <KunContent :content="state.question_html" :compact="true" />
         </h1>
 
         <!-- author's markdown description / image hints -->

@@ -55,7 +55,11 @@ const correctRate = (q: GalgameQuizCard) =>
 
       <!-- middle: title + meta -->
       <div class="min-w-0 flex-1">
-        <p class="font-medium break-words">{{ quiz.question }}</p>
+        <KunContent
+          :content="quiz.question_html"
+          :compact="true"
+          class-name="font-medium"
+        />
         <div
           class="text-default-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
         >

@@ -92,7 +92,7 @@ watch([() => route.fullPath, showKUNGalgameNoResource], () => {
       </KunLoading>
 
       <KunCard
-        v-if="data.galgames.length"
+        
         :is-hoverable="false"
         :is-transparent="false"
         content-class="gap-3"
