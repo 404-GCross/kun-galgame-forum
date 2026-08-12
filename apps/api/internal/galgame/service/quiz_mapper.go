@@ -5,6 +5,7 @@ import (
 
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
+	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/pkg/userclient"
 )
 
@@ -36,6 +37,7 @@ func quizRowToCard(r model.GalgameQuizRow, user userclient.User) dto.QuizCard {
 		Type:             r.Type,
 		Difficulty:       r.Difficulty,
 		Question:         r.Question,
+		QuestionHtml:     markdown.RenderQuestionPlain(r.Question),
 		QuizStats:        quizStats(r.View, r.AnswerCount, r.CorrectCount, r.FavoriteCount, r.QualitySum, r.QualityCount, r.CommentCount),
 		StatusUpdateTime: r.StatusUpdateTime,
 		Created:          r.Created,

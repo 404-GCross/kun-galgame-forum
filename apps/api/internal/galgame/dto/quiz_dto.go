@@ -112,9 +112,11 @@ type QuizCard struct {
 	Difficulty   int       `json:"difficulty"`
 	SpoilerLevel string    `json:"spoiler_level"`
 	Question     string    `json:"question"`
-	QuizStats
-	Created          string `json:"created"`
-	Updated          string `json:"updated"`
+	QuestionHtml string    `json:"question_html"`
+	QuizStats              // embedded view/answer/correct/quality
+	Created      string    `json:"created"`
+	Updated      string    `json:"updated"`
+	// Last-activity time (bumped on answer / author edit) — the list's 最近活跃 sort.
 	StatusUpdateTime string `json:"status_update_time"`
 	MyStatus         string `json:"my_status"`
 }
@@ -132,6 +134,7 @@ type QuizPlay struct {
 	Difficulty      int             `json:"difficulty"`
 	SpoilerLevel    string          `json:"spoiler_level"`
 	Question        string          `json:"question"`
+	QuestionHtml    string          `json:"question_html"`
 	DescriptionHtml string          `json:"description_html"`
 	Content         json.RawMessage `json:"content"`
 	QuizStats
@@ -161,9 +164,10 @@ type CreatedQuiz struct {
 	Difficulty   int       `json:"difficulty"`
 	SpoilerLevel string    `json:"spoiler_level"`
 	Question     string    `json:"question"`
-	QuizStats
-	Created string `json:"created"`
-	Updated string `json:"updated"`
+	QuestionHtml string    `json:"question_html"`
+	QuizStats              // zeroed stats on a fresh quiz
+	Created      string    `json:"created"`
+	Updated      string    `json:"updated"`
 }
 
 type QuizQualityResult struct {

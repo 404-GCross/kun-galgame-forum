@@ -169,3 +169,66 @@ func TestResolveMentionNames(t *testing.T) {
 		t.Errorf("empty-name mention should resolve to current name\n got: %s", r)
 	}
 }
+
+// RenderQuestionPlain: only ||spoiler|| is processed; everything else is
+// HTML-escaped (no markdown parse, no block structure). The output is safe for
+// v-html and reuses the same kun-spoiler markup the full pipeline emits, so
+// KunContent's client-side reveal works unchanged.
+func TestRenderQuestionPlain(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []string
+		bad  []string
+	}{
+		{
+			name: "plain text",
+			in:   "谁是莲的母亲？",
+			want: []string{"谁是莲的母亲？"},
+			bad:  []string{"<", ">", "kun-spoiler"},
+		},
+		{
+			name: "spoiler",
+			in:   "||剧透内容||",
+			want: []string{`class="kun-spoiler`, "kun-spoiler-hidden", "剧透内容"},
+		},
+		{
+			name: "mixed",
+			in:   "前文||剧透||后文",
+			want: []string{"前文", `<span class="kun-spoiler`, "剧透", "后文"},
+		},
+		{
+			name: "xss escaped",
+			in:   "<script>alert(1)</script>",
+			want: []string{"&lt;script&gt;", "alert(1)"},
+			bad:  []string{"<script"},
+		},
+		{
+			name: "spoiler xss escaped",
+			in:   "||<img src=x onerror=alert(1)>||",
+			want: []string{"kun-spoiler", "&lt;img", "onerror=alert(1)"},
+			bad:  []string{"<img"},
+		},
+		{
+			name: "no markdown parse",
+			in:   "## 标题 **粗体**",
+			want: []string{"## 标题 **粗体**"},
+			bad:  []string{"<h", "<strong>", "<ul>"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out := RenderQuestionPlain(c.in)
+			for _, w := range c.want {
+				if !strings.Contains(out, w) {
+					t.Errorf("must contain %q\n got: %s", w, out)
+				}
+			}
+			for _, b := range c.bad {
+				if strings.Contains(out, b) {
+					t.Errorf("must NOT contain %q\n got: %s", b, out)
+				}
+			}
+		})
+	}
+}

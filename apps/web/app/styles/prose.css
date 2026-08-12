@@ -185,3 +185,24 @@
     @apply bg-default-300;
   }
 }
+
+/* ── Spoiler baseline alignment ──────────────────────────────────────────
+   kun-ui's Content.vue sets `display: inline-block; vertical-align: middle`
+   on .kun-spoiler (needed during the COVERED state so the particle canvas
+   can absolutely-position inside it and the box clips image children).
+
+   But once REVEALED (kun-spoiler-hidden removed), the span keeps
+   inline-block + vertical-align: middle, which misaligns it with surrounding
+   inline text — the inline-block's baseline is its bottom margin edge (when
+   it contains absolutely-positioned children like the canvas), so the
+   revealed text sits lower than adjacent plain text.
+
+   Fix: once revealed, switch to `display: inline; vertical-align: baseline`
+   so the text flows as if the spoiler markup were never there. The covered
+   state keeps inline-block (the canvas + overflow:hidden need it). */
+
+.kun-prose .kun-spoiler:not(.kun-spoiler-hidden),
+.kun-prose-compact .kun-spoiler:not(.kun-spoiler-hidden) {
+  display: inline;
+  vertical-align: baseline;
+}
