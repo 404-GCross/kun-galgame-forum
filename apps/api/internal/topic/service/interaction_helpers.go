@@ -1,8 +1,6 @@
 package service
 
 import (
-	"fmt"
-
 	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	msgModel "kun-galgame-api/internal/message/model"
@@ -16,14 +14,6 @@ type InteractionHelpers struct{}
 
 func (InteractionHelpers) AdjustMoemoepoint(_ *gorm.DB, userID, delta int, reason, ref string) {
 	moemoepoint.Award(userID, delta, reason, ref, moemoepoint.KeyNonce(reason, ref))
-}
-
-func (InteractionHelpers) CreateTopicMessage(tx *gorm.DB, senderID, receiverID int, msgType string, topicID int) {
-	if senderID == receiverID || receiverID <= 0 {
-		return
-	}
-	link := fmt.Sprintf("/topic/%d", topicID)
-	createDedupMessage(tx, senderID, receiverID, msgType, "", link)
 }
 
 func (InteractionHelpers) CreateTopicMessageWithContent(

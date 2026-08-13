@@ -1,4 +1,3 @@
-
 import type {
   EditFieldConfig,
   EditFieldConfigMap,
@@ -9,10 +8,7 @@ import {
   KUN_GALGAME_OFFICIAL_KIND_DEVELOPER
 } from '~/constants/galgameOfficial'
 
-export const GALGAME_EDIT_ENTITY_TYPE = 'catalog.work'
-
 const K = (name: string) => `catalog.work.${name}`
-
 
 export interface GalgameEditNames {
   tag?: Map<number, string>
@@ -138,7 +134,6 @@ const imageRow = (value: unknown): string => {
   return ''
 }
 
-
 const hasImageHash = (items: unknown[], hash: string): boolean =>
   items.some((item) => (item as { image_hash?: string }).image_hash === hash)
 
@@ -180,14 +175,27 @@ export const createGalgameEditConfig = (
     group: GROUP_TITLES,
     control: 'object-list',
     columns: [
-      { key: 'lang', label: '语言', control: 'select', options: TITLE_LANG_OPTIONS, width: 'w-32' },
+      {
+        key: 'lang',
+        label: '语言',
+        control: 'select',
+        options: TITLE_LANG_OPTIONS,
+        width: 'w-32'
+      },
       { key: 'title', label: '标题', placeholder: '标题 / 别名' },
-      { key: 'kind', label: '类型', control: 'select', options: TITLE_KIND_OPTIONS, width: 'w-28' }
+      {
+        key: 'kind',
+        label: '类型',
+        control: 'select',
+        options: TITLE_KIND_OPTIONS,
+        width: 'w-28'
+      }
     ],
     newRow: () => ({ lang: 'ja', title: '', kind: 0 }),
     formatItem: (item) => {
       const row = item as { lang?: string; title?: string; kind?: number }
-      const kind = TITLE_KIND_OPTIONS.find((o) => o.value === row.kind)?.label ?? ''
+      const kind =
+        TITLE_KIND_OPTIONS.find((o) => o.value === row.kind)?.label ?? ''
       return `${row.title ?? ''}${row.lang ? ` (${row.lang})` : ''}${kind ? ` · ${kind}` : ''}`
     },
     description: '至少要有一条官方名。别名可以留空语言。'
@@ -204,7 +212,13 @@ export const createGalgameEditConfig = (
     group: GROUP_INTRO,
     control: 'object-list',
     columns: [
-      { key: 'lang', label: '语言', control: 'select', options: INTRO_LANG_OPTIONS, width: 'w-32' },
+      {
+        key: 'lang',
+        label: '语言',
+        control: 'select',
+        options: INTRO_LANG_OPTIONS,
+        width: 'w-32'
+      },
       { key: 'intro', label: '正文', control: 'textarea' }
     ],
     newRow: () => ({ lang: 'zh-Hans', intro: '' }),

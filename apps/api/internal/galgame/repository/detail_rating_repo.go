@@ -10,8 +10,6 @@ func NewGalgameDetailRatingRepository(db *gorm.DB) *GalgameDetailRatingRepositor
 	return &GalgameDetailRatingRepository{db: db}
 }
 
-func (r *GalgameDetailRatingRepository) DB() *gorm.DB { return r.db }
-
 type GalgameDetailRatingRow struct {
 	ID           int    `gorm:"column:id"`
 	Recommend    string `gorm:"column:recommend"`

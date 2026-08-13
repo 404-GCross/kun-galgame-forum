@@ -15,10 +15,6 @@ func (InteractionHelpers) AdjustMoemoepoint(_ *gorm.DB, userID, delta int, reaso
 	moemoepoint.Award(userID, delta, reason, ref, moemoepoint.KeyNonce(reason, ref))
 }
 
-func (h InteractionHelpers) CreateGalgameMessage(tx *gorm.DB, senderID, receiverID int, msgType string, galgameID int) {
-	h.CreateGalgameMessageWithContent(tx, senderID, receiverID, msgType, "", galgameID)
-}
-
 func (InteractionHelpers) CreateGalgameMessageWithContent(
 	tx *gorm.DB,
 	senderID, receiverID int,

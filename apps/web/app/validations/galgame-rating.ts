@@ -7,8 +7,6 @@ import {
   KUN_GALGAME_RATING_SORT_FIELD_CONST
 } from '~/constants/galgame-rating'
 
-const SORT_ORDER_CONST = ['asc', 'desc'] as const
-
 export const createGalgameRatingSchema = z
   .object({
     galgame_id: z.coerce.number<number>().min(1).max(9999999),
@@ -18,7 +16,10 @@ export const createGalgameRatingSchema = z
       .array(z.enum(KUN_GALGAME_RATING_GAME_TYPE_CONST))
       .min(1, { message: '请至少选择一个' }),
     play_status: z.enum(KUN_GALGAME_RATING_PLAY_STATUS_CONST),
-    short_summary: z.string().max(1314, { message: '评价最多 1314 个字符' }).default(''),
+    short_summary: z
+      .string()
+      .max(1314, { message: '评价最多 1314 个字符' })
+      .default(''),
     spoiler_level: z.enum(KUN_GALGAME_RATING_SPOILER_CONST).default('none'),
 
     art: z.coerce.number<number>().int().min(0).max(10).default(0),
@@ -79,36 +80,3 @@ export const updateGalgameRatingSchema = z
       }
     }
   })
-
-export const deleteGalgameRatingSchema = z.object({
-  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getGalgameRatingsSchema = z.object({
-  galgame_id: z.coerce.number<number>().min(1).max(9999999),
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(50),
-  sort_field: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
-  sort_order: z.enum(SORT_ORDER_CONST),
-  spoiler_level: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
-  play_status: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
-  galgame_type: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
-})
-
-export const getGalgameRatingDetailSchema = z.object({
-  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getAllGalgameRatingsSchema = z.object({
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(50),
-  sort_field: z.enum(KUN_GALGAME_RATING_SORT_FIELD_CONST),
-  sort_order: z.enum(SORT_ORDER_CONST),
-  spoiler_level: z.enum([...KUN_GALGAME_RATING_SPOILER_CONST, 'all']),
-  play_status: z.enum([...KUN_GALGAME_RATING_PLAY_STATUS_CONST, 'all']),
-  galgame_type: z.enum([...KUN_GALGAME_RATING_GAME_TYPE_CONST, 'all'])
-})
-
-export const updateGalgameRatingLikeSchema = z.object({
-  galgame_rating_id: z.coerce.number<number>().min(1).max(9999999)
-})

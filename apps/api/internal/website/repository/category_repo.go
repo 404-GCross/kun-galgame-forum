@@ -14,8 +14,6 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 	return &CategoryRepository{db: db}
 }
 
-func (r *CategoryRepository) DB() *gorm.DB { return r.db }
-
 func (r *CategoryRepository) FindByName(name string) (*model.GalgameWebsiteCategory, error) {
 	var cat model.GalgameWebsiteCategory
 	if err := r.db.Where("name = ?", name).First(&cat).Error; err != nil {

@@ -22,11 +22,3 @@ export const createCollectionSchema = z.object({
     .max(100, { message: '指定可见用户不能超过 100 人' })
     .default([])
 })
-
-export type CreateCollectionPayload = z.infer<typeof createCollectionSchema>
-
-export const setCollectionMembershipSchema = z.object({
-  collection_ids: z
-    .array(z.number().int().positive())
-    .max(50, { message: '一个游戏最多同时收藏到 50 个收藏夹' })
-})

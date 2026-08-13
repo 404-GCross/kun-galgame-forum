@@ -24,8 +24,3 @@ export interface GalgameCommunityCommentPage {
   total: number
   locked: boolean
 }
-
-export interface GalgameCommunityCommentLocate {
-  post_id: number
-  thread_id: number
-}

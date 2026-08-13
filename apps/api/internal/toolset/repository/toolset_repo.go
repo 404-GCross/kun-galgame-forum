@@ -19,14 +19,13 @@ func NewToolsetRepository(db *gorm.DB) *ToolsetRepository {
 
 func (r *ToolsetRepository) DB() *gorm.DB { return r.db }
 
-
 type ListFilters struct {
 	Type     string
 	Language string
 	Platform string
 	Version  string
-	UserID int
-	Query string
+	UserID   int
+	Query    string
 }
 
 type ListOptions struct {
@@ -60,11 +59,11 @@ func (r *ToolsetRepository) buildListQuery(f ListFilters) *gorm.DB {
 }
 
 func escapeLike(s string) string {
-    return strings.NewReplacer(
-        "\\", "\\\\",
-        "%",  "\\%",
-        "_",  "\\_",
-    ).Replace(s)
+	return strings.NewReplacer(
+		"\\", "\\\\",
+		"%", "\\%",
+		"_", "\\_",
+	).Replace(s)
 }
 
 func (r *ToolsetRepository) CountFiltered(f ListFilters) int64 {
@@ -82,7 +81,6 @@ func (r *ToolsetRepository) ListFiltered(f ListFilters, o ListOptions) []model.G
 	return toolsets
 }
 
-
 func (r *ToolsetRepository) FindByID(id int) (*model.GalgameToolset, error) {
 	var toolset model.GalgameToolset
 	if err := r.db.First(&toolset, id).Error; err != nil {
@@ -90,15 +88,6 @@ func (r *ToolsetRepository) FindByID(id int) (*model.GalgameToolset, error) {
 	}
 	return &toolset, nil
 }
-
-func (r *ToolsetRepository) FindByIDTx(tx *gorm.DB, id int) (*model.GalgameToolset, error) {
-	var toolset model.GalgameToolset
-	if err := tx.First(&toolset, id).Error; err != nil {
-		return nil, err
-	}
-	return &toolset, nil
-}
-
 
 func (r *ToolsetRepository) Create(tx *gorm.DB, toolset *model.GalgameToolset) error {
 	return tx.Create(toolset).Error
@@ -122,7 +111,6 @@ func (r *ToolsetRepository) DeleteByID(tx *gorm.DB, id int) {
 	tx.Delete(&model.GalgameToolset{}, id)
 }
 
-
 func (r *ToolsetRepository) FindAliases(toolsetID int) []model.GalgameToolsetAlias {
 	var aliases []model.GalgameToolsetAlias
 	r.db.Where("toolset_id = ?", toolsetID).Find(&aliases)
@@ -141,7 +129,6 @@ func (r *ToolsetRepository) ReplaceAliases(tx *gorm.DB, toolsetID int, aliases [
 		})
 	}
 }
-
 
 func (r *ToolsetRepository) FindContributorIDs(toolsetID int) []int {
 	var ids []int
@@ -164,7 +151,6 @@ func (r *ToolsetRepository) AddContributor(tx *gorm.DB, toolsetID, userID int) {
 		UserID:    userID,
 	})
 }
-
 
 func (r *ToolsetRepository) DeleteAllRelated(tx *gorm.DB, toolsetID int) {
 	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetAlias{})

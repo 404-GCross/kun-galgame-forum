@@ -1,11 +1,5 @@
 import type { GalgameCard } from './galgame.d.ts'
 
-export interface HomeUserStatus {
-  moemoepoints: number
-  isCheckIn: boolean
-  hasNewMessage: boolean
-}
-
 export interface HomeTopic {
   id: number
   title: string

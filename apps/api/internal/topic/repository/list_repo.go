@@ -17,8 +17,6 @@ func NewTopicListRepository(db *gorm.DB) *TopicListRepository {
 	return &TopicListRepository{db: db}
 }
 
-func (r *TopicListRepository) DB() *gorm.DB { return r.db }
-
 type TopicCardRow struct {
 	ID               int
 	Title            string

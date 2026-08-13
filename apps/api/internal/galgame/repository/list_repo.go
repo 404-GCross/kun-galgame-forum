@@ -26,8 +26,6 @@ func NewGalgameListRepository(db *gorm.DB) *GalgameListRepository {
 	return &GalgameListRepository{db: db}
 }
 
-func (r *GalgameListRepository) DB() *gorm.DB { return r.db }
-
 var allProviders = []string{
 	"baidu", "aliyun", "quark", "pan123", "tianyiyun",
 	"caiyun", "xunlei", "uc", "lanzou", "other",

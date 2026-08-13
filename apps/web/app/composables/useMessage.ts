@@ -14,5 +14,3 @@ export const useMessage = (
       : (infoMessages[messageData] ?? '')
   return useKunMessage(resolved, type, duration, richText, position)
 }
-
-export const useMessageState = useKunMessageState

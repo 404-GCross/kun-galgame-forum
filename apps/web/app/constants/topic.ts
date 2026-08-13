@@ -73,31 +73,6 @@ export const KUN_TOPIC_SECTION_CONST = [
   'o-other'
 ] as const
 
-export const KUN_TOPIC_PAGE_SORT_FIELD: Record<string, string> = {
-  views: '浏览',
-  created: '时间',
-  all: '全部分类'
-}
-
-export const KUN_TOPIC_DETAIL_STATUS: Record<string, string> = {
-  featured: '被推',
-  normal: '正常',
-  banned: '封禁',
-  pinned: '置顶',
-  essential: '精华'
-}
-
-export const KUN_TOPIC_REPLY_PANEL_POSITION_MAP: Record<string, string> = {
-  master: '狗修金',
-  reply: '杂鱼~♡'
-}
-
-export const topicSortFieldOptions = [
-  { value: 'status_update_time', label: '更新时间' },
-  { value: 'created', label: '创建时间' },
-  { value: 'view', label: '浏览量' }
-] as const
-
 export type TopicListSortField =
   | 'status_update_time'
   | 'created'
@@ -106,14 +81,15 @@ export type TopicListSortField =
   | 'view_30d'
   | 'view'
 
-export const topicListSortFieldOptions: KunSelectOption<TopicListSortField>[] = [
-  { value: 'status_update_time', label: '更新时间' },
-  { value: 'created', label: '创建时间' },
-  { value: 'view_1d', label: '日浏览数' },
-  { value: 'view_7d', label: '周浏览数' },
-  { value: 'view_30d', label: '月浏览数' },
-  { value: 'view', label: '总浏览数' }
-]
+export const topicListSortFieldOptions: KunSelectOption<TopicListSortField>[] =
+  [
+    { value: 'status_update_time', label: '更新时间' },
+    { value: 'created', label: '创建时间' },
+    { value: 'view_1d', label: '日浏览数' },
+    { value: 'view_7d', label: '周浏览数' },
+    { value: 'view_30d', label: '月浏览数' },
+    { value: 'view', label: '总浏览数' }
+  ]
 
 export const TOPIC_SORT_FIELD_CONST = [
   'created',
@@ -125,13 +101,6 @@ export const TOPIC_SORT_FIELD_CONST = [
   'like',
   'favorite',
   'upvote'
-] as const
-
-export const topicSortCategoryOptions = [
-  { value: 'all', label: '全部类型' },
-  { value: 'galgame', label: 'Galgame' },
-  { value: 'technique', label: '技术交流' },
-  { value: 'others', label: '其它' }
 ] as const
 
 export const TOPIC_CATEGORIES = {

@@ -127,15 +127,6 @@ func (s *GalgameService) entryName(ctx context.Context, galgameID int) string {
 	return client.BriefName(&brief)
 }
 
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
-}
-
 func (s *GalgameService) GetDetail(
 	ctx context.Context,
 	galgameID, currentUserID int,

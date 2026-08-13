@@ -63,36 +63,9 @@ export interface UserReply {
   created: Date | string
 }
 
-export interface UserGetUserReplyRequestData {
-  id: number
-  rid_array: number[]
-}
-
 export interface UserComment {
   id: number
   topic_id: number
   content: string
   created: Date | string
-}
-
-export interface UserGetUserCommentRequestData {
-  id: number
-  cid_array: number[]
-}
-
-export interface UserFloatingCard extends KunUser {
-  moemoepoint: number
-  topic_count: number
-  topic_reply_count: number
-  topic_comment_count: number
-  galgame_resource_count: number
-}
-
-export type UserUpdateAvatarResponseData = {
-  avatar: string
-  avatar_min: string
-}
-
-export type UserGetUserEmailResponseData = {
-  email: string
 }

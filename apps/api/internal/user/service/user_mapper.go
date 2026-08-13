@@ -22,10 +22,6 @@ func emptyStrSlice(s []string) []string {
 	return s
 }
 
-func emptyLocale() dto.KunLanguage {
-	return dto.KunLanguage{}
-}
-
 func briefToLocale(b client.GalgameBrief) dto.KunLanguage {
 	return dto.KunLanguage{
 		EnUs: b.NameEnUs, JaJp: b.NameJaJp,

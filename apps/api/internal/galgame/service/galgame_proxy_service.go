@@ -25,14 +25,6 @@ func NewGalgameProxyService(
 	return &GalgameProxyService{galgameClient: galgameClient, galgameRepo: galgameRepo, userClient: userClient}
 }
 
-type nextMoeLinkRow struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Link      string `json:"link"`
-	GalgameID int    `json:"galgame_id"`
-	UserID    int    `json:"user_id"`
-}
-
 func (s *GalgameProxyService) GetGalgameLinks(
 	ctx context.Context,
 	gid string,

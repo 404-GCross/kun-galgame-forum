@@ -1,9 +1,3 @@
-export interface ChatMessageHistoryRequest {
-  receiverId: string
-  page: string
-  limit: string
-}
-
 export interface ChatMessageAsideItem {
   chatroom_name: string
   content: string

@@ -18,8 +18,6 @@ func NewStateRepository(db *gorm.DB) *StateRepository {
 	return &StateRepository{db: db}
 }
 
-func (r *StateRepository) DB() *gorm.DB { return r.db }
-
 func (r *StateRepository) Ensure(userID int) error {
 	if userID <= 0 {
 		return errors.New("invalid userID")
@@ -64,24 +62,4 @@ func (r *StateRepository) UpdateMutedTypes(userID int, keys []string) error {
 		`UPDATE kungal_user_state SET muted_notification_types = ?::jsonb WHERE user_id = ?`,
 		string(data), userID,
 	).Error
-}
-
-func (r *StateRepository) IncrementDailyCounter(userID int, column string) error {
-	return r.db.Model(&model.KungalUserState{}).Where("user_id = ?", userID).
-		Update(column, gorm.Expr(column+" + 1")).Error
-}
-
-func (r *StateRepository) ResetDailyCounters() (int64, error) {
-	res := r.db.Exec(`
-		UPDATE kungal_user_state SET
-			daily_check_in = 0,
-			daily_image_count = 0,
-			daily_toolset_upload_count = 0,
-			daily_toolset_upload_bytes = 0
-		WHERE daily_check_in != 0
-		   OR daily_image_count != 0
-		   OR daily_toolset_upload_count != 0
-		   OR daily_toolset_upload_bytes != 0
-	`)
-	return res.RowsAffected, res.Error
 }

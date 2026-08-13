@@ -14,8 +14,6 @@ func NewTagRepository(db *gorm.DB) *TagRepository {
 	return &TagRepository{db: db}
 }
 
-func (r *TagRepository) DB() *gorm.DB { return r.db }
-
 func (r *TagRepository) FindPaginated(keyword string, page, limit int) ([]model.DocTag, int64) {
 	query := r.db.Model(&model.DocTag{})
 	if keyword != "" {

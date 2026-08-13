@@ -62,10 +62,3 @@ export const localNotificationCategories: NotificationCategory[] =
   notificationCategoryGroups
     .filter((g) => g.stream === 'local')
     .flatMap((g) => g.items)
-
-export const notificationCategoryLabel: Record<string, string> =
-  Object.fromEntries(
-    notificationCategoryGroups.flatMap((g) =>
-      g.items.map((i) => [i.key, i.label] as const)
-    )
-  )

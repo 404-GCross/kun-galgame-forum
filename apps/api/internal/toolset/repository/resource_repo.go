@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"kun-galgame-api/internal/toolset/model"
 
 	"gorm.io/gorm"
@@ -17,7 +15,6 @@ func NewResourceRepository(db *gorm.DB) *ResourceRepository {
 }
 
 func (r *ResourceRepository) DB() *gorm.DB { return r.db }
-
 
 func (r *ResourceRepository) FindByID(id int) (*model.GalgameToolsetResource, error) {
 	var resource model.GalgameToolsetResource
@@ -68,7 +65,6 @@ func (r *ResourceRepository) DownloadSumsForToolsets(toolsetIDs []int) map[int]i
 	return out
 }
 
-
 func (r *ResourceRepository) Create(tx *gorm.DB, resource *model.GalgameToolsetResource) error {
 	return tx.Create(resource).Error
 }
@@ -85,8 +81,3 @@ func (r *ResourceRepository) IncrementDownload(id int) {
 func (r *ResourceRepository) Delete(resource *model.GalgameToolsetResource) {
 	r.db.Delete(resource)
 }
-
-func (r *ResourceRepository) SetEditedNow(resource *model.GalgameToolsetResource, now time.Time) {
-	r.db.Model(resource).Update("edited", now)
-}
-

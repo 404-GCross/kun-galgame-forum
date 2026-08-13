@@ -1,10 +1,5 @@
 import type { GalgameCard } from './galgame'
 
-export interface GalgameEngine {
-  id: number
-  name: string
-}
-
 export interface GalgameEngineItem {
   id: number
   name: string

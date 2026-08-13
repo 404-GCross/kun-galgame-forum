@@ -97,5 +97,3 @@ export const calcGalgameRating = (
 
   return round1(finalScore)
 }
-
-const __TEST__ = () => {}

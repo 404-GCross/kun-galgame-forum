@@ -119,14 +119,6 @@ export interface EditRevision {
   legacy_id?: number
 }
 
-export interface EditFieldDiffRow {
-  key: string
-  kind?: string
-  diff_hint?: string
-  from: unknown
-  to: unknown
-}
-
 export interface ImageDiffEntry {
   url: string
   text: string

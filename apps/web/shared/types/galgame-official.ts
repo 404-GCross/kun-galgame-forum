@@ -1,14 +1,6 @@
 import type { KunGalgameOfficialCategory } from '~/constants/galgameOfficial'
 import type { GalgameCard } from './galgame'
 
-export interface GalgameOfficial {
-  id: number
-  name: string
-  link: string
-  category: KunGalgameOfficialCategory
-  lang: string
-}
-
 export interface GalgameOfficialItem {
   id: number
   name: string

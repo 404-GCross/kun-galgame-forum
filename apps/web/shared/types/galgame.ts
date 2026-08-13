@@ -120,16 +120,6 @@ export interface GalgameDetail {
   updated: Date | string
 }
 
-export interface GalgamePageRequestData {
-  page: string
-  limit: string
-  type: KunGalgameResourceTypeOptions
-  language: KunGalgameResourceLanguageOptions
-  platform: KunGalgameResourcePlatformOptions
-  sort_field: 'time' | 'views'
-  sort_order: KunOrder
-}
-
 export interface GalgameCard {
   id: number
   name: KunLanguage

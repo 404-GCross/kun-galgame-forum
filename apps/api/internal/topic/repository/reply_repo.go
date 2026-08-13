@@ -170,34 +170,6 @@ func (r *ReplyRepository) FindByIDTx(tx *gorm.DB, replyID int) (*model.TopicRepl
 	return &reply, err
 }
 
-func (r *ReplyRepository) FindReplyLike(tx *gorm.DB, userID, replyID int) (*model.TopicReplyLike, error) {
-	var existing model.TopicReplyLike
-	err := tx.Where("user_id = ? AND topic_reply_id = ?", userID, replyID).First(&existing).Error
-	return &existing, err
-}
-
-func (r *ReplyRepository) CreateReplyLike(tx *gorm.DB, userID, replyID int) error {
-	return tx.Create(&model.TopicReplyLike{UserID: userID, TopicReplyID: replyID}).Error
-}
-
-func (r *ReplyRepository) DeleteReplyLike(tx *gorm.DB, like *model.TopicReplyLike) error {
-	return tx.Delete(like).Error
-}
-
-func (r *ReplyRepository) FindReplyDislike(tx *gorm.DB, userID, replyID int) (*model.TopicReplyDislike, error) {
-	var existing model.TopicReplyDislike
-	err := tx.Where("user_id = ? AND topic_reply_id = ?", userID, replyID).First(&existing).Error
-	return &existing, err
-}
-
-func (r *ReplyRepository) CreateReplyDislike(tx *gorm.DB, userID, replyID int) error {
-	return tx.Create(&model.TopicReplyDislike{UserID: userID, TopicReplyID: replyID}).Error
-}
-
-func (r *ReplyRepository) DeleteReplyDislike(tx *gorm.DB, dislike *model.TopicReplyDislike) error {
-	return tx.Delete(dislike).Error
-}
-
 func (r *ReplyRepository) AdjustReplyLikeCount(tx *gorm.DB, replyID, delta int) error {
 	return tx.Model(&model.TopicReply{}).Where("id = ?", replyID).
 		Update("like_count", gorm.Expr("like_count + ?", delta)).Error

@@ -85,55 +85,8 @@ export const isValidName = (name: string) => {
   return regex.test(name)
 }
 
-export const isValidPassword = (pwd: string) => {
-  const regex = /^(?=.*[a-zA-Z])(?=.*[0-9])[\w!@#$%^&*()+=\\/-]{6,107}$/
-  return regex.test(pwd)
-}
-
-export const isValidMailConfirmCode = (code: string) => {
-  const regex = /^[a-zA-Z0-9]{7}$/
-  return regex.test(code)
-}
-
-export const isValidKunLanguage = (
-  language: KunLanguage,
-  maxLength: number
-) => {
-  const values = Object.values(language)
-  const isNotEmpty = values.some((value) => value.trim() !== '')
-  const isWithinLengthLimit = values.every((value) => value.length <= maxLength)
-  return isNotEmpty && isWithinLengthLimit
-}
-
 export const isValidArchive = (filename: string) => {
   const allowed = ['.zip', '.7z', '.rar']
   const lowerName = filename.toLowerCase()
   return allowed.some((ext) => lowerName.endsWith(ext))
 }
-
-const botUserAgents = [
-  'googlebot',
-  'bingbot',
-  'slurp',
-  'duckduckgo',
-  'baiduspider',
-  'yandexbot',
-  'sogou',
-  'exabot',
-  'facebot',
-  'twitterbot',
-  'linkedinbot',
-  'embedly',
-  'pinterest',
-  'slackbot',
-  'telegrambot',
-  'discordbot',
-  'whatsapp',
-  'petalbot',
-  'headlesschrome'
-]
-
-export const isBotAgent = new RegExp(
-  `(${botUserAgents.join('|')}|\\w*(bot|spider))`,
-  'i'
-)

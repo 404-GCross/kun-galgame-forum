@@ -14,8 +14,6 @@ func NewGalgameResourceMetaRepository(db *gorm.DB) *GalgameResourceMetaRepositor
 	return &GalgameResourceMetaRepository{db: db}
 }
 
-func (r *GalgameResourceMetaRepository) DB() *gorm.DB { return r.db }
-
 func (r *GalgameResourceMetaRepository) FindResourceMetaByGalgame(galgameID int) (platforms, languages, types []string) {
 	type row struct {
 		Platform string `gorm:"column:platform"`

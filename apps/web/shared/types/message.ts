@@ -20,16 +20,6 @@ export interface NotificationPreference {
   muted_types: string[]
 }
 
-type MessageSortField = 'time'
-
-export interface MessageRequestData {
-  page: string
-  limit: string
-  type?: MessageType | ''
-  sortField?: MessageSortField
-  sortOrder: KunOrder
-}
-
 export interface Message {
   id: number
   sender: KunUser

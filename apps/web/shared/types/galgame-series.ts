@@ -1,11 +1,5 @@
 import type { GalgameCard } from './galgame'
 
-export interface GalgameSeriesItem {
-  id: number
-  name: string
-  galgame_count: number
-}
-
 export interface GalgameSeriesSample {
   name: KunLanguage
   effective_banner_hash?: string
@@ -28,14 +22,6 @@ export interface GalgameSeriesDetail {
   galgame: GalgameCard[]
   galgame_count: number
   unpublished_galgame: GalgameCard[]
-}
-
-export interface GalgameSeriesSearchItem {
-  id: number
-  name_en_us?: string
-  name_ja_jp?: string
-  name_zh_cn?: string
-  name_zh_tw?: string
 }
 
 export interface GalgameDetailSeriesRef {

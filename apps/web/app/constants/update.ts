@@ -25,7 +25,6 @@ export const KUN_UPDATE_LOG = [
   'docs',
   'test'
 ] as const
-export type KUN_UPDATE_LOG_TYPE = (typeof KUN_UPDATE_LOG)[number]
 export const KUN_UPDATE_LOG_TYPE_MAP: Record<string, string> = {
   feat: '增加功能',
   pref: '性能优化',

@@ -7,5 +7,3 @@ export interface KunTreeNode {
   children?: KunTreeNode[]
   type: 'file' | 'directory'
 }
-
-export type KunFrontmatter = DocArticleDetail

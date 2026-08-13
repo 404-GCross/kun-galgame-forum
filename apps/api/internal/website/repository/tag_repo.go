@@ -15,8 +15,6 @@ func NewTagRepository(db *gorm.DB) *TagRepository {
 	return &TagRepository{db: db}
 }
 
-func (r *TagRepository) DB() *gorm.DB { return r.db }
-
 func (r *TagRepository) FindAll() []model.GalgameWebsiteTag {
 	var tags []model.GalgameWebsiteTag
 	r.db.Order("id ASC").Find(&tags)

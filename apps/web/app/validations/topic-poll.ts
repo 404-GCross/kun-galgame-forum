@@ -28,16 +28,6 @@ export const createPollSchema = poolSchema.extend({
     .min(2, '投票至少需要2个选项')
     .max(20, '投票最多只能有20个选项')
 })
-export const getPollByTopicSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateUserVoteSchema = z.object({
-  poll_id: z.coerce.number<number>().min(1).max(9999999),
-  option_id_array: z
-    .array(z.coerce.number<number>().int())
-    .min(1, '请至少选择一个选项')
-})
 
 export const updatePollSchema = poolSchema.extend({
   poll_id: z.coerce.number<number>().min(1).max(9999999),
@@ -60,14 +50,4 @@ export const updatePollSchema = poolSchema.extend({
       .optional()
       .default([])
   })
-})
-
-export const deletePollSchema = z.object({
-  poll_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getPollLogSchema = z.object({
-  poll_id: z.coerce.number<number>().min(1).max(9999999),
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(50)
 })

@@ -15,8 +15,6 @@ export const CLAIM_STATE_DRAFT = 'draft'
 export const CLAIM_STATE_PENDING = 'pending'
 export const CLAIM_STATE_DECLINED = 'declined'
 export const CLAIM_STATE_HIDDEN = 'hidden'
-export const CLAIM_STATE_NONE = 'none'
-
 export const galgameClaimStateBadge = (
   state: string | undefined
 ): GalgameClaimStateBadge => {

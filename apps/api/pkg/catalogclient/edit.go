@@ -202,14 +202,6 @@ func editGet[T any](ctx context.Context, c *Client, path string) (*T, error) {
 	return editDo[T](ctx, c, http.MethodGet, path, nil)
 }
 
-func editPost[T any](ctx context.Context, c *Client, path string, body any) (*T, error) {
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	return editDo[T](ctx, c, http.MethodPost, path, raw)
-}
-
 func editDo[T any](ctx context.Context, c *Client, method, path string, body []byte) (*T, error) {
 	if !c.Configured() {
 		return nil, ErrNotConfigured

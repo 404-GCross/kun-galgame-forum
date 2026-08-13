@@ -16,10 +16,6 @@ export const getTopicSchema = z.object({
   category: z.enum(KUN_TOPIC_CATEGORY_CONST)
 })
 
-export const getTopicDetailSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
 export const createTopicSchema = z.object({
   title: z
     .string()
@@ -49,46 +45,6 @@ export const createTopicSchema = z.object({
     .optional()
 })
 
-export const updateTopicSchema = createTopicSchema.extend({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicLikeSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicDislikeSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicUpvoteSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicFavoriteSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicBestAnswerSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999),
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateTopicHideStatusSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getReplySchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999),
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(30),
-  sort_order: z.enum(SORT_ORDER_CONST)
-})
-
-export const getReplyDetailSchema = z.object({
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
 export const createReplySchema = z.object({
   topic_id: z.coerce.number<number>().min(1).max(9999999),
   content: z
@@ -105,39 +61,4 @@ export const updateReplySchema = z.object({
     .trim()
     .min(1, { message: '回复内容不能为空' })
     .max(10007, { message: '单条回复的最大长度为 10007 个字符' })
-})
-
-export const updateReplyPinSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999),
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateReplyLikeSchema = z.object({
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateReplyDislikeSchema = z.object({
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const deleteReplySchema = z.object({
-  reply_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const createCommentSchema = z.object({
-  topic_id: z.coerce.number<number>().min(1).max(9999999),
-  reply_id: z.coerce.number<number>().min(1).max(9999999),
-  target_user_id: z.coerce.number<number>().min(1).max(9999999),
-  content: z
-    .string()
-    .min(1, { message: '评论最少 1 个字符' })
-    .max(1007, { message: '评论的最大长度为 1007 个字符' })
-})
-
-export const updateCommentLikeSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const deleteCommentSchema = z.object({
-  comment_id: z.coerce.number<number>().min(1).max(9999999)
 })

@@ -14,8 +14,6 @@ func NewGalgameContributorRepository(db *gorm.DB) *GalgameContributorRepository 
 	return &GalgameContributorRepository{db: db}
 }
 
-func (r *GalgameContributorRepository) DB() *gorm.DB { return r.db }
-
 type ContributorTouch struct {
 	GalgameID int64
 	UserID    int64

@@ -16,8 +16,6 @@ func NewCommentRepository(db *gorm.DB) *CommentRepository {
 	return &CommentRepository{db: db}
 }
 
-func (r *CommentRepository) DB() *gorm.DB { return r.db }
-
 type CommentRow struct {
 	ID              int
 	TopicReplyID    int

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"net/url"
-	"strconv"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
@@ -89,12 +88,4 @@ func emptyStrSliceIfNil(s []string) []string {
 		return []string{}
 	}
 	return s
-}
-
-func atoiOrZero(raw string) int {
-	n, err := strconv.Atoi(raw)
-	if err != nil || n <= 0 {
-		return 0
-	}
-	return n
 }

@@ -33,10 +33,6 @@ func (r *TopicRepository) FindReplyByID(id int) (*model.TopicReply, error) {
 	return &reply, err
 }
 
-func (r *TopicRepository) Create(topic *model.Topic) error {
-	return r.db.Create(topic).Error
-}
-
 func (r *TopicRepository) UpdateFields(id int, fields map[string]any) error {
 	return r.db.Model(&model.Topic{}).Where("id = ?", id).Updates(fields).Error
 }
@@ -71,12 +67,6 @@ func (r *TopicRepository) HasUserFavorited(userID, topicID int) (bool, error) {
 func (r *TopicRepository) HasUserUpvoted(userID, topicID int) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.TopicUpvote{}).Where("user_id = ? AND topic_id = ?", userID, topicID).Count(&count).Error
-	return count > 0, err
-}
-
-func (r *TopicRepository) HasUserUpvotedTx(tx *gorm.DB, userID, topicID int) (bool, error) {
-	var count int64
-	err := tx.Model(&model.TopicUpvote{}).Where("user_id = ? AND topic_id = ?", userID, topicID).Count(&count).Error
 	return count > 0, err
 }
 
@@ -131,34 +121,6 @@ func (r *TopicRepository) TouchStatusUpdateTime(tx *gorm.DB, topicID int, t time
 	return tx.Model(&model.Topic{}).
 		Where("id = ? AND created > ?", topicID, model.BumpCutoff(t)).
 		Updates(map[string]any{"status_update_time": t}).Error
-}
-
-func (r *TopicRepository) FindTopicLike(tx *gorm.DB, userID, topicID int) (*model.TopicLike, error) {
-	var existing model.TopicLike
-	err := tx.Where("user_id = ? AND topic_id = ?", userID, topicID).First(&existing).Error
-	return &existing, err
-}
-
-func (r *TopicRepository) CreateTopicLike(tx *gorm.DB, userID, topicID int) error {
-	return tx.Create(&model.TopicLike{UserID: userID, TopicID: topicID}).Error
-}
-
-func (r *TopicRepository) DeleteTopicLike(tx *gorm.DB, like *model.TopicLike) error {
-	return tx.Delete(like).Error
-}
-
-func (r *TopicRepository) FindTopicDislike(tx *gorm.DB, userID, topicID int) (*model.TopicDislike, error) {
-	var existing model.TopicDislike
-	err := tx.Where("user_id = ? AND topic_id = ?", userID, topicID).First(&existing).Error
-	return &existing, err
-}
-
-func (r *TopicRepository) CreateTopicDislike(tx *gorm.DB, userID, topicID int) error {
-	return tx.Create(&model.TopicDislike{UserID: userID, TopicID: topicID}).Error
-}
-
-func (r *TopicRepository) DeleteTopicDislike(tx *gorm.DB, dislike *model.TopicDislike) error {
-	return tx.Delete(dislike).Error
 }
 
 func (r *TopicRepository) FindTopicFavorite(tx *gorm.DB, userID, topicID int) (*model.TopicFavorite, error) {

@@ -30,38 +30,6 @@ export type ProviderKey =
   | 'lanzou'
   | 'other'
 
-export const PROVIDER_PATTERNS: Record<ProviderKey, string[]> = {
-  baidu: ['pan.baidu.com', 'tieba.baidu.com', 'pan.baidu.', 'baidu.com'],
-  aliyun: ['alipan.com', 'aliyun', 'aliyundrive', 'aliyuncs', 'aliyunpan'],
-  quark: ['pan.quark.cn', 'quark.cn', 'quark'],
-  pan123: [
-    '123pan',
-    '123684',
-    '123865',
-    '123912',
-    '123912.com',
-    '123684.com',
-    '123865.com',
-    '123pan.cn',
-    'vip.123pan'
-  ],
-  tianyiyun: ['cloud.189.cn', '189.cn', 'ecloud.189.cn'],
-  caiyun: ['caiyun.139.com', 'yun.139.com', '139.com'],
-  xunlei: ['pan.xunlei.com', 'xunlei.com'],
-  uc: ['drive.uc.cn', 'uc.cn'],
-  lanzou: [
-    'lanzou.com',
-    'lanzous.com',
-    'lanzoux.com',
-    'lanzoui.com',
-    'lanzouw.com',
-    'lanzouj.com',
-    'lanzouu.com',
-    'lanzouq.com'
-  ],
-  other: []
-}
-
 export const PROVIDER_KEY_OPTIONS = [
   'baidu',
   'aliyun',
@@ -104,15 +72,46 @@ export interface GalgameResourceProviderBucket {
   icon: string
 }
 
-export const GALGAME_RESOURCE_PROVIDER_BUCKETS: readonly GalgameResourceProviderBucket[] = [
-  { key: 'baidu', label: '百度网盘', match: ['百度网盘'], icon: 'lucide:cloud' },
-  { key: 'quark', label: '夸克网盘', match: ['夸克网盘'], icon: 'lucide:atom' },
-  { key: 'caiyun', label: '移动云盘', match: ['和彩云', '移动云盘'], icon: 'lucide:cloud-cog' },
-  { key: 'pan123', label: '123云盘', match: ['123 云盘', '123云盘'], icon: 'lucide:hash' },
-  { key: 'xunlei', label: '迅雷云盘', match: ['迅雷云盘', '迅雷'], icon: 'lucide:zap' },
-  { key: 'lanzou', label: '蓝奏云盘', match: ['蓝奏云', '蓝奏'], icon: 'lucide:package' },
-  { key: 'other', label: '其他下载', match: [], icon: 'lucide:ellipsis' }
-] as const
+export const GALGAME_RESOURCE_PROVIDER_BUCKETS: readonly GalgameResourceProviderBucket[] =
+  [
+    {
+      key: 'baidu',
+      label: '百度网盘',
+      match: ['百度网盘'],
+      icon: 'lucide:cloud'
+    },
+    {
+      key: 'quark',
+      label: '夸克网盘',
+      match: ['夸克网盘'],
+      icon: 'lucide:atom'
+    },
+    {
+      key: 'caiyun',
+      label: '移动云盘',
+      match: ['和彩云', '移动云盘'],
+      icon: 'lucide:cloud-cog'
+    },
+    {
+      key: 'pan123',
+      label: '123云盘',
+      match: ['123 云盘', '123云盘'],
+      icon: 'lucide:hash'
+    },
+    {
+      key: 'xunlei',
+      label: '迅雷云盘',
+      match: ['迅雷云盘', '迅雷'],
+      icon: 'lucide:zap'
+    },
+    {
+      key: 'lanzou',
+      label: '蓝奏云盘',
+      match: ['蓝奏云', '蓝奏'],
+      icon: 'lucide:package'
+    },
+    { key: 'other', label: '其他下载', match: [], icon: 'lucide:ellipsis' }
+  ] as const
 
 export const bucketizeResourceProvider = (
   providerNames: string[] | undefined | null

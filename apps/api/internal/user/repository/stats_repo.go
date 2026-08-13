@@ -14,8 +14,6 @@ func NewUserStatsRepository(db *gorm.DB) *UserStatsRepository {
 	return &UserStatsRepository{db: db}
 }
 
-func (r *UserStatsRepository) DB() *gorm.DB { return r.db }
-
 type UserStats = model.UserStats
 
 func (r *UserStatsRepository) GetUserStats(userID int) (*model.UserStats, error) {

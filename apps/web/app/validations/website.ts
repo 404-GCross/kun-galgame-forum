@@ -18,10 +18,6 @@ const domainField = z
     message: '无效的网站主域名 (示例: www.kungal.com)'
   })
 
-export const getWebsiteDetailSchema = z.object({
-  domain: z.string().max(100, '网站可用域名最多 100 个字符')
-})
-
 const websiteBaseSchema = z.object({
   name: z
     .string()
@@ -69,22 +65,6 @@ export const updateWebsiteSchema = websiteBaseSchema
   })
   .refine(hasIcon, ICON_REQUIRED)
 
-export const toggleLikeFavoriteSchema = z.object({
-  website_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const deleteWebsiteSchema = z.object({
-  website_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getWebsiteTagSchema = z.object({
-  website_id: z.coerce.number<number>().min(1).max(9999999).optional()
-})
-
-export const getWebsiteByTagSchema = z.object({
-  name: z.string().min(1, '标签名称不能为空').max(30, '标签名称最多 30 个字符')
-})
-
 export const createWebsiteTagSchema = z.object({
   name: z.string().min(1, '标签名称不能为空').max(30, '标签名称最多 30 个字符'),
   label: z
@@ -101,14 +81,6 @@ export const createWebsiteTagSchema = z.object({
 
 export const updateWebsiteTagSchema = createWebsiteTagSchema.extend({
   tag_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const deleteWebsiteTagSchema = z.object({
-  tag_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getWebsiteByCategorySchema = z.object({
-  name: z.string().min(1, '分类名称不能为空').max(30, '分类名称最多 30 个字符')
 })
 
 export const updateWebsiteCategorySchema = z.object({

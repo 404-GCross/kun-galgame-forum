@@ -22,29 +22,6 @@ func NewGalgameEnricher(
 	return &GalgameEnricher{galgameRepo: galgameRepo, metaRepo: metaRepo, userClient: userClient}
 }
 
-func (e *GalgameEnricher) Samples(items []dto.NextMoeGalgameItem, n int) []dto.GalgameSample {
-	if n > len(items) {
-		n = len(items)
-	}
-	out := make([]dto.GalgameSample, 0, n)
-	for i := 0; i < n; i++ {
-		g := items[i]
-		out = append(out, dto.GalgameSample{
-			Name: dto.KunLanguage{
-				EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-			},
-			Banner:                   g.Banner,
-			EffectiveBannerHash:      g.EffectiveBannerHash,
-			EffectiveBannerURL:       g.EffectiveBannerURL,
-			EffectiveBannerWidth:     g.EffectiveBannerWidth,
-			EffectiveBannerHeight:    g.EffectiveBannerHeight,
-			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
-		})
-	}
-	return out
-}
-
 func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgameItem) []dto.GalgameCard {
 	if len(items) == 0 {
 		return []dto.GalgameCard{}

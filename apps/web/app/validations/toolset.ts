@@ -6,21 +6,6 @@ import {
   KUN_TOOLSET_VERSION_CONST
 } from '~/constants/toolset'
 
-export const getToolsetSchema = z.object({
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(24),
-  type: z.enum([...KUN_TOOLSET_TYPE_CONST, 'all']),
-  language: z.enum([...KUN_TOOLSET_LANGUAGE_CONST, 'all']),
-  platform: z.enum([...KUN_TOOLSET_PLATFORM_CONST, 'all']),
-  version: z.enum([...KUN_TOOLSET_VERSION_CONST, 'all']),
-  sort_field: z.enum(['resource_update_time', 'created', 'view']),
-  sort_order: z.enum(['asc', 'desc'])
-})
-
-export const getToolsetDetailSchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
 export const createToolsetSchema = z.object({
   name: z.string().min(1).max(500),
   description: z.string().max(2000).default(''),
@@ -37,23 +22,6 @@ export const updateToolsetSchema = createToolsetSchema.merge(
     toolset_id: z.coerce.number<number>().min(1).max(9999999)
   })
 )
-
-export const deleteToolsetDetailSchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const getToolsetPracticalitySchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999)
-})
-
-export const updateToolsetPracticalitySchema = z.object({
-  toolset_id: z.coerce.number<number>().min(1).max(9999999),
-  rate: z.coerce.number<number>().min(1).max(5)
-})
-
-export const getToolsetResourceDetailSchema = z.object({
-  toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)
-})
 
 export const createToolsetResourceSchema = z
   .object({
@@ -118,10 +86,6 @@ export const updateToolsetResourceSchema = z
       })
     }
   })
-
-export const deleteToolsetResourceSchema = z.object({
-  toolset_resource_id: z.coerce.number<number>().min(1).max(9999999)
-})
 
 export const initToolsetUploadSchema = z.object({
   toolset_id: z.coerce.number<number>().min(1).max(9999999),

@@ -66,12 +66,6 @@ func VariantURL(cdnBase, hash, variant, ext string) string {
 		strings.TrimRight(cdnBase, "/"), hash[:2], hash[2:4], hash, variant, ext)
 }
 
-func (c *Client) MainURL(hash string) string { return MainURL(c.cfg.CDNBase, hash, "webp") }
-
-func (c *Client) VariantURL(hash, variant string) string {
-	return VariantURL(c.cfg.CDNBase, hash, variant, "webp")
-}
-
 type UploadResult struct {
 	Hash         string            `json:"hash"`
 	URL          string            `json:"url"`
@@ -281,22 +275,6 @@ func (c *Client) ReferencePing(ctx context.Context, hashes []string) (*Reference
 		return nil, fmt.Errorf("parse ping response: %w", err)
 	}
 	return &env.Data, nil
-}
-
-func (c *Client) Health(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.cfg.BaseURL+"/healthz", nil)
-	if err != nil {
-		return err
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("health: status %d", resp.StatusCode)
-	}
-	return nil
 }
 
 func (c *Client) basicAuthHeader() string {

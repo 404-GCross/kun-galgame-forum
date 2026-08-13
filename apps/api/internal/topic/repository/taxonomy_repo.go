@@ -15,14 +15,6 @@ func NewTopicTaxonomyRepository(db *gorm.DB) *TopicTaxonomyRepository {
 	return &TopicTaxonomyRepository{db: db}
 }
 
-func (r *TopicTaxonomyRepository) DB() *gorm.DB { return r.db }
-
-func (r *TopicTaxonomyRepository) FindSectionsByNames(names []string) ([]model.TopicSection, error) {
-	var sections []model.TopicSection
-	err := r.db.Where("name IN ?", names).Find(&sections).Error
-	return sections, err
-}
-
 func (r *TopicTaxonomyRepository) ReplaceSectionRelations(tx *gorm.DB, topicID int, sectionIDs []int) error {
 	if err := tx.Where("topic_id = ?", topicID).Delete(&model.TopicSectionRelation{}).Error; err != nil {
 		return err

@@ -16,13 +16,6 @@ func NewWebsiteRepository(db *gorm.DB) *WebsiteRepository {
 
 func (r *WebsiteRepository) DB() *gorm.DB { return r.db }
 
-func (r *WebsiteRepository) GetURL(id int) string {
-	var url string
-	r.db.Model(&model.GalgameWebsite{}).Where("id = ?", id).
-		Select("url").Scan(&url)
-	return url
-}
-
 type WebsiteListRow struct {
 	ID            int    `gorm:"column:id"`
 	Name          string `gorm:"column:name"`
@@ -109,11 +102,6 @@ func (r *WebsiteRepository) AdjustLikeCount(tx *gorm.DB, id, delta int) {
 func (r *WebsiteRepository) AdjustFavoriteCount(tx *gorm.DB, id, delta int) {
 	tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).
 		Update("favorite_count", gorm.Expr("favorite_count + ?", delta))
-}
-
-func (r *WebsiteRepository) AdjustCommentCount(id, delta int) {
-	r.db.Model(&model.GalgameWebsite{}).Where("id = ?", id).
-		Update("comment_count", gorm.Expr("comment_count + ?", delta))
 }
 
 func (r *WebsiteRepository) FindLike(tx *gorm.DB, userID, websiteID int) (*model.GalgameWebsiteLike, error) {

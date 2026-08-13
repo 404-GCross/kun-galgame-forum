@@ -5,11 +5,6 @@ export const getGalgameSchema = z.object({
   limit: z.coerce.number<number>().min(1).max(12)
 })
 
-export const getMessageSchema = z.object({
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(10)
-})
-
 export const getGalgameResourceSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(10)

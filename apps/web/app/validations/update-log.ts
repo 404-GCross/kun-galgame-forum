@@ -1,11 +1,6 @@
 import { z } from 'zod'
 import { KUN_UPDATE_LOG } from '~/constants/update'
 
-export const getUpdateLogSchema = z.object({
-  page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(30)
-})
-
 export const createUpdateLogSchema = z.object({
   version: z.string().min(1).max(20, '更新版本号最多 20 个字符'),
   content_en_us: z

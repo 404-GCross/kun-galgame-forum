@@ -15,8 +15,6 @@ func NewGalgameInteractionRepository(db *gorm.DB) *GalgameInteractionRepository 
 	return &GalgameInteractionRepository{db: db}
 }
 
-func (r *GalgameInteractionRepository) DB() *gorm.DB { return r.db }
-
 func (r *GalgameInteractionRepository) UserInteraction(userID, galgameID int) (liked, favorited bool) {
 	if userID <= 0 {
 		return false, false

@@ -18,11 +18,6 @@ export interface TopicCard {
   upvote_time: Date | string | null
 }
 
-export interface TopicAside {
-  title: string
-  tid: number
-}
-
 export interface TopicBestAnswerSummary {
   id: number
   floor: number

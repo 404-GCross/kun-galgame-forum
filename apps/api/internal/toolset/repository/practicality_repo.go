@@ -14,8 +14,6 @@ func NewPracticalityRepository(db *gorm.DB) *PracticalityRepository {
 	return &PracticalityRepository{db: db}
 }
 
-func (r *PracticalityRepository) DB() *gorm.DB { return r.db }
-
 type RateCount struct {
 	Rate  int   `json:"rate"`
 	Count int64 `json:"count"`

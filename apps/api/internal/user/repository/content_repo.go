@@ -16,8 +16,6 @@ func NewUserContentRepository(db *gorm.DB) *UserContentRepository {
 	return &UserContentRepository{db: db}
 }
 
-func (r *UserContentRepository) DB() *gorm.DB { return r.db }
-
 func (r *UserContentRepository) FindUserGalgameIDs(userID int, queryType string, page, limit int, showNoResource bool) ([]int, int64, error) {
 	offset := (page - 1) * limit
 	var total int64

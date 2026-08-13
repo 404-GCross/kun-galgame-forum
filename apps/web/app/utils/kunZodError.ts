@@ -63,13 +63,3 @@ export const formatKunZodIssue = (issue: KunZodIssue): string => {
   const label = labelForPath(issue.path)
   return label ? `${label}：${issue.message}` : issue.message
 }
-
-export const formatKunZodError = (error: {
-  issues?: KunZodIssue[]
-  message?: string
-}): string => {
-  const issue =
-    error.issues?.[0] ??
-    (error.message ? (JSON.parse(error.message)[0] as KunZodIssue) : undefined)
-  return issue ? formatKunZodIssue(issue) : '提交的内容有误，请检查后重试'
-}
