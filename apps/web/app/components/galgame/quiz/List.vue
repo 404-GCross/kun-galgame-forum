@@ -53,7 +53,7 @@ const correctRate = (q: GalgameQuizCard) =>
         <KunContent
           :content="quiz.question_html"
           :compact="true"
-          class-name="font-medium"
+          class-name="font-medium break-words"
         />
         <div
           class="text-default-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"

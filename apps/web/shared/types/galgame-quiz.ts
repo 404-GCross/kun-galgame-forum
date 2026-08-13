@@ -52,8 +52,6 @@ export interface GalgameQuizCard extends QuizStats {
   spoiler_level: QuizSpoilerLevel
   type: QuizType
   difficulty: number
-  question: string
-  // Server-rendered HTML (||spoiler|| → kun-spoiler span) for v-html display.
   question_html: string
   created: string | Date
   updated: string | Date
@@ -132,7 +130,6 @@ export interface GalgameQuizPlay extends QuizStats {
   type: QuizType
   difficulty: number
   question: string
-  // Server-rendered HTML (||spoiler|| → kun-spoiler span) for v-html display.
   question_html: string
   content: QuizPublicContent
   description_html: string

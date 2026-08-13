@@ -1,9 +1,11 @@
+import { maskSpoilers } from './maskSpoilers'
+
 export const markdownToText = (
   markdown: string,
   opts?: { preserveNewlines?: boolean }
 ) => {
   if (!markdown) return ''
-  const stripped = markdown
+  const stripped = maskSpoilers(markdown)
     .replace(/^[ \t]*```+.*$/gm, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, '')
@@ -11,7 +13,6 @@ export const markdownToText = (
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/(\*\*|__)(.*?)\1/g, '$2')
     .replace(/~~(.*?)~~/g, '$1')
-    .replace(/\|\|(.*?)\|\|/g, '$1')
     .replace(/(\*|_)(.*?)\1/g, '$2')
     .replace(/^\s*#{1,6}\s+(.*)/gm, '$1')
     .replace(/`/g, '')

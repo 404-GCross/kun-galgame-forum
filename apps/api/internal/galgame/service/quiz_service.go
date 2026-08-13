@@ -262,7 +262,6 @@ func (s *QuizService) CreateQuiz(
 		SpoilerLevel: quiz.SpoilerLevel,
 		Type:         quiz.Type,
 		Difficulty:   quiz.Difficulty,
-		Question:     quiz.Question,
 		QuestionHtml: markdown.RenderQuestionPlain(quiz.Question),
 		QuizStats:    quizStats(0, 0, 0, 0, 0, 0, 0),
 		Created:      quiz.CreatedAt.Format(time.RFC3339),

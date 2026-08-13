@@ -37,7 +37,7 @@ onMounted(ensureLoaded)
         <p
           class="group-hover:text-primary line-clamp-3 text-base break-words transition-colors"
         >
-          {{ markdownToText(activity.content) }}
+          {{ maskSpoilers(activity.content) }}
         </p>
       </KunLink>
 

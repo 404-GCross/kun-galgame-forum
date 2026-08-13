@@ -213,9 +213,13 @@ const correctRate = computed(() =>
           </KunChip>
         </div>
 
-        <h1 class="text-xl font-bold break-words whitespace-pre-wrap">
-          <KunContent :content="state.question_html" :compact="true" />
-        </h1>
+        <div role="heading" aria-level="1">
+          <KunContent
+            :content="state.question_html"
+            :compact="true"
+            class-name="text-xl font-bold break-words whitespace-pre-wrap"
+          />
+        </div>
 
         <KunContent
           v-if="state.description_html"

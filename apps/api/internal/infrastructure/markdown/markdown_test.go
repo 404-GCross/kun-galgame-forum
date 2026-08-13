@@ -170,10 +170,6 @@ func TestResolveMentionNames(t *testing.T) {
 	}
 }
 
-// RenderQuestionPlain: only ||spoiler|| is processed; everything else is
-// HTML-escaped (no markdown parse, no block structure). The output is safe for
-// v-html and reuses the same kun-spoiler markup the full pipeline emits, so
-// KunContent's client-side reveal works unchanged.
 func TestRenderQuestionPlain(t *testing.T) {
 	cases := []struct {
 		name string
