@@ -387,12 +387,7 @@ const submit = async () => {
       :show-char-count="true"
       auto-grow
     />
-    <KunButton
-      v-else
-      variant="light"
-      size="sm"
-      @click="showExplanation = true"
-    >
+    <KunButton v-else variant="light" size="sm" @click="showExplanation = true">
       <span class="flex items-center gap-1">
         <KunIcon name="lucide:plus" />添加解析（可选）
       </span>

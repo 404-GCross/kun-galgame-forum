@@ -168,14 +168,44 @@ export const kunUserMainNav = (
 ): KunTabItem[] => {
   const base = `/user/${userId}`
   const items: KunTabItem[] = [
-    { value: 'activity', textValue: '动态', href: `${base}/activity`, icon: 'lucide:activity' },
-    { value: 'collection', textValue: '收藏', href: `${base}/collection/galgame`, icon: 'lucide:heart' },
-    { value: 'topic', textValue: '话题', href: `${base}/topic/topic`, icon: 'lucide:square-gantt-chart' },
-    { value: 'galgame', textValue: 'Galgame', href: `${base}/galgame/galgame-publish`, icon: 'lucide:gamepad-2' },
-    { value: 'info', textValue: '关于', href: `${base}/info`, icon: 'lucide:user-round' }
+    {
+      value: 'activity',
+      textValue: '动态',
+      href: `${base}/activity`,
+      icon: 'lucide:activity'
+    },
+    {
+      value: 'collection',
+      textValue: '收藏',
+      href: `${base}/collection/galgame`,
+      icon: 'lucide:heart'
+    },
+    {
+      value: 'topic',
+      textValue: '话题',
+      href: `${base}/topic/topic`,
+      icon: 'lucide:square-gantt-chart'
+    },
+    {
+      value: 'galgame',
+      textValue: 'Galgame',
+      href: `${base}/galgame/galgame-publish`,
+      icon: 'lucide:gamepad-2'
+    },
+    {
+      value: 'info',
+      textValue: '关于',
+      href: `${base}/info`,
+      icon: 'lucide:user-round'
+    }
   ]
   if (isOwner) {
-    items.push({ value: 'setting', textValue: '设置', href: `${base}/setting`, icon: 'lucide:settings' })
+    items.push({
+      value: 'setting',
+      textValue: '设置',
+      href: `${base}/setting`,
+      icon: 'lucide:settings'
+    })
   }
   return items
 }
@@ -199,7 +229,6 @@ export const userSegmentGroup = (segment: string): string => {
     return 'galgame'
   return segment
 }
-
 
 export const userSegmentHref = (userId: number, segment: string): string => {
   const base = `/user/${userId}`

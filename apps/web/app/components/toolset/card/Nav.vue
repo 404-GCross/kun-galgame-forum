@@ -41,11 +41,11 @@ watchDebounced(
 
 <template>
   <KunInput
-        v-model="query"
-        type="text"
-        placeholder="模糊名字查询"
-        class-name="col-span-2 lg:col-span-1"
-      />
+    v-model="query"
+    type="text"
+    placeholder="模糊名字查询"
+    class-name="col-span-2 lg:col-span-1"
+  />
   <div
     class="flex w-full shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-transparent sm:flex-nowrap"
   >
@@ -57,7 +57,6 @@ watchDebounced(
       >
         {{ KUN_GALGAME_TOOLSET_TYPE_MAP[type] || type }}
       </KunSelect>
-
 
       <KunSelect
         :model-value="platform"

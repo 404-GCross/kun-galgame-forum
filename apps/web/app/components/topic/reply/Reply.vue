@@ -66,7 +66,7 @@ const handleNewComment = (comment: TopicComment) => {
     :class="
       cn(
         'outline-primary kun-reply flex justify-between gap-3 outline-offset-2',
-        isActive && 'outline-2 rounded-lg'
+        isActive && 'rounded-lg outline-2'
       )
     "
     :id="`${reply.floor}.${replyContent}`"

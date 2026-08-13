@@ -66,7 +66,11 @@ onMounted(reroll)
     class="hidden shrink-0 sm:block"
     :style="{ width: `${stageW}px`, height: `${stageH}px` }"
   >
-    <KunTooltip v-if="ready && loliData.body" text="点击换一个孩子" position="left">
+    <KunTooltip
+      v-if="ready && loliData.body"
+      text="点击换一个孩子"
+      position="left"
+    >
       <div
         class="relative cursor-pointer overflow-hidden"
         :style="{ width: `${stageW}px`, height: `${stageH}px` }"

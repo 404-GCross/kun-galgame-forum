@@ -1,7 +1,6 @@
 import { kungal } from '~/config/kungal'
 
 export const showMoeMessage = () => {
-
   const asciiArt = `
 ██╗  ██╗██╗   ██╗███╗   ██╗       ██████╗  █████╗ ██╗
 ██║ ██╔╝██║   ██║████╗  ██║      ██╔════╝ ██╔══██╗██║
@@ -106,7 +105,10 @@ export const showMoeMessage = () => {
     '%c 这里开发群，加群需要有头像，最好是可爱的孩子，嗯！',
     styles.telegramInvite
   )
-  console.log('%c 🚀 Telegram 群组: https://telegram.me/KUNForum', styles.telegramLink)
+  console.log(
+    '%c 🚀 Telegram 群组: https://telegram.me/KUNForum',
+    styles.telegramLink
+  )
 
   console.log('')
 

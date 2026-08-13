@@ -52,7 +52,8 @@ export const useTopicTOC = (source: TopicTocSource) => {
         level: 2,
         text: slug ? `${reply.floor}. ${slug}` : `${reply.floor}`,
         type: 'reply',
-        targeted: !!source.getTargetFloor && source.getTargetFloor() === reply.floor
+        targeted:
+          !!source.getTargetFloor && source.getTargetFloor() === reply.floor
       })
     }
 

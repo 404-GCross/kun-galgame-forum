@@ -4,7 +4,7 @@ const getLink = (link: 'galgame' | 'topic') =>
 </script>
 
 <template>
-  <div class="space-y-6 min-h-[calc(100dvh-6rem)]">
+  <div class="min-h-[calc(100dvh-6rem)] space-y-6">
     <KunHeader
       name="RSS 订阅"
       description="论坛目前支持话题与 Galgame 资源 RSS 订阅, RSS 数据源每 17 分钟更新一次"

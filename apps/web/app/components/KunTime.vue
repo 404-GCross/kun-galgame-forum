@@ -56,5 +56,10 @@ const machineDateTime = computed(() => {
 </script>
 
 <template>
-  <time class="text-default-500" :datetime="machineDateTime" data-allow-mismatch>{{ text }}</time>
+  <time
+    class="text-default-500"
+    :datetime="machineDateTime"
+    data-allow-mismatch
+    >{{ text }}</time
+  >
 </template>

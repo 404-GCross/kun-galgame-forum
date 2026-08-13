@@ -90,10 +90,7 @@ const tileClass = (r: DayRow) => {
 
 <template>
   <div class="flex flex-col">
-    <p
-      v-if="!rows.length"
-      class="text-default-400 py-6 text-center text-sm"
-    >
+    <p v-if="!rows.length" class="text-default-400 py-6 text-center text-sm">
       本月暂无发售的 Galgame
     </p>
 
@@ -116,7 +113,9 @@ const tileClass = (r: DayRow) => {
             name="lucide:calendar-clock"
             class="size-6"
           />
-          <span v-else class="text-3xl font-bold leading-none">{{ r.day }}</span>
+          <span v-else class="text-3xl leading-none font-bold">{{
+            r.day
+          }}</span>
         </div>
 
         <div class="flex items-center gap-2 sm:flex-col sm:gap-1">

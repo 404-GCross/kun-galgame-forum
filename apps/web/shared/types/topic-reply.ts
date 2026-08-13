@@ -21,4 +21,3 @@ export interface TopicReply {
   is_pinned: boolean
   is_best_answer: boolean
 }
-

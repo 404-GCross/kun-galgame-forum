@@ -61,7 +61,11 @@ const handleRevert = async () => {
 
 <template>
   <div class="mx-auto flex max-w-3xl flex-col gap-3">
-    <KunCard :is-hoverable="false" :is-transparent="false" content-class="space-y-2">
+    <KunCard
+      :is-hoverable="false"
+      :is-transparent="false"
+      content-class="space-y-2"
+    >
       <KunHeader
         name="修订历史"
         description="该 Galgame 的完整编辑记录（含旧版百科迁移的历史修订），可任选两个版本对比差异"
@@ -130,7 +134,11 @@ const handleRevert = async () => {
           scale="h3"
         />
         <div class="flex justify-end gap-2">
-          <KunButton variant="light" color="default" @click="revertTarget = null">
+          <KunButton
+            variant="light"
+            color="default"
+            @click="revertTarget = null"
+          >
             取消
           </KunButton>
           <KunButton color="warning" :loading="reverting" @click="handleRevert">
@@ -143,7 +151,9 @@ const handleRevert = async () => {
     <KunModal v-model="diffOpen" size="lg">
       <div class="space-y-4">
         <KunHeader
-          :name="diff ? `版本对比 #${diff.from_seq} → #${diff.to_seq}` : '版本对比'"
+          :name="
+            diff ? `版本对比 #${diff.from_seq} → #${diff.to_seq}` : '版本对比'
+          "
           scale="h3"
         />
         <KunLoading v-if="diffLoading" />

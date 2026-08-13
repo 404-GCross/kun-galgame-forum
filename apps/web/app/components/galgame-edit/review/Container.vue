@@ -23,7 +23,9 @@ const briefName = (item: GalgameEditProposalItem): string => {
     'zh-cn': item.galgame.name_zh_cn,
     'zh-tw': item.galgame.name_zh_tw
   }
-  return getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
+  return (
+    getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
+  )
 }
 </script>
 

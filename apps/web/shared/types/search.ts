@@ -30,7 +30,13 @@ export type SearchResultComment = {
   created: Date | string
 }
 
-export type SearchType = 'topic' | 'galgame' | 'toolset' | 'user' | 'reply' | 'comment'
+export type SearchType =
+  | 'topic'
+  | 'galgame'
+  | 'toolset'
+  | 'user'
+  | 'reply'
+  | 'comment'
 export type SearchResult =
   | SearchResultTopic
   | SearchResultGalgame

@@ -12,7 +12,13 @@ type ToolsetType =
   | 'docs'
   | 'others'
 type ToolsetLanguage = 'all' | 'ja-jp' | 'en-us' | 'zh-cn' | 'zh-tw' | 'others'
-type ToolsetPlatform = 'all' | 'windows' | 'mac' | 'linux' | 'emulator' | 'others'
+type ToolsetPlatform =
+  | 'all'
+  | 'windows'
+  | 'mac'
+  | 'linux'
+  | 'emulator'
+  | 'others'
 type ToolsetVersion = 'all' | 'alpha' | 'beta' | 'rc' | 'stable'
 type ToolsetSortField = 'resource_update_time' | 'created' | 'view'
 

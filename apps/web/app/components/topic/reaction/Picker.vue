@@ -24,7 +24,7 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       type="button"
       :class="
         cn(
-          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-default-100',
+          'hover:bg-default-100 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors',
           isMine(KUN_REACTION_LIKE) && 'bg-primary/10'
         )
       "
@@ -33,11 +33,13 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       <img
         :src="reactionAsset(KUN_REACTION_LIKE)"
         alt="点赞"
-        class="size-7 shrink-0 max-w-none"
+        class="size-7 max-w-none shrink-0"
       />
       <span class="min-w-0">
         <span class="text-default-800 block text-sm font-medium">点赞</span>
-        <span class="text-default-500 block text-xs">{{ KUN_REACTION_LIKE_NOTE }}</span>
+        <span class="text-default-500 block text-xs">{{
+          KUN_REACTION_LIKE_NOTE
+        }}</span>
       </span>
     </button>
 
@@ -45,7 +47,7 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       type="button"
       :class="
         cn(
-          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-default-100',
+          'hover:bg-default-100 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors',
           isMine(KUN_REACTION_DISLIKE) && 'bg-primary/10'
         )
       "
@@ -54,11 +56,13 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
       <img
         :src="reactionAsset(KUN_REACTION_DISLIKE)"
         alt="点踩"
-        class="size-7 shrink-0 max-w-none"
+        class="size-7 max-w-none shrink-0"
       />
       <span class="min-w-0">
         <span class="text-default-800 block text-sm font-medium">点踩</span>
-        <span class="text-default-500 block text-xs">{{ KUN_REACTION_DISLIKE_NOTE }}</span>
+        <span class="text-default-500 block text-xs">{{
+          KUN_REACTION_DISLIKE_NOTE
+        }}</span>
       </span>
     </button>
 
@@ -72,7 +76,7 @@ const isMine = (key: string) => props.mineKeys?.includes(key) ?? false
         :title="e.label"
         :class="
           cn(
-            'flex items-center justify-center rounded-md p-1 transition-colors hover:bg-default-100',
+            'hover:bg-default-100 flex items-center justify-center rounded-md p-1 transition-colors',
             isMine(e.key) && 'bg-primary/10'
           )
         "

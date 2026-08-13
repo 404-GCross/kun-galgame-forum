@@ -4,7 +4,10 @@ import {
   ENABLE_KUN_VISUAL_NOVEL_FORUM_WINTER_THEME,
   KUN_VISUAL_NOVEL_FORUM_WINTER_THEME_BACKGROUND
 } from '~/config/theme'
-import { KUN_DEFAULT_FEED_TABS, KUN_FEED_TABS_VERSION } from '~/constants/activity'
+import {
+  KUN_DEFAULT_FEED_TABS,
+  KUN_FEED_TABS_VERSION
+} from '~/constants/activity'
 import type { KUNGalgameSettingsStore } from '../types/settings'
 
 const SETTINGS_CUSTOM_BACKGROUND_IMAGE_NAME: string = 'kun-galgame-custom-bg'
@@ -35,15 +38,16 @@ export const usePersistSettingsStore = defineStore(
       ref<KUNGalgameSettingsStore['showKUNGalgameNoResource']>(false)
     const showKUNGalgameRounded =
       ref<KUNGalgameSettingsStore['showKUNGalgameRounded']>('md')
-    const showKUNGalgameGallerySexualLevels =
-      ref<KUNGalgameSettingsStore['showKUNGalgameGallerySexualLevels']>([])
-    const showKUNGalgameGalleryViolenceLevels =
-      ref<KUNGalgameSettingsStore['showKUNGalgameGalleryViolenceLevels']>([])
+    const showKUNGalgameGallerySexualLevels = ref<
+      KUNGalgameSettingsStore['showKUNGalgameGallerySexualLevels']
+    >([])
+    const showKUNGalgameGalleryViolenceLevels = ref<
+      KUNGalgameSettingsStore['showKUNGalgameGalleryViolenceLevels']
+    >([])
     const feedTabs = ref<KUNGalgameSettingsStore['feedTabs']>(
       structuredClone(KUN_DEFAULT_FEED_TABS)
     )
-    const feedTabsVersion =
-      ref<KUNGalgameSettingsStore['feedTabsVersion']>(0)
+    const feedTabsVersion = ref<KUNGalgameSettingsStore['feedTabsVersion']>(0)
 
     const resetKUNGalgameFeedTabs = () => {
       feedTabs.value = structuredClone(KUN_DEFAULT_FEED_TABS)
@@ -58,8 +62,14 @@ export const usePersistSettingsStore = defineStore(
     const setKUNGalgameTransparency = (trans: number) => {
       showKUNGalgamePageTransparency.value = trans
       const opacity = `${trans / 100}`
-      document.documentElement.style.setProperty('--kun-global-opacity', opacity)
-      document.documentElement.style.setProperty('--kun-surface-opacity', opacity)
+      document.documentElement.style.setProperty(
+        '--kun-global-opacity',
+        opacity
+      )
+      document.documentElement.style.setProperty(
+        '--kun-surface-opacity',
+        opacity
+      )
     }
 
     const setKUNGalgameBackgroundBlur = (blur: number) => {

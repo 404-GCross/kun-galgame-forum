@@ -2,13 +2,12 @@ package model
 
 import "time"
 
-
 type Message struct {
-	ID         int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Content    string `gorm:"type:varchar(233);default:''" json:"content"`
-	Link       string `gorm:"type:varchar(100);default:''" json:"link"`
-	Status     string `gorm:"default:'unread'" json:"status"`
-	Type       string `gorm:"not null" json:"type"`
+	ID      int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Content string `gorm:"type:varchar(233);default:''" json:"content"`
+	Link    string `gorm:"type:varchar(100);default:''" json:"link"`
+	Status  string `gorm:"default:'unread'" json:"status"`
+	Type    string `gorm:"not null" json:"type"`
 
 	SenderID   int `gorm:"column:sender_id;not null" json:"sender_id"`
 	ReceiverID int `gorm:"column:receiver_id;not null" json:"receiver_id"`
@@ -41,7 +40,6 @@ type SystemMessageReadState struct {
 }
 
 func (SystemMessageReadState) TableName() string { return "system_message_read_state" }
-
 
 type ChatRoom struct {
 	ID                    int        `gorm:"primaryKey;autoIncrement" json:"id"`

@@ -9,8 +9,8 @@ const oauthProfileURL = computed(
     <div class="space-y-2">
       <span class="text-xl">更改密码</span>
       <p class="text-default-500 text-sm">
-        密码由 鲲 Galgame OAuth 账户中心统一管理。修改密码需要验证旧密码,
-        请前往 鲲 Galgame OAuth 账户中心进行修改。忘记密码同样在那里处理。
+        密码由 鲲 Galgame OAuth 账户中心统一管理。修改密码需要验证旧密码, 请前往
+        鲲 Galgame OAuth 账户中心进行修改。忘记密码同样在那里处理。
       </p>
     </div>
 

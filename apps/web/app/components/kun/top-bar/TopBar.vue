@@ -30,8 +30,8 @@ const scrolled = computed(() => y.value > 8)
         cn(
           'mx-auto flex h-16 w-full max-w-7xl transform-gpu items-center justify-between rounded-b-lg border transition-[background-color,border-color,box-shadow,padding] duration-200',
           scrolled
-            ? 'bg-content1 border-kun px-3 shadow-kun-sm backdrop-blur-md'
-            : 'border-transparent bg-transparent px-3 shadow-none desktop-nav:px-0'
+            ? 'bg-content1 border-kun shadow-kun-sm px-3 backdrop-blur-md'
+            : 'desktop-nav:px-0 border-transparent bg-transparent px-3 shadow-none'
         )
       "
     >

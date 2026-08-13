@@ -1,4 +1,3 @@
-
 export const OFFICIAL_GRAPH_NODE_WIDTH = 184
 export const OFFICIAL_GRAPH_NODE_HEIGHT = 56
 
@@ -333,7 +332,12 @@ const edgeGeometry = (
     const x1 = a.x + dir * NODE_HALF_W
     const x2 = b.x - dir * (NODE_HALF_W + ARROW_GAP)
     const lift = Math.min(56, Math.abs(x2 - x1) / 3 + 16)
-    const { stopX, stopY, head } = headAt(x2, b.y, dir / Math.SQRT2, Math.SQRT1_2)
+    const { stopX, stopY, head } = headAt(
+      x2,
+      b.y,
+      dir / Math.SQRT2,
+      Math.SQRT1_2
+    )
     return {
       path: `M ${x1} ${a.y} C ${x1 + dir * lift} ${a.y - lift} ${x2 - dir * lift} ${b.y - lift} ${stopX} ${stopY}`,
       head,

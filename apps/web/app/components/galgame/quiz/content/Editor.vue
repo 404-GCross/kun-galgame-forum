@@ -42,7 +42,9 @@ const setCorrect = (i: number, checked: boolean) => {
     multiAnswers.value = multiAnswers.value.filter((x) => x !== i)
   }
 }
-const correctLabel = computed(() => (props.type === 'single' ? '正确答案' : '已选'))
+const correctLabel = computed(() =>
+  props.type === 'single' ? '正确答案' : '已选'
+)
 const toggleCorrect = (i: number) =>
   setCorrect(i, props.type === 'single' ? true : !isCorrect(i))
 
@@ -55,7 +57,10 @@ const removeBlank = (i: number) => {
 const getContent = (): Record<string, unknown> => {
   switch (props.type) {
     case 'single':
-      return { options: options.value.map((o) => o.trim()), answer: singleAnswer.value }
+      return {
+        options: options.value.map((o) => o.trim()),
+        answer: singleAnswer.value
+      }
     case 'multiple':
       return {
         options: options.value.map((o) => o.trim()),
@@ -176,7 +181,7 @@ defineExpose({ getContent, validate, reset, load })
           :class="
             cn(
               'flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
-              isCorrect(i) && 'bg-success/10 ring-1 ring-inset ring-success/40'
+              isCorrect(i) && 'bg-success/10 ring-success/40 ring-1 ring-inset'
             )
           "
         >

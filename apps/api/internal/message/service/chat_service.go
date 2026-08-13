@@ -28,7 +28,6 @@ func NewChatService(
 	return &ChatService{chatRepo: chatRepo, userClient: userClient}
 }
 
-
 func (s *ChatService) GetNavContact(ctx context.Context, userID int) ([]dto.NavContactItem, *errors.AppError) {
 	rooms, err := s.chatRepo.FindRoomsForUser(userID)
 	if err != nil {
@@ -89,7 +88,6 @@ func (s *ChatService) GetNavContact(ctx context.Context, userID int) ([]dto.NavC
 	return items, nil
 }
 
-
 func (s *ChatService) GetChatHistory(
 	ctx context.Context,
 	userID int,
@@ -139,7 +137,7 @@ func (s *ChatService) GetChatHistory(
 			ID:           m.ID,
 			ChatroomName: m.ChatroomName,
 			Sender:       dto.ChatSender{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-			ReceiverID:  m.ReceiverID,
+			ReceiverID:   m.ReceiverID,
 			Content:      content,
 			ContentHtml:  contentHTML,
 			IsRecall:     m.IsRecall,
@@ -151,7 +149,6 @@ func (s *ChatService) GetChatHistory(
 	}
 	return items, nil
 }
-
 
 func (s *ChatService) SendChatMessage(
 	ctx context.Context,
@@ -180,7 +177,6 @@ func (s *ChatService) SendChatMessage(
 	}
 	return nil
 }
-
 
 func (s *ChatService) RecallMessage(
 	ctx context.Context,
@@ -215,7 +211,6 @@ func (s *ChatService) RecallMessage(
 	}
 	return nil
 }
-
 
 func (s *ChatService) findOrCreatePrivateRoom(uid1, uid2 int) (int, string, error) {
 	room := s.chatRepo.FindPrivateRoomBetween(uid1, uid2)

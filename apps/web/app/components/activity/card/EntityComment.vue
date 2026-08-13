@@ -15,7 +15,9 @@ const meta = computed(() =>
 <template>
   <ActivityCardShell :actor="activity.actor" :timestamp="activity.timestamp">
     <div class="space-y-1.5">
-      <p class="text-default-700 line-clamp-4 text-base break-all whitespace-pre-line">
+      <p
+        class="text-default-700 line-clamp-4 text-base break-all whitespace-pre-line"
+      >
         {{ markdownToText(activity.content) }}
       </p>
       <KunLink

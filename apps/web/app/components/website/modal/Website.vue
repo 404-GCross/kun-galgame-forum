@@ -113,7 +113,11 @@ const handleSubmit = () => {
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <KunInput v-model="formData.name" label="网站名称" required />
-        <KunInput v-model="formData.create_time" label="网站创建时间" required />
+        <KunInput
+          v-model="formData.create_time"
+          label="网站创建时间"
+          required
+        />
 
         <div class="md:col-span-2">
           <KunCoverUpload

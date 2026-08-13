@@ -60,7 +60,10 @@ defineProps<{
             v-if="rating.short_summary && rating.spoiler_level !== 'none'"
             class="text-default-500 flex max-h-[110px] items-center gap-1.5 text-sm"
           >
-            <KunIcon name="lucide:triangle-alert" class="text-warning shrink-0" />
+            <KunIcon
+              name="lucide:triangle-alert"
+              class="text-warning shrink-0"
+            />
             {{ KUN_GALGAME_RATING_SPOILER_WARNING }}
           </div>
           <KunScrollShadow

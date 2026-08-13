@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import { useLocalStorage } from '@vueuse/core'
 import { languageItems } from '~/constants/edit'
 
@@ -152,8 +151,8 @@ const goto = (n: number) => {
 
           <EditGalgameStepHelp title="介绍来源与图片规定">
             <p>
-              介绍可参考官方页面、DLsite 的 ストーリー、Bangumi
-              或萌娘百科, 也可以抛弃官方介绍自行撰写。
+              介绍可参考官方页面、DLsite 的 ストーリー、Bangumi 或萌娘百科,
+              也可以抛弃官方介绍自行撰写。
             </p>
             <p>
               请不要在介绍中放置任何 R18 图片。R18 认定很严格, 过于露骨的图片
@@ -186,11 +185,7 @@ const goto = (n: number) => {
         <KunDivider />
 
         <div class="flex items-center justify-between gap-3">
-          <KunButton
-            variant="flat"
-            :disabled="step === 1"
-            @click="goPrev"
-          >
+          <KunButton variant="flat" :disabled="step === 1" @click="goPrev">
             上一步
           </KunButton>
 

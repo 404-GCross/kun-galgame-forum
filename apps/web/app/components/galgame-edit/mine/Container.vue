@@ -18,7 +18,9 @@ const briefName = (item: GalgameEditProposalItem): string => {
     'zh-cn': item.galgame.name_zh_cn,
     'zh-tw': item.galgame.name_zh_tw
   }
-  return getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
+  return (
+    getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
+  )
 }
 
 const withdrawing = ref(false)
@@ -71,7 +73,11 @@ const handleWithdraw = async (id: number) => {
         "
       >
         <template #title>
-          <KunLink :to="`/galgame/${item.gid}`" size="sm" class-name="font-medium">
+          <KunLink
+            :to="`/galgame/${item.gid}`"
+            size="sm"
+            class-name="font-medium"
+          >
             {{ briefName(item) }}
           </KunLink>
         </template>

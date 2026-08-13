@@ -34,9 +34,7 @@ const modalSubtitle = computed(() =>
     ? '修改链接 / 提取码 / 备注等信息, 保存后立即生效。'
     : '为这部 Galgame 提交一份新的资源链接, 提交后立即对所有用户可见。'
 )
-const submitLabel = computed(() =>
-  isEditing.value ? '保存修改' : '发布资源'
-)
+const submitLabel = computed(() => (isEditing.value ? '保存修改' : '发布资源'))
 
 interface FormShape {
   type: KunGalgameResourceTypeOptions
@@ -127,7 +125,11 @@ const platformOptions = computed(() =>
 </script>
 
 <template>
-  <KunModal v-model="open" inner-class-name="max-w-3xl w-[92vw]" :is-dismissable="false">
+  <KunModal
+    v-model="open"
+    inner-class-name="max-w-3xl w-[92vw]"
+    :is-dismissable="false"
+  >
     <div class="space-y-5">
       <div class="space-y-1">
         <h2 class="text-lg font-semibold">{{ modalTitle }}</h2>

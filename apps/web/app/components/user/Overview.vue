@@ -7,35 +7,42 @@ const settings = usePersistSettingsStore()
 const uid = props.userId
 const N = 4
 
-const [topics, galgames, ratings, resources, replies, comments] = await Promise.all([
-  useKunFetch<{ topics: UserTopic[]; total: number }>(`/user/${uid}/topics`, {
-    query: { page: 1, limit: N, type: 'topic', user_id: uid }
-  }),
-  useKunFetch<{ items: GalgameCard[]; total: number }>(`/user/${uid}/galgames`, {
-    query: {
-      page: 1,
-      limit: N,
-      type: 'galgame_publish',
-      user_id: uid,
-      show_no_resource: settings.showKUNGalgameNoResource
-    }
-  }),
-  useKunFetch<{ rating_data: GalgameRatingCard[]; total: number }>(
-    `/user/${uid}/ratings`,
-    { query: { page: 1, limit: N, user_id: uid } }
-  ),
-  useKunFetch<{ resources: UserGalgameResource[]; total: number }>(
-    `/user/${uid}/resources`,
-    { query: { page: 1, limit: N, type: 'valid', user_id: uid } }
-  ),
-  useKunFetch<{ replies: UserReply[]; total: number }>(`/user/${uid}/replies`, {
-    query: { page: 1, limit: N, type: 'reply_created', user_id: uid }
-  }),
-  useKunFetch<{ comments: UserComment[]; total: number }>(
-    `/user/${uid}/comments`,
-    { query: { page: 1, limit: N, type: 'comment_created', user_id: uid } }
-  )
-])
+const [topics, galgames, ratings, resources, replies, comments] =
+  await Promise.all([
+    useKunFetch<{ topics: UserTopic[]; total: number }>(`/user/${uid}/topics`, {
+      query: { page: 1, limit: N, type: 'topic', user_id: uid }
+    }),
+    useKunFetch<{ items: GalgameCard[]; total: number }>(
+      `/user/${uid}/galgames`,
+      {
+        query: {
+          page: 1,
+          limit: N,
+          type: 'galgame_publish',
+          user_id: uid,
+          show_no_resource: settings.showKUNGalgameNoResource
+        }
+      }
+    ),
+    useKunFetch<{ rating_data: GalgameRatingCard[]; total: number }>(
+      `/user/${uid}/ratings`,
+      { query: { page: 1, limit: N, user_id: uid } }
+    ),
+    useKunFetch<{ resources: UserGalgameResource[]; total: number }>(
+      `/user/${uid}/resources`,
+      { query: { page: 1, limit: N, type: 'valid', user_id: uid } }
+    ),
+    useKunFetch<{ replies: UserReply[]; total: number }>(
+      `/user/${uid}/replies`,
+      {
+        query: { page: 1, limit: N, type: 'reply_created', user_id: uid }
+      }
+    ),
+    useKunFetch<{ comments: UserComment[]; total: number }>(
+      `/user/${uid}/comments`,
+      { query: { page: 1, limit: N, type: 'comment_created', user_id: uid } }
+    )
+  ])
 
 const topicItems = computed(() =>
   (topics.data.value?.topics ?? []).map((t) => ({

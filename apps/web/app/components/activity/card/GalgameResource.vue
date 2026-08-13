@@ -45,7 +45,12 @@ const galgameLink = computed(() =>
         </KunLink>
 
         <div v-if="resource" class="flex flex-wrap items-center gap-1.5">
-          <KunChip v-if="resource.type" size="sm" variant="flat" color="primary">
+          <KunChip
+            v-if="resource.type"
+            size="sm"
+            variant="flat"
+            color="primary"
+          >
             {{ KUN_GALGAME_RESOURCE_TYPE_MAP[resource.type] ?? resource.type }}
           </KunChip>
           <KunChip

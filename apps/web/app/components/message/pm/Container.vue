@@ -286,7 +286,11 @@ onMounted(async () => {
         :key="img.url"
         class="border-default-200 relative h-16 w-16 overflow-hidden rounded-lg border"
       >
-        <img :src="img.url" :alt="img.name" class="h-full w-full object-cover" />
+        <img
+          :src="img.url"
+          :alt="img.name"
+          class="h-full w-full object-cover"
+        />
         <button
           type="button"
           @click="removePendingImage(index)"

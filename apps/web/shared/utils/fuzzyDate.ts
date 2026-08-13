@@ -1,6 +1,8 @@
-
 const inRange = (value: number | null | undefined, lo: number, hi: number) =>
-  typeof value === 'number' && Number.isInteger(value) && value >= lo && value <= hi
+  typeof value === 'number' &&
+  Number.isInteger(value) &&
+  value >= lo &&
+  value <= hi
 
 export const formatFuzzyDate = (
   year?: number | null,

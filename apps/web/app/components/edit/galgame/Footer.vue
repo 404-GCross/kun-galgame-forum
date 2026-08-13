@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { submitGalgameSchema } from '~/validations/galgame'
 
-
 const {
   name,
   content_limit,
@@ -39,10 +38,7 @@ const handleSubmitGalgame = async () => {
   const result = submitGalgameSchema.safeParse(data)
   if (!result.success) {
     const message = JSON.parse(result.error.message)[0]
-    useMessage(
-      formatKunZodIssue(message),
-      'warn'
-    )
+    useMessage(formatKunZodIssue(message), 'warn')
     return
   }
   const res = await useComponentMessageStore().alert(
@@ -63,7 +59,11 @@ const handleSubmitGalgame = async () => {
   const { banner: _bannerBlob, ...jsonFields } = data
   let bannerHash = ''
   if (banner instanceof File) {
-    const uploaded = await uploadGalgameImage(banner, 'galgame_banner', banner.name)
+    const uploaded = await uploadGalgameImage(
+      banner,
+      'galgame_banner',
+      banner.name
+    )
     if (uploaded) {
       bannerHash = uploaded.hash
     }

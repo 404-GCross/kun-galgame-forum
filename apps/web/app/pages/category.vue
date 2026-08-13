@@ -8,7 +8,7 @@ const activeTab = computed(
 </script>
 
 <template>
-  <div class="h-full space-y-3 justify-start">
+  <div class="h-full justify-start space-y-3">
     <KunHeader
       :name="KUN_TOPIC_CATEGORY[activeTab]"
       :description="KUN_CATEGORY_DESCRIPTION_MAP[activeTab]"

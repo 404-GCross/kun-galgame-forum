@@ -42,7 +42,8 @@ export const KUN_GALGAME_RATING_SPOILER_COLOR_MAP: Record<string, KunUIColor> =
     serious: 'danger'
   }
 
-export const KUN_GALGAME_RATING_SPOILER_WARNING = '该评分可能含有剧透内容，点进查看'
+export const KUN_GALGAME_RATING_SPOILER_WARNING =
+  '该评分可能含有剧透内容，点进查看'
 
 export const KUN_GALGAME_RATING_PLAY_STATUS_CONST = [
   'not_started',

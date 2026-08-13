@@ -41,7 +41,8 @@ const judge = computed(() => {
 const fillRows = computed(() => {
   if (props.quiz.type !== 'fill') return []
   const a = props.result.answer as QuizFullFill
-  const vals = (props.result.submitted as { values: string[] } | null)?.values ?? []
+  const vals =
+    (props.result.submitted as { values: string[] } | null)?.values ?? []
   return a.blanks.map((b, i) => ({ accepted: b.accepted, mine: vals[i] ?? '' }))
 })
 
@@ -115,7 +116,9 @@ const submitQuality = async () => {
       >
         <span class="break-words whitespace-pre-wrap">{{ row.text }}</span>
         <span class="flex shrink-0 items-center gap-2">
-          <KunChip v-if="row.chosen" size="sm" variant="light">你的选择</KunChip>
+          <KunChip v-if="row.chosen" size="sm" variant="light"
+            >你的选择</KunChip
+          >
           <KunIcon v-if="row.correct" name="lucide:check" />
         </span>
       </div>

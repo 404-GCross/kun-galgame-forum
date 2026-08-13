@@ -18,7 +18,8 @@ watch(
     <div class="space-y-0.5">
       <p class="text-default-700 font-medium">启用网站 NSFW 模式</p>
       <p class="text-default-500 text-sm">
-        显示 R18 等有内容限制的游戏与图片。开启或关闭后会自动刷新页面以重新加载内容。
+        显示 R18
+        等有内容限制的游戏与图片。开启或关闭后会自动刷新页面以重新加载内容。
       </p>
     </div>
     <KunSwitch v-model="option" class="shrink-0" />

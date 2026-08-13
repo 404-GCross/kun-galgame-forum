@@ -18,7 +18,9 @@ const { headings, activeIds } = useTopicTOC(source)
 const headingItems = computed(() =>
   headings.value.filter((h) => h.type === 'heading')
 )
-const replyItems = computed(() => headings.value.filter((h) => h.type === 'reply'))
+const replyItems = computed(() =>
+  headings.value.filter((h) => h.type === 'reply')
+)
 
 const TOP_BAR_OFFSET = 88
 const isPastPoll = ref(false)
@@ -151,7 +153,10 @@ onBeforeUnmount(() => {
           class="scrollbar-hide max-h-[30vh] w-full overflow-y-auto"
         >
           <h3 class="mb-2 text-sm font-medium">文章目录</h3>
-          <TopicDetailTocSection :items="headingItems" :active-ids="activeIds" />
+          <TopicDetailTocSection
+            :items="headingItems"
+            :active-ids="activeIds"
+          />
         </div>
       </div>
     </div>

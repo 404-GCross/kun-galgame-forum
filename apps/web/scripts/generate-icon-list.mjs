@@ -74,15 +74,68 @@ const ICON_PATTERN = /["']([a-z][a-z0-9-]{1,30}):([a-z0-9][a-z0-9-]{0,60})["']/g
 // "missing collection" warning quiet. The generated list is unaffected: it
 // only ever includes INSTALLED @iconify-json collections.
 const NON_ICON_PREFIXES = new Set([
-  'sm', 'md', 'lg', 'xl', '2xl', 'dark', 'light', 'hover', 'focus', 'active',
-  'visited', 'target', 'focus-within', 'focus-visible', 'group-hover',
-  'group-focus', 'peer-hover', 'peer-focus', 'peer-checked', 'disabled',
-  'enabled', 'checked', 'indeterminate', 'default', 'required', 'valid',
-  'invalid', 'placeholder-shown', 'autofill', 'read-only', 'empty', 'open',
-  'first', 'last', 'only', 'odd', 'even', 'motion-safe', 'motion-reduce',
-  'contrast-more', 'print', 'portrait', 'landscape', 'rtl', 'ltr', 'before',
-  'after', 'placeholder', 'file', 'marker', 'selection', 'backdrop', 'has',
-  'not', 'group', 'peer', 'aria', 'data', 'supports', 'min', 'max', 'update'
+  'sm',
+  'md',
+  'lg',
+  'xl',
+  '2xl',
+  'dark',
+  'light',
+  'hover',
+  'focus',
+  'active',
+  'visited',
+  'target',
+  'focus-within',
+  'focus-visible',
+  'group-hover',
+  'group-focus',
+  'peer-hover',
+  'peer-focus',
+  'peer-checked',
+  'disabled',
+  'enabled',
+  'checked',
+  'indeterminate',
+  'default',
+  'required',
+  'valid',
+  'invalid',
+  'placeholder-shown',
+  'autofill',
+  'read-only',
+  'empty',
+  'open',
+  'first',
+  'last',
+  'only',
+  'odd',
+  'even',
+  'motion-safe',
+  'motion-reduce',
+  'contrast-more',
+  'print',
+  'portrait',
+  'landscape',
+  'rtl',
+  'ltr',
+  'before',
+  'after',
+  'placeholder',
+  'file',
+  'marker',
+  'selection',
+  'backdrop',
+  'has',
+  'not',
+  'group',
+  'peer',
+  'aria',
+  'data',
+  'supports',
+  'min',
+  'max',
+  'update'
 ])
 
 // Read the installed @iconify-json/* packages from the app manifest.
@@ -147,7 +200,8 @@ async function main() {
         } else if (!NON_ICON_PREFIXES.has(collection)) {
           // A collection that isn't installed (and isn't a Tailwind/Vue prefix)
           // — a likely missing @iconify-json dependency.
-          if (!missingDeps.has(collection)) missingDeps.set(collection, new Set())
+          if (!missingDeps.has(collection))
+            missingDeps.set(collection, new Set())
           missingDeps.get(collection).add(name)
         }
       }
@@ -172,7 +226,9 @@ async function main() {
       '\n⚠ Referenced icons from NOT-installed collections (broken — install @iconify-json/<collection> or remove the usage):'
     )
     for (const [collection, set] of [...missingDeps].sort()) {
-      console.warn(`  @iconify-json/${collection}: ${[...set].sort().join(', ')}`)
+      console.warn(
+        `  @iconify-json/${collection}: ${[...set].sort().join(', ')}`
+      )
     }
   }
 }

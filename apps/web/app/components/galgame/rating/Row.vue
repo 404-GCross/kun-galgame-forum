@@ -82,10 +82,7 @@ const overall = computed(() => props.rating.overall.toFixed(1))
       <KunIcon name="lucide:triangle-alert" class="text-warning shrink-0" />
       {{ KUN_GALGAME_RATING_SPOILER_WARNING }}
     </p>
-    <p
-      v-else-if="truncatedSummary"
-      class="text-default-500 mt-1 ml-8 text-sm"
-    >
+    <p v-else-if="truncatedSummary" class="text-default-500 mt-1 ml-8 text-sm">
       {{ truncatedSummary }}
     </p>
   </NuxtLink>

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { kunGalgameOriginalLanguageOptions } from '~/constants/galgame'
 
-
-const { age_limit, original_language, release_date, release_date_tba } = storeToRefs(
-  usePersistEditGalgameStore()
-)
+const { age_limit, original_language, release_date, release_date_tba } =
+  storeToRefs(usePersistEditGalgameStore())
 
 const ageLimitOptions = [
   { value: 'all', label: '全年龄 (本游戏不含成人内容)' },
@@ -33,11 +31,7 @@ const originalLanguageOptions = kunGalgameOriginalLanguageOptions
       />
     </div>
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <KunInput
-        v-model="release_date"
-        type="date"
-        label="发售日期 (可留空)"
-      />
+      <KunInput v-model="release_date" type="date" label="发售日期 (可留空)" />
       <KunSwitch v-model="release_date_tba" label="发售日期待定 (TBA)" />
     </div>
   </div>

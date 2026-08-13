@@ -20,7 +20,8 @@ const collapse = () => {
   )
 }
 const onTransitionEnd = (e: TransitionEvent) => {
-  if (e.propertyName === 'max-height' && expanded.value) maxHeight.value = 'none'
+  if (e.propertyName === 'max-height' && expanded.value)
+    maxHeight.value = 'none'
 }
 const recordsData = ref<QuizAnswererRecord[] | null>(null)
 const loading = ref(false)
@@ -135,7 +136,9 @@ onMounted(async () => {
                 <p class="text-danger flex items-center gap-1">
                   <KunIcon name="lucide:x" />错误 {{ wrong }}
                 </p>
-                <p class="text-default-500">共 {{ quiz.answer_count }} 人作答</p>
+                <p class="text-default-500">
+                  共 {{ quiz.answer_count }} 人作答
+                </p>
                 <p v-if="quiz.quality_count > 0" class="text-default-500">
                   质量 {{ quiz.quality_average }} ({{ quiz.quality_count }} 人)
                 </p>
@@ -147,7 +150,10 @@ onMounted(async () => {
           <div>
             <p class="text-default-400 mb-1 text-xs">作答记录</p>
             <p v-if="loading" class="text-default-500 text-sm">加载中…</p>
-            <p v-else-if="!recordsData?.length" class="text-default-500 text-sm">
+            <p
+              v-else-if="!recordsData?.length"
+              class="text-default-500 text-sm"
+            >
               还没有人作答
             </p>
             <div v-else class="max-h-64 space-y-1 overflow-y-auto pr-1">

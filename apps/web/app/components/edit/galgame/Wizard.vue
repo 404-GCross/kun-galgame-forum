@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 interface SearchHit {
   id: number
   vndb_id?: string
@@ -54,10 +53,10 @@ const handleClaim = async (gid: number) => {
   if (!ok) return
 
   isClaiming.value = true
-  const result = await kunFetch<{ to_state: string }>(
-    `/galgame/${gid}/claim`,
-    { method: 'POST', body: {} }
-  )
+  const result = await kunFetch<{ to_state: string }>(`/galgame/${gid}/claim`, {
+    method: 'POST',
+    body: {}
+  })
   isClaiming.value = false
   if (result?.to_state) {
     useKunLoliInfo('认领成功, 已发布', 5)
@@ -124,8 +123,9 @@ onMounted(() => {
         </KunButton>
       </div>
       <p class="text-default-500 text-sm">
-        搜索覆盖已发布的 Galgame、尚未发布的草稿 (可一键认领), 以及他人正在审核中的投稿
-        (标记为「审核中」, 无法认领); 同时会显示您自己的待审核 / 已拒绝投稿。
+        搜索覆盖已发布的 Galgame、尚未发布的草稿 (可一键认领),
+        以及他人正在审核中的投稿 (标记为「审核中」, 无法认领);
+        同时会显示您自己的待审核 / 已拒绝投稿。
       </p>
     </div>
 
@@ -232,7 +232,9 @@ onMounted(() => {
       description="仅用于 VNDB 未收录的原创 / 同人 / 独立作品。提交后进入审核队列, 审核通过才会公开。"
     />
     <div class="flex justify-end">
-      <KunButton size="lg" @click="handleCreateNew">新建 Galgame 申请</KunButton>
+      <KunButton size="lg" @click="handleCreateNew"
+        >新建 Galgame 申请</KunButton
+      >
     </div>
   </div>
 </template>

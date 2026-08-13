@@ -38,7 +38,9 @@ const STORAGE_MAP: Record<string, string> = {
 const fetchKunPatchResource = async (vndbId: string) => {
   isLoading.value = true
   try {
-    const data = await fetch(`https://www.moyu.moe/api/hikari?vndb_id=${vndbId}`)
+    const data = await fetch(
+      `https://www.moyu.moe/api/hikari?vndb_id=${vndbId}`
+    )
     const res = (await data.json()) as HikariResponse
     if (res.success) {
       resources.value = res.data ? res.data.resource : []
@@ -181,7 +183,8 @@ onMounted(async () => {
           <div class="flex flex-col">
             <span class="text-xs">{{ resource.user.name }}</span>
             <span class="text-default-500 text-xs">
-              资源更新于 <KunTime :time="resource.update_time" type="datetime" show-year />
+              资源更新于
+              <KunTime :time="resource.update_time" type="datetime" show-year />
             </span>
           </div>
         </div>

@@ -308,8 +308,15 @@ const resetFilters = () => {
             : 'text-default-600 hover:bg-default-100'
         "
         @click="
-          sortField =
-            opt.value as 'time' | 'view' | 'created' | 'view_1d' | 'view_7d' | 'view_30d' | 'release_date' | 'rating'
+          sortField = opt.value as
+            | 'time'
+            | 'view'
+            | 'created'
+            | 'view_1d'
+            | 'view_7d'
+            | 'view_30d'
+            | 'release_date'
+            | 'rating'
         "
       >
         {{ opt.label }}
@@ -425,9 +432,7 @@ const resetFilters = () => {
       </div>
 
       <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          起始年份
-        </div>
+        <div class="text-default-700 mb-1.5 text-xs font-medium">起始年份</div>
         <KunScrollShadow>
           <button
             v-for="opt in yearOptions"
@@ -446,9 +451,7 @@ const resetFilters = () => {
       </div>
 
       <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          结束年份
-        </div>
+        <div class="text-default-700 mb-1.5 text-xs font-medium">结束年份</div>
         <KunScrollShadow>
           <button
             v-for="opt in yearOptions"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 withDefaults(
   defineProps<{
     isCollapsed?: boolean
@@ -35,7 +34,7 @@ const toggle = () => {
         type="button"
         :class="
           cn(
-            'flex w-full items-center justify-center rounded-lg border p-2 transition-colors cursor-pointer',
+            'flex w-full cursor-pointer items-center justify-center rounded-lg border p-2 transition-colors',
             'border-danger/40 bg-danger/10 text-danger-700 hover:bg-danger/20 dark:text-danger-300'
           )
         "
@@ -53,7 +52,7 @@ const toggle = () => {
       :aria-pressed="false"
       :class="
         cn(
-          'w-full rounded-lg border px-3 py-2 text-left transition-colors cursor-pointer outline-none focus-visible:ring-2',
+          'w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition-colors outline-none focus-visible:ring-2',
           'border-danger/40 bg-danger/10 text-danger-700 hover:bg-danger/20 focus-visible:ring-danger/40 dark:text-danger-300'
         )
       "

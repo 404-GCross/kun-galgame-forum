@@ -22,7 +22,8 @@ onMounted(async () => {
   if (data) fetched.value = data
 })
 
-const blurb = (r: UpvoteRecord) => r.description || randomUpvoteDescription(r.id)
+const blurb = (r: UpvoteRecord) =>
+  r.description || randomUpvoteDescription(r.id)
 </script>
 
 <template>
@@ -41,7 +42,9 @@ const blurb = (r: UpvoteRecord) => r.description || randomUpvoteDescription(r.id
           {{ r.user.name }}
         </span>
         <span class="text-default-500 truncate">
-          推了这个话题，<span class="text-secondary font-bold">{{ blurb(r) }}</span>
+          推了这个话题，<span class="text-secondary font-bold">{{
+            blurb(r)
+          }}</span>
         </span>
       </div>
       <span class="text-default-400 shrink-0 whitespace-nowrap">

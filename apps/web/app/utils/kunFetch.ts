@@ -17,9 +17,7 @@ const LOGIN_REQUIRED_CODES = new Set([
 
 const SSR_FORWARDED_COOKIES = ['kungal_session', 'KUNGalgameSettings']
 
-const extractForwardedCookies = (
-  cookieHeader?: string
-): string | undefined => {
+const extractForwardedCookies = (cookieHeader?: string): string | undefined => {
   if (!cookieHeader) return undefined
   const kept: string[] = []
   for (const part of cookieHeader.split(';')) {

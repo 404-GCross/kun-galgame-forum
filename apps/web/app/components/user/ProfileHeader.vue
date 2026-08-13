@@ -114,10 +114,10 @@ useIntersectionObserver(
       <div v-show="collapsed" class="fixed inset-x-0 top-20 z-20">
         <div class="flex justify-center">
           <div
-            class="w-full max-w-7xl min-w-0 px-2 desktop-nav:mr-3 desktop-nav:ml-[104px] desktop-nav:px-0"
+            class="desktop-nav:mr-3 desktop-nav:ml-[104px] desktop-nav:px-0 w-full max-w-7xl min-w-0 px-2"
           >
             <div
-              class="bg-content1 border-kun flex items-center gap-3 rounded-xl border px-4 py-2 shadow-kun-sm backdrop-blur-md"
+              class="bg-content1 border-kun shadow-kun-sm flex items-center gap-3 rounded-xl border px-4 py-2 backdrop-blur-md"
             >
               <KunAvatar
                 class-name="cursor-default shrink-0"
@@ -127,11 +127,17 @@ useIntersectionObserver(
                 :disable-floating="true"
               />
               <span class="truncate font-semibold">{{ user.name }}</span>
-              <KunChip size="sm" color="primary" class-name="hidden sm:inline-flex">
+              <KunChip
+                size="sm"
+                color="primary"
+                class-name="hidden sm:inline-flex"
+              >
                 {{ managementRoleLabel(user.roles) }}
               </KunChip>
 
-              <div class="text-default-600 ml-auto flex items-center gap-4 text-sm">
+              <div
+                class="text-default-600 ml-auto flex items-center gap-4 text-sm"
+              >
                 <span class="hidden sm:inline">话题 {{ user.topic }}</span>
                 <span class="hidden sm:inline">Galgame {{ user.galgame }}</span>
                 <span>

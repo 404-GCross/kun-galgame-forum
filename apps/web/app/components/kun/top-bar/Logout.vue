@@ -39,16 +39,25 @@ const logoutEverywhere = async () => {
       >
         <div class="flex items-start gap-3">
           <KunIcon
-            :name="logoutPending === 'everywhere' ? 'lucide:loader-circle' : 'lucide:log-out'"
+            :name="
+              logoutPending === 'everywhere'
+                ? 'lucide:loader-circle'
+                : 'lucide:log-out'
+            "
             :class="`text-primary mt-0.5 size-5 shrink-0 ${logoutPending === 'everywhere' ? 'animate-spin' : ''}`"
           />
           <div class="space-y-1">
             <div class="text-foreground flex items-center gap-2 font-medium">
               退出本站和 OAuth 账号
-              <span class="bg-primary-100 text-primary-700 rounded px-1.5 py-0.5 text-xs">推荐</span>
+              <span
+                class="bg-primary-100 text-primary-700 rounded px-1.5 py-0.5 text-xs"
+                >推荐</span
+              >
             </div>
             <p class="text-default-500 text-xs leading-relaxed">
-              本站与 OAuth 账号都会退出；其它已登录的站点会在下次刷新登录态时一并退出；再次登录需重新验证身份。适合公共 / 共享设备。
+              本站与 OAuth
+              账号都会退出；其它已登录的站点会在下次刷新登录态时一并退出；再次登录需重新验证身份。适合公共
+              / 共享设备。
             </p>
           </div>
         </div>
@@ -62,13 +71,18 @@ const logoutEverywhere = async () => {
       >
         <div class="flex items-start gap-3">
           <KunIcon
-            :name="logoutPending === 'local' ? 'lucide:loader-circle' : 'lucide:monitor'"
+            :name="
+              logoutPending === 'local'
+                ? 'lucide:loader-circle'
+                : 'lucide:monitor'
+            "
             :class="`text-default-500 mt-0.5 size-5 shrink-0 ${logoutPending === 'local' ? 'animate-spin' : ''}`"
           />
           <div class="space-y-1">
             <div class="text-foreground font-medium">仅退出本站</div>
             <p class="text-default-500 text-xs leading-relaxed">
-              只退出本站；OAuth 账号与其它站点保持登录；再次登录本站可免密直接进入。适合自己的设备。
+              只退出本站；OAuth
+              账号与其它站点保持登录；再次登录本站可免密直接进入。适合自己的设备。
             </p>
           </div>
         </div>

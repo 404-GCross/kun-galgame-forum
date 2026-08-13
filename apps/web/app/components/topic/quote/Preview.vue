@@ -11,7 +11,9 @@ const emit = defineEmits<{
 }>()
 
 const excerpt = computed(() => {
-  const text = markdownToText(props.preview.reply?.content_markdown ?? '').trim()
+  const text = markdownToText(
+    props.preview.reply?.content_markdown ?? ''
+  ).trim()
   return text.length > 120 ? `${text.slice(0, 120)}…` : text
 })
 </script>

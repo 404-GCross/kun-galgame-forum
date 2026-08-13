@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  KunRadioOption,
-  KunCheckBoxGroupOption
-} from '@kungal/ui-vue'
+import type { KunRadioOption, KunCheckBoxGroupOption } from '@kungal/ui-vue'
 
 const props = defineProps<{
   type: QuizType
@@ -25,7 +22,10 @@ const blankCount = computed(
 watch(
   blankCount,
   (n) => {
-    fillValues.value = Array.from({ length: n }, (_, i) => fillValues.value[i] ?? '')
+    fillValues.value = Array.from(
+      { length: n },
+      (_, i) => fillValues.value[i] ?? ''
+    )
   },
   { immediate: true }
 )
@@ -63,9 +63,7 @@ const validate = (): string | null => {
     case 'judge':
       return judgeValue.value ? null : '请选择正确或错误'
     case 'fill':
-      return fillValues.value.every((v) => v.trim())
-        ? null
-        : '请填写所有的空'
+      return fillValues.value.every((v) => v.trim()) ? null : '请填写所有的空'
     case 'essay':
       return essayText.value.trim() ? null : '请写下你的回答'
     default:

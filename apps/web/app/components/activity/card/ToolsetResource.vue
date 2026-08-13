@@ -21,7 +21,9 @@ const data = computed(
         />
         在工具《{{ data?.parent_name }}》发布了资源
       </span>
-      <p class="group-hover:text-primary line-clamp-3 text-base break-all transition-colors">
+      <p
+        class="group-hover:text-primary line-clamp-3 text-base break-all transition-colors"
+      >
         {{ markdownToText(activity.content) }}
       </p>
     </KunLink>

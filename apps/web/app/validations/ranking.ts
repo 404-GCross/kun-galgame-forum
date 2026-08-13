@@ -16,7 +16,14 @@ export const getUserRankingSchema = z.object({
 export const getTopicRankingSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
   limit: z.coerce.number<number>().min(1).max(100),
-  sort_field: z.enum(['view', 'upvote', 'like', 'favorite', 'reply', 'comment']),
+  sort_field: z.enum([
+    'view',
+    'upvote',
+    'like',
+    'favorite',
+    'reply',
+    'comment'
+  ]),
   sort_order: z.enum(['asc', 'desc'])
 })
 

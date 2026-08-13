@@ -85,7 +85,9 @@ const sections = computed(() => {
 })
 
 const isDesktop = useMediaQuery('(min-width: 768px)')
-const tabOrientation = computed(() => (isDesktop.value ? 'vertical' : 'horizontal'))
+const tabOrientation = computed(() =>
+  isDesktop.value ? 'vertical' : 'horizontal'
+)
 
 const tabKey = (name: string) => name || UNGROUPED
 
@@ -149,7 +151,10 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
 </script>
 
 <template>
-  <div v-if="layout === 'tabs'" class="flex flex-col gap-4 md:flex-row md:gap-6">
+  <div
+    v-if="layout === 'tabs'"
+    class="flex flex-col gap-4 md:flex-row md:gap-6"
+  >
     <KunTab
       :model-value="active"
       :items="tabItems"

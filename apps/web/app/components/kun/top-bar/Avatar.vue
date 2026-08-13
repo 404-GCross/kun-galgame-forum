@@ -87,11 +87,10 @@ const statusClasses = computed(() => {
         登录
       </KunButton>
     </template>
-
   </div>
 </template>
 
-<style  scoped>
+<style scoped>
 .new {
   animation: kun-pulse 1s infinite;
 }

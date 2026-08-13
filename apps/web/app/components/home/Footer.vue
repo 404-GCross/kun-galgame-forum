@@ -4,7 +4,6 @@ import { kunSubSites } from '~/constants/layout'
 
 <template>
   <footer class="text-default-500 space-y-2.5 text-center text-xs">
-
     <div class="grid grid-cols-3 gap-x-2 gap-y-1">
       <div
         v-for="(site, index) in kunSubSites"
@@ -24,7 +23,11 @@ import { kunSubSites } from '~/constants/layout'
         class="flex items-center"
         :aria-label="kungal.titleShort"
       >
-        <KunImage class="size-5 rounded-md" src="/favicon.webp" :alt="kungal.titleShort" />
+        <KunImage
+          class="size-5 rounded-md"
+          src="/favicon.webp"
+          :alt="kungal.titleShort"
+        />
       </a>
       <span>© 2023 ~ Forever! {{ kungal.titleShort }}</span>
     </div>

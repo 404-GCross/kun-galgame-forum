@@ -75,8 +75,16 @@ onMounted(async () => {
   }
   const families = [
     { map: maps.tag, key: 'catalog.work.tag_ids', path: 'galgame-tag' },
-    { map: maps.official, key: 'catalog.work.labels', path: 'galgame-official' },
-    { map: maps.engine, key: 'catalog.work.engine_ids', path: 'galgame-engine' },
+    {
+      map: maps.official,
+      key: 'catalog.work.labels',
+      path: 'galgame-official'
+    },
+    {
+      map: maps.engine,
+      key: 'catalog.work.engine_ids',
+      path: 'galgame-engine'
+    },
     { map: maps.series, key: 'catalog.work.series_ids', path: 'galgame-series' }
   ]
   await Promise.all(

@@ -50,7 +50,6 @@ const readonlyReason = computed(() => {
 })
 const editable = computed(() => !props.disabled && readonlyReason.value === '')
 
-
 const textBuffer = ref('')
 const boolBuffer = ref(false)
 const stringList = ref<string[]>([])
@@ -147,9 +146,7 @@ const emitObjectRows = () => {
   emit(
     'update:modelValue',
     objectRows.value
-      .filter((row) =>
-        cols.some((c) => String(row[c.key] ?? '').trim() !== '')
-      )
+      .filter((row) => cols.some((c) => String(row[c.key] ?? '').trim() !== ''))
       .map((row) => {
         const out: ObjectRow = { ...row }
         for (const c of cols) {
@@ -179,6 +176,12 @@ const selectOptions = computed(() =>
   (props.config?.options ?? []).map((o) => ({ value: o.value, label: o.label }))
 )
 
+// Cast here, not in the template. `:model-value="modelValue as string | number
+// | null"` makes vue-eslint-parser read the top-level `|` as a Vue 2 filter
+// (vue/no-deprecated-filter). Parentheses used to hide it until prettier
+// stripped them as redundant.
+const selectValue = computed(() => props.modelValue as string | number | null)
+
 const resolveImageURL = (v: unknown) =>
   props.config?.resolveImage ? props.config.resolveImage(v) : ''
 
@@ -192,7 +195,6 @@ const imageURLs = computed(() => {
   }
   return []
 })
-
 
 const imageItems = computed<unknown[]>(() =>
   Array.isArray(props.modelValue) ? (props.modelValue as unknown[]) : []
@@ -308,7 +310,9 @@ const pinImageItem = (index: number) => {
         :is="config.component"
         :model-value="modelValue"
         :disabled="!editable"
-        @update:model-value="(value: unknown) => emit('update:modelValue', value)"
+        @update:model-value="
+          (value: unknown) => emit('update:modelValue', value)
+        "
       />
       <p v-if="config?.description" class="text-default-400 text-xs">
         {{ config.description }}
@@ -329,7 +333,9 @@ const pinImageItem = (index: number) => {
         :placeholder="config?.placeholder"
         :id-key="config.entityIdKey"
         :kind-options="config.entityKinds"
-        :default-kind="config?.entityDefaultKind ?? config.entityKinds[0]!.value"
+        :default-kind="
+          config?.entityDefaultKind ?? config.entityKinds[0]!.value
+        "
         :search="config.searchEntities"
         :resolve="config?.resolveEntities"
         @update:model-value="(value) => emit('update:modelValue', value)"
@@ -355,10 +361,7 @@ const pinImageItem = (index: number) => {
     </template>
 
     <template v-else-if="!editable">
-      <div
-        v-if="imageURLs.length"
-        class="flex flex-wrap items-start gap-2"
-      >
+      <div v-if="imageURLs.length" class="flex flex-wrap items-start gap-2">
         <img
           v-for="(url, i) in imageURLs"
           :key="i"
@@ -382,7 +385,7 @@ const pinImageItem = (index: number) => {
       />
       <KunSelect
         v-else-if="control === 'select'"
-        :model-value="(modelValue as string | number | null)"
+        :model-value="selectValue"
         :options="selectOptions"
         :description="config?.description"
         @update:model-value="emitSelect"
@@ -410,7 +413,12 @@ const pinImageItem = (index: number) => {
             <KunSelect
               v-if="col.control === 'select'"
               :model-value="String(row[col.key] ?? '')"
-              :options="(col.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))"
+              :options="
+                (col.options ?? []).map((o) => ({
+                  value: String(o.value),
+                  label: o.label
+                }))
+              "
               :class-name="col.width ?? 'flex-1'"
               @update:model-value="
                 (v: string | string[] | null) => {
@@ -473,7 +481,13 @@ const pinImageItem = (index: number) => {
             @click="pickFiles"
           >
             <KunIcon name="lucide:upload" />
-            {{ isUploading ? uploadProgress : imageURLs[0] ? '更换图片' : '上传图片' }}
+            {{
+              isUploading
+                ? uploadProgress
+                : imageURLs[0]
+                  ? '更换图片'
+                  : '上传图片'
+            }}
           </KunButton>
           <KunButton
             v-if="imageURLs[0]"
@@ -500,7 +514,9 @@ const pinImageItem = (index: number) => {
             v-for="(item, index) in sortItems"
             :key="resolveImageURL(item) || index"
             class="ek-image-item border-default-200 group relative overflow-hidden rounded border"
-            :class="{ 'ring-primary border-primary ring-2': isPinnedItem(item) }"
+            :class="{
+              'ring-primary border-primary ring-2': isPinnedItem(item)
+            }"
           >
             <img
               :src="resolveImageURL(item)"

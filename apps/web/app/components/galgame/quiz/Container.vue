@@ -17,14 +17,19 @@ const page = useRouteQuery('page', 1, { ...opts, transform: Number })
 const tab = useRouteQuery<'all' | 'mine'>('tab', 'all', opts)
 const category = useRouteQuery<string>('category', 'all', opts)
 const type = useRouteQuery<string>('type', 'all', opts)
-const difficulty = useRouteQuery('difficulty', 0, { ...opts, transform: Number })
+const difficulty = useRouteQuery('difficulty', 0, {
+  ...opts,
+  transform: Number
+})
 const sortField = useRouteQuery<string>('sort_field', 'update_time', opts)
 const sortOrder = useRouteQuery<'asc' | 'desc'>('sort_order', 'desc', opts)
 const limit = 50
 
 const activeTab = computed(() => (isLoggedIn.value ? tab.value : 'all'))
 const requestUrl = computed(() =>
-  activeTab.value === 'mine' ? '/galgame-quiz/mine/answered' : '/galgame-quiz/all'
+  activeTab.value === 'mine'
+    ? '/galgame-quiz/mine/answered'
+    : '/galgame-quiz/all'
 )
 
 const { data, status, refresh } = await useKunFetch<QuizListPage>(requestUrl, {
@@ -84,7 +89,9 @@ const onPublished = () => {
       <KunHeader name="Galgame 题库">
         <template #description>
           <p class="text-default-500">
-            由 Galgame 爱好者共同建设的题库, 支持单选、多选、判断、填空、问答等题型。答对可获得萌萌点, 出题合格同样有奖励。
+            由 Galgame 爱好者共同建设的题库,
+            支持单选、多选、判断、填空、问答等题型。答对可获得萌萌点,
+            出题合格同样有奖励。
           </p>
         </template>
       </KunHeader>

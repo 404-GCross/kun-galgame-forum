@@ -26,7 +26,12 @@ const userOf = computed(() => (uid?: number) => {
 
 <template>
   <div class="space-y-3">
-    <KunTab v-model="status" :items="statusTabs" variant="underlined" size="md" />
+    <KunTab
+      v-model="status"
+      :items="statusTabs"
+      variant="underlined"
+      size="md"
+    />
 
     <div v-if="loading" class="flex justify-center py-8">
       <KunLoading description="加载中…" />

@@ -4,9 +4,7 @@ import { kunQuizDifficultyLabel } from '~/constants/galgame-quiz'
 const props = defineProps<{ activity: ActivityItem }>()
 
 const data = computed(() => props.activity.data as QuizActivityData | undefined)
-const quizId = computed(
-  () => Number(props.activity.link.split('/').pop()) || 0
-)
+const quizId = computed(() => Number(props.activity.link.split('/').pop()) || 0)
 
 const summary = computed(() => {
   const d = data.value

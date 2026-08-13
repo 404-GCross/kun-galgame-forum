@@ -100,7 +100,11 @@ const submit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="isOpen" inner-class-name="max-w-md" :is-dismissable="false">
+  <KunModal
+    v-model="isOpen"
+    inner-class-name="max-w-md"
+    :is-dismissable="false"
+  >
     <form class="space-y-4" @submit.prevent>
       <h2 class="text-xl font-bold">
         {{ mode === 'create' ? '新建收藏夹' : '编辑收藏夹' }}

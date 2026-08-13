@@ -2,26 +2,20 @@ import type { PollFormData } from '~/components/topic/poll/types'
 
 export const usePoll = (topicId: number) => {
   const getPoll = () => {
-    return useKunFetch<TopicPoll[]>(
-      `/topic/${topicId}/poll/topic`,
-      {
-        query: { topic_id: topicId },
-        lazy: true
-      }
-    )
+    return useKunFetch<TopicPoll[]>(`/topic/${topicId}/poll/topic`, {
+      query: { topic_id: topicId },
+      lazy: true
+    })
   }
 
   const createPoll = async (data: PollFormData) => {
-    const res = await kunFetch<TopicPoll>(
-      `/topic/${topicId}/poll`,
-      {
-        method: 'POST',
-        body: {
-          ...data,
-          options: data.options.map((o) => ({ text: o.text }))
-        }
+    const res = await kunFetch<TopicPoll>(`/topic/${topicId}/poll`, {
+      method: 'POST',
+      body: {
+        ...data,
+        options: data.options.map((o) => ({ text: o.text }))
       }
-    )
+    })
     return res
   }
 

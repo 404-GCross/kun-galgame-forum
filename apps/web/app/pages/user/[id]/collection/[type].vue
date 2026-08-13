@@ -11,8 +11,9 @@ const props = defineProps<{
 const route = useRoute()
 const collectionType = computed(() => {
   const t = (route.params as { type: string }).type
-  return (t === 'topic' ? 'topic' : 'galgame') as
-    (typeof KUN_USER_PAGE_COLLECTION_TYPE)[number]
+  return (
+    t === 'topic' ? 'topic' : 'galgame'
+  ) as (typeof KUN_USER_PAGE_COLLECTION_TYPE)[number]
 })
 
 useKunDisableSeo(`${props.user.name}的收藏`)

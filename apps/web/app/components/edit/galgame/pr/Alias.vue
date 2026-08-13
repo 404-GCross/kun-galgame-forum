@@ -9,9 +9,7 @@ const { aliases } = storeToRefs(usePersistEditGalgameStore())
 
 const selectedAlias = computed({
   get: () =>
-    props.type === 'create'
-      ? aliases.value
-      : (galgamePR.value[0]?.alias ?? []),
+    props.type === 'create' ? aliases.value : (galgamePR.value[0]?.alias ?? []),
   set: (next: string[]) => {
     if (props.type === 'create') {
       aliases.value = next

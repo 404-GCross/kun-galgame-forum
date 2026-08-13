@@ -68,9 +68,13 @@ const defaultSelected = computed<number | 'bucket' | null>(() =>
     ? todayDay.value
     : null
 )
-watch(() => props.data.month, () => (selected.value = defaultSelected.value), {
-  immediate: true
-})
+watch(
+  () => props.data.month,
+  () => (selected.value = defaultSelected.value),
+  {
+    immediate: true
+  }
+)
 
 const scrollToRow = (id: string) => {
   if (import.meta.client) {

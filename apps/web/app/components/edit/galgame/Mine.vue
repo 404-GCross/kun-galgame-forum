@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const pageData = reactive({
   before: 0,
   limit: 20
@@ -104,7 +103,9 @@ const handleResubmit = async (item: UserClaimItem) => {
               {{ stateBadge(item.claim_state).label }}
             </KunChip>
           </div>
-          <div class="text-default-500 flex flex-wrap items-center gap-2 text-sm">
+          <div
+            class="text-default-500 flex flex-wrap items-center gap-2 text-sm"
+          >
             <span>提交于 <KunTime :time="item.first_acted_at" /></span>
             <template v-if="item.last_event_at !== item.first_acted_at">
               <span>·</span>

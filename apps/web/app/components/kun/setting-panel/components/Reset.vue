@@ -20,7 +20,8 @@ const handleRecover = async () => {
     <div class="space-y-0.5">
       <p class="text-default-700 font-medium">恢复默认设置</p>
       <p class="text-default-500 text-sm">
-        清除本地保存的全部论坛设置与草稿（话题、Galgame 草稿等），并退出登录。此操作不可撤销。
+        清除本地保存的全部论坛设置与草稿（话题、Galgame
+        草稿等），并退出登录。此操作不可撤销。
       </p>
     </div>
     <KunButton

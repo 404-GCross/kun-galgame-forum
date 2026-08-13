@@ -106,10 +106,7 @@ const displayTitle = (draft: TopicDraftListItem) =>
       </div>
 
       <div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
-        <div
-          v-if="isLoading"
-          class="text-default-400 py-8 text-center text-sm"
-        >
+        <div v-if="isLoading" class="text-default-400 py-8 text-center text-sm">
           加载中…
         </div>
         <div

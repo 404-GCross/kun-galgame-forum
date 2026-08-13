@@ -18,7 +18,11 @@ const amendedCount = computed(() => props.proposal.amendments?.length ?? 0)
 </script>
 
 <template>
-  <KunCard :is-hoverable="true" :is-transparent="false" content-class="space-y-2">
+  <KunCard
+    :is-hoverable="true"
+    :is-transparent="false"
+    content-class="space-y-2"
+  >
     <div class="flex flex-wrap items-center gap-2">
       <KunChip size="sm" variant="flat" :color="badge.color">
         {{ badge.label }}
@@ -28,12 +32,7 @@ const amendedCount = computed(() => props.proposal.amendments?.length ?? 0)
           提案 #{{ proposal.id }}
         </span>
       </slot>
-      <KunChip
-        v-if="amendedCount"
-        size="sm"
-        variant="flat"
-        color="secondary"
-      >
+      <KunChip v-if="amendedCount" size="sm" variant="flat" color="secondary">
         审核修正 ×{{ amendedCount }}
       </KunChip>
       <span class="text-default-400 ml-auto text-xs">
@@ -59,7 +58,11 @@ const amendedCount = computed(() => props.proposal.amendments?.length ?? 0)
 
     <div class="text-default-400 flex flex-wrap items-center gap-2 text-xs">
       <slot name="proposer">
-        <span>提案人：{{ proposer?.name ?? `用户 #${proposal.proposer_uid}` }}</span>
+        <span
+          >提案人：{{
+            proposer?.name ?? `用户 #${proposal.proposer_uid}`
+          }}</span
+        >
       </slot>
       <template v-if="proposal.status !== 'open' && proposal.decided_by_uid">
         <span>

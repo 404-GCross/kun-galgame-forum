@@ -111,7 +111,10 @@ const submitFix = async (index: number) => {
             class-name="mb-2 inline-flex items-center gap-1 text-lg font-medium hover:text-primary"
           >
             {{ getPreferredLanguageText(res.galgame_name) }}
-            <KunIcon name="lucide:arrow-up-right" class="text-base opacity-60" />
+            <KunIcon
+              name="lucide:arrow-up-right"
+              class="text-base opacity-60"
+            />
           </KunLink>
 
           <div class="mb-2 flex flex-wrap items-center gap-2">

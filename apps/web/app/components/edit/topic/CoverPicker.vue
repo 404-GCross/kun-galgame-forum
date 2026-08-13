@@ -96,7 +96,7 @@ const handleShift = (index: number, dir: -1 | 1) => {
         />
 
         <div
-          class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          class="absolute top-1.5 right-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
         >
           <KunTooltip text="前移">
             <KunButton
@@ -156,7 +156,8 @@ const handleShift = (index: number, dir: -1 | 1) => {
     </div>
 
     <p class="text-default-500 text-sm">
-      可选, 最多 9 张。用箭头调整顺序, 第一张为主封面。封面会显示在首页 / 列表的话题卡片上。
+      可选, 最多 9 张。用箭头调整顺序, 第一张为主封面。封面会显示在首页 /
+      列表的话题卡片上。
     </p>
   </div>
 </template>

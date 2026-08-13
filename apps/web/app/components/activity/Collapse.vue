@@ -9,7 +9,8 @@ const isOverflowing = ref(false)
 let resizeObserver: ResizeObserver | null = null
 
 const measure = () => {
-  isOverflowing.value = !!body.value && body.value.scrollHeight > props.maxHeight
+  isOverflowing.value =
+    !!body.value && body.value.scrollHeight > props.maxHeight
 }
 
 const bodyStyle = computed(() =>

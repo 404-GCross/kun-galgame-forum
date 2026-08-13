@@ -46,7 +46,9 @@ onScopeDispose(() => {
 })
 
 const { id: storeUid } = storeToRefs(usePersistUserStore())
-const isOwner = computed(() => !!storeUid.value && userId.value === storeUid.value)
+const isOwner = computed(
+  () => !!storeUid.value && userId.value === storeUid.value
+)
 
 const activeSegment = computed(() => {
   const m = route.path.match(/^\/user\/\d+\/([^/]+)/)
@@ -76,7 +78,9 @@ if (isBanned.value) {
       <template v-if="data">
         <UserProfileHeader :user="data" />
 
-        <div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+        <div
+          class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)]"
+        >
           <div class="sm:hidden">
             <KunTab
               :items="kunUserMainNav(data.id, isOwner)"

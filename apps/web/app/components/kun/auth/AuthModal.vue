@@ -15,7 +15,11 @@ const handleRegister = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open" inner-class-name="max-w-md overflow-visible" :is-dismissable="false">
+  <KunModal
+    v-model="open"
+    inner-class-name="max-w-md overflow-visible"
+    :is-dismissable="false"
+  >
     <div class="space-y-6 p-2 select-none">
       <div class="flex flex-col items-center gap-3">
         <KunImage src="/favicon.webp" class-name="h-12 w-12 rounded-2xl" />

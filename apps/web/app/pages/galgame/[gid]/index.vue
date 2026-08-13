@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import type {
-  VideoGame,
-  WithContext,
-  Person,
-  BreadcrumbList
-} from 'schema-dts'
+import type { VideoGame, WithContext, Person, BreadcrumbList } from 'schema-dts'
 
 const userId = storeToRefs(usePersistUserStore()).id.value
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
@@ -76,7 +71,8 @@ if (galgame) {
       image: getEffectiveBanner(galgame),
       description: description,
       inLanguage: galgame.original_language,
-      datePublished: galgame.release_date || new Date(galgame.created).toISOString(),
+      datePublished:
+        galgame.release_date || new Date(galgame.created).toISOString(),
       dateModified: new Date(galgame.updated).toISOString(),
       publisher: galgame.official.map((o) => ({
         '@type': 'Organization',
@@ -139,7 +135,12 @@ if (galgame) {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '首页', item: kungal.domain.main },
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: '首页',
+          item: kungal.domain.main
+        },
         {
           '@type': 'ListItem',
           position: 2,

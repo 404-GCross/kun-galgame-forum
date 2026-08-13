@@ -80,7 +80,8 @@ const behaviorLabel = (entry: MoemoepointLogEntry): string => {
       return entry.delta < 0 ? `${kindLabel}被移除` : `创建了新的${kindLabel}`
     }
     const action = REASON_ACTION[entry.reason]
-    if (action) return `${kindLabel}${entry.delta < 0 ? action.neg : action.pos}`
+    if (action)
+      return `${kindLabel}${entry.delta < 0 ? action.neg : action.pos}`
   }
   return reasonMeta(entry.reason).label
 }
@@ -209,10 +210,7 @@ watch(isOpen, (open) => {
             <span
               class="text-default-400 flex items-center gap-1 truncate text-xs"
             >
-              <template
-                v-for="(seg, i) in metaSegments(entry)"
-                :key="i"
-              >
+              <template v-for="(seg, i) in metaSegments(entry)" :key="i">
                 <span v-if="i > 0">·</span>
                 <KunLink
                   v-if="seg.href"

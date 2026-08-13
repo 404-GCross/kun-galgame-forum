@@ -21,12 +21,12 @@ type GalgameRating struct {
 	Route        int             `gorm:"default:0" json:"route"`
 	System       int             `gorm:"default:0" json:"system"`
 	Voice        int             `gorm:"default:0" json:"voice"`
-	ReplayValue int `gorm:"column:replay_value;default:0" json:"replay_value"`
+	ReplayValue  int             `gorm:"column:replay_value;default:0" json:"replay_value"`
 
-	GalgameID int `gorm:"column:galgame_id;not null;constraint:OnDelete:RESTRICT" json:"galgame_id"`
-	UserID    int `gorm:"column:user_id;not null" json:"user_id"`
-	LikeCount    int             `gorm:"column:like_count;default:0" json:"like_count"`
-	CommentCount int             `gorm:"column:comment_count;default:0" json:"comment_count"`
+	GalgameID    int `gorm:"column:galgame_id;not null;constraint:OnDelete:RESTRICT" json:"galgame_id"`
+	UserID       int `gorm:"column:user_id;not null" json:"user_id"`
+	LikeCount    int `gorm:"column:like_count;default:0" json:"like_count"`
+	CommentCount int `gorm:"column:comment_count;default:0" json:"comment_count"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
@@ -44,7 +44,6 @@ type GalgameRatingLike struct {
 }
 
 func (GalgameRatingLike) TableName() string { return "galgame_rating_like" }
-
 
 type GalgameRatingRow struct {
 	ID           int    `gorm:"column:id"`

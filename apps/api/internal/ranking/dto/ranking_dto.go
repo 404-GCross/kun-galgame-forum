@@ -1,12 +1,11 @@
 package dto
 
-
 type GalgameRankingRequest struct {
-	Page      int    `query:"page" validate:"min=1"`
-	Limit     int    `query:"limit" validate:"min=1,max=50"`
-	SortField string `query:"sort_field" validate:"required,oneof=view like favorite resource rating"`
-	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
-	ShowNoResource bool `query:"show_no_resource"`
+	Page           int    `query:"page" validate:"min=1"`
+	Limit          int    `query:"limit" validate:"min=1,max=50"`
+	SortField      string `query:"sort_field" validate:"required,oneof=view like favorite resource rating"`
+	SortOrder      string `query:"sort_order" validate:"required,oneof=asc desc"`
+	ShowNoResource bool   `query:"show_no_resource"`
 }
 
 type TopicRankingRequest struct {
@@ -23,7 +22,6 @@ type UserRankingRequest struct {
 	SortOrder string `query:"sort_order" validate:"required,oneof=asc desc"`
 }
 
-
 type UserBrief struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
@@ -38,14 +36,14 @@ type LocaleName struct {
 }
 
 type GalgameRankingItem struct {
-	ID   int        `json:"id"`
-	Name LocaleName `json:"name"`
-	User UserBrief  `json:"user"`
-	Banner string   `json:"banner"`
-	Value     float64 `json:"value"`
-	SortField string  `json:"sort_field"`
-	EffectiveBannerHash string `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string `json:"effective_banner_url,omitempty"`
+	ID                  int        `json:"id"`
+	Name                LocaleName `json:"name"`
+	User                UserBrief  `json:"user"`
+	Banner              string     `json:"banner"`
+	Value               float64    `json:"value"`
+	SortField           string     `json:"sort_field"`
+	EffectiveBannerHash string     `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL  string     `json:"effective_banner_url,omitempty"`
 }
 
 type TopicRankingItem struct {
@@ -57,10 +55,10 @@ type TopicRankingItem struct {
 }
 
 type UserRankingItem struct {
-	ID     int    `json:"id"`
-	Name   string `json:"name"`
-	Avatar string `json:"avatar"`
-	Bio    string `json:"bio"`
-	Value  int    `json:"value"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Avatar    string `json:"avatar"`
+	Bio       string `json:"bio"`
+	Value     int    `json:"value"`
 	SortField string `json:"sort_field"`
 }

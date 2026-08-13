@@ -56,7 +56,7 @@ const handleChangeImage = async (index: number) => {
           :class="
             showKUNGalgameBackground === image.index
               ? 'ring-primary'
-              : 'ring-transparent hover:ring-default-300'
+              : 'hover:ring-default-300 ring-transparent'
           "
           @click="handleChangeImage(image.index)"
         >
@@ -101,7 +101,12 @@ const handleChangeImage = async (index: number) => {
       </div>
 
       <div class="flex items-center gap-2">
-        <KunButton variant="flat" color="default" size="sm" @click="restoreBackground">
+        <KunButton
+          variant="flat"
+          color="default"
+          size="sm"
+          @click="restoreBackground"
+        >
           恢复默认
         </KunButton>
         <KunSettingPanelComponentsCustomBackground />

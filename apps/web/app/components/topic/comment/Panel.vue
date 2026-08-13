@@ -27,19 +27,16 @@ const handlePublishComment = async () => {
   }
 
   isPublishing.value = true
-  const comment = await kunFetch<TopicComment>(
-    `/topic/${topicId}/comment`,
-    {
-      method: 'POST',
-      body: {
-        topic_id: topicId,
-        reply_id: props.replyId,
-        target_user_id: props.targetUser.id,
-        parent_comment_id: props.parentCommentId,
-        content: commentValue.value
-      }
+  const comment = await kunFetch<TopicComment>(`/topic/${topicId}/comment`, {
+    method: 'POST',
+    body: {
+      topic_id: topicId,
+      reply_id: props.replyId,
+      target_user_id: props.targetUser.id,
+      parent_comment_id: props.parentCommentId,
+      content: commentValue.value
     }
-  )
+  })
   isPublishing.value = false
 
   if (comment) {

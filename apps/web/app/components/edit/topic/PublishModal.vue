@@ -82,7 +82,9 @@ const confirmText = computed(() => {
             variant="light"
             color="primary"
             :full-width="true"
-            @update:model-value="(v) => handleSelectCategory(v as TopicCategoryKey)"
+            @update:model-value="
+              (v) => handleSelectCategory(v as TopicCategoryKey)
+            "
           />
         </section>
 
@@ -126,8 +128,10 @@ const confirmText = computed(() => {
             color="primary"
           />
           <p class="text-default-500 text-sm">
-            勾选后, 未开启网站 NSFW 模式的用户将无法看到该话题。看起来不能在公司报告大会上放在
-            PPT 里展示的话题都是 NSFW, 越严越好 (只允许萌萌的涩涩, 不允许纯粹的色情废料)
+            勾选后, 未开启网站 NSFW
+            模式的用户将无法看到该话题。看起来不能在公司报告大会上放在 PPT
+            里展示的话题都是 NSFW, 越严越好 (只允许萌萌的涩涩,
+            不允许纯粹的色情废料)
           </p>
         </section>
 
@@ -141,7 +145,8 @@ const confirmText = computed(() => {
             发布须知 <span class="text-danger-500">*</span>
           </h3>
           <p class="text-default-500 text-sm">
-            勾选确认下面的须知即可发布话题, 仅对萌萌点 &lt; 50 的用户生效, 这是为了防止发布过多无意义的话题, 请您理解
+            勾选确认下面的须知即可发布话题, 仅对萌萌点 &lt; 50 的用户生效,
+            这是为了防止发布过多无意义的话题, 请您理解
           </p>
           <div class="space-y-2">
             <KunCheckBox

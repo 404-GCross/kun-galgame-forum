@@ -48,9 +48,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 onBeforeRouteLeave(async () => {
   if (tempStore.isTopicRewriting) {
-    const res = await useComponentMessageStore().alert(
-      '确认离开界面吗？您的更改将不会保存。'
-    )
+    const res =
+      await useComponentMessageStore().alert(
+        '确认离开界面吗？您的更改将不会保存。'
+      )
     if (!res) {
       return false
     }
@@ -117,7 +118,9 @@ onBeforeRouteLeave(async () => {
         "
       >
         <div class="bg-content1 shadow-kun-md px-6 sm:px-16">
-          <div class="border-default-200/60 border-b pt-8 pb-4 sm:pt-14 sm:pb-5">
+          <div
+            class="border-default-200/60 border-b pt-8 pb-4 sm:pt-14 sm:pb-5"
+          >
             <EditTopicTitle />
           </div>
 
@@ -143,7 +146,10 @@ onBeforeRouteLeave(async () => {
                 <template #toolbar="api">
                   <Teleport to="#et-toolbar" defer>
                     <template v-if="editorMode === 'wysiwyg'">
-                      <KunEditorToolbar v-bind="api" :items="KUN_EDITOR_TOOLBAR_ITEMS" />
+                      <KunEditorToolbar
+                        v-bind="api"
+                        :items="KUN_EDITOR_TOOLBAR_ITEMS"
+                      />
                       <span
                         class="bg-default-200 mx-1 h-5 w-px"
                         aria-hidden="true"

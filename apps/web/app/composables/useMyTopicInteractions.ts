@@ -19,7 +19,8 @@ export const useMyTopicInteractions = () => {
     if (!res) return
     favorited.value = res.favorited ?? []
     const norm: Record<number, string[]> = {}
-    for (const [k, v] of Object.entries(res.reactions ?? {})) norm[Number(k)] = v
+    for (const [k, v] of Object.entries(res.reactions ?? {}))
+      norm[Number(k)] = v
     reactions.value = norm
   }
 

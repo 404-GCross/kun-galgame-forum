@@ -20,10 +20,7 @@ const handleSubmit = async () => {
   const result = updateToolsetSchema.safeParse(toolsetUpdateForm)
   if (!result.success) {
     const message = JSON.parse(result.error.message)[0]
-    useMessage(
-      formatKunZodIssue(message),
-      'warn'
-    )
+    useMessage(formatKunZodIssue(message), 'warn')
     return
   }
   if (isSubmitting.value) {
@@ -77,7 +74,10 @@ const handleUpdatePageLink = (value: string | number) => {
           kunGalgameToolsetTypeOptions.filter(
             (o) => o.value !== 'all'
           ) as KunSelectOption<
-            Exclude<(typeof kunGalgameToolsetTypeOptions)[number]['value'], 'all'>
+            Exclude<
+              (typeof kunGalgameToolsetTypeOptions)[number]['value'],
+              'all'
+            >
           >[]
         "
       />

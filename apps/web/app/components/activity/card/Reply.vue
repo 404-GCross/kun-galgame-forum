@@ -1,7 +1,9 @@
 <script setup lang="ts">
 const props = defineProps<{ activity: ActivityItem }>()
 
-const data = computed(() => props.activity.data as ReplyActivityData | undefined)
+const data = computed(
+  () => props.activity.data as ReplyActivityData | undefined
+)
 const quoted = computed(() => data.value?.quoted_reply)
 </script>
 

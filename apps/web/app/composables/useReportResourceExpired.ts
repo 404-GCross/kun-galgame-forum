@@ -1,4 +1,9 @@
-export type ReportExpireStatus = 'idle' | 'checking' | 'expired' | 'alive' | 'error'
+export type ReportExpireStatus =
+  | 'idle'
+  | 'checking'
+  | 'expired'
+  | 'alive'
+  | 'error'
 
 export const useReportResourceExpired = () => {
   const status = ref<ReportExpireStatus>('idle')

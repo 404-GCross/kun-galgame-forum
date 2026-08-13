@@ -8,7 +8,11 @@ const isTodo = computed(() => props.activity.type === 'TODO_CREATION')
 
 const meta = computed(() =>
   isTodo.value
-    ? { icon: 'lucide:list-checks', label: '待办事项', color: 'text-warning-600' }
+    ? {
+        icon: 'lucide:list-checks',
+        label: '待办事项',
+        color: 'text-warning-600'
+      }
     : { icon: 'lucide:megaphone', label: '更新日志', color: 'text-primary' }
 )
 

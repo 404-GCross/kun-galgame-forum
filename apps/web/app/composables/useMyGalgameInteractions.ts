@@ -2,7 +2,10 @@ export const useMyGalgameInteractions = () => {
   const { id } = usePersistUserStore()
   const liked = useState<number[]>('my-galgame-liked', () => [])
   const favorited = useState<number[]>('my-galgame-favorited', () => [])
-  const loaded = useState<boolean>('my-galgame-interactions-loaded', () => false)
+  const loaded = useState<boolean>(
+    'my-galgame-interactions-loaded',
+    () => false
+  )
 
   const ensureLoaded = async () => {
     if (loaded.value || !id) return

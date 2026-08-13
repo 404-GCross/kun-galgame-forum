@@ -10,7 +10,13 @@ const props = withDefaults(
     tooltip?: string
     size?: 'sm' | 'md' | 'lg'
   }>(),
-  { label: '收藏', tooltip: '收藏', size: 'md', body: undefined, messages: undefined }
+  {
+    label: '收藏',
+    tooltip: '收藏',
+    size: 'md',
+    body: undefined,
+    messages: undefined
+  }
 )
 
 const emits = defineEmits<{ changed: [favorited: boolean] }>()

@@ -4,7 +4,8 @@ import { KUN_REACTION_EMOJI, reactionAsset } from '~/constants/reaction'
 const { list, toggle } = inject(reactionsKey)!
 
 const MAX_AVATARS = 3
-const shownReactors = (r: KunReaction) => r.reactors?.slice(0, MAX_AVATARS) ?? []
+const shownReactors = (r: KunReaction) =>
+  r.reactors?.slice(0, MAX_AVATARS) ?? []
 const overflow = (r: KunReaction) => r.count - shownReactors(r).length
 </script>
 
@@ -27,7 +28,7 @@ const overflow = (r: KunReaction) => r.count - shownReactors(r).length
       <img
         :src="reactionAsset(r.reaction)"
         :alt="KUN_REACTION_EMOJI[r.reaction] ?? r.reaction"
-        class="size-5 shrink-0 max-w-none"
+        class="size-5 max-w-none shrink-0"
         loading="lazy"
       />
       <template v-if="r.reactors?.length">

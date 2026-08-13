@@ -14,11 +14,14 @@ definePageMeta({ key: (route) => route.path })
 const route = useRoute()
 const id = computed(() => parseInt((route.params as { id: string }).id))
 
-const { data, refresh } = await useKunFetch<GalgameRatingDetails>(`/galgame-rating/${id.value}`, {
-  method: 'GET',
-  watch: false,
-  query: { galgame_rating_id: id.value }
-})
+const { data, refresh } = await useKunFetch<GalgameRatingDetails>(
+  `/galgame-rating/${id.value}`,
+  {
+    method: 'GET',
+    watch: false,
+    query: { galgame_rating_id: id.value }
+  }
+)
 
 const jsonLd = computed<WithContext<Review> | null>(() => {
   if (!data.value) {

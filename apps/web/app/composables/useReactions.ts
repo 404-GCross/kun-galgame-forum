@@ -25,7 +25,10 @@ export const useReactions = (opts: UseReactionsOptions): ReactionsState => {
   const { id, name, avatar } = usePersistUserStore()
 
   const clone = (rs: KunReaction[]): KunReaction[] =>
-    rs.map((r) => ({ ...r, reactors: r.reactors ? [...r.reactors] : undefined }))
+    rs.map((r) => ({
+      ...r,
+      reactors: r.reactors ? [...r.reactors] : undefined
+    }))
 
   const list = ref<KunReaction[]>(opts.reactions ? clone(opts.reactions) : [])
   const inflight = new Set<string>()

@@ -42,7 +42,10 @@ const { data, status } = await useKunFetch<{
       >
         <div class="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
           <KunSelect v-model="params.spoiler_level" :options="spoilerOptions" />
-          <KunSelect v-model="params.play_status" :options="playStatusOptions" />
+          <KunSelect
+            v-model="params.play_status"
+            :options="playStatusOptions"
+          />
           <KunSelect v-model="params.galgame_type" :options="typeOptions" />
           <KunSelect v-model="params.sort_field" :options="sortFieldOptions" />
         </div>

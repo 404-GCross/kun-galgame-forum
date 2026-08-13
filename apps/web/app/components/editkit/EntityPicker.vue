@@ -18,7 +18,8 @@ const emit = defineEmits<{ 'update:modelValue': [value: unknown] }>()
 const keyOf = (id: string | number) => String(id)
 const labels = ref(new Map<string, string>())
 const origIds = ref(new Map<string, string | number>())
-const labelFor = (id: string | number) => labels.value.get(keyOf(id)) ?? `#${id}`
+const labelFor = (id: string | number) =>
+  labels.value.get(keyOf(id)) ?? `#${id}`
 
 const remember = (option: EditSelectOption) => {
   const k = keyOf(option.value)

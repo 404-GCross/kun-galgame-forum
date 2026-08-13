@@ -1,4 +1,3 @@
-
 interface SitemapUrl {
   loc: string
   lastmod?: string
@@ -22,7 +21,8 @@ const createLimiter = (max: number) => {
     waiters.shift()?.()
   }
   return async <T>(fn: () => Promise<T>): Promise<T> => {
-    if (active >= max) await new Promise<void>((resolve) => waiters.push(resolve))
+    if (active >= max)
+      await new Promise<void>((resolve) => waiters.push(resolve))
     active++
     try {
       return await fn()
@@ -77,7 +77,10 @@ export const buildSitemapUrls = async (
     return body ? src.pick(unwrap(body)) : []
   }
 
-  const toUrls = (src: PagedSource, rows: Record<string, unknown>[]): SitemapUrl[] =>
+  const toUrls = (
+    src: PagedSource,
+    rows: Record<string, unknown>[]
+  ): SitemapUrl[] =>
     rows.map((row) => ({
       loc: src.loc(row),
       lastmod: src.lastmod?.(row),
@@ -98,7 +101,9 @@ export const buildSitemapUrls = async (
           ? Math.min(Math.ceil(total / PAGE_SIZE), MAX_PAGES)
           : MAX_PAGES
       const rest = await Promise.all(
-        range(2, pages).map((p) => fetchPage(src, p).then((r) => toUrls(src, r)))
+        range(2, pages).map((p) =>
+          fetchPage(src, p).then((r) => toUrls(src, r))
+        )
       )
       for (const r of rest) urls.push(...r)
       return urls
@@ -106,8 +111,8 @@ export const buildSitemapUrls = async (
 
     for (let start = 2; start <= MAX_PAGES; start += GLOBAL_CONCURRENCY) {
       const batch = await Promise.all(
-        range(start, Math.min(start + GLOBAL_CONCURRENCY - 1, MAX_PAGES)).map((p) =>
-          fetchPage(src, p)
+        range(start, Math.min(start + GLOBAL_CONCURRENCY - 1, MAX_PAGES)).map(
+          (p) => fetchPage(src, p)
         )
       )
       let reachedEnd = false
@@ -142,20 +147,29 @@ export const buildSitemapUrls = async (
       path: '/topic',
       pick: (d) => (Array.isArray(d) ? (d as Record<string, unknown>[]) : []),
       loc: (r) => `/topic/${num(r, 'id')}`,
-      lastmod: (r) => toIso((r as Pick<TopicCard, 'status_update_time'>).status_update_time),
+      lastmod: (r) =>
+        toIso((r as Pick<TopicCard, 'status_update_time'>).status_update_time),
       priority: 0.8
     },
     {
       path: '/galgame',
-      pick: (d) => ((d as { galgames?: [] })?.galgames ?? []) as Record<string, unknown>[],
+      pick: (d) =>
+        ((d as { galgames?: [] })?.galgames ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame/${num(r, 'id')}`,
-      lastmod: (r) => toIso((r as Pick<GalgameCard, 'resource_update_time'>).resource_update_time),
+      lastmod: (r) =>
+        toIso(
+          (r as Pick<GalgameCard, 'resource_update_time'>).resource_update_time
+        ),
       priority: 0.8
     },
     {
       path: '/galgame-resource',
-      pick: (d) => ((d as { resources?: [] })?.resources ?? []) as Record<string, unknown>[],
+      pick: (d) =>
+        ((d as { resources?: [] })?.resources ?? []) as Record<
+          string,
+          unknown
+        >[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame-resource/${num(r, 'id')}`,
       lastmod: (r) => toIso(r.edited ?? r.created),
@@ -163,7 +177,11 @@ export const buildSitemapUrls = async (
     },
     {
       path: '/galgame-rating/all',
-      pick: (d) => ((d as { rating_data?: [] })?.rating_data ?? []) as Record<string, unknown>[],
+      pick: (d) =>
+        ((d as { rating_data?: [] })?.rating_data ?? []) as Record<
+          string,
+          unknown
+        >[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame-rating/${num(r, 'id')}`,
       lastmod: (r) => toIso(r.updated ?? r.created),
@@ -171,14 +189,19 @@ export const buildSitemapUrls = async (
     },
     {
       path: '/galgame-official',
-      pick: (d) => ((d as { officials?: [] })?.officials ?? []) as Record<string, unknown>[],
+      pick: (d) =>
+        ((d as { officials?: [] })?.officials ?? []) as Record<
+          string,
+          unknown
+        >[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame/official/${num(r, 'id')}`,
       priority: 0.5
     },
     {
       path: '/galgame-tag',
-      pick: (d) => ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
+      pick: (d) =>
+        ((d as { tags?: [] })?.tags ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,
       loc: (r) => `/galgame/tag/${num(r, 'id')}`,
       priority: 0.5

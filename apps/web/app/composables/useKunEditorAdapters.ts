@@ -30,7 +30,10 @@ export const useKunEditorAdapters = (opts?: {
     })) ?? []
 
   const stickerSource = (): StickerPack[] => [
-    { name: 'KUNgal', stickers: stickerArray.map((src) => ({ src, name: src })) }
+    {
+      name: 'KUNgal',
+      stickers: stickerArray.map((src) => ({ src, name: src }))
+    }
   ]
 
   const notify: KunEditorAdapters['notify'] = (message, level) => {

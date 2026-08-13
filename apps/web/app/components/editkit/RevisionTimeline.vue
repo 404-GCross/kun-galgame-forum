@@ -52,8 +52,7 @@ const requestDiff = () => {
   emit('diff', a!, b!)
 }
 
-const legacyLabel = (word: string) =>
-  props.legacyActionLabels?.[word] ?? word
+const legacyLabel = (word: string) => props.legacyActionLabels?.[word] ?? word
 </script>
 
 <template>
@@ -90,7 +89,7 @@ const legacyLabel = (word: string) =>
             :model-value="selected.includes(revision.seq)"
             color="primary"
             size="sm"
-            class="pointer-events-none absolute right-3 top-3 shrink-0"
+            class="pointer-events-none absolute top-3 right-3 shrink-0"
           />
           <div class="min-w-0 flex-1 space-y-2 pr-7">
             <div class="flex flex-wrap items-center gap-2">

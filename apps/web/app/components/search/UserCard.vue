@@ -19,10 +19,7 @@ defineProps<{
       v-if="user.moemoepoint || user.created"
       class="mt-2 flex items-center justify-between text-sm"
     >
-      <div
-        v-if="user.moemoepoint"
-        class="text-secondary flex items-center"
-      >
+      <div v-if="user.moemoepoint" class="text-secondary flex items-center">
         <KunIcon name="lucide:lollipop" class="h-5 w-5" />
         {{ user.moemoepoint }}
       </div>

@@ -14,14 +14,11 @@ const id = computed(() => {
   return parseInt((route.params as { id: string }).id)
 })
 
-const { data } = await useKunFetch<ToolsetDetail>(
-  `/toolset/${id.value}`,
-  {
-    method: 'GET',
-    query: { toolset_id: id.value },
-    watch: false
-  }
-)
+const { data } = await useKunFetch<ToolsetDetail>(`/toolset/${id.value}`, {
+  method: 'GET',
+  query: { toolset_id: id.value },
+  watch: false
+})
 
 const toolset = data.value
 

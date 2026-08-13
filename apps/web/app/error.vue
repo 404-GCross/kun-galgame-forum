@@ -20,9 +20,7 @@ const handleError = async () => {
 <template>
   <KunTopBar class-name="!pl-0" />
 
-  <div
-    class="bg-background flex min-h-dvh w-full items-center justify-center"
-  >
+  <div class="bg-background flex min-h-dvh w-full items-center justify-center">
     <KunCard
       :is-hoverable="false"
       :is-transparent="false"

@@ -162,7 +162,9 @@ const svgId = (name: string) => `kun-official-graph-${name}-${uid}`
   <div
     ref="viewport"
     :aria-label="
-      isPreview ? '会社关系图预览, 点击全屏查看' : '会社关系图, 拖拽平移, 滚轮缩放'
+      isPreview
+        ? '会社关系图预览, 点击全屏查看'
+        : '会社关系图, 拖拽平移, 滚轮缩放'
     "
     :class="
       cn(

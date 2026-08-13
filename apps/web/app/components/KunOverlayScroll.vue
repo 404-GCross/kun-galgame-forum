@@ -30,7 +30,11 @@ defineExpose({ getViewport })
 </script>
 
 <template>
-  <OverlayScrollbarsComponent ref="osRef" :options="options" :defer="props.defer">
+  <OverlayScrollbarsComponent
+    ref="osRef"
+    :options="options"
+    :defer="props.defer"
+  >
     <slot />
   </OverlayScrollbarsComponent>
 </template>

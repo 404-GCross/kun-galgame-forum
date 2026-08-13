@@ -65,7 +65,11 @@ watch(
       :key="index"
       :href="`/topic/${topic.id}`"
     >
-      <KunAvatar :disable-floating="true" :user="topic.user" :is-navigation="false" />
+      <KunAvatar
+        :disable-floating="true"
+        :user="topic.user"
+        :is-navigation="false"
+      />
 
       <div class="w-full space-y-2">
         <div class="flex items-center">

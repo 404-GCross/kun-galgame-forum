@@ -17,7 +17,10 @@ const visibilityMeta = (v: CollectionVisibility) =>
 </script>
 
 <template>
-  <KunCard :href="`/galgame/collection/${collection.id}`" content-class="space-y-3">
+  <KunCard
+    :href="`/galgame/collection/${collection.id}`"
+    content-class="space-y-3"
+  >
     <div
       class="bg-default-100 grid aspect-video grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg"
     >

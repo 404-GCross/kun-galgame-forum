@@ -37,7 +37,7 @@ const links = [
   <div
     :class="
       cn(
-        'scrollbar-hide bg-content1 border-kun fixed z-20 flex h-full shrink-0 -translate-x-1 flex-col justify-between rounded-none border-r p-0 shadow-kun-sm transition-all duration-300 sm:backdrop-blur-[var(--kun-background-blur)]',
+        'scrollbar-hide bg-content1 border-kun shadow-kun-sm fixed z-20 flex h-full shrink-0 -translate-x-1 flex-col justify-between rounded-none border-r p-0 transition-all duration-300 sm:backdrop-blur-[var(--kun-background-blur)]',
         isCollapsed ? 'w-20' : 'w-3xs overflow-y-scroll',
         // Mobile drawer (force-expanded) is a popup over a scrim → opaque, like
         // the other menus (see .kun-sidebar-drawer in styles/tailwindcss.css).

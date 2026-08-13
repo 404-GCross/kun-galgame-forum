@@ -133,7 +133,8 @@ const confirmViolence = () => {
       <div class="space-y-1">
         <p class="text-lg font-semibold">显示暴力内容?</p>
         <p class="text-default-600 text-sm">
-          画廊中存在带有暴力 / 血腥评级的图片,可能引起不适。确认要显示这类内容吗?
+          画廊中存在带有暴力 /
+          血腥评级的图片,可能引起不适。确认要显示这类内容吗?
         </p>
       </div>
       <div class="flex justify-center gap-2">

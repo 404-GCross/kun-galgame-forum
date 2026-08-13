@@ -69,7 +69,10 @@ const { isLightboxOpen, images, currentImageIndex } =
             loading="lazy"
             object-fit="contain"
             :class-name="
-              cn('h-40 w-auto shrink-0 rounded-lg', zoomable && 'cursor-zoom-in')
+              cn(
+                'h-40 w-auto shrink-0 rounded-lg',
+                zoomable && 'cursor-zoom-in'
+              )
             "
           />
         </div>

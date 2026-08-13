@@ -29,7 +29,10 @@ const editorRef = ref<KunEditorExpose | null>(null)
 
 const insertQuote = (q: ReplyReference) => {
   editorRef.value?.insertMention({ userId: q.userId, name: q.userName })
-  editorRef.value?.insertQuote({ refId: String(q.replyId), label: `#${q.floor}` })
+  editorRef.value?.insertQuote({
+    refId: String(q.replyId),
+    label: `#${q.floor}`
+  })
   emits('quoteInserted')
 }
 

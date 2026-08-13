@@ -39,7 +39,11 @@ const { data } = await useKunFetch<RankingGalgameItem[]>('/ranking/galgame', {
               {{ getPreferredLanguageText(galgame.name) }}
             </h2>
             <div class="mt-1 flex items-center gap-2">
-              <KunAvatar :user="galgame.user" size="sm" :is-navigation="false" />
+              <KunAvatar
+                :user="galgame.user"
+                size="sm"
+                :is-navigation="false"
+              />
               <span class="text-default-500 text-sm">
                 {{ galgame.user.name }}
               </span>
