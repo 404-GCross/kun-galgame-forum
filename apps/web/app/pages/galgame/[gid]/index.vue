@@ -89,16 +89,11 @@ if (galgame) {
 
       ...(galgame.platform.length && { gamePlatform: galgame.platform }),
 
-      ...(galgame.ratings.length && {
+      ...(galgame.rating_count && {
         aggregateRating: {
           '@type': 'AggregateRating',
-          ratingValue: Number(
-            (
-              galgame.ratings.reduce((sum, r) => sum + r.overall, 0) /
-              galgame.ratings.length
-            ).toFixed(1)
-          ),
-          ratingCount: galgame.ratings.length,
+          ratingValue: Number((galgame.rating ?? 0).toFixed(1)),
+          ratingCount: galgame.rating_count,
           bestRating: 10,
           worstRating: 1
         }

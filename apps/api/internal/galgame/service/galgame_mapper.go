@@ -66,30 +66,36 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 			EnUs: g.IntroEnUs, JaJp: g.IntroJaJp,
 			ZhCn: g.IntroZhCn, ZhTw: g.IntroZhTw,
 		},
-		ContentLimit:             g.ContentLimit,
-		ResourceUpdateTime:       g.ResourceUpdateTime,
-		Status:                   g.Status,
-		OriginalLanguage:         g.OriginalLanguage,
-		AgeLimit:                 g.AgeLimit,
-		ReleaseDate:              g.ReleaseDate,
-		ReleaseDateTBA:           g.ReleaseDateTBA,
-		EffectiveBannerHash:      g.EffectiveBannerHash,
-		EffectiveBannerURL:       g.EffectiveBannerURL,
-		EffectiveBannerWidth:     g.EffectiveBannerWidth,
-		EffectiveBannerHeight:    g.EffectiveBannerHeight,
-		EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
-		Covers:                   coversFromNextMoe(g.Covers),
-		Screenshots:              screenshotsFromNextMoe(g.Screenshots),
-		Contributor:              contributorsFromNextMoe(g.Contributor, users),
-		Alias:                    nextMoeAliasesToNames(g.Alias),
-		Engine:                   enginesFromNextMoe(g.Engine),
-		Official:                 officialsFromNextMoe(g.Official),
-		Series:                   seriesFromNextMoe(g.Series),
-		Tag:                      tagsFromNextMoe(g.Tag),
-		Staff:                    staffFromNextMoe(g.Staff),
-		Characters:               charactersFromNextMoe(g.Characters),
-		Created:                  g.Created,
-		Updated:                  g.Updated,
+		ContentLimit:               g.ContentLimit,
+		ResourceUpdateTime:         g.ResourceUpdateTime,
+		Status:                     g.Status,
+		OriginalLanguage:           g.OriginalLanguage,
+		AgeLimit:                   g.AgeLimit,
+		ReleaseDate:                g.ReleaseDate,
+		ReleaseDateTBA:             g.ReleaseDateTBA,
+		EffectiveBannerHash:        g.EffectiveBannerHash,
+		EffectiveBannerURL:         g.EffectiveBannerURL,
+		EffectiveBannerWidth:       g.EffectiveBannerWidth,
+		EffectiveBannerHeight:      g.EffectiveBannerHeight,
+		EffectiveBannerThumbhash:   g.EffectiveBannerThumbhash,
+		EffectivePortraitHash:      g.EffectivePortraitHash,
+		EffectivePortraitURL:       g.EffectivePortraitURL,
+		EffectivePortraitWidth:     g.EffectivePortraitWidth,
+		EffectivePortraitHeight:    g.EffectivePortraitHeight,
+		EffectivePortraitThumbhash: g.EffectivePortraitThumbhash,
+		ExternalRatings:            externalRatingsOrEmpty(g.ExternalRatings),
+		Covers:                     coversFromNextMoe(g.Covers),
+		Screenshots:                screenshotsFromNextMoe(g.Screenshots),
+		Contributor:                contributorsFromNextMoe(g.Contributor, users),
+		Alias:                      nextMoeAliasesToNames(g.Alias),
+		Engine:                     enginesFromNextMoe(g.Engine),
+		Official:                   officialsFromNextMoe(g.Official),
+		Series:                     seriesFromNextMoe(g.Series),
+		Tag:                        tagsFromNextMoe(g.Tag),
+		Staff:                      staffFromNextMoe(g.Staff),
+		Characters:                 charactersFromNextMoe(g.Characters),
+		Created:                    g.Created,
+		Updated:                    g.Updated,
 	}
 }
 
@@ -98,6 +104,13 @@ func lookupNextMoeUser(users map[string]dto.NextMoeUser, userID int) dto.UserBri
 		return dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar}
 	}
 	return dto.UserBrief{ID: userID}
+}
+
+func externalRatingsOrEmpty(rows []dto.GalgameExternalRating) []dto.GalgameExternalRating {
+	if rows == nil {
+		return []dto.GalgameExternalRating{}
+	}
+	return rows
 }
 
 func coversFromNextMoe(rows []dto.NextMoeGalgameCover) []dto.GalgameCover {

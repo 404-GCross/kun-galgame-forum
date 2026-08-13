@@ -71,24 +71,24 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
   <KunCard
     :is-hoverable="false"
     :is-transparent="false"
-    content-class="grid grid-cols-1 gap-3 md:grid-cols-3"
+    content-class="grid grid-cols-[7rem_1fr] items-start gap-3 md:grid-cols-[220px_1fr]"
   >
     <div
-      className="relative rounded-lg w-full h-full overflow-hidden md:col-span-1 aspect-video md:rounded-l-xl"
+      class="relative col-start-1 row-start-1 aspect-[5/7] w-full self-start overflow-hidden rounded-lg md:row-end-3"
     >
       <KunLightboxGallery>
         <KunLightboxGalleryItem
-          :src="getEffectiveBanner(galgame)"
+          :src="getEffectivePortrait(galgame)"
           :alt="getPreferredLanguageText(galgame.name)"
           :wrap="false"
           v-slot="{ open }"
         >
           <KunImage
             class="size-full cursor-zoom-in object-cover"
-            :src="getEffectiveBanner(galgame)"
+            :src="getEffectivePortrait(galgame)"
             loading="eager"
             fetchpriority="high"
-            :thumbhash="resolveBannerThumbhash(galgame)"
+            :thumbhash="resolvePortraitThumbhash(galgame)"
             :alt="getPreferredLanguageText(galgame.name)"
             @click="open"
           />
@@ -111,11 +111,11 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       <button
         v-if="hasMoreCovers"
         type="button"
-        class="bg-background/80 hover:bg-background shadow-kun-sm absolute right-2 bottom-2 z-10 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors"
+        class="bg-background/80 hover:bg-background shadow-kun-sm absolute right-2 bottom-2 z-10 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium backdrop-blur transition-colors md:px-2.5"
         @click="coversOpen = true"
       >
         <KunIcon name="lucide:images" class="size-4" />
-        查看所有封面
+        <span class="hidden md:inline">查看所有封面</span>
       </button>
       <GalgameCovers
         v-model="coversOpen"
@@ -124,26 +124,28 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       />
     </div>
 
-    <div className="flex min-w-0 flex-col gap-3 md:col-span-2">
+    <div class="col-start-2 row-start-1 flex min-w-0 flex-col gap-3">
       <div class="flex flex-wrap items-center gap-2">
-        <h1 class="text-3xl">
+        <h1 class="text-2xl md:text-3xl">
           {{ getPreferredLanguageText(galgame.name) }}
         </h1>
       </div>
 
-      <div class="space-y-3">
-        <KunScrollShadow
-          axis="vertical"
-          shadow-size="2rem"
-          class-name="max-h-[100px]"
-        >
-          <div class="flex flex-wrap gap-2">
-            <template v-for="(alias, index) in galgameAliasArray" :key="index">
-              <KunChip v-if="alias">{{ alias }}</KunChip>
-            </template>
-          </div>
-        </KunScrollShadow>
+      <KunScrollShadow
+        axis="vertical"
+        shadow-size="2rem"
+        class-name="max-h-[100px]"
+      >
+        <div class="flex flex-wrap gap-2">
+          <template v-for="(alias, index) in galgameAliasArray" :key="index">
+            <KunChip v-if="alias">{{ alias }}</KunChip>
+          </template>
+        </div>
+      </KunScrollShadow>
+    </div>
 
+    <div class="col-start-1 col-end-3 row-start-2 min-w-0 md:col-start-2">
+      <div class="space-y-3">
         <KunDivider />
 
         <div class="space-y-1 space-x-1">
@@ -177,6 +179,11 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             {{ KUN_GALGAME_RESOURCE_PLATFORM_MAP[platform] }}
           </KunChip>
         </div>
+
+        <GalgameHeaderRatingStrip
+          :galgame="galgame"
+          @open-rating="isRatingOpen = true"
+        />
 
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-center gap-1">

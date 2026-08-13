@@ -82,6 +82,7 @@ type catRating struct {
 	Source    string  `json:"source"`
 	Score     float64 `json:"score"`
 	VoteCount int     `json:"vote_count"`
+	Rank      *int    `json:"rank"`
 }
 
 type CatalogWorkListItem struct {

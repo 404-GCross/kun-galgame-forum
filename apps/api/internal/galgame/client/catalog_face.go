@@ -333,6 +333,7 @@ type catWorkDetail struct {
 	Series     []catWorkSeries    `json:"series"`
 	Credits    []catCreditGroup   `json:"credits"`
 	Characters []catWorkCharacter `json:"characters"`
+	Ratings    []catRating        `json:"ratings"`
 }
 
 type catWorkCharacter struct {

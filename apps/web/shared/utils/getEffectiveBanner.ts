@@ -3,6 +3,10 @@ interface BannerSource {
   banner?: string
 }
 
+interface PortraitSource extends BannerSource {
+  effective_portrait_url?: string
+}
+
 type ImageVariant = 'mini' | '100' | '256'
 
 const IMAGE_SERVICE_HASH_PATH = /\/[0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]+\.webp$/i
@@ -32,6 +36,17 @@ export const getEffectiveBanner = (
   return withBannerVariant(base, opts.variant)
 }
 
+export const getEffectivePortrait = (
+  g?: PortraitSource | null,
+  opts?: { variant?: Extract<ImageVariant, 'mini'> }
+): string => {
+  if (!g) return ''
+  const eff = g.effective_portrait_url?.trim()
+  if (!eff) return getEffectiveBanner(g, opts)
+  if (!opts?.variant) return eff
+  return withBannerVariant(eff, opts.variant)
+}
+
 export const imageAspectRatio = (
   width?: number,
   height?: number,
@@ -50,4 +65,16 @@ export const resolveBannerThumbhash = (
   if (!covers?.length) return ''
   const pinned = covers.find((c) => c.sort_order === 0) ?? covers[0]
   return pinned?.thumbhash ?? ''
+}
+
+export const resolvePortraitThumbhash = (
+  g?: {
+    effective_portrait_thumbhash?: string
+    effective_banner_thumbhash?: string
+    covers?: { sort_order: number; thumbhash?: string }[]
+  } | null
+): string => {
+  if (!g) return ''
+  if (g.effective_portrait_thumbhash) return g.effective_portrait_thumbhash
+  return resolveBannerThumbhash(g)
 }

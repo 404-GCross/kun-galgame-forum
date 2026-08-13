@@ -48,6 +48,16 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		f.EffectiveBannerThumbhash = thumb
 	}
 
+	if hash, url, w, h, thumb := detailPortrait(d.CoverSlots, f.Covers); url != "" {
+		f.EffectivePortraitHash = hash
+		f.EffectivePortraitURL = url
+		f.EffectivePortraitWidth = w
+		f.EffectivePortraitHeight = h
+		f.EffectivePortraitThumbhash = thumb
+	}
+
+	f.ExternalRatings = catalogExternalRatings(d.Ratings)
+
 	labelAt := make(map[int64]int, len(d.Labels))
 	for _, l := range d.Labels {
 		if i, seen := labelAt[l.ID]; seen {
@@ -110,6 +120,41 @@ func detailHero(slots *catCoverSlots, covers []dto.NextMoeGalgameCover) (hash, u
 	}
 	c := covers[0]
 	return c.ImageHash, c.CDNURL, c.Width, c.Height, c.Thumbhash
+}
+
+// cover_slots.portrait is filled from any cover when no portrait-shaped one exists, so it is not
+// guaranteed to be taller than wide; consumers must crop rather than trust the aspect ratio.
+func detailPortrait(slots *catCoverSlots, covers []dto.NextMoeGalgameCover) (hash, url string, w, h int, thumb string) {
+	if slots != nil {
+		if s := slots.Portrait; s != nil {
+			return hashFromURL(s.URL), s.URL, s.Width, s.Height, s.Thumbhash
+		}
+		return "", "", 0, 0, ""
+	}
+	if c := legacyPortraitCover(covers); c != nil {
+		return c.ImageHash, c.CDNURL, c.Width, c.Height, c.Thumbhash
+	}
+	return "", "", 0, 0, ""
+}
+
+func legacyPortraitCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {
+	for i := range covers {
+		c := &covers[i]
+		if c.Width > 0 && c.Height > 0 && c.Height*20 > c.Width*21 {
+			return c
+		}
+	}
+	return nil
+}
+
+func catalogExternalRatings(rows []catRating) []dto.GalgameExternalRating {
+	out := make([]dto.GalgameExternalRating, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, dto.GalgameExternalRating{
+			Source: r.Source, Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank,
+		})
+	}
+	return out
 }
 
 func legacyLandscapeCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {

@@ -1,8 +1,3 @@
-import type {
-  KunGalgameResourceTypeOptions,
-  KunGalgameResourceLanguageOptions,
-  KunGalgameResourcePlatformOptions
-} from '~/constants/galgame'
 import type { GalgameEngineItem } from './galgame-engine'
 import type { GalgameOfficialItem } from './galgame-official'
 import type { GalgameDetailSeriesRef } from './galgame-series'
@@ -73,6 +68,13 @@ export interface GalgameDetailCharacterVoice {
   latin?: string
 }
 
+export interface GalgameExternalRating {
+  source: string
+  score: number
+  vote_count: number
+  rank?: number
+}
+
 export interface GalgameDetail {
   id: number
   vndb_id: string
@@ -90,6 +92,11 @@ export interface GalgameDetail {
   effective_banner_width?: number
   effective_banner_height?: number
   effective_banner_thumbhash?: string
+  effective_portrait_hash?: string
+  effective_portrait_url?: string
+  effective_portrait_width?: number
+  effective_portrait_height?: number
+  effective_portrait_thumbhash?: string
   covers: GalgameCover[]
   screenshots: GalgameScreenshot[]
   view: number
@@ -116,6 +123,9 @@ export interface GalgameDetail {
   staff: GalgameDetailStaff[]
   characters: GalgameDetailCharacter[]
   ratings: GalgameRatingCardOnGalgamePage[]
+  rating?: number
+  rating_count?: number
+  external_ratings?: GalgameExternalRating[]
   created: Date | string
   updated: Date | string
 }

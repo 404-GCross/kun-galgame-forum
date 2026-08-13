@@ -173,6 +173,9 @@ func (s *GalgameService) GetDetail(
 	detail.Language = languages
 	detail.Type = types
 	detail.Ratings = ratings
+	agg := s.listRepo.BayesianRatings([]int{galgameID})[galgameID]
+	detail.Rating = agg.Score
+	detail.RatingCount = agg.Count
 	s.hydrateCoverVotes(ctx, galgameID, token, detail.Covers)
 	if isSFW {
 		detail.Tag = withoutSexualTags(detail.Tag)
