@@ -185,18 +185,3 @@
     @apply bg-default-300;
   }
 }
-
-/* kun-ui's scoped Content.vue style sets `display: inline-block;
-   vertical-align: middle` on .kun-spoiler unconditionally, so a revealed
-   spoiler sits visibly lower than the text around it (an inline-block's
-   baseline is its bottom margin edge once it holds the absolutely-positioned
-   particle canvas). Covered spoilers still need inline-block for that canvas,
-   so only the revealed state is overridden. Delete this once kun-ui fixes it
-   at the source.
-
-   This ties kun-ui's `.kun-prose[data-v-…] .kun-spoiler` on specificity and
-   wins on source order alone — re-check it after every kun-ui upgrade. */
-.kun-prose .kun-spoiler:not(.kun-spoiler-hidden) {
-  display: inline;
-  vertical-align: baseline;
-}

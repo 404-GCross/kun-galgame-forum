@@ -65,6 +65,10 @@ const chartOptions = computed<ApexOptions>(() => {
         colors: 'var(--color-default-500)'
       }
     },
+    // OUTSIDE 铁律 #1 (no gradients): this is an ApexCharts area series fill —
+    // the fade under a plotted line, not a UI background. The rule's three
+    // listed exceptions are the only ones in UI markup; a `rg gradient` sweep
+    // hits this fourth file too. Do NOT flatten it to a solid colour.
     fill: {
       type: 'gradient',
       gradient: {
