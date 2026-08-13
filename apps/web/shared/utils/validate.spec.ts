@@ -1,22 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  isValidTimestamp,
-  isValidURL,
-  isValidEmail,
-  isValidName
-} from './validate'
-
-describe('isValidTimestamp', () => {
-  it('accepts 10-digit (epoch s) and 13-digit (epoch ms)', () => {
-    expect(isValidTimestamp(1_700_000_000)).toBe(true)
-    expect(isValidTimestamp(1_700_000_000_000)).toBe(true)
-  })
-  it('rejects other lengths', () => {
-    expect(isValidTimestamp(0)).toBe(false)
-    expect(isValidTimestamp(123)).toBe(false)
-    expect(isValidTimestamp(99999999999999)).toBe(false)
-  })
-})
+import { isValidURL, isValidName } from './validate'
 
 describe('isValidURL', () => {
   it('accepts valid http/https/etc URLs', () => {
@@ -28,21 +11,6 @@ describe('isValidURL', () => {
     expect(isValidURL('not-a-url')).toBe(false)
     expect(isValidURL('example.com')).toBe(false)
     expect(isValidURL('')).toBe(false)
-  })
-})
-
-describe('isValidEmail', () => {
-  it('accepts common formats', () => {
-    expect(isValidEmail('user@example.com')).toBe(true)
-    expect(isValidEmail('first.last+tag@sub.example.co.uk')).toBe(true)
-  })
-  it('rejects malformed addresses', () => {
-    expect(isValidEmail('not-an-email')).toBe(false)
-    expect(isValidEmail('a@b')).toBe(false)
-    expect(isValidEmail('@example.com')).toBe(false)
-    expect(isValidEmail('user@')).toBe(false)
-    expect(isValidEmail('user @ example.com')).toBe(false)
-    expect(isValidEmail('')).toBe(false)
   })
 })
 

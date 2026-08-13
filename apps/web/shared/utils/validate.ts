@@ -1,22 +1,11 @@
-export const isValidTimestamp = (timestamp: number) => {
-  return (
-    timestamp.toString().length === 10 || timestamp.toString().length === 13
-  )
-}
-
 export const isValidURL = (url: string) => {
   try {
-    const _ = new URL(url)
+    void new URL(url)
     return true
   } catch (err) {
     console.log(err)
     return false
   }
-}
-
-export const isValidEmail = (email: string) => {
-  const regex = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{1,24}$/
-  return regex.test(email)
 }
 
 export const isValidName = (name: string) => {
