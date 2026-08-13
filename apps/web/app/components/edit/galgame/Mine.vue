@@ -1,13 +1,47 @@
 <script setup lang="ts">
-const pageData = reactive({
-  before: 0,
-  limit: 20
+const limit = 20
+
+const items = ref<UserClaimItem[]>([])
+const nextBefore = ref(0)
+const total = ref(0)
+const isLoadingMore = ref(false)
+
+const { data, refresh } = await useKunFetch<UserClaimList>('/galgame/mine', {
+  query: { before: 0, limit }
 })
 
-const { data, status, refresh } = await useKunFetch<UserClaimList>(
-  '/galgame/mine',
-  { query: pageData }
+watch(
+  data,
+  (page) => {
+    if (!page) {
+      return
+    }
+    items.value = page.items
+    nextBefore.value = page.next_before
+    total.value = page.total
+  },
+  { immediate: true }
 )
+
+const hasMore = computed(
+  () => nextBefore.value > 0 && items.value.length < total.value
+)
+
+const loadMore = async () => {
+  if (isLoadingMore.value || !hasMore.value) {
+    return
+  }
+  isLoadingMore.value = true
+  const next = await kunFetch<UserClaimList>(
+    `/galgame/mine?before=${nextBefore.value}&limit=${limit}`
+  )
+  isLoadingMore.value = false
+  if (!next) {
+    return
+  }
+  items.value.push(...next.items)
+  nextBefore.value = next.next_before
+}
 
 const stateBadge = galgameClaimStateBadge
 const nameOf = (item: UserClaimItem) => item.display_name || '(无标题)'
@@ -82,9 +116,9 @@ const handleResubmit = async (item: UserClaimItem) => {
       description="无法获取您的提交列表, 可能是后端 / Galgame 资料库暂时不可用, 请稍后重试。"
     />
 
-    <div v-else-if="data.items.length" class="flex flex-col gap-3">
+    <div v-else-if="items.length" class="flex flex-col gap-3">
       <div
-        v-for="item in data.items"
+        v-for="item in items"
         :key="item.work_id"
         class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-center"
       >
@@ -149,13 +183,13 @@ const handleResubmit = async (item: UserClaimItem) => {
       </div>
     </div>
 
-    <KunNull v-else-if="data && !data.items.length" />
+    <KunNull v-else-if="data && !items.length" />
 
     <KunButton
-      v-if="data && data.next_before"
+      v-if="hasMore"
       variant="flat"
-      :loading="status === 'pending'"
-      @click="pageData.before = data.next_before"
+      :loading="isLoadingMore"
+      @click="loadMore"
     >
       加载更多
     </KunButton>
