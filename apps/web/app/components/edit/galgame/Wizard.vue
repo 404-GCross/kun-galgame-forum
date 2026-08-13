@@ -18,6 +18,7 @@ interface WizardSearchResp {
 }
 
 const q = ref('')
+const { canModerate } = useRole()
 const hasSearched = ref(false)
 const isSearching = ref(false)
 const searchResults = ref<WizardSearchResp | null>(null)
@@ -97,9 +98,14 @@ onMounted(() => {
       description="先搜索您想发布的游戏：已存在的直接前往或一键认领，确实没有的再新建申请，避免重复提交。"
     >
       <template #endContent>
-        <KunLink to="/edit/galgame/mine">
-          <KunButton size="sm" variant="flat">我的提交</KunButton>
-        </KunLink>
+        <div class="flex items-center gap-2">
+          <KunLink to="/edit/galgame/mine">
+            <KunButton size="sm" variant="flat">我的提交</KunButton>
+          </KunLink>
+          <KunLink v-if="canModerate" to="/edit/galgame/myaudit">
+            <KunButton size="sm" variant="flat">我的审核</KunButton>
+          </KunLink>
+        </div>
       </template>
     </KunHeader>
 

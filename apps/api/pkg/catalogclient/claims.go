@@ -105,6 +105,7 @@ type UserClaimFilter struct {
 	ClaimStates []string
 	Before      int64
 	Limit       int
+	Kind        string
 }
 
 func (c *Client) UserClaims(ctx context.Context, uid int64, f UserClaimFilter) (*UserClaimPage, error) {
