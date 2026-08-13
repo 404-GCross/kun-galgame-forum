@@ -1,11 +1,13 @@
+// Package storage is a retirement half-state: uploads moved to the artifact
+// service, so only Delete is still reachable. It exists for the pre-cutover
+// `galgame_toolset_resource` rows whose type is still 's3' (81 in production as
+// of 2026-08). Drop the package once that count reaches zero.
 package storage
 
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"time"
 
 	"kun-galgame-api/pkg/config"
 
@@ -13,7 +15,6 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type S3Client struct {
@@ -52,94 +53,10 @@ func NewS3(cfg config.S3Config) *S3Client {
 	return &S3Client{client: client, bucket: cfg.Bucket}
 }
 
-func (s *S3Client) Upload(ctx context.Context, key, contentType string, body io.Reader) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      &s.bucket,
-		Key:         &key,
-		Body:        body,
-		ContentType: &contentType,
-	})
-	return err
-}
-
 func (s *S3Client) Delete(ctx context.Context, key string) error {
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: &s.bucket,
 		Key:    &key,
 	})
 	return err
-}
-
-func (s *S3Client) PresignPutObject(ctx context.Context, key, contentType string, expires time.Duration) (string, error) {
-	presigner := s3.NewPresignClient(s.client)
-	req, err := presigner.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:      &s.bucket,
-		Key:         &key,
-		ContentType: &contentType,
-	}, s3.WithPresignExpires(expires))
-	if err != nil {
-		return "", err
-	}
-	return req.URL, nil
-}
-
-func (s *S3Client) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
-	out, err := s.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
-		Bucket:      &s.bucket,
-		Key:         &key,
-		ContentType: &contentType,
-	})
-	if err != nil {
-		return "", err
-	}
-	return *out.UploadId, nil
-}
-
-func (s *S3Client) PresignUploadPart(ctx context.Context, key, uploadID string, partNumber int32, expires time.Duration) (string, error) {
-	presigner := s3.NewPresignClient(s.client)
-	req, err := presigner.PresignUploadPart(ctx, &s3.UploadPartInput{
-		Bucket:     &s.bucket,
-		Key:        &key,
-		UploadId:   &uploadID,
-		PartNumber: &partNumber,
-	}, s3.WithPresignExpires(expires))
-	if err != nil {
-		return "", err
-	}
-	return req.URL, nil
-}
-
-func (s *S3Client) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []types.CompletedPart) error {
-	_, err := s.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
-		Bucket:   &s.bucket,
-		Key:      &key,
-		UploadId: &uploadID,
-		MultipartUpload: &types.CompletedMultipartUpload{
-			Parts: parts,
-		},
-	})
-	return err
-}
-
-func (s *S3Client) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
-	_, err := s.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
-		Bucket:   &s.bucket,
-		Key:      &key,
-		UploadId: &uploadID,
-	})
-	return err
-}
-
-func (s *S3Client) HeadObject(ctx context.Context, key string) (int64, error) {
-	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
-		Bucket: &s.bucket,
-		Key:    &key,
-	})
-	if err != nil {
-		return 0, err
-	}
-	if out.ContentLength == nil {
-		return 0, nil
-	}
-	return *out.ContentLength, nil
 }

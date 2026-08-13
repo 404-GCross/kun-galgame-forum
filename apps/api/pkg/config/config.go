@@ -12,7 +12,6 @@ type Config struct {
 	Redis          RedisConfig
 	OAuth          OAuthConfig
 	FileStorage    S3Config
-	Mail           MailConfig
 	Search         SearchConfig
 	CORS           CORSConfig
 	NextMoeAPI     NextMoeAPIConfig
@@ -118,14 +117,6 @@ type S3Config struct {
 	SecretKey string
 }
 
-type MailConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	From     string
-}
-
 type SearchConfig struct {
 	MeilisearchURL string
 	MeilisearchKey string
@@ -196,13 +187,6 @@ func Load() (*Config, error) {
 			Bucket:    envOrDefault("FILE_STORAGE_BUCKET", ""),
 			AccessKey: envOrDefault("FILE_STORAGE_ACCESS_KEY", ""),
 			SecretKey: envOrDefault("FILE_STORAGE_SECRET_KEY", ""),
-		},
-		Mail: MailConfig{
-			Host:     envOrDefault("MAIL_HOST", ""),
-			Port:     envOrDefaultInt("MAIL_PORT", 587),
-			User:     envOrDefault("MAIL_USER", ""),
-			Password: envOrDefault("MAIL_PASSWORD", ""),
-			From:     envOrDefault("MAIL_FROM", ""),
 		},
 		Search: SearchConfig{
 			MeilisearchURL: envOrDefault("MEILISEARCH_URL", "http://127.0.0.1:7700"),

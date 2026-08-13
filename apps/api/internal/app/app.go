@@ -30,7 +30,6 @@ import (
 	"kun-galgame-api/internal/infrastructure/cache"
 	cronPkg "kun-galgame-api/internal/infrastructure/cron"
 	"kun-galgame-api/internal/infrastructure/database"
-	"kun-galgame-api/internal/infrastructure/mail"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/infrastructure/storage"
 	msgHandler "kun-galgame-api/internal/message/handler"
@@ -89,7 +88,6 @@ type App struct {
 	Fiber       *fiber.App
 	DB          *gorm.DB
 	Redis       *redis.Client
-	Mailer      *mail.Mailer
 	Config      *config.Config
 	OAuthClient *oauth.Client
 	UserState   *repository.StateRepository
@@ -155,9 +153,8 @@ func New(cfg *config.Config) *App {
 	rdb := cache.NewRedis(cfg.Redis)
 	fileStorageClient := storage.NewS3(cfg.FileStorage)
 	if fileStorageClient == nil {
-		slog.Warn("FILE_STORAGE_* 未配置, 工具集上传将不可用")
+		slog.Warn("FILE_STORAGE_* 未配置, 删除历史 s3 工具集资源将不可用")
 	}
-	mailer := mail.NewMailer(cfg.Mail)
 
 	markdown.SetContentImageCDNBase(cfg.NextMoeAPI.ImageCDNBase)
 
@@ -481,7 +478,7 @@ func New(cfg *config.Config) *App {
 	trustEnforce := enforce.NewService(db, trustRegistry, nil)
 
 	app := &App{
-		DB: db, Redis: rdb, Mailer: mailer, Config: cfg, OAuthClient: oauthClient,
+		DB: db, Redis: rdb, Config: cfg, OAuthClient: oauthClient,
 		UserState:                      userStateRepo,
 		UserClient:                     uc,
 		OAuthHandler:                   handler.NewOAuthHandler(authService, cfg.Server.Mode == "prod", communityBooster),
