@@ -246,7 +246,6 @@ type GalgameBrief struct {
 	Status              int     `json:"status"`
 	ContentLimit        string  `json:"content_limit"`
 	UserID              int     `json:"user_id"`
-	ResourceUpdateTime  string  `json:"resource_update_time"`
 	OriginalLanguage    string  `json:"original_language"`
 	AgeLimit            string  `json:"age_limit"`
 	ReleaseDate         *string `json:"release_date"`

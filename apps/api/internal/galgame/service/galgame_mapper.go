@@ -67,7 +67,6 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 			ZhCn: g.IntroZhCn, ZhTw: g.IntroZhTw,
 		},
 		ContentLimit:               g.ContentLimit,
-		ResourceUpdateTime:         g.ResourceUpdateTime,
 		Status:                     g.Status,
 		OriginalLanguage:           g.OriginalLanguage,
 		AgeLimit:                   g.AgeLimit,

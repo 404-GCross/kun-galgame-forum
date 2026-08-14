@@ -16,11 +16,11 @@ const load = async () => {
     return
   }
   isLoading.value = true
-  detail.value = await kunFetch<GalgameDetail>(`/galgame/${props.gid}`, {
-    method: 'GET'
-  })
-  loadedGid.value = props.gid
+  detail.value = await kunFetch<GalgameDetail>(`/galgame/${props.gid}`)
   isLoading.value = false
+  if (detail.value) {
+    loadedGid.value = props.gid
+  }
 }
 
 watch(

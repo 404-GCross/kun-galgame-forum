@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/galgame/client"
@@ -132,7 +131,6 @@ func (s *GalgameService) GetDetail(
 	galgameID, currentUserID int,
 	token string,
 	isSFW bool,
-	canReview bool,
 ) (*dto.GalgameDetail, *errors.AppError) {
 	d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID)
 	if appErr != nil {
@@ -144,10 +142,12 @@ func (s *GalgameService) GetDetail(
 	g := client.CatalogDetailToFull(d, galgameID)
 	// An entry still in submission is not public: it used to answer 200 to
 	// anyone with the id, canonical tag and VideoGame JSON-LD included, so
-	// search engines indexed games nobody had approved. Its submitter and the
-	// reviewers still need it — /galgame/:gid/edit reads this same endpoint.
-	if g.Status != client.GalgameStatusPublished && !canReview &&
-		(currentUserID <= 0 || s.ownerOf(galgameID) != currentUserID) {
+	// search engines indexed games nobody had approved. Crawlers are anonymous,
+	// and the page 404s for everyone — this endpoint stays open to signed-in
+	// callers because the submitter and the reviewers both still read it
+	// (/galgame/:gid/edit and the preview modal), and the forum has no cheap way
+	// to ask catalog who owns a claim.
+	if g.Status != client.GalgameStatusPublished && currentUserID <= 0 {
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
 	s.galgameClient.HydrateOfficialLinks(ctx, &g)
@@ -172,6 +172,7 @@ func (s *GalgameService) GetDetail(
 		detail.DlsiteCouponURL = s.dlsiteCouponURL
 	}
 	detail.View = local.View
+	detail.ResourceUpdateTime = utils.RFC3339OrEmpty(local.ResourceUpdateTime)
 	detail.LikeCount = local.LikeCount
 	detail.FavoriteCount = local.FavoriteCount
 	detail.ResourcePublishBanned = local.ResourcePublishBanned
@@ -354,7 +355,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 			LikeCount:                localMap[id].LikeCount,
 			Rating:                   ratingMap[id].Score,
 			RatingCount:              ratingMap[id].Count,
-			ResourceUpdateTime:       localMap[id].ResourceUpdateTime.Format(time.RFC3339),
+			ResourceUpdateTime:       utils.RFC3339OrEmpty(localMap[id].ResourceUpdateTime),
 			ReleaseDate:              b.ReleaseDate,
 			ReleaseDateTBA:           b.ReleaseDateTBA,
 			EffectiveBannerHash:      b.EffectiveBannerHash,

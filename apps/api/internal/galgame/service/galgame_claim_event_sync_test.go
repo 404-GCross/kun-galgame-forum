@@ -81,9 +81,11 @@ func TestClaimantAttribution(t *testing.T) {
 		t.Errorf("born live: claimant = %d, want the event's actor 7", got)
 	}
 
+	// gid 0 keeps the local-row fallback out of it: with neither a memo nor a
+	// row, an approval must still refuse to name the reviewer.
 	approval := event(3, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)
 	approval.ActorUID = 2
-	if got := s.claimantOf(t.Context(), approval, 11); got != 0 {
+	if got := s.claimantOf(t.Context(), approval, 0); got != 0 {
 		t.Errorf("approval without memo: claimant = %d, want 0 (never the reviewer)", got)
 	}
 

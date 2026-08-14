@@ -6,6 +6,7 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/pkg/userclient"
+	"kun-galgame-api/pkg/utils"
 )
 
 type GalgameEnricher struct {
@@ -50,7 +51,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 			ContentLimit:             g.ContentLimit,
 			View:                     localMap[g.ID].View,
 			LikeCount:                localMap[g.ID].LikeCount,
-			ResourceUpdateTime:       g.ResourceUpdateTime,
+			ResourceUpdateTime:       utils.RFC3339OrEmpty(localMap[g.ID].ResourceUpdateTime),
 			ReleaseDate:              g.ReleaseDate,
 			ReleaseDateTBA:           g.ReleaseDateTBA,
 			ReleasePrecision:         g.ReleasePrecision,

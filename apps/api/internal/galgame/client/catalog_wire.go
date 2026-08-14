@@ -166,8 +166,6 @@ func hashFromURL(u string) string {
 	return strings.TrimSuffix(base, ".webp")
 }
 
-const zeroTS = "0001-01-01T00:00:00Z"
-
 func contentLimitOf(claimed *catClaimedBy, rating string) string {
 	if claimed != nil {
 		switch claimed.ContentLimit {
@@ -303,17 +301,16 @@ func coverFields(covers *catCoverSlots, fallbackURL string) (hash, url string, w
 
 func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 	b := GalgameBrief{
-		ID:                 it.gid(),
-		NameEnUs:           it.name("en-us"),
-		NameJaJp:           it.name("ja-jp"),
-		NameZhCn:           it.name("zh-cn"),
-		NameZhTw:           it.name("zh-tw"),
-		AgeLimit:           ageLimitFromRating(it.ContentRating),
-		ContentLimit:       contentLimitOf(it.ClaimedBy, it.ContentRating),
-		OriginalLanguage:   productLocale(it.OLang),
-		ReleaseDate:        it.ReleaseDate,
-		ResourceUpdateTime: zeroTS,
-		Refs:               refsMap(it.Refs),
+		ID:               it.gid(),
+		NameEnUs:         it.name("en-us"),
+		NameJaJp:         it.name("ja-jp"),
+		NameZhCn:         it.name("zh-cn"),
+		NameZhTw:         it.name("zh-tw"),
+		AgeLimit:         ageLimitFromRating(it.ContentRating),
+		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
+		OriginalLanguage: productLocale(it.OLang),
+		ReleaseDate:      it.ReleaseDate,
+		Refs:             refsMap(it.Refs),
 	}
 	if it.ClaimedBy != nil {
 		b.Status = statusFromClaimState(it.ClaimedBy.State)

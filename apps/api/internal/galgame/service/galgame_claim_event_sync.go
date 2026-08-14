@@ -259,7 +259,7 @@ func (s *GalgameClaimEventSync) submitterOf(ctx context.Context, workID int64, g
 	if v, err := s.rdb.Get(ctx, claimSubmitterKeyPrefix+strconv.FormatInt(workID, 10)).Int(); err == nil {
 		return v
 	}
-	if s.galgameRepo == nil {
+	if gid <= 0 {
 		return 0
 	}
 	return userclient.DerefID(s.galgameRepo.FindLocal(gid).CreatorUserID)

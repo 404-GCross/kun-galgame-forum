@@ -9,21 +9,20 @@ import (
 
 func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull {
 	f := dto.NextMoeGalgameDetailFull{
-		ID:                 gid,
-		ContentLimit:       contentLimitOf(d.ClaimedBy, d.ContentRating),
-		AgeLimit:           ageLimitFromRating(d.ContentRating),
-		OriginalLanguage:   productLocale(d.OLang),
-		ReleaseDate:        d.ReleaseDate,
-		ReleaseDateTBA:     false,
-		Updated:            d.Updated,
-		Created:            d.Created,
-		ResourceUpdateTime: zeroTS,
-		Refs:               refsMap(d.Refs),
-		Staff:              catalogStaffFromCredits(d.Credits),
-		Characters:         catalogRosterToNextMoe(d.Characters),
-		Covers:             catalogCoversToNextMoe(d),
-		Screenshots:        catalogScreenshotsToNextMoe(d),
-		Contributor:        []dto.NextMoeContributor{},
+		ID:               gid,
+		ContentLimit:     contentLimitOf(d.ClaimedBy, d.ContentRating),
+		AgeLimit:         ageLimitFromRating(d.ContentRating),
+		OriginalLanguage: productLocale(d.OLang),
+		ReleaseDate:      d.ReleaseDate,
+		ReleaseDateTBA:   false,
+		Updated:          d.Updated,
+		Created:          d.Created,
+		Refs:             refsMap(d.Refs),
+		Staff:            catalogStaffFromCredits(d.Credits),
+		Characters:       catalogRosterToNextMoe(d.Characters),
+		Covers:           catalogCoversToNextMoe(d),
+		Screenshots:      catalogScreenshotsToNextMoe(d),
+		Contributor:      []dto.NextMoeContributor{},
 	}
 	f.VndbID = f.Refs["vndb"]
 

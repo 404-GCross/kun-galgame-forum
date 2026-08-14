@@ -145,10 +145,12 @@ func (r *ResourceRepository) FindLikedSet(userID int, resourceIDs []int) map[int
 	return out
 }
 
-func (r *ResourceRepository) FindGalgameView(galgameID int) int {
-	var view int
-	r.db.Table("galgame").Select("view").Where("id = ?", galgameID).Scan(&view)
-	return view
+func (r *ResourceRepository) FindGalgameLocal(galgameID int) GalgameLocalRow {
+	var row GalgameLocalRow
+	r.db.Table("galgame").
+		Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id").
+		Where("id = ?", galgameID).Scan(&row)
+	return row
 }
 
 func (r *ResourceRepository) IncrementView(resourceID int) {

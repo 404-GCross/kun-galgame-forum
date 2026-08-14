@@ -514,7 +514,7 @@ func (s *ResourceService) buildGalgameSummary(
 
 	aggs := s.resourceRepo.AggregateByGalgame(galgameID)
 	platforms, languages, types := collectAggregate(aggs)
-	localView := s.resourceRepo.FindGalgameView(galgameID)
+	local := s.resourceRepo.FindGalgameLocal(galgameID)
 
 	return dto.ResourceGalgameSummary{
 		ID:                       b.ID,
@@ -526,8 +526,8 @@ func (s *ResourceService) buildGalgameSummary(
 		EffectiveBannerHeight:    b.EffectiveBannerHeight,
 		EffectiveBannerThumbhash: b.EffectiveBannerThumbhash,
 		ContentLimit:             b.ContentLimit,
-		View:                     localView,
-		ResourceUpdateTime:       b.ResourceUpdateTime,
+		View:                     local.View,
+		ResourceUpdateTime:       utils.RFC3339OrEmpty(local.ResourceUpdateTime),
 		OriginalLanguage:         b.OriginalLanguage,
 		AgeLimit:                 b.AgeLimit,
 		Platform:                 platforms,

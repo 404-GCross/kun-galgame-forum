@@ -12,7 +12,6 @@ type NextMoeGalgameItem struct {
 	NameZhTw                 string  `json:"name_zh_tw"`
 	Banner                   string  `json:"banner"`
 	ContentLimit             string  `json:"content_limit"`
-	ResourceUpdateTime       string  `json:"resource_update_time"`
 	ReleaseDate              *string `json:"release_date"`
 	ReleaseDateTBA           bool    `json:"release_date_tba"`
 	EffectiveBannerHash      string  `json:"effective_banner_hash"`

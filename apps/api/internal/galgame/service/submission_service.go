@@ -71,7 +71,7 @@ func (s *SubmissionService) Submit(
 	// ten minutes later: it is what authorises the submitter to open their own
 	// unpublished entry, and it survives a Redis flush. The row stays
 	// published=false, so it shows up in no list and no feed.
-	if uid > 0 && s.galgameRepo != nil {
+	if uid > 0 {
 		if err := s.galgameRepo.SubmitLocal(s.galgameRepo.DB().WithContext(ctx), gid, uid); err != nil {
 			slog.Warn("submit: 记录本地投稿人失败", "gid", gid, "uid", uid, "error", err)
 		}

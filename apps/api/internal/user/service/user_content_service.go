@@ -14,6 +14,7 @@ import (
 	"kun-galgame-api/pkg/communityclient"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
+	"kun-galgame-api/pkg/utils"
 )
 
 type UserContentService struct {
@@ -160,7 +161,7 @@ func (s *UserContentService) buildGalgameCards(
 			ContentLimit:        b.ContentLimit,
 			View:                l.View,
 			LikeCount:           l.LikeCount,
-			ResourceUpdateTime:  b.ResourceUpdateTime,
+			ResourceUpdateTime:  utils.RFC3339OrEmpty(l.ResourceUpdateTime),
 			Platform:            emptyStrSlice(platformMap[b.ID]),
 			Language:            emptyStrSlice(languageMap[b.ID]),
 			ReleaseDate:         b.ReleaseDate,

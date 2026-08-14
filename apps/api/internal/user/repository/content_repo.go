@@ -2,6 +2,7 @@ package repository
 
 import (
 	"strconv"
+	"time"
 
 	"kun-galgame-api/internal/user/dto"
 
@@ -312,10 +313,11 @@ func (r *UserContentRepository) FindUserRatings(userID int, page, limit int) ([]
 }
 
 type GalgameLocalStats struct {
-	ID            int  `gorm:"column:id"`
-	View          int  `gorm:"column:view"`
-	LikeCount     int  `gorm:"column:like_count"`
-	CreatorUserID *int `gorm:"column:creator_user_id"`
+	ID                 int       `gorm:"column:id"`
+	View               int       `gorm:"column:view"`
+	LikeCount          int       `gorm:"column:like_count"`
+	ResourceUpdateTime time.Time `gorm:"column:resource_update_time"`
+	CreatorUserID      *int      `gorm:"column:creator_user_id"`
 }
 
 func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]GalgameLocalStats {
@@ -323,7 +325,7 @@ func (r *UserContentRepository) FindGalgameLocalStats(ids []int) map[int]Galgame
 		return map[int]GalgameLocalStats{}
 	}
 	var rows []GalgameLocalStats
-	r.db.Table("galgame").Select("id, view, like_count, creator_user_id").
+	r.db.Table("galgame").Select("id, view, like_count, resource_update_time, creator_user_id").
 		Where("id IN ?", ids).Where("published").Scan(&rows)
 	out := make(map[int]GalgameLocalStats, len(rows))
 	for _, row := range rows {
