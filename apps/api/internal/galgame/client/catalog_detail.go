@@ -152,9 +152,31 @@ func catalogExternalRatings(rows []catRating) []dto.GalgameExternalRating {
 	for _, r := range rows {
 		out = append(out, dto.GalgameExternalRating{
 			Source: r.Source, Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank,
+			Distribution: catalogRatingBuckets(r.Distribution),
+			Stats:        catalogRatingStats(r.Stats),
 		})
 	}
 	return out
+}
+
+func catalogRatingBuckets(rows []catRatingBucket) []dto.GalgameRatingBucket {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]dto.GalgameRatingBucket, 0, len(rows))
+	for _, b := range rows {
+		out = append(out, dto.GalgameRatingBucket{Score: b.Score, Count: b.Count})
+	}
+	return out
+}
+
+func catalogRatingStats(s *catRatingStats) *dto.GalgameRatingStats {
+	if s == nil {
+		return nil
+	}
+	return &dto.GalgameRatingStats{
+		Average: s.Average, Stdev: s.Stdev, Min: s.Min, Max: s.Max,
+	}
 }
 
 func legacyLandscapeCover(covers []dto.NextMoeGalgameCover) *dto.NextMoeGalgameCover {

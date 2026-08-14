@@ -103,7 +103,9 @@ export interface KunGalgameExternalRatingMeta {
   label: string
   scale: string
   hint: string
+  aggregate: string
   max: number
+  unit?: string
   link?: (ref: string) => string
 }
 
@@ -118,6 +120,7 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     label: 'VNDB',
     scale: '满分 10',
     hint: 'VNDB 用户评分的平均值',
+    aggregate: '平均值',
     max: 10,
     link: (ref) => `https://vndb.org/${ref}`
   },
@@ -125,6 +128,7 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     label: 'Bangumi',
     scale: '满分 10',
     hint: 'Bangumi 用户评分的平均值',
+    aggregate: '平均值',
     max: 10,
     link: (ref) => `https://bgm.tv/subject/${ref}`
   },
@@ -132,6 +136,7 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     label: 'ErogameScape',
     scale: '满分 100',
     hint: 'ErogameScape 用户评分的中位数',
+    aggregate: '中位数',
     max: 100,
     link: (ref) =>
       `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${ref}`
@@ -140,7 +145,9 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     label: 'DLsite',
     scale: '满分 5',
     hint: 'DLsite 购买者的平均星级',
-    max: 5
+    aggregate: '平均值',
+    max: 5,
+    unit: '星'
   }
 }
 
@@ -149,6 +156,7 @@ export const KUN_GALGAME_LOCAL_RATING_META: KunGalgameExternalRatingMeta = {
   label: '本站',
   scale: '满分 10',
   hint: '本站用户评分的贝叶斯平均',
+  aggregate: '贝叶斯平均',
   max: 10
 }
 

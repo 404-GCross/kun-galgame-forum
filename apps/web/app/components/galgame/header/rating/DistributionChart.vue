@@ -4,8 +4,10 @@ import type { ApexOptions } from 'apexcharts'
 
 const props = defineProps<{
   galgameId: number
+  source: string
   buckets: number[]
   mine: number | null
+  unit?: string
 }>()
 
 const colorMode = useColorMode()
@@ -23,7 +25,7 @@ const colors = computed(() =>
 const options = computed(
   (): ApexOptions => ({
     chart: {
-      id: `galgame-rating-distribution-${props.galgameId}`,
+      id: `galgame-rating-distribution-${props.source}-${props.galgameId}`,
       type: 'bar',
       height: 200,
       toolbar: { show: false },
@@ -47,7 +49,7 @@ const options = computed(
     },
     tooltip: {
       theme: colorMode.preference,
-      x: { formatter: (x: number) => `${x} 分` },
+      x: { formatter: (x: number) => `${x} ${props.unit ?? '分'}` },
       y: { formatter: (y: number) => `${y} 人` }
     },
     grid: { borderColor: 'var(--color-default-200)', strokeDashArray: 4 },

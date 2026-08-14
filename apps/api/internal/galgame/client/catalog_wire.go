@@ -78,11 +78,28 @@ type catWorkLink struct {
 	URL    string `json:"url"`
 }
 
+type catRatingBucket struct {
+	Score int `json:"score"`
+	Count int `json:"count"`
+}
+
+type catRatingStats struct {
+	Average *float64 `json:"average"`
+	Stdev   *float64 `json:"stdev"`
+	Min     *float64 `json:"min"`
+	Max     *float64 `json:"max"`
+}
+
+// Distribution and Stats are detail-face only and per-source: bangumi/dlsite
+// publish a histogram, erogamescape publishes Stats instead, vndb neither. The
+// works-list ratings block never carries either.
 type catRating struct {
-	Source    string  `json:"source"`
-	Score     float64 `json:"score"`
-	VoteCount int     `json:"vote_count"`
-	Rank      *int    `json:"rank"`
+	Source       string            `json:"source"`
+	Score        float64           `json:"score"`
+	VoteCount    int               `json:"vote_count"`
+	Rank         *int              `json:"rank"`
+	Distribution []catRatingBucket `json:"distribution"`
+	Stats        *catRatingStats   `json:"stats"`
 }
 
 type CatalogWorkListItem struct {

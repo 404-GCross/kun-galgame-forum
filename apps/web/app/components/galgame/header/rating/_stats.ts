@@ -20,6 +20,23 @@ export const ratingHistogram = (
   return buckets
 }
 
+// Catalog ships the histogram sparsely: only the values someone actually voted
+// for are present, so an absent bucket is a real zero and has to be filled back
+// in or the columns silently shift left.
+export const externalRatingHistogram = (
+  distribution: GalgameRatingBucket[],
+  max: number
+) => {
+  const buckets = Array.from({ length: max }, () => 0)
+  for (const bucket of distribution) {
+    const index = bucket.score - 1
+    if (index >= 0 && index < max) {
+      buckets[index]! += bucket.count
+    }
+  }
+  return buckets
+}
+
 export const ratingDimensionMeans = (
   ratings: GalgameRatingCardOnGalgamePage[]
 ) =>

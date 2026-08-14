@@ -191,11 +191,25 @@ type GalgameDetailRating struct {
 	Galgame      GalgameDetailRatingGalgame `json:"galgame"`
 }
 
+type GalgameRatingBucket struct {
+	Score int `json:"score"`
+	Count int `json:"count"`
+}
+
+type GalgameRatingStats struct {
+	Average *float64 `json:"average,omitempty"`
+	Stdev   *float64 `json:"stdev,omitempty"`
+	Min     *float64 `json:"min,omitempty"`
+	Max     *float64 `json:"max,omitempty"`
+}
+
 type GalgameExternalRating struct {
-	Source    string  `json:"source"`
-	Score     float64 `json:"score"`
-	VoteCount int     `json:"vote_count"`
-	Rank      *int    `json:"rank,omitempty"`
+	Source       string                `json:"source"`
+	Score        float64               `json:"score"`
+	VoteCount    int                   `json:"vote_count"`
+	Rank         *int                  `json:"rank,omitempty"`
+	Distribution []GalgameRatingBucket `json:"distribution,omitempty"`
+	Stats        *GalgameRatingStats   `json:"stats,omitempty"`
 }
 
 type GalgameDetail struct {

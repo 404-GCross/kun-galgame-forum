@@ -254,3 +254,36 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 		t.Error("voices serialized as null, want []")
 	}
 }
+
+func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
+	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","ratings":[
+		{"source":"vndb","score":8.1,"vote_count":900,"rank":12},
+		{"source":"bangumi","score":6.5,"vote_count":5,
+		 "distribution":[{"score":3,"count":1},{"score":10,"count":4}]},
+		{"source":"erogamescape","score":76,"vote_count":28,
+		 "stats":{"average":74.5,"stdev":10,"min":60,"max":100}}
+	]}`
+	f := fullOf(t, body)
+
+	by := map[string]dto.GalgameExternalRating{}
+	for _, r := range f.ExternalRatings {
+		by[r.Source] = r
+	}
+
+	if got := by["vndb"]; len(got.Distribution) != 0 || got.Stats != nil {
+		t.Errorf("vndb = %+v, want neither a histogram nor stats", got)
+	}
+
+	bgm := by["bangumi"]
+	if len(bgm.Distribution) != 2 || bgm.Distribution[1].Score != 10 || bgm.Distribution[1].Count != 4 {
+		t.Errorf("bangumi distribution = %+v, want the sparse buckets verbatim", bgm.Distribution)
+	}
+
+	eg := by["erogamescape"]
+	if eg.Stats == nil || eg.Stats.Average == nil || *eg.Stats.Average != 74.5 {
+		t.Fatalf("erogamescape stats = %+v, want average 74.5 alongside the 76 median", eg.Stats)
+	}
+	if eg.Score == *eg.Stats.Average {
+		t.Error("median and mean collapsed into one number")
+	}
+}

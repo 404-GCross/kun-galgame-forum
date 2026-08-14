@@ -68,11 +68,25 @@ export interface GalgameDetailCharacterVoice {
   latin?: string
 }
 
+export interface GalgameRatingBucket {
+  score: number
+  count: number
+}
+
+export interface GalgameRatingStats {
+  average?: number
+  stdev?: number
+  min?: number
+  max?: number
+}
+
 export interface GalgameExternalRating {
   source: string
   score: number
   vote_count: number
   rank?: number
+  distribution?: GalgameRatingBucket[]
+  stats?: GalgameRatingStats
 }
 
 export interface GalgameDetail {
