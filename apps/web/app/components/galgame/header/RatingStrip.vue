@@ -3,7 +3,11 @@ import {
   KUN_GALGAME_EXTERNAL_RATING_CONST,
   KUN_GALGAME_EXTERNAL_RATING_MAP,
   KUN_GALGAME_LOCAL_RATING_META,
-  KUN_GALGAME_LOCAL_RATING_SOURCE
+  KUN_GALGAME_LOCAL_RATING_SOURCE,
+  KUN_GALGAME_RATING_TIER_INSUFFICIENT,
+  KUN_GALGAME_RATING_TIER_SCOPE_HINT,
+  kunGalgameRatingTierBadge,
+  type KunGalgameExternalRatingMeta
 } from '~/constants/galgame-rating'
 
 const props = defineProps<{
@@ -15,39 +19,54 @@ const emits = defineEmits<{
   openDetail: [string]
 }>()
 
-const formatVotes = (count: number) => `${count.toLocaleString('en-US')} 人`
-
 const forumCount = computed(() => props.galgame.rating_count ?? 0)
+
+const buildTile = (
+  key: string,
+  meta: KunGalgameExternalRatingMeta,
+  score: number,
+  voteCount: number
+) => {
+  const tier = kunGalgameRatingTierBadge(meta, score, voteCount)
+  return {
+    key,
+    short: meta.short,
+    score: meta.formatScore(score),
+    suffix: meta.scoreSuffix,
+    votes: `${voteCount.toLocaleString('en-US')} 人`,
+    tier,
+    tooltip: [
+      `${meta.label} · ${meta.hint}`,
+      tier
+        ? `${tier.label} · ${tier.description}`
+        : KUN_GALGAME_RATING_TIER_INSUFFICIENT,
+      KUN_GALGAME_RATING_TIER_SCOPE_HINT
+    ].join(', ')
+  }
+}
 
 const tiles = computed(() => {
   const local = forumCount.value
     ? [
-        {
-          key: KUN_GALGAME_LOCAL_RATING_SOURCE,
-          icon: 'lucide:star',
-          score: KUN_GALGAME_LOCAL_RATING_META.formatScore(
-            props.galgame.rating ?? 0
-          ),
-          suffix: KUN_GALGAME_LOCAL_RATING_META.scoreSuffix,
-          caption: `${KUN_GALGAME_LOCAL_RATING_META.label} · ${formatVotes(forumCount.value)}`,
-          tooltip: `${KUN_GALGAME_LOCAL_RATING_META.hint}, ${KUN_GALGAME_LOCAL_RATING_META.scale}`
-        }
+        buildTile(
+          KUN_GALGAME_LOCAL_RATING_SOURCE,
+          KUN_GALGAME_LOCAL_RATING_META,
+          props.galgame.rating ?? 0,
+          forumCount.value
+        )
       ]
     : []
 
   const external = KUN_GALGAME_EXTERNAL_RATING_CONST.flatMap((source) => {
     const row = props.galgame.external_ratings?.find((r) => r.source === source)
     if (!row) return []
-    const meta = KUN_GALGAME_EXTERNAL_RATING_MAP[source]
     return [
-      {
-        key: source as string,
-        icon: '',
-        score: meta.formatScore(row.score),
-        suffix: meta.scoreSuffix,
-        caption: `${meta.label} · ${formatVotes(row.vote_count)}`,
-        tooltip: `${meta.hint}, ${meta.scale}`
-      }
+      buildTile(
+        source,
+        KUN_GALGAME_EXTERNAL_RATING_MAP[source],
+        row.score,
+        row.vote_count
+      )
     ]
   })
 
@@ -55,7 +74,14 @@ const tiles = computed(() => {
 })
 
 const tileClass =
-  'bg-default-100 hover:bg-default-200 flex h-full min-w-24 shrink-0 flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors'
+  'bg-default-100 hover:bg-default-200 flex h-full min-w-36 shrink-0 flex-col justify-between gap-1.5 rounded-lg px-3 py-2 text-left transition-colors'
+
+// The five sources have no logo mark between them — VNDB, 批评空间 and DLsite
+// are wordmarks and 批评空间 has no mark at all — so the source is identified by
+// a wordmark badge. It replaces the full caption that used to sit under the
+// score, which is the width the tier chip now occupies.
+const markClass =
+  'bg-default-200 text-default-600 rounded-md px-1.5 py-0.5 text-[10px] leading-4 font-medium tracking-wide'
 </script>
 
 <template>
@@ -91,8 +117,19 @@ const tileClass =
         :class="tileClass"
         @click="emits('openDetail', tile.key)"
       >
-        <span class="flex items-baseline gap-1">
-          <KunIcon v-if="tile.icon" :name="tile.icon" class="text-warning" />
+        <span class="flex items-center justify-between gap-2">
+          <span :class="markClass">{{ tile.short }}</span>
+          <KunChip
+            v-if="tile.tier"
+            size="xs"
+            variant="flat"
+            :color="tile.tier.color"
+          >
+            {{ tile.tier.label }}
+          </KunChip>
+        </span>
+
+        <span class="flex items-baseline justify-between gap-2">
           <span class="flex items-baseline gap-0.5">
             <span class="text-2xl leading-none font-semibold tabular-nums">
               {{ tile.score }}
@@ -101,9 +138,9 @@ const tileClass =
               {{ tile.suffix }}
             </span>
           </span>
-        </span>
-        <span class="text-default-500 text-xs whitespace-nowrap">
-          {{ tile.caption }}
+          <span class="text-default-500 text-xs whitespace-nowrap tabular-nums">
+            {{ tile.votes }}
+          </span>
         </span>
       </button>
     </KunTooltip>

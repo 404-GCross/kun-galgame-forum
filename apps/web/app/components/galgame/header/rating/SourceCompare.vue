@@ -3,8 +3,10 @@ import {
   KUN_GALGAME_EXTERNAL_RATING_CONST,
   KUN_GALGAME_EXTERNAL_RATING_MAP,
   KUN_GALGAME_LOCAL_RATING_META,
-  KUN_GALGAME_LOCAL_RATING_SOURCE
+  KUN_GALGAME_LOCAL_RATING_SOURCE,
+  kunGalgameRatingTierBadge
 } from '~/constants/galgame-rating'
+import { GALGAME_RATING_TIER_CONST } from '~~/shared/utils/galgameRatingTier'
 
 const props = defineProps<{
   galgame: GalgameDetail
@@ -19,7 +21,12 @@ const rows = computed(() => {
           label: KUN_GALGAME_LOCAL_RATING_META.label,
           max: KUN_GALGAME_LOCAL_RATING_META.max,
           score: props.galgame.rating ?? 0,
-          count: props.galgame.rating_count
+          count: props.galgame.rating_count,
+          tier: kunGalgameRatingTierBadge(
+            KUN_GALGAME_LOCAL_RATING_META,
+            props.galgame.rating,
+            props.galgame.rating_count
+          )
         }
       ]
     : []
@@ -34,7 +41,8 @@ const rows = computed(() => {
         label: meta.label,
         max: meta.max,
         score: row.score,
-        count: row.vote_count
+        count: row.vote_count,
+        tier: kunGalgameRatingTierBadge(meta, row.score, row.vote_count)
       }
     ]
   })
@@ -43,13 +51,22 @@ const rows = computed(() => {
 })
 
 const normalized = (score: number, max: number) => (score / max) * 10
+
+const tierSpread = computed(() => {
+  const ranks = rows.value.flatMap((row) =>
+    row.tier ? [GALGAME_RATING_TIER_CONST.indexOf(row.tier.key)] : []
+  )
+  return ranks.length > 1 ? Math.max(...ranks) - Math.min(...ranks) : 0
+})
+
+const hasDlsite = computed(() => rows.value.some((row) => row.key === 'dlsite'))
 </script>
 
 <template>
   <div v-if="rows.length > 1" class="space-y-2">
     <div class="flex items-baseline justify-between">
       <h4 class="font-medium">各来源对比</h4>
-      <span class="text-default-500 text-xs">统一折算为满分 10</span>
+      <span class="text-default-500 text-xs">条形图统一折算为满分 10</span>
     </div>
 
     <div
@@ -57,7 +74,7 @@ const normalized = (score: number, max: number) => (score / max) * 10
       :key="row.key"
       :class="
         cn(
-          'grid grid-cols-[7rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5',
+          'grid grid-cols-[5rem_1fr_auto_2.75rem] items-center gap-2 rounded-lg px-2 py-1.5 sm:grid-cols-[7rem_1fr_auto_3rem] sm:gap-3',
           row.key === highlight && 'bg-default-100'
         )
       "
@@ -84,6 +101,24 @@ const normalized = (score: number, max: number) => (score / max) * 10
           · {{ row.count.toLocaleString('en-US') }} 人
         </span>
       </span>
+
+      <span class="flex justify-end">
+        <KunChip
+          v-if="row.tier"
+          size="xs"
+          variant="flat"
+          :color="row.tier.color"
+        >
+          {{ row.tier.label }}
+        </KunChip>
+      </span>
     </div>
+
+    <p v-if="tierSpread >= 2" class="text-default-400 text-xs">
+      各来源对这部作品的评价差了 {{ tierSpread }} 个等级。评分人群不一样,
+      分歧本来就正常{{
+        hasDlsite ? ', 其中 DLsite 只统计购买者, 普遍要比其他来源高一档' : ''
+      }}。
+    </p>
   </div>
 </template>

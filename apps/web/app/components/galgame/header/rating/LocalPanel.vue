@@ -6,7 +6,10 @@ import {
   KUN_GALGAME_LOCAL_RATING_SOURCE,
   KUN_GALGAME_RATING_RECOMMEND_MAP,
   KUN_GALGAME_RATING_RECOMMEND_COLOR_MAP,
-  KUN_GALGAME_RATING_PLAY_STATUS_MAP
+  KUN_GALGAME_RATING_PLAY_STATUS_MAP,
+  KUN_GALGAME_RATING_TIER_INSUFFICIENT,
+  KUN_GALGAME_RATING_TIER_SCOPE_HINT,
+  kunGalgameRatingTierBadge
 } from '~/constants/galgame-rating'
 import {
   ratingDimensionMeans,
@@ -32,6 +35,20 @@ const mine = computed(
     props.ratings.find((rating) => rating.user.id === currentUserId)?.overall ??
     null
 )
+const tier = computed(() =>
+  kunGalgameRatingTierBadge(
+    KUN_GALGAME_LOCAL_RATING_META,
+    props.galgame.rating,
+    props.ratings.length
+  )
+)
+
+const tierTooltip = computed(() =>
+  tier.value
+    ? `${tier.value.description}, ${KUN_GALGAME_RATING_TIER_SCOPE_HINT}`
+    : `本站评分人数不到 ${KUN_GALGAME_LOCAL_RATING_META.tier.minVotes} 人, 分级会被少数几票带偏, 所以这里不给等级`
+)
+
 const recommendTally = computed(() =>
   ratingTally(props.ratings.map((rating) => rating.recommend))
 )
@@ -44,18 +61,29 @@ const playStatusTally = computed(() =>
   <div class="space-y-5">
     <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
       <div>
-        <div class="flex items-baseline gap-1">
-          <KunIcon name="lucide:star" class="text-warning" />
-          <span class="flex items-baseline gap-0.5">
-            <span class="text-3xl leading-none font-semibold tabular-nums">
-              {{
-                KUN_GALGAME_LOCAL_RATING_META.formatScore(galgame.rating ?? 0)
-              }}
+        <div class="flex items-center gap-2">
+          <div class="flex items-baseline gap-1">
+            <KunIcon name="lucide:star" class="text-warning" />
+            <span class="flex items-baseline gap-0.5">
+              <span class="text-3xl leading-none font-semibold tabular-nums">
+                {{
+                  KUN_GALGAME_LOCAL_RATING_META.formatScore(galgame.rating ?? 0)
+                }}
+              </span>
+              <span class="text-default-500 text-xl leading-none font-medium">
+                {{ KUN_GALGAME_LOCAL_RATING_META.scoreSuffix }}
+              </span>
             </span>
-            <span class="text-default-500 text-xl leading-none font-medium">
-              {{ KUN_GALGAME_LOCAL_RATING_META.scoreSuffix }}
-            </span>
-          </span>
+          </div>
+          <KunTooltip :text="tierTooltip">
+            <KunChip
+              size="sm"
+              variant="flat"
+              :color="tier ? tier.color : 'default'"
+            >
+              {{ tier ? tier.label : KUN_GALGAME_RATING_TIER_INSUFFICIENT }}
+            </KunChip>
+          </KunTooltip>
         </div>
         <KunTooltip
           text="贝叶斯平均: 评分人数少时会向全站均分收敛, 避免一两个满分就冲榜"

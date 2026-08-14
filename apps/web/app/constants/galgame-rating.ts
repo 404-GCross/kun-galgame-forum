@@ -1,4 +1,9 @@
 import type { KunUIColor } from '@kungal/ui-core'
+import {
+  galgameRatingTier,
+  type GalgameRatingTierKey,
+  type GalgameRatingTierRule
+} from '~~/shared/utils/galgameRatingTier'
 
 export const KUN_GALGAME_RATING_RECOMMEND_CONST = [
   'strong_no',
@@ -99,14 +104,48 @@ export const KUN_GALGAME_EXTERNAL_RATING_CONST = [
 export type KunGalgameExternalRatingSource =
   (typeof KUN_GALGAME_EXTERNAL_RATING_CONST)[number]
 
+export const KUN_GALGAME_RATING_TIER_MAP: Record<GalgameRatingTierKey, string> =
+  {
+    god: '神作',
+    masterpiece: '名作',
+    good: '良作',
+    average: '平作',
+    bad: '雷作'
+  }
+export const KUN_GALGAME_RATING_TIER_COLOR_MAP: Record<
+  GalgameRatingTierKey,
+  KunUIColor
+> = {
+  god: 'warning',
+  masterpiece: 'success',
+  good: 'primary',
+  average: 'default',
+  bad: 'danger'
+}
+export const KUN_GALGAME_RATING_TIER_DESCRIPTION_MAP: Record<
+  GalgameRatingTierKey,
+  string
+> = {
+  god: '该来源打分最高的一小撮作品',
+  masterpiece: '该来源公认的口碑作',
+  good: '该来源评价良好, 值得一玩',
+  average: '该来源评价平平, 见仁见智',
+  bad: '该来源评价偏低, 入坑需谨慎'
+}
+export const KUN_GALGAME_RATING_TIER_INSUFFICIENT = '评分人数不足'
+export const KUN_GALGAME_RATING_TIER_SCOPE_HINT =
+  '分级按各来源自己的刻度独立计算, 不跨来源混算'
+
 export interface KunGalgameExternalRatingMeta {
   label: string
+  short: string
   scale: string
   hint: string
   aggregate: string
   max: number
   formatScore: (score: number) => string
   scoreSuffix: string
+  tier: GalgameRatingTierRule
   unit?: string
   link?: (ref: string) => string
 }
@@ -121,49 +160,69 @@ const kunRatingScoreBand = (score: number) => String(Math.floor(score))
 // Catalog ships each source on its own native scale and never normalizes across
 // them: vndb/bangumi are a 0-10 mean, dlsite a 0-5 star mean, erogamescape a
 // 0-100 median. `max` is the divisor any cross-source comparison has to use.
+//
+// `tier.cutoffs` are on that same native scale, calibrated per source against
+// the whole catalog corpus rather than converted from one shared curve — the
+// same work sits at bangumi 7.0 and dlsite 4.5, so one set of numbers cannot
+// serve both. dlsite in particular polls self-selected buyers and runs about a
+// tier high; that is why its lines are so much tighter than the others'.
 export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
   KunGalgameExternalRatingSource,
   KunGalgameExternalRatingMeta
 > = {
   vndb: {
     label: 'VNDB',
+    short: 'VNDB',
     scale: '满分 10',
     hint: 'VNDB 用户评分的平均值',
     aggregate: '平均值',
     max: 10,
     formatScore: kunRatingScoreDecimal,
     scoreSuffix: '/10',
+    tier: { cutoffs: [5.5, 6.5, 7.4, 8.0], minVotes: 10 },
     link: (ref) => `https://vndb.org/${ref}`
   },
   bangumi: {
     label: 'Bangumi',
+    short: 'Bangumi',
     scale: '满分 10',
     hint: 'Bangumi 用户评分的平均值',
     aggregate: '平均值',
     max: 10,
     formatScore: kunRatingScoreDecimal,
     scoreSuffix: '/10',
+    // Bangumi's own vote labels sit on exactly these integers: 5 不过不失,
+    // 6 还行, 7 推荐, 8 力荐.
+    tier: { cutoffs: [5.0, 6.0, 7.0, 8.0], minVotes: 10 },
     link: (ref) => `https://bgm.tv/subject/${ref}`
   },
   erogamescape: {
     label: '批评空间',
+    short: '批评空间',
     scale: '满分 100',
     hint: '批评空间用户评分的中位数',
     aggregate: '中位数',
     max: 100,
     formatScore: kunRatingScoreBand,
     scoreSuffix: '点台',
+    // 80点 is the line the community itself quotes, and it is kept even though
+    // it is stricter here than the other sources' 名作 lines: the famous "80点
+    // = 上位34%" figure describes single VOTES, and per-work medians are far
+    // more concentrated — only ~8.5% of works clear 80.
+    tier: { cutoffs: [60, 70, 80, 85], minVotes: 10 },
     link: (ref) =>
       `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${ref}`
   },
   dlsite: {
     label: 'DLsite',
+    short: 'DLsite',
     scale: '满分 5',
     hint: 'DLsite 购买者的平均星级',
     aggregate: '平均值',
     max: 5,
     formatScore: kunRatingScoreDecimal,
     scoreSuffix: '/5',
+    tier: { cutoffs: [3.8, 4.2, 4.5, 4.7], minVotes: 10 },
     unit: '星'
   }
 }
@@ -171,12 +230,40 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
 export const KUN_GALGAME_LOCAL_RATING_SOURCE = 'kungal'
 export const KUN_GALGAME_LOCAL_RATING_META: KunGalgameExternalRatingMeta = {
   label: '鲲 Galgame 评分',
+  short: '鲲 Galgame',
   scale: '满分 10',
   hint: '鲲 Galgame 用户评分的贝叶斯平均',
   aggregate: '贝叶斯平均',
   max: 10,
   formatScore: (score) => score.toFixed(1),
-  scoreSuffix: '/10'
+  scoreSuffix: '/10',
+  // The bayesian prior already pulls thin samples to the middle, so these lines
+  // are much tighter than VNDB's and the gate can afford to be 3 instead of 10.
+  tier: { cutoffs: [6.8, 7.3, 7.9, 8.3], minVotes: 3 }
+}
+
+export interface KunGalgameRatingTierBadge {
+  key: GalgameRatingTierKey
+  label: string
+  color: KunUIColor
+  description: string
+}
+
+export const kunGalgameRatingTierBadge = (
+  meta: KunGalgameExternalRatingMeta,
+  score: number | null | undefined,
+  voteCount: number | null | undefined
+): KunGalgameRatingTierBadge | null => {
+  const key = galgameRatingTier(meta.tier, score, voteCount)
+  if (!key) {
+    return null
+  }
+  return {
+    key,
+    label: KUN_GALGAME_RATING_TIER_MAP[key],
+    color: KUN_GALGAME_RATING_TIER_COLOR_MAP[key],
+    description: KUN_GALGAME_RATING_TIER_DESCRIPTION_MAP[key]
+  }
 }
 
 export const KUN_GALGAME_DIMENSIONS = [

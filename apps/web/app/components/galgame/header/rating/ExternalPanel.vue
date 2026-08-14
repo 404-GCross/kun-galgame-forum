@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import {
   KUN_GALGAME_EXTERNAL_RATING_MAP,
+  KUN_GALGAME_RATING_TIER_INSUFFICIENT,
+  KUN_GALGAME_RATING_TIER_SCOPE_HINT,
+  kunGalgameRatingTierBadge,
   type KunGalgameExternalRatingSource
 } from '~/constants/galgame-rating'
 import { externalRatingHistogram } from './_stats'
@@ -31,6 +34,16 @@ const buckets = computed(() =>
   row.value?.distribution?.length
     ? externalRatingHistogram(row.value.distribution, meta.value.max)
     : null
+)
+
+const tier = computed(() =>
+  kunGalgameRatingTierBadge(meta.value, row.value?.score, row.value?.vote_count)
+)
+
+const tierTooltip = computed(() =>
+  tier.value
+    ? `${tier.value.description}, ${KUN_GALGAME_RATING_TIER_SCOPE_HINT}`
+    : `${meta.value.label}的评分人数不到 ${meta.value.tier.minVotes} 人, 分级会被少数几票带偏, 所以这里不给等级`
 )
 
 const statRows = computed(() => {
@@ -72,13 +85,24 @@ const link = computed(() => {
   <div v-if="row" class="space-y-5">
     <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
       <div>
-        <div class="flex items-baseline gap-0.5">
-          <span class="text-3xl leading-none font-semibold tabular-nums">
-            {{ meta.formatScore(row.score) }}
-          </span>
-          <span class="text-default-500 text-xl leading-none font-medium">
-            {{ meta.scoreSuffix }}
-          </span>
+        <div class="flex items-center gap-2">
+          <div class="flex items-baseline gap-0.5">
+            <span class="text-3xl leading-none font-semibold tabular-nums">
+              {{ meta.formatScore(row.score) }}
+            </span>
+            <span class="text-default-500 text-xl leading-none font-medium">
+              {{ meta.scoreSuffix }}
+            </span>
+          </div>
+          <KunTooltip :text="tierTooltip">
+            <KunChip
+              size="sm"
+              variant="flat"
+              :color="tier ? tier.color : 'default'"
+            >
+              {{ tier ? tier.label : KUN_GALGAME_RATING_TIER_INSUFFICIENT }}
+            </KunChip>
+          </KunTooltip>
         </div>
         <span class="text-default-500 text-xs">{{ meta.hint }}</span>
       </div>
