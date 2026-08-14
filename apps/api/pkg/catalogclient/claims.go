@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,6 +15,11 @@ const (
 	ClaimStatePending  = "pending"
 	ClaimStateDeclined = "declined"
 	ClaimStateHidden   = "hidden"
+)
+
+const (
+	ClaimKindSubmitted = "submitted"
+	ClaimKindAudited   = "audited"
 )
 
 const (
@@ -114,7 +120,7 @@ func (c *Client) UserClaims(ctx context.Context, uid int64, f UserClaimFilter) (
 		q.Set("site", f.Site)
 	}
 	if len(f.ClaimStates) > 0 {
-		q.Set("claim_state", joinStates(f.ClaimStates))
+		q.Set("claim_state", strings.Join(f.ClaimStates, ","))
 	}
 	if f.Before > 0 {
 		q.Set("before", strconv.FormatInt(f.Before, 10))
@@ -124,17 +130,6 @@ func (c *Client) UserClaims(ctx context.Context, uid int64, f UserClaimFilter) (
 	}
 	return editGetQuery[UserClaimPage](ctx,
 		c, "/api/v1/catalog/users/"+strconv.FormatInt(uid, 10)+"/claims", q)
-}
-
-func joinStates(states []string) string {
-	out := ""
-	for i, s := range states {
-		if i > 0 {
-			out += ","
-		}
-		out += s
-	}
-	return out
 }
 
 func editGetQuery[T any](ctx context.Context, c *Client, path string, q url.Values) (*T, error) {

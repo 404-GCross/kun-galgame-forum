@@ -1,3 +1,5 @@
+import type { UserClaimItem } from '../types/galgame'
+
 type GalgameClaimStateColor =
   | 'default'
   | 'primary'
@@ -33,6 +35,12 @@ export const galgameClaimStateBadge = (
       return { label: '未知', color: 'default' }
   }
 }
+
+// work_id is catalog's id, product_work_id is the forum's galgame id. They are
+// different id spaces: falling back to work_id here linked 我的审核 rows to
+// whichever unrelated galgame happened to carry that number.
+export const galgameClaimGid = (item: UserClaimItem): number =>
+  item.product_work_id ?? 0
 
 export const isClaimableState = (state: string | undefined): boolean =>
   state === CLAIM_STATE_DRAFT

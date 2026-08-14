@@ -27,7 +27,6 @@ const nameOfHit = (h: SearchHit): string =>
   galgameNameFromWire(h, h.vndb_id ? `VNDB ${h.vndb_id}` : `#${h.id}`)
 
 const stateBadge = galgameClaimStateBadge
-const gidOfPending = (item: UserClaimItem) => item.product_work_id ?? 0
 
 const handleSearch = async () => {
   if (!q.value.trim()) {
@@ -163,7 +162,10 @@ onMounted(() => {
               {{ item.last_reason }}
             </p>
           </div>
-          <KunLink :to="`/galgame/${gidOfPending(item)}/edit`">
+          <KunLink
+            v-if="galgameClaimGid(item)"
+            :to="`/galgame/${galgameClaimGid(item)}/edit`"
+          >
             <KunButton size="sm" variant="flat">继续编辑</KunButton>
           </KunLink>
         </div>

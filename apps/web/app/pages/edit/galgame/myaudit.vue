@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: ['auth']
+  middleware: ['moderator']
 })
 
 useKunDisableSeo('我的 Galgame 审核')

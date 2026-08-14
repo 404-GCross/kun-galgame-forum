@@ -170,8 +170,29 @@ func TestListMineIsTheTokensOwnClaims(t *testing.T) {
 	if got := rec.claimQ.Get("claim_state"); got != "pending,declined,draft" {
 		t.Errorf("claim_state = %q, want the 我的提交 default", got)
 	}
+	if got := rec.claimQ.Get("kind"); got != catalogclient.ClaimKindSubmitted {
+		t.Errorf("kind = %q, want only the works the caller submitted", got)
+	}
 	if page.Items == nil || len(page.Items) != 0 {
 		t.Errorf("items = %v, want an empty array", page.Items)
+	}
+}
+
+func TestListAuditIsTheClaimsTheCallerReviewed(t *testing.T) {
+	rec := &claimPlaneRecorder{}
+	svc := rec.submissionService(t)
+
+	if _, appErr := svc.ListAudit(t.Context(), "mod-jwt", url.Values{}); appErr != nil {
+		t.Fatalf("ListAudit: %v", appErr)
+	}
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if got := rec.claimQ.Get("kind"); got != catalogclient.ClaimKindAudited {
+		t.Errorf("kind = %q, want only the works the caller reviewed", got)
+	}
+	if got := rec.claimQ.Get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want every state — an audit history hides nothing", got)
 	}
 }
 

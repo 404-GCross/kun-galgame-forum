@@ -16,15 +16,45 @@ interface PendingQueueEnvelope {
   next_cursor: string | null
 }
 
-const pageData = reactive({
-  cursor: '',
-  limit: 30
-})
+const limit = 30
 
-const { data, status, refresh } = await useKunFetch<PendingQueueEnvelope>(
+const items = ref<PendingClaim[]>([])
+const nextCursor = ref('')
+const isLoadingMore = ref(false)
+
+const { data, refresh } = await useKunFetch<PendingQueueEnvelope>(
   '/admin/galgame/submissions',
-  { query: pageData }
+  { query: { limit } }
 )
+
+watch(
+  data,
+  (page) => {
+    if (!page) {
+      return
+    }
+    items.value = page.items
+    nextCursor.value = page.next_cursor ?? ''
+  },
+  { immediate: true }
+)
+
+const loadMore = async () => {
+  if (isLoadingMore.value || !nextCursor.value) {
+    return
+  }
+  isLoadingMore.value = true
+  const next = await kunFetch<PendingQueueEnvelope>(
+    '/admin/galgame/submissions',
+    { query: { cursor: nextCursor.value, limit } }
+  )
+  isLoadingMore.value = false
+  if (!next) {
+    return
+  }
+  items.value.push(...next.items)
+  nextCursor.value = next.next_cursor ?? ''
+}
 
 const gidOf = (row: PendingClaim) => row.claimed_by?.work_id ?? 0
 
@@ -135,9 +165,9 @@ const handleConfirmReason = async () => {
 
     <KunDivider />
 
-    <div v-if="data.items.length" class="flex flex-col gap-3">
+    <div v-if="items.length" class="flex flex-col gap-3">
       <div
-        v-for="row in data.items"
+        v-for="row in items"
         :key="row.id"
         class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-start"
       >
@@ -199,13 +229,13 @@ const handleConfirmReason = async () => {
       </div>
     </div>
 
-    <KunNull v-if="!data.items.length" />
+    <KunNull v-if="!items.length" />
 
     <KunButton
-      v-if="data.next_cursor"
+      v-if="nextCursor"
       variant="flat"
-      :loading="status === 'pending'"
-      @click="pageData.cursor = data.next_cursor ?? ''"
+      :loading="isLoadingMore"
+      @click="loadMore"
     >
       加载更多
     </KunButton>

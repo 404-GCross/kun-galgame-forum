@@ -106,7 +106,12 @@ func (a *App) setupRoutes() {
 	// catch-all binds "mine" / "calendar" / "drafts" as a gid and then fails
 	// inside GetDetail with Atoi("mine").
 	api.Get("/galgame/mine", userAuth, a.GalgameSubmissionHandler.ListMine)
-	api.Get("/galgame/myaudit", userAuth, a.GalgameSubmissionHandler.ListAudit)
+	api.Get(
+		"/galgame/myaudit",
+		userAuth,
+		middleware.RequireModerator(),
+		a.GalgameSubmissionHandler.ListAudit,
+	)
 	api.Get(
 		"/galgame/search/wizard",
 		userAuth,

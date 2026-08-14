@@ -166,6 +166,8 @@ func claimActionError(err error) *errors.AppError {
 	return errors.New(errors.CodeBiz, "资料库服务暂不可用", http.StatusServiceUnavailable)
 }
 
+const claimPageLimit = 20
+
 var mineStates = []string{
 	catalogclient.ClaimStatePending,
 	catalogclient.ClaimStateDeclined,
@@ -181,19 +183,7 @@ func (s *SubmissionService) ListMine(
 	if raw := query.Get("claim_state"); raw != "" {
 		states = splitCSV(raw)
 	}
-	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
-		ClaimStates: states,
-		Before:      int64(atoiOr(query.Get("before"), 0)),
-		Limit:       atoiOr(query.Get("limit"), 20),
-		Kind:        "submitted",
-	})
-	if err != nil {
-		return nil, claimActionError(err)
-	}
-	if page.Items == nil {
-		page.Items = []catalogclient.UserClaimItem{}
-	}
-	return page, nil
+	return s.listClaims(ctx, accessToken, query, catalogclient.ClaimKindSubmitted, states)
 }
 
 func (s *SubmissionService) ListAudit(
@@ -201,10 +191,21 @@ func (s *SubmissionService) ListAudit(
 	accessToken string,
 	query url.Values,
 ) (*catalogclient.UserClaimPage, *errors.AppError) {
+	return s.listClaims(ctx, accessToken, query, catalogclient.ClaimKindAudited, nil)
+}
+
+func (s *SubmissionService) listClaims(
+	ctx context.Context,
+	accessToken string,
+	query url.Values,
+	kind string,
+	states []string,
+) (*catalogclient.UserClaimPage, *errors.AppError) {
 	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
-		Before: int64(atoiOr(query.Get("before"), 0)),
-		Limit:  atoiOr(query.Get("limit"), 20),
-		Kind:   "audited",
+		ClaimStates: states,
+		Before:      int64(atoiOr(query.Get("before"), 0)),
+		Limit:       atoiOr(query.Get("limit"), claimPageLimit),
+		Kind:        kind,
 	})
 	if err != nil {
 		return nil, claimActionError(err)

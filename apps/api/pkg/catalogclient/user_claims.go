@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 const userClaimBase = userBase
@@ -32,7 +33,7 @@ func (c *Client) ActOnClaimUser(ctx context.Context, accessToken string, workID 
 func (c *Client) MyClaims(ctx context.Context, accessToken string, f UserClaimFilter) (*UserClaimPage, error) {
 	q := url.Values{}
 	if len(f.ClaimStates) > 0 {
-		q.Set("claim_state", joinStates(f.ClaimStates))
+		q.Set("claim_state", strings.Join(f.ClaimStates, ","))
 	}
 	if f.Before > 0 {
 		q.Set("before", strconv.FormatInt(f.Before, 10))

@@ -98,7 +98,7 @@ GET    /api/galgame/collection/:cid                   cors.New → OptionalAuth 
 GET    /api/galgame/drafts                            cors.New → DraftsHandler.GetDrafts
 GET    /api/galgame/interactions/mine                 cors.New → OptionalAuth → Auth → GalgameHandler.MyInteractions
 GET    /api/galgame/mine                              cors.New → Auth → SubmissionHandler.ListMine
-GET    /api/galgame/myaudit                           cors.New → Auth → SubmissionHandler.ListAudit
+GET    /api/galgame/myaudit                           cors.New → Auth → RequireModerator → SubmissionHandler.ListAudit
 GET    /api/galgame/search/picker                     cors.New → QuizHandler.SearchGalgames
 GET    /api/galgame/search/wizard                     cors.New → Auth → SubmissionHandler.SearchWithPending
 GET    /api/home                                      cors.New → HomeHandler.GetHome

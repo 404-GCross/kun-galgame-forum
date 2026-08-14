@@ -1,51 +1,6 @@
 <script setup lang="ts">
-const limit = 20
-
-const items = ref<UserClaimItem[]>([])
-const nextBefore = ref(0)
-const total = ref(0)
-const isLoadingMore = ref(false)
-
-const { data, refresh } = await useKunFetch<UserClaimList>('/galgame/mine', {
-  query: { before: 0, limit }
-})
-
-watch(
-  data,
-  (page) => {
-    if (!page) {
-      return
-    }
-    items.value = page.items
-    nextBefore.value = page.next_before
-    total.value = page.total
-  },
-  { immediate: true }
-)
-
-const hasMore = computed(
-  () => nextBefore.value > 0 && items.value.length < total.value
-)
-
-const loadMore = async () => {
-  if (isLoadingMore.value || !hasMore.value) {
-    return
-  }
-  isLoadingMore.value = true
-  const next = await kunFetch<UserClaimList>(
-    `/galgame/mine?before=${nextBefore.value}&limit=${limit}`
-  )
-  isLoadingMore.value = false
-  if (!next) {
-    return
-  }
-  items.value.push(...next.items)
-  nextBefore.value = next.next_before
-}
-
-const stateBadge = galgameClaimStateBadge
-const nameOf = (item: UserClaimItem) => item.display_name || '(无标题)'
-const gidOf = (item: UserClaimItem) => item.product_work_id ?? 0
+const { data, items, hasMore, isLoadingMore, loadMore, refresh } =
+  await useGalgameClaimList('/galgame/mine')
 
 const isWithdrawing = ref<Record<number, boolean>>({})
 
@@ -57,7 +12,7 @@ const handleWithdraw = async (item: UserClaimItem) => {
   if (!ok) {
     return
   }
-  const gid = gidOf(item)
+  const gid = galgameClaimGid(item)
   isWithdrawing.value = { ...isWithdrawing.value, [gid]: true }
   const res = await kunFetch<string>(`/galgame/${gid}`, {
     method: 'DELETE'
@@ -72,7 +27,7 @@ const handleWithdraw = async (item: UserClaimItem) => {
 const isResubmitting = ref<Record<number, boolean>>({})
 
 const handleResubmit = async (item: UserClaimItem) => {
-  const gid = gidOf(item)
+  const gid = galgameClaimGid(item)
   isResubmitting.value = { ...isResubmitting.value, [gid]: true }
   const res = await kunFetch<unknown>(`/galgame/${gid}/resubmit`, {
     method: 'POST'
@@ -117,73 +72,54 @@ const handleResubmit = async (item: UserClaimItem) => {
     />
 
     <div v-else-if="items.length" class="flex flex-col gap-3">
-      <div
+      <EditGalgameClaimRow
         v-for="item in items"
         :key="item.work_id"
-        class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-center"
+        :item="item"
+        time-label="提交于"
       >
-        <div class="min-w-0 flex-1 space-y-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h3
-              class="hover:text-primary truncate text-lg font-medium transition-colors"
-            >
-              {{ nameOf(item) }}
-            </h3>
-            <KunChip
-              size="xs"
-              variant="flat"
-              :color="stateBadge(item.claim_state).color"
-            >
-              {{ stateBadge(item.claim_state).label }}
-            </KunChip>
-          </div>
-          <div
-            class="text-default-500 flex flex-wrap items-center gap-2 text-sm"
-          >
-            <span>提交于 <KunTime :time="item.first_acted_at" /></span>
-            <template v-if="item.last_event_at !== item.first_acted_at">
-              <span>·</span>
-              <span>最后处理 <KunTime :time="item.last_event_at" /></span>
-            </template>
-          </div>
+        <template #note>
           <div
             v-if="item.claim_state === CLAIM_STATE_DECLINED && item.last_reason"
             class="text-danger bg-danger/10 mt-1 rounded-md px-2 py-1 text-sm"
           >
             被拒原因: {{ item.last_reason }}
           </div>
-        </div>
-        <div class="flex shrink-0 gap-2">
-          <KunLink :to="`/galgame/${gidOf(item)}/edit`">
-            <KunButton size="sm" variant="flat">编辑</KunButton>
-          </KunLink>
-          <KunButton
-            v-if="item.claim_state === CLAIM_STATE_DECLINED"
-            size="sm"
-            color="primary"
-            variant="flat"
-            :loading="isResubmitting[gidOf(item)]"
-            :disabled="isResubmitting[gidOf(item)]"
-            @click="handleResubmit(item)"
-          >
-            重新提交
-          </KunButton>
-          <KunButton
-            v-else-if="item.claim_state !== CLAIM_STATE_DRAFT"
-            size="sm"
-            color="danger"
-            variant="flat"
-            :loading="isWithdrawing[gidOf(item)]"
-            :disabled="isWithdrawing[gidOf(item)]"
-            @click="handleWithdraw(item)"
-          >
-            撤回
-          </KunButton>
-        </div>
-      </div>
+        </template>
+
+        <template #actions>
+          <template v-if="galgameClaimGid(item)">
+            <KunLink :to="`/galgame/${galgameClaimGid(item)}/edit`">
+              <KunButton size="sm" variant="flat">编辑</KunButton>
+            </KunLink>
+            <KunButton
+              v-if="item.claim_state === CLAIM_STATE_DECLINED"
+              size="sm"
+              color="primary"
+              variant="flat"
+              :loading="isResubmitting[galgameClaimGid(item)]"
+              :disabled="isResubmitting[galgameClaimGid(item)]"
+              @click="handleResubmit(item)"
+            >
+              重新提交
+            </KunButton>
+            <KunButton
+              v-else-if="item.claim_state !== CLAIM_STATE_DRAFT"
+              size="sm"
+              color="danger"
+              variant="flat"
+              :loading="isWithdrawing[galgameClaimGid(item)]"
+              :disabled="isWithdrawing[galgameClaimGid(item)]"
+              @click="handleWithdraw(item)"
+            >
+              撤回
+            </KunButton>
+          </template>
+        </template>
+      </EditGalgameClaimRow>
     </div>
 
-    <KunNull v-else-if="data && !items.length" />
+    <KunNull v-else />
 
     <KunButton
       v-if="hasMore"
