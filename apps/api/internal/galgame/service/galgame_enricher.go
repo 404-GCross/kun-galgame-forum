@@ -39,7 +39,6 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 
 	cards := make([]dto.GalgameCard, len(items))
 	for i, g := range items {
-		_, onForum := localMap[g.ID]
 		cards[i] = dto.GalgameCard{
 			ID: g.ID,
 			Name: dto.KunLanguage{
@@ -63,7 +62,11 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
 			Platform:                 emptyStrSliceIfNil(platformMap[g.ID]),
 			Language:                 emptyStrSliceIfNil(languageMap[g.ID]),
-			IsOnForum:                onForum,
+			// Not "a local row exists" — since 068 the row is only an interaction
+			// container, minted by the first view of any catalog work, so that
+			// test called 124 unpublished entries "on the forum" and the card
+			// then drew a byline with a blank author and a blank time.
+			IsOnForum: localMap[g.ID].Published,
 		}
 	}
 	return cards

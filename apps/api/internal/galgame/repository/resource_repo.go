@@ -148,7 +148,7 @@ func (r *ResourceRepository) FindLikedSet(userID int, resourceIDs []int) map[int
 func (r *ResourceRepository) FindGalgameLocal(galgameID int) GalgameLocalRow {
 	var row GalgameLocalRow
 	r.db.Table("galgame").
-		Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id").
+		Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id, published").
 		Where("id = ?", galgameID).Scan(&row)
 	return row
 }

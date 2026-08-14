@@ -173,7 +173,9 @@ const cardHref = (galgame: GalgameCard) => {
         <slot name="meta" :galgame="galgame" />
 
         <div
-          v-if="showPublisher && galgame.is_on_forum !== false"
+          v-if="
+            showPublisher && galgame.is_on_forum !== false && galgame.user.id
+          "
           class="text-default-600 mt-auto flex items-center gap-1 pt-3 text-sm"
         >
           <KunAvatar

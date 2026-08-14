@@ -29,6 +29,7 @@ type GalgameLocalRow struct {
 	View               int       `gorm:"column:view"`
 	ResourceUpdateTime time.Time `gorm:"column:resource_update_time"`
 	CreatorUserID      *int      `gorm:"column:creator_user_id"`
+	Published          bool      `gorm:"column:published"`
 }
 
 func (r *GalgameRepository) FindLocal(id int) model.GalgameLocal {
@@ -42,7 +43,7 @@ func (r *GalgameRepository) FindLocalBatch(ids []int) map[int]GalgameLocalRow {
 		return map[int]GalgameLocalRow{}
 	}
 	var rows []GalgameLocalRow
-	r.db.Table("galgame").Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id").
+	r.db.Table("galgame").Select("id, like_count, favorite_count, view, resource_update_time, creator_user_id, published").
 		Where("id IN ?", ids).Scan(&rows)
 	out := make(map[int]GalgameLocalRow, len(rows))
 	for _, row := range rows {
