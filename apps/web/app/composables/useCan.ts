@@ -27,6 +27,7 @@ const MODERATOR_PERMISSIONS = [
   'poll.delete_any',
   'poll.view_restricted',
   'galgame.ban_resource_publish',
+  'galgame.claim.review',
   'collection.edit_any',
   'collection.delete_any',
   'quiz.edit_any',
@@ -50,7 +51,8 @@ const MODERATOR_PERMISSIONS = [
   'friend_link.delete',
   'update_log.create',
   'update_log.edit',
-  'update_log.delete'
+  'update_log.delete',
+  'trust.review'
 ] as const
 
 const ADMIN_ONLY_PERMISSIONS = [

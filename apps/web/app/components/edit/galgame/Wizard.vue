@@ -18,7 +18,7 @@ interface WizardSearchResp {
 }
 
 const q = ref('')
-const { canModerate } = useRole()
+const canReviewClaims = useCan('galgame.claim.review')
 const hasSearched = ref(false)
 const isSearching = ref(false)
 const searchResults = ref<WizardSearchResp | null>(null)
@@ -101,7 +101,7 @@ onMounted(() => {
           <KunLink to="/edit/galgame/mine">
             <KunButton size="sm" variant="flat">我的提交</KunButton>
           </KunLink>
-          <KunLink v-if="canModerate" to="/edit/galgame/myaudit">
+          <KunLink v-if="canReviewClaims" to="/edit/galgame/audited">
             <KunButton size="sm" variant="flat">我的审核</KunButton>
           </KunLink>
         </div>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'moderator' })
+definePageMeta({
+  middleware: 'permission',
+  permissions: ['galgame.claim.review']
+})
 
 useKunDisableSeo('Galgame 审核')
 

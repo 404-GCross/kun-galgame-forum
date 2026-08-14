@@ -107,9 +107,9 @@ func (a *App) setupRoutes() {
 	// inside GetDetail with Atoi("mine").
 	api.Get("/galgame/mine", userAuth, a.GalgameSubmissionHandler.ListMine)
 	api.Get(
-		"/galgame/myaudit",
+		"/galgame/audited",
 		userAuth,
-		middleware.RequireModerator(),
+		middleware.RequirePermission(perm.GalgameClaimReview),
 		a.GalgameSubmissionHandler.ListAudit,
 	)
 	api.Get(
@@ -349,16 +349,16 @@ func (a *App) setupRoutes() {
 	rolePermAdmin.Get("/admin/permission-audit", middleware.RequireAdmin(), a.AdminPermissionAuditHandler.List)
 
 	trustAdmin := authed.Group("")
-	trustAdmin.Get("/admin/trust/review-items", middleware.RequireModerator(), a.TrustHandler.ListReviewItems)
-	trustAdmin.Get("/admin/trust/review-items/:id", middleware.RequireModerator(), a.TrustHandler.GetReviewItem)
-	trustAdmin.Post("/admin/trust/review-items/:id/claim", middleware.RequireModerator(), a.TrustHandler.ClaimReviewItem)
-	trustAdmin.Post("/admin/trust/review-items/:id/decide", middleware.RequireModerator(), a.TrustHandler.DecideReviewItem)
+	trustAdmin.Get("/admin/trust/review-items", middleware.RequirePermission(perm.TrustReview), a.TrustHandler.ListReviewItems)
+	trustAdmin.Get("/admin/trust/review-items/:id", middleware.RequirePermission(perm.TrustReview), a.TrustHandler.GetReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/claim", middleware.RequirePermission(perm.TrustReview), a.TrustHandler.ClaimReviewItem)
+	trustAdmin.Post("/admin/trust/review-items/:id/decide", middleware.RequirePermission(perm.TrustReview), a.TrustHandler.DecideReviewItem)
 
 	galgameAdmin := authed.Group("")
-	galgameAdmin.Get("/admin/galgame/submissions", middleware.RequireModerator(), a.GalgameClaimReviewHandler.PendingQueue)
+	galgameAdmin.Get("/admin/galgame/submissions", middleware.RequirePermission(perm.GalgameClaimReview), a.GalgameClaimReviewHandler.PendingQueue)
 	galgameAdmin.Post(
 		"/admin/galgame/:gid/review",
-		middleware.RequireModerator(),
+		middleware.RequirePermission(perm.GalgameClaimReview),
 		a.GalgameClaimReviewHandler.Review,
 	)
 	galgameAdmin.Put(

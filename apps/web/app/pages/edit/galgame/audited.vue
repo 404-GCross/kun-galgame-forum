@@ -1,11 +1,12 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: ['moderator']
+  middleware: 'permission',
+  permissions: ['galgame.claim.review']
 })
 
 useKunDisableSeo('我的 Galgame 审核')
 </script>
 
 <template>
-  <EditGalgameMineAudit />
+  <EditGalgameAudited />
 </template>

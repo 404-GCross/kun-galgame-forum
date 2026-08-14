@@ -174,6 +174,15 @@ var mineStates = []string{
 	catalogclient.ClaimStateDraft,
 }
 
+var claimStates = map[string]bool{
+	catalogclient.ClaimStateNone:     true,
+	catalogclient.ClaimStateLive:     true,
+	catalogclient.ClaimStateDraft:    true,
+	catalogclient.ClaimStatePending:  true,
+	catalogclient.ClaimStateDeclined: true,
+	catalogclient.ClaimStateHidden:   true,
+}
+
 func (s *SubmissionService) ListMine(
 	ctx context.Context,
 	accessToken string,
@@ -182,6 +191,11 @@ func (s *SubmissionService) ListMine(
 	states := mineStates
 	if raw := query.Get("claim_state"); raw != "" {
 		states = splitCSV(raw)
+		for _, st := range states {
+			if !claimStates[st] {
+				return nil, errors.ErrBadRequest("未知的申请状态: " + st)
+			}
+		}
 	}
 	return s.listClaims(ctx, accessToken, query, catalogclient.ClaimKindSubmitted, states)
 }

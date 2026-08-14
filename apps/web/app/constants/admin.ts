@@ -55,7 +55,7 @@ export interface KunAdminPageAsideItem {
   icon?: string
   router?: KUN_ADMIN_PAGE_ROUTE_TYPE
   permissions?: ForumPermission[]
-  role?: 'moderator' | 'admin'
+  role?: 'admin'
   to?: string
 }
 
@@ -79,14 +79,14 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     label: 'Galgame 审核',
     icon: 'lucide:clipboard-check',
     router: 'submissions',
-    role: 'moderator'
+    permissions: ['galgame.claim.review']
   },
   {
     name: 'moderation',
     label: '内容审核',
     icon: 'lucide:shield-alert',
     router: 'moderation',
-    role: 'moderator'
+    permissions: ['trust.review']
   },
   {
     name: 'friend-link',

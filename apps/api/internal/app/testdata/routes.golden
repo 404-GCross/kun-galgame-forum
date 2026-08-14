@@ -30,13 +30,13 @@ GET    /api/activity                                  cors.New → ActivityHandl
 GET    /api/activity/tab                              cors.New → ActivityHandler.GetTab
 GET    /api/activity/timeline                         cors.New → ActivityHandler.GetTimeline
 GET    /api/admin/doc/article                         cors.New → OptionalAuth → Auth → RequirePermission → ArticleHandler.GetAdminArticles
-GET    /api/admin/galgame/submissions                 cors.New → OptionalAuth → Auth → RequireModerator → ClaimReviewHandler.PendingQueue
+GET    /api/admin/galgame/submissions                 cors.New → OptionalAuth → Auth → RequirePermission → ClaimReviewHandler.PendingQueue
 GET    /api/admin/overview/all                        cors.New → OptionalAuth → Auth → RequirePermission → OverviewHandler.GetOverview
 GET    /api/admin/overview/stats                      cors.New → OptionalAuth → Auth → RequirePermission → OverviewHandler.GetStats
 GET    /api/admin/permission-audit                    cors.New → OptionalAuth → Auth → RequireAdmin → PermissionAuditHandler.List
 GET    /api/admin/role-permissions                    cors.New → OptionalAuth → Auth → RequireAdmin → RolePermissionHandler.GetMatrix
-GET    /api/admin/trust/review-items                  cors.New → OptionalAuth → Auth → RequireModerator → TrustHandler.ListReviewItems
-GET    /api/admin/trust/review-items/:id              cors.New → OptionalAuth → Auth → RequireModerator → TrustHandler.GetReviewItem
+GET    /api/admin/trust/review-items                  cors.New → OptionalAuth → Auth → RequirePermission → TrustHandler.ListReviewItems
+GET    /api/admin/trust/review-items/:id              cors.New → OptionalAuth → Auth → RequirePermission → TrustHandler.GetReviewItem
 GET    /api/admin/user-permissions/:uid               cors.New → OptionalAuth → Auth → RequireAdmin → UserPermissionHandler.GetView
 GET    /api/admin/user/:id/content-stats              cors.New → OptionalAuth → Auth → RequirePermission → PurgeHandler.GetUserContentStats
 GET    /api/auth/me                                   cors.New → OptionalAuth → Auth → OAuthHandler.Me
@@ -90,6 +90,7 @@ GET    /api/galgame/:gid/edit/proposals               cors.New → EditHandler.G
 GET    /api/galgame/:gid/edit/revisions               cors.New → OptionalAuth → EditHandler.Revisions
 GET    /api/galgame/:gid/link/all                     cors.New → OptionalAuth → GalgameProxyHandler.GetGalgameLinks
 GET    /api/galgame/:gid/resource/all                 cors.New → OptionalAuth → ResourceHandler.GetGalgameResources
+GET    /api/galgame/audited                           cors.New → Auth → RequirePermission → SubmissionHandler.ListAudit
 GET    /api/galgame/calendar                          cors.New → CalendarHandler.GetMonth
 GET    /api/galgame/calendar/pending                  cors.New → CalendarHandler.GetPending
 GET    /api/galgame/calendar/tba                      cors.New → CalendarHandler.GetTBA
@@ -98,7 +99,6 @@ GET    /api/galgame/collection/:cid                   cors.New → OptionalAuth 
 GET    /api/galgame/drafts                            cors.New → DraftsHandler.GetDrafts
 GET    /api/galgame/interactions/mine                 cors.New → OptionalAuth → Auth → GalgameHandler.MyInteractions
 GET    /api/galgame/mine                              cors.New → Auth → SubmissionHandler.ListMine
-GET    /api/galgame/myaudit                           cors.New → Auth → RequireModerator → SubmissionHandler.ListAudit
 GET    /api/galgame/search/picker                     cors.New → QuizHandler.SearchGalgames
 GET    /api/galgame/search/wizard                     cors.New → Auth → SubmissionHandler.SearchWithPending
 GET    /api/home                                      cors.New → HomeHandler.GetHome
@@ -164,9 +164,9 @@ GET    /api/website/:domain/comments                  cors.New → OptionalAuth 
 GET    /healthz                                       cors.New → App.setupRoutes
 PATCH  /api/galgame/collection/:cid                   cors.New → OptionalAuth → Auth → GalgameCollectionHandler.Update
 POST   /api/admin/friend-link                         cors.New → OptionalAuth → Auth → RequirePermission → FriendLinkHandler.Create
-POST   /api/admin/galgame/:gid/review                 cors.New → OptionalAuth → Auth → RequireModerator → ClaimReviewHandler.Review
-POST   /api/admin/trust/review-items/:id/claim        cors.New → OptionalAuth → Auth → RequireModerator → TrustHandler.ClaimReviewItem
-POST   /api/admin/trust/review-items/:id/decide       cors.New → OptionalAuth → Auth → RequireModerator → TrustHandler.DecideReviewItem
+POST   /api/admin/galgame/:gid/review                 cors.New → OptionalAuth → Auth → RequirePermission → ClaimReviewHandler.Review
+POST   /api/admin/trust/review-items/:id/claim        cors.New → OptionalAuth → Auth → RequirePermission → TrustHandler.ClaimReviewItem
+POST   /api/admin/trust/review-items/:id/decide       cors.New → OptionalAuth → Auth → RequirePermission → TrustHandler.DecideReviewItem
 POST   /api/auth/logout                               cors.New → OAuthHandler.Logout
 POST   /api/auth/oauth/callback                       cors.New → OAuthHandler.Callback
 POST   /api/doc/article                               cors.New → OptionalAuth → Auth → RequirePermission → ArticleHandler.CreateArticle

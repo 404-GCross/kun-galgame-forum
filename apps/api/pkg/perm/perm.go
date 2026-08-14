@@ -32,6 +32,7 @@ const (
 	PollViewRestricted Permission = "poll.view_restricted"
 
 	GalgameBanResourcePublish Permission = "galgame.ban_resource_publish"
+	GalgameClaimReview        Permission = "galgame.claim.review"
 
 	CollectionEditAny   Permission = "collection.edit_any"
 	CollectionDeleteAny Permission = "collection.delete_any"
@@ -66,6 +67,8 @@ const (
 	UpdateLogEdit   Permission = "update_log.edit"
 	UpdateLogDelete Permission = "update_log.delete"
 
+	TrustReview Permission = "trust.review"
+
 	AdminDashboard   Permission = "admin.dashboard"
 	UserPurgeContent Permission = "user.purge_content"
 )
@@ -96,6 +99,7 @@ var moderatorPerms = []Permission{
 	PollDeleteAny,
 	PollViewRestricted,
 	GalgameBanResourcePublish,
+	GalgameClaimReview,
 	CollectionEditAny,
 	CollectionDeleteAny,
 	QuizEditAny,
@@ -120,6 +124,7 @@ var moderatorPerms = []Permission{
 	UpdateLogCreate,
 	UpdateLogEdit,
 	UpdateLogDelete,
+	TrustReview,
 }
 
 var adminPerms = append(append([]Permission{}, moderatorPerms...), AdminDashboard, UserPurgeContent)

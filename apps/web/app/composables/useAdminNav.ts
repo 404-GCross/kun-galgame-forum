@@ -4,16 +4,13 @@ import {
 } from '~/constants/admin'
 
 export const useAdminNav = () => {
-  const { canModerate, canAdminister } = useRole()
+  const { canAdminister } = useRole()
   const myPermissions = useMyPermissions()
 
   const items = computed(() =>
     KUN_ADMIN_PAGE_ASIDE_NAV_ITEM.filter((item) => {
       if (item.role === 'admin') {
         return canAdminister.value
-      }
-      if (item.role === 'moderator') {
-        return canModerate.value
       }
       return (
         !item.permissions ||

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { data, items, hasMore, isLoadingMore, loadMore } =
-  await useGalgameClaimList('/galgame/myaudit')
+  await useGalgameClaimList('/galgame/audited')
 </script>
 
 <template>

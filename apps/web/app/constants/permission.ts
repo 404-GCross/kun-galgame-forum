@@ -52,6 +52,10 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
     label: '禁止游戏资源发布',
     group: 'Galgame'
   },
+  'galgame.claim.review': {
+    label: '审核 Galgame 投稿',
+    group: 'Galgame'
+  },
   'collection.edit_any': { label: '编辑任意收藏夹', group: '收藏夹' },
   'collection.delete_any': { label: '删除任意收藏夹', group: '收藏夹' },
   'quiz.edit_any': { label: '编辑任意题目', group: '题目' },
@@ -82,6 +86,7 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'update_log.create': { label: '创建更新日志与待办', group: '更新日志与待办' },
   'update_log.edit': { label: '编辑更新日志与待办', group: '更新日志与待办' },
   'update_log.delete': { label: '删除更新日志与待办', group: '更新日志与待办' },
+  'trust.review': { label: '处理举报与内容审核', group: '管理' },
   'admin.dashboard': { label: '管理总览与统计', group: '管理' },
   'user.purge_content': { label: '清除用户全部内容', group: '管理' }
 }

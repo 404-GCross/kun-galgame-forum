@@ -7,7 +7,10 @@ import {
   trustSubjectHref
 } from '~/constants/trust'
 
-definePageMeta({ middleware: 'moderator' })
+definePageMeta({
+  middleware: 'permission',
+  permissions: ['trust.review']
+})
 
 useKunDisableSeo('内容审核')
 
