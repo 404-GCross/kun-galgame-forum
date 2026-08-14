@@ -71,7 +71,7 @@ const sorted = computed(() =>
             />
             <span class="text-warning shrink-0 font-bold">
               {{ rating.overall }}
-              <span class="text-default-400 text-xs font-normal">/ 10</span>
+              <span class="text-default-400 text-xs font-normal">/10</span>
             </span>
             <KunTime
               :time="rating.created"

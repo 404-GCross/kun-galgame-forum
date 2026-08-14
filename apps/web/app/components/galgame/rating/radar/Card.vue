@@ -44,7 +44,7 @@ defineProps<{
               class="text-warning flex shrink-0 items-center text-xl font-bold"
             >
               {{ `${rating.overall}` }}
-              <span class="text-default-500 ml-1.5 text-sm">/ 10 </span>
+              <span class="text-default-500 ml-0.5 text-sm">/10</span>
             </span>
           </div>
         </div>

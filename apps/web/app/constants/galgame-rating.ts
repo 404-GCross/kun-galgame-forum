@@ -105,9 +105,18 @@ export interface KunGalgameExternalRatingMeta {
   hint: string
   aggregate: string
   max: number
+  formatScore: (score: number) => string
+  scoreSuffix: string
   unit?: string
   link?: (ref: string) => string
 }
+
+const kunRatingScoreDecimal = (score: number) =>
+  String(Number(score.toFixed(2)))
+
+// 批评空间 quotes a score as the band it falls in ("75点台"), so this truncates
+// rather than rounds: 75.8 is still the 75 band.
+const kunRatingScoreBand = (score: number) => String(Math.floor(score))
 
 // Catalog ships each source on its own native scale and never normalizes across
 // them: vndb/bangumi are a 0-10 mean, dlsite a 0-5 star mean, erogamescape a
@@ -122,6 +131,8 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     hint: 'VNDB 用户评分的平均值',
     aggregate: '平均值',
     max: 10,
+    formatScore: kunRatingScoreDecimal,
+    scoreSuffix: '/10',
     link: (ref) => `https://vndb.org/${ref}`
   },
   bangumi: {
@@ -130,14 +141,18 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     hint: 'Bangumi 用户评分的平均值',
     aggregate: '平均值',
     max: 10,
+    formatScore: kunRatingScoreDecimal,
+    scoreSuffix: '/10',
     link: (ref) => `https://bgm.tv/subject/${ref}`
   },
   erogamescape: {
-    label: 'ErogameScape',
+    label: '批评空间',
     scale: '满分 100',
-    hint: 'ErogameScape 用户评分的中位数',
+    hint: '批评空间用户评分的中位数',
     aggregate: '中位数',
     max: 100,
+    formatScore: kunRatingScoreBand,
+    scoreSuffix: '点台',
     link: (ref) =>
       `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${ref}`
   },
@@ -147,17 +162,21 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     hint: 'DLsite 购买者的平均星级',
     aggregate: '平均值',
     max: 5,
+    formatScore: kunRatingScoreDecimal,
+    scoreSuffix: '/5',
     unit: '星'
   }
 }
 
 export const KUN_GALGAME_LOCAL_RATING_SOURCE = 'kungal'
 export const KUN_GALGAME_LOCAL_RATING_META: KunGalgameExternalRatingMeta = {
-  label: '本站',
+  label: '鲲 Galgame 评分',
   scale: '满分 10',
-  hint: '本站用户评分的贝叶斯平均',
+  hint: '鲲 Galgame 用户评分的贝叶斯平均',
   aggregate: '贝叶斯平均',
-  max: 10
+  max: 10,
+  formatScore: (score) => score.toFixed(1),
+  scoreSuffix: '/10'
 }
 
 export const KUN_GALGAME_DIMENSIONS = [

@@ -47,9 +47,21 @@ const statRows = computed(() => {
 // dlsite intentionally has no link template: the purchase URL is assembled
 // server-side so it carries the affiliate id. No URL means no link, not a
 // hand-built one that drops the affiliate.
+const purchaseUrl = computed(() =>
+  props.source === 'dlsite' ? (props.galgame.dlsite_purchase_url ?? '') : ''
+)
+
+// A space belongs between CJK and Latin, not between two CJK runs: "在 VNDB 查看"
+// but "在批评空间查看".
+const spacedLabel = computed(() =>
+  /^[\x20-\x7e]+$/.test(meta.value.label)
+    ? ` ${meta.value.label} `
+    : meta.value.label
+)
+
 const link = computed(() => {
   if (props.source === 'dlsite') {
-    return props.galgame.dlsite_purchase_url ?? ''
+    return ''
   }
   const externalId = props.galgame.refs?.[props.source]
   return externalId ? (meta.value.link?.(externalId) ?? '') : ''
@@ -60,11 +72,13 @@ const link = computed(() => {
   <div v-if="row" class="space-y-5">
     <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
       <div>
-        <div class="flex items-baseline gap-1">
-          <span class="text-3xl leading-none font-semibold">
-            {{ Number(row.score.toFixed(2)) }}
+        <div class="flex items-baseline gap-0.5">
+          <span class="text-3xl leading-none font-semibold tabular-nums">
+            {{ meta.formatScore(row.score) }}
           </span>
-          <span class="text-default-400 text-sm">/ {{ meta.max }}</span>
+          <span class="text-default-500 text-xl leading-none font-medium">
+            {{ meta.scoreSuffix }}
+          </span>
         </div>
         <span class="text-default-500 text-xs">{{ meta.hint }}</span>
       </div>
@@ -83,6 +97,11 @@ const link = computed(() => {
           </span>
         </span>
       </div>
+
+      <KunChip v-if="purchaseUrl" color="primary" variant="flat" size="sm">
+        <KunIcon name="lucide:badge-check" />
+        支持正版购买
+      </KunChip>
     </div>
 
     <div v-if="buckets" class="space-y-1">
@@ -122,14 +141,24 @@ const link = computed(() => {
       v-if="!buckets && !statRows.length"
       color="default"
       title="外部来源只有汇总分"
-      :description="`本站从百科同步到的只有 ${meta.label} 的平均分、评分人数和排名, 拿不到每一条评分具体是谁打的, 所以这里没有分布图和评分人列表。`"
+      :description="`本站从百科同步到的只有${spacedLabel}的平均分、评分人数和排名, 拿不到每一条评分具体是谁打的, 所以这里没有分布图和评分人列表。`"
     />
     <KunInfo
       v-else
       color="default"
       title="外部来源没有逐人评分"
-      :description="`本站从百科同步到的是 ${meta.label} 的汇总统计, 拿不到每一条评分具体是谁打的, 所以这里没有评分人列表。`"
+      :description="`本站从百科同步到的是${spacedLabel}的汇总统计, 拿不到每一条评分具体是谁打的, 所以这里没有评分人列表。`"
     />
+
+    <div v-if="purchaseUrl" class="flex flex-wrap items-center gap-3">
+      <GalgameDlsitePurchase
+        :purchase-url="purchaseUrl"
+        :coupon-url="galgame.dlsite_coupon_url"
+      />
+      <span class="text-default-500 text-xs">
+        本站与 DLsite 官方合作, 从这里购买正版, 分成会全部回馈给用户
+      </span>
+    </div>
 
     <KunButton
       v-if="link"
@@ -142,7 +171,7 @@ const link = computed(() => {
     >
       <span class="flex items-center gap-1">
         <KunIcon name="lucide:external-link" />
-        在 {{ meta.label }} 查看
+        在{{ spacedLabel }}查看
       </span>
     </KunButton>
   </div>

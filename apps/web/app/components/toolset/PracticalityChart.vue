@@ -62,7 +62,7 @@ const options = computed(
       labels: { style: { colors: 'var(--color-default-900)' } }
     },
     tooltip: {
-      theme: colorMode.preference,
+      theme: colorMode.value,
       y: { formatter: (y: number) => `${y} 人` }
     },
     grid: { borderColor: 'var(--color-default-200)', strokeDashArray: 4 },

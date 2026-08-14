@@ -25,8 +25,10 @@ const tiles = computed(() => {
         {
           key: KUN_GALGAME_LOCAL_RATING_SOURCE,
           icon: 'lucide:star',
-          score: (props.galgame.rating ?? 0).toFixed(1),
-          rank: undefined as number | undefined,
+          score: KUN_GALGAME_LOCAL_RATING_META.formatScore(
+            props.galgame.rating ?? 0
+          ),
+          suffix: KUN_GALGAME_LOCAL_RATING_META.scoreSuffix,
           caption: `${KUN_GALGAME_LOCAL_RATING_META.label} · ${formatVotes(forumCount.value)}`,
           tooltip: `${KUN_GALGAME_LOCAL_RATING_META.hint}, ${KUN_GALGAME_LOCAL_RATING_META.scale}`
         }
@@ -41,8 +43,8 @@ const tiles = computed(() => {
       {
         key: source as string,
         icon: '',
-        score: String(Number(row.score.toFixed(2))),
-        rank: row.rank,
+        score: meta.formatScore(row.score),
+        suffix: meta.scoreSuffix,
         caption: `${meta.label} · ${formatVotes(row.vote_count)}`,
         tooltip: `${meta.hint}, ${meta.scale}`
       }
@@ -91,11 +93,13 @@ const tileClass =
       >
         <span class="flex items-baseline gap-1">
           <KunIcon v-if="tile.icon" :name="tile.icon" class="text-warning" />
-          <span class="text-2xl leading-none font-semibold">
-            {{ tile.score }}
-          </span>
-          <span v-if="tile.rank" class="text-default-500 text-xs">
-            #{{ tile.rank }}
+          <span class="flex items-baseline gap-0.5">
+            <span class="text-2xl leading-none font-semibold tabular-nums">
+              {{ tile.score }}
+            </span>
+            <span class="text-default-500 text-sm leading-none font-medium">
+              {{ tile.suffix }}
+            </span>
           </span>
         </span>
         <span class="text-default-500 text-xs whitespace-nowrap">

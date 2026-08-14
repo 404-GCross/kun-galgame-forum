@@ -48,7 +48,11 @@ const options = computed(
       }
     },
     tooltip: {
-      theme: colorMode.preference,
+      // colorMode.preference is 'system' by default, which apexcharts does not
+      // recognize: it then adds neither apexcharts-theme-light nor -dark, and
+      // its only tooltip background lives on those two classes — the tooltip
+      // rendered fully transparent. colorMode.value is always resolved.
+      theme: colorMode.value,
       x: { formatter: (x: number) => `${x} ${props.unit ?? '分'}` },
       y: { formatter: (y: number) => `${y} 人` }
     },

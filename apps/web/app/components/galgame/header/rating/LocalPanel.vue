@@ -2,6 +2,7 @@
 import {
   KUN_GALGAME_DIMENSIONS,
   KUN_GALGAME_DIM_LABELS,
+  KUN_GALGAME_LOCAL_RATING_META,
   KUN_GALGAME_LOCAL_RATING_SOURCE,
   KUN_GALGAME_RATING_RECOMMEND_MAP,
   KUN_GALGAME_RATING_RECOMMEND_COLOR_MAP,
@@ -45,10 +46,16 @@ const playStatusTally = computed(() =>
       <div>
         <div class="flex items-baseline gap-1">
           <KunIcon name="lucide:star" class="text-warning" />
-          <span class="text-3xl leading-none font-semibold">
-            {{ (galgame.rating ?? 0).toFixed(1) }}
+          <span class="flex items-baseline gap-0.5">
+            <span class="text-3xl leading-none font-semibold tabular-nums">
+              {{
+                KUN_GALGAME_LOCAL_RATING_META.formatScore(galgame.rating ?? 0)
+              }}
+            </span>
+            <span class="text-default-500 text-xl leading-none font-medium">
+              {{ KUN_GALGAME_LOCAL_RATING_META.scoreSuffix }}
+            </span>
           </span>
-          <span class="text-default-400 text-sm">/ 10</span>
         </div>
         <KunTooltip
           text="贝叶斯平均: 评分人数少时会向全站均分收敛, 避免一两个满分就冲榜"

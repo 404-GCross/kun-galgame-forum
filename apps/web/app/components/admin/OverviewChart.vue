@@ -80,7 +80,7 @@ const chartOptions = computed<ApexOptions>(() => {
     },
     tooltip: {
       x: { format: 'yyyy/MM/dd' },
-      theme: colorMode.preference
+      theme: colorMode.value
     },
     grid: {
       borderColor: 'var(--color-default-200)',

@@ -57,7 +57,7 @@ const normalized = (score: number, max: number) => (score / max) * 10
       :key="row.key"
       :class="
         cn(
-          'grid grid-cols-[6rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5',
+          'grid grid-cols-[7rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5',
           row.key === highlight && 'bg-default-100'
         )
       "
