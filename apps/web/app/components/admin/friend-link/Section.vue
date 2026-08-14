@@ -27,7 +27,7 @@ const listEl = ref<HTMLElement | null>(null)
 useSortable(listEl, items, {
   animation: 150,
   handle: '.friend-drag-handle',
-  onUpdate: (e: { oldIndex?: number; newIndex?: number }) => {
+  onUpdate: (e) => {
     if (e.oldIndex == null || e.newIndex == null) return
     moveArrayElement(items, e.oldIndex, e.newIndex)
     nextTick(() =>

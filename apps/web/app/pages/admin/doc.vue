@@ -41,7 +41,7 @@ const listEl = ref<HTMLElement | null>(null)
 useSortable(listEl, list, {
   animation: 150,
   handle: '.doc-drag-handle',
-  onUpdate: (e: { oldIndex?: number; newIndex?: number }) => {
+  onUpdate: (e) => {
     if (e.oldIndex == null || e.newIndex == null) return
     moveArrayElement(list, e.oldIndex, e.newIndex)
     nextTick(() => persistOrder())
