@@ -40,11 +40,17 @@ type SubmitResult struct {
 	GID        int    `json:"gid"`
 	WorkID     int64  `json:"work_id"`
 	ClaimState string `json:"claim_state"`
+	// False when the submitter uploaded a banner that did not make it onto the
+	// work. The submission itself still stands, so this is reported rather than
+	// raised — but it has to be reported: silence here hid a broken cover patch
+	// for the whole life of the feature.
+	BannerAttached bool `json:"banner_attached"`
 }
 
 func (s *SubmissionService) Submit(
 	ctx context.Context,
 	accessToken string,
+	uid int,
 	form *SubmissionForm,
 ) (*SubmitResult, *errors.AppError) {
 	if form.DisplayName() == "" {
@@ -61,15 +67,30 @@ func (s *SubmissionService) Submit(
 		return nil, claimActionError(err)
 	}
 	gid := int(res.ProductWorkID)
-	if patch := form.CoverPatch(); patch != nil {
+	// Stamp the submitter now rather than waiting for the claim feed to say so
+	// ten minutes later: it is what authorises the submitter to open their own
+	// unpublished entry, and it survives a Redis flush. The row stays
+	// published=false, so it shows up in no list and no feed.
+	if uid > 0 && s.galgameRepo != nil {
+		if err := s.galgameRepo.SubmitLocal(s.galgameRepo.DB().WithContext(ctx), gid, uid); err != nil {
+			slog.Warn("submit: 记录本地投稿人失败", "gid", gid, "uid", uid, "error", err)
+		}
+	}
+	patch := form.CoverPatch()
+	attached := patch == nil
+	if patch != nil {
 		if _, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
 			EntityType: catalogclient.EntityTypeWork, EntityID: res.WorkID,
 			Patch: patch, Note: "投稿时提交的横幅图",
 		}); err != nil {
-			slog.Warn("submit: 附加横幅图失败", "work", res.WorkID, "error", err)
+			slog.Error("submit: 附加横幅图失败, 投稿已建立但封面丢失", "work", res.WorkID, "error", err)
+		} else {
+			attached = true
 		}
 	}
-	return &SubmitResult{GID: gid, WorkID: res.WorkID, ClaimState: res.ClaimState}, nil
+	return &SubmitResult{
+		GID: gid, WorkID: res.WorkID, ClaimState: res.ClaimState, BannerAttached: attached,
+	}, nil
 }
 
 func (s *SubmissionService) Claim(

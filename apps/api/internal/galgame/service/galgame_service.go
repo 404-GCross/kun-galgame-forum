@@ -132,6 +132,7 @@ func (s *GalgameService) GetDetail(
 	galgameID, currentUserID int,
 	token string,
 	isSFW bool,
+	canReview bool,
 ) (*dto.GalgameDetail, *errors.AppError) {
 	d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID)
 	if appErr != nil {
@@ -141,6 +142,14 @@ func (s *GalgameService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
 	g := client.CatalogDetailToFull(d, galgameID)
+	// An entry still in submission is not public: it used to answer 200 to
+	// anyone with the id, canonical tag and VideoGame JSON-LD included, so
+	// search engines indexed games nobody had approved. Its submitter and the
+	// reviewers still need it — /galgame/:gid/edit reads this same endpoint.
+	if g.Status != client.GalgameStatusPublished && !canReview &&
+		(currentUserID <= 0 || s.ownerOf(galgameID) != currentUserID) {
+		return nil, errors.ErrNotFound("未找到该 Galgame")
+	}
 	s.galgameClient.HydrateOfficialLinks(ctx, &g)
 
 	go s.galgameRepo.IncrementView(galgameID)

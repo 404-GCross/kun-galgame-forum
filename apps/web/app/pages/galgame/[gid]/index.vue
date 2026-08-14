@@ -26,6 +26,18 @@ const { data } = await useKunFetch<GalgameDetail>(`/galgame/${gid.value}`, {
 const galgame = data.value
 const isShowGalgame = ref(true)
 
+// An entry still in submission has no public page at all — this one used to
+// answer 200 with a canonical tag and VideoGame JSON-LD, so search engines
+// indexed games nobody had approved. Reviewers and the submitter read it
+// through the preview modal instead; only /galgame/:gid/edit still opens it.
+if (galgame && galgame.status !== GalgameStatus.Published) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: '该 Galgame 尚未发布',
+    fatal: true
+  })
+}
+
 if (galgame) {
   if (galgame.content_limit === 'nsfw') {
     const title = getPreferredLanguageText(galgame.name)

@@ -88,6 +88,9 @@ func (r *GalgameRepository) Touch(tx *gorm.DB, galgameID int) error {
 		UpdateColumn("resource_update_time", time.Now()).Error
 }
 
-func (r *GalgameRepository) DeleteLocalStub(galgameID int) {
-	r.db.Where("id = ?", galgameID).Delete(&model.GalgameLocal{})
+func (r *GalgameRepository) SubmitLocal(tx *gorm.DB, galgameID, userID int) error {
+	if err := r.EnsureLocalStub(tx, galgameID); err != nil {
+		return err
+	}
+	return r.SetCreatorIfUnset(tx, galgameID, userID)
 }

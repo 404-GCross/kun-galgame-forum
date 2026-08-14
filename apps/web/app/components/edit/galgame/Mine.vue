@@ -24,6 +24,19 @@ const handleWithdraw = async (item: UserClaimItem) => {
   }
 }
 
+const previewGid = ref(0)
+const previewState = ref('')
+const previewReason = ref('')
+const isPreviewOpen = ref(false)
+
+const openPreview = (item: UserClaimItem) => {
+  previewGid.value = galgameClaimGid(item)
+  previewState.value = item.claim_state
+  previewReason.value =
+    item.claim_state === CLAIM_STATE_DECLINED ? (item.last_reason ?? '') : ''
+  isPreviewOpen.value = true
+}
+
 const isResubmitting = ref<Record<number, boolean>>({})
 
 const handleResubmit = async (item: UserClaimItem) => {
@@ -89,6 +102,9 @@ const handleResubmit = async (item: UserClaimItem) => {
 
         <template #actions>
           <template v-if="galgameClaimGid(item)">
+            <KunButton size="sm" variant="flat" @click="openPreview(item)">
+              预览
+            </KunButton>
             <KunLink :to="`/galgame/${galgameClaimGid(item)}/edit`">
               <KunButton size="sm" variant="flat">编辑</KunButton>
             </KunLink>
@@ -129,5 +145,13 @@ const handleResubmit = async (item: UserClaimItem) => {
     >
       加载更多
     </KunButton>
+
+    <GalgamePreviewModal
+      v-if="previewGid"
+      v-model="isPreviewOpen"
+      :gid="previewGid"
+      :claim-state="previewState"
+      :decline-reason="previewReason"
+    />
   </div>
 </template>

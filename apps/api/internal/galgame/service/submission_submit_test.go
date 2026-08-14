@@ -82,7 +82,7 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	res, appErr := svc.Submit(t.Context(), "user-jwt",
+	res, appErr := svc.Submit(t.Context(), "user-jwt", 0,
 		&SubmissionForm{NameJaJP: "白恋サクラ", AgeLimit: "r18", ContentLimit: "nsfw"})
 	if appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
@@ -117,7 +117,7 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	if _, appErr := svc.Submit(t.Context(), "user-jwt",
+	if _, appErr := svc.Submit(t.Context(), "user-jwt", 0,
 		&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw", BannerHash: "abc123"}); appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
 	}
@@ -151,7 +151,7 @@ func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	res, appErr := svc.Submit(t.Context(), "user-jwt",
+	res, appErr := svc.Submit(t.Context(), "user-jwt", 0,
 		&SubmissionForm{NameJaJP: "白恋サクラ", AgeLimit: "all", ContentLimit: "sfw"})
 	if appErr != nil {
 		t.Fatalf("Submit: %v", appErr)
@@ -170,7 +170,7 @@ func TestSubmitRefusesATitlelessForm(t *testing.T) {
 	rec := &submitRecorder{}
 	svc := rec.service(t)
 
-	if _, appErr := svc.Submit(t.Context(), "user-jwt",
+	if _, appErr := svc.Submit(t.Context(), "user-jwt", 0,
 		&SubmissionForm{AgeLimit: "all"}); appErr == nil {
 		t.Fatal("want a refusal for a form with no title")
 	}

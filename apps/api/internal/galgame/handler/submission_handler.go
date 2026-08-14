@@ -32,11 +32,15 @@ func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
+	user := middleware.GetUser(c)
+	if user == nil {
+		return response.Error(c, errors.ErrAuthExpired())
+	}
 	var form service.SubmissionForm
 	if err := c.Bind().Body(&form); err != nil {
 		return response.Error(c, errors.ErrBadRequest("请求格式错误"))
 	}
-	res, appErr := h.svc.Submit(c.Context(), token, &form)
+	res, appErr := h.svc.Submit(c.Context(), token, user.ID, &form)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

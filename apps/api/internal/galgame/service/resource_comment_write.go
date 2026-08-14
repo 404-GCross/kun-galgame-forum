@@ -249,9 +249,10 @@ func (s *ResourceCommentService) ratingGalgameID(ratingID int) int {
 	return gid
 }
 
+// galgame's owner column is creator_user_id — see RatingRepository.FindGalgameOwner.
 func (s *ResourceCommentService) galgameOwner(galgameID int) int {
 	var uid int
-	s.db.Table("galgame").Select("user_id").Where("id = ?", galgameID).Scan(&uid)
+	s.db.Table("galgame").Select("creator_user_id").Where("id = ?", galgameID).Scan(&uid)
 	return uid
 }
 

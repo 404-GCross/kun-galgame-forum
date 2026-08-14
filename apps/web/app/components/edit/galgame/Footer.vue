@@ -68,20 +68,24 @@ const handleSubmitGalgame = async () => {
       bannerHash = uploaded.hash
     }
   }
-  const created = await kunFetch<{ gid: number; claim_state: string }>(
-    '/galgame/submit',
-    {
-      method: 'POST',
-      body: {
-        ...jsonFields,
-        aliases: aliases.value,
-        banner_hash: bannerHash
-      }
+  const created = await kunFetch<{
+    gid: number
+    claim_state: string
+    banner_attached: boolean
+  }>('/galgame/submit', {
+    method: 'POST',
+    body: {
+      ...jsonFields,
+      aliases: aliases.value,
+      banner_hash: bannerHash
     }
-  )
+  })
   isPublishing.value = false
 
   if (created?.gid) {
+    if (bannerHash && !created.banner_attached) {
+      useMessage('封面上传失败, 请在「我的提交」中重新添加封面', 'warn', 7777)
+    }
     await deleteImage('kun-galgame-publish-banner')
     if (import.meta.client) {
       localStorage.removeItem('kun-galgame-publish-step')

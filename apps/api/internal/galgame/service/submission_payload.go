@@ -148,16 +148,18 @@ func (f *SubmissionForm) Released() (*catalogclient.WorkSubmitDate, *errors.AppE
 	}, nil
 }
 
+// A cover element accepts image_hash, kind, portrait_pinned, sexual and
+// violence and NOTHING else — catalog's editspec rejects an unknown key
+// outright. The original patch also sent sort_order, source and source_key
+// (column names, not patch keys), so every submitted banner came back
+// `element 0: unknown key "sort_order"` and was dropped by the warn-and-carry-on
+// in Submit: zero submission banners reached production before 2026-08.
 func (f *SubmissionForm) CoverPatch() map[string]any {
-	if strings.TrimSpace(f.BannerHash) == "" {
+	hash := strings.TrimSpace(f.BannerHash)
+	if hash == "" {
 		return nil
 	}
 	return map[string]any{
-		"catalog.work.covers": []any{
-			map[string]any{
-				"image_hash": f.BannerHash, "sort_order": 0,
-				"sexual": 0, "violence": 0, "source": "", "source_key": "", "kind": "",
-			},
-		},
+		"catalog.work.covers": []any{map[string]any{"image_hash": hash}},
 	}
 }

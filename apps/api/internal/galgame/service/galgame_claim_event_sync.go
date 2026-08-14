@@ -11,6 +11,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/catalogclient"
+	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -141,7 +142,6 @@ const (
 	claimEffectNone claimEffect = iota
 	claimEffectSeedStub
 	claimEffectUnpublish
-	claimEffectDropStub
 	claimEffectRememberSubmitter
 	claimEffectUnknownState
 )
@@ -153,8 +153,13 @@ func effectOf(ev *catalogclient.ClaimEventFeedItem) claimEffect {
 	switch ev.ToState {
 	case catalogclient.ClaimStateLive:
 		return claimEffectSeedStub
+	// A ban unpublishes; it must never delete the local row. galgame_comment,
+	// galgame_like, galgame_favorite and galgame_resource are ON DELETE CASCADE
+	// off galgame (galgame_rating is RESTRICT), so dropping the stub took every
+	// comment and resource down with it — or silently failed on a rated entry —
+	// and a later unban rebuilt the row owned by whoever lifted the ban.
 	case catalogclient.ClaimStateHidden:
-		return claimEffectDropStub
+		return claimEffectUnpublish
 	case catalogclient.ClaimStatePending:
 		return claimEffectRememberSubmitter
 	case catalogclient.ClaimStateDraft, catalogclient.ClaimStateDeclined:
@@ -169,9 +174,15 @@ func isApproval(ev *catalogclient.ClaimEventFeedItem) bool {
 		ev.FromState != nil && *ev.FromState == catalogclient.ClaimStatePending
 }
 
-func (s *GalgameClaimEventSync) claimantOf(ctx context.Context, ev *catalogclient.ClaimEventFeedItem) int {
+func (s *GalgameClaimEventSync) claimantOf(ctx context.Context, ev *catalogclient.ClaimEventFeedItem, gid int) int {
 	if isApproval(ev) {
-		return s.submitterOf(ctx, ev.WorkID)
+		return s.submitterOf(ctx, ev.WorkID, gid)
+	}
+	// Lifting a ban restores what somebody else established, so the admin who
+	// lifted it is not the author. Everything else that reaches live — a claimed
+	// draft being published — really is the actor's own entry.
+	if ev.FromState != nil && *ev.FromState == catalogclient.ClaimStateHidden {
+		return 0
 	}
 	return int(ev.ActorUID)
 }
@@ -180,7 +191,7 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 	switch effectOf(ev) {
 	case claimEffectSeedStub:
 		gid := int(*ev.ProductWorkID)
-		creator := s.claimantOf(ctx, ev)
+		creator := s.claimantOf(ctx, ev, gid)
 		if err := s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
 			if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
 				return err
@@ -202,8 +213,6 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 				"event", ev.ID, "gid", *ev.ProductWorkID, "error", err)
 			return true
 		}
-	case claimEffectDropStub:
-		s.galgameRepo.DeleteLocalStub(int(*ev.ProductWorkID))
 	case claimEffectRememberSubmitter:
 		s.rememberSubmitter(ctx, ev)
 	case claimEffectUnknownState:
@@ -213,7 +222,7 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 }
 
 func (s *GalgameClaimEventSync) awardApproval(ctx context.Context, ev *catalogclient.ClaimEventFeedItem, gid int) (retry bool) {
-	uid := s.submitterOf(ctx, ev.WorkID)
+	uid := s.submitterOf(ctx, ev.WorkID, gid)
 	if uid <= 0 {
 		slog.Error("claim approve: 无法归属投稿人, 跳过发奖",
 			"event", ev.ID, "work", ev.WorkID, "gid", gid)
@@ -243,12 +252,17 @@ func (s *GalgameClaimEventSync) rememberSubmitter(ctx context.Context, ev *catal
 	}
 }
 
-func (s *GalgameClaimEventSync) submitterOf(ctx context.Context, workID int64) int {
-	v, err := s.rdb.Get(ctx, claimSubmitterKeyPrefix+strconv.FormatInt(workID, 10)).Int()
-	if err != nil {
+// Redis only remembers the submitter for 90 days and loses it on a flush, so
+// Submit also stamps the creator on the local row the moment a submission lands.
+// That row is the durable answer; the cache just saves a query.
+func (s *GalgameClaimEventSync) submitterOf(ctx context.Context, workID int64, gid int) int {
+	if v, err := s.rdb.Get(ctx, claimSubmitterKeyPrefix+strconv.FormatInt(workID, 10)).Int(); err == nil {
+		return v
+	}
+	if s.galgameRepo == nil {
 		return 0
 	}
-	return v
+	return userclient.DerefID(s.galgameRepo.FindLocal(gid).CreatorUserID)
 }
 
 func (s *GalgameClaimEventSync) readCursor(ctx context.Context) (since int64, seeded bool, err error) {

@@ -124,9 +124,12 @@ func (r *RatingRepository) DeleteByID(tx *gorm.DB, ratingID int) error {
 	return tx.Where("id = ?", ratingID).Delete(&model.GalgameRating{}).Error
 }
 
+// The column is creator_user_id. `Select("user_id")` named a column the table
+// has never had, and Scan's error is dropped, so this quietly returned 0 —
+// every "someone rated your entry" notification went to nobody.
 func (r *RatingRepository) FindGalgameOwner(galgameID int) int {
 	var userID int
-	r.db.Table("galgame").Select("user_id").Where("id = ?", galgameID).Scan(&userID)
+	r.db.Table("galgame").Select("creator_user_id").Where("id = ?", galgameID).Scan(&userID)
 	return userID
 }
 

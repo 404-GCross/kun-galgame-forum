@@ -1,6 +1,16 @@
 <script setup lang="ts">
 const { data, items, hasMore, isLoadingMore, loadMore } =
   await useGalgameClaimList('/galgame/audited')
+
+const previewGid = ref(0)
+const previewState = ref('')
+const isPreviewOpen = ref(false)
+
+const openPreview = (item: UserClaimItem) => {
+  previewGid.value = galgameClaimGid(item)
+  previewState.value = item.claim_state
+  isPreviewOpen.value = true
+}
 </script>
 
 <template>
@@ -48,11 +58,19 @@ const { data, items, hasMore, isLoadingMore, loadMore } =
 
         <template #actions>
           <KunLink
-            v-if="galgameClaimGid(item)"
+            v-if="galgameClaimGid(item) && isPublicState(item.claim_state)"
             :to="`/galgame/${galgameClaimGid(item)}`"
           >
             <KunButton size="sm" variant="flat">查看</KunButton>
           </KunLink>
+          <KunButton
+            v-else-if="galgameClaimGid(item)"
+            size="sm"
+            variant="flat"
+            @click="openPreview(item)"
+          >
+            预览
+          </KunButton>
         </template>
       </EditGalgameClaimRow>
     </div>
@@ -67,5 +85,12 @@ const { data, items, hasMore, isLoadingMore, loadMore } =
     >
       加载更多
     </KunButton>
+
+    <GalgamePreviewModal
+      v-if="previewGid"
+      v-model="isPreviewOpen"
+      :gid="previewGid"
+      :claim-state="previewState"
+    />
   </div>
 </template>

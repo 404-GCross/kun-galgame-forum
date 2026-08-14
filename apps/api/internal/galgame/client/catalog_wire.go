@@ -222,13 +222,13 @@ const ClaimStateWizard = claimStateLive + "," + claimStateDraft + "," + claimSta
 
 func statusFromClaimState(state string) int {
 	if state == claimStateLive {
-		return galgameStatusPublished
+		return GalgameStatusPublished
 	}
 	return galgameStatusVndbDraft
 }
 
 const (
-	galgameStatusPublished = 0
+	GalgameStatusPublished = 0
 	galgameStatusVndbDraft = 2
 )
 

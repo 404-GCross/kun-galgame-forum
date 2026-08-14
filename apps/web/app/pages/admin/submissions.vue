@@ -75,6 +75,16 @@ const displayName = (row: PendingClaim): string => {
 
 const isActing = ref<Record<number, boolean>>({})
 
+const previewGid = ref(0)
+const previewState = ref('')
+const isPreviewOpen = ref(false)
+
+const openPreview = (row: PendingClaim) => {
+  previewGid.value = gidOf(row)
+  previewState.value = row.claimed_by?.state ?? ''
+  isPreviewOpen.value = true
+}
+
 type ReasonAction = 'decline' | 'ban'
 
 interface ReasonContext {
@@ -196,9 +206,9 @@ const handleConfirmReason = async () => {
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
-          <KunLink :to="`/galgame/${gidOf(row)}`" target="_blank">
-            <KunButton size="sm" variant="flat">查看</KunButton>
-          </KunLink>
+          <KunButton size="sm" variant="flat" @click="openPreview(row)">
+            预览
+          </KunButton>
           <KunButton
             size="sm"
             color="success"
@@ -242,6 +252,13 @@ const handleConfirmReason = async () => {
     >
       加载更多
     </KunButton>
+
+    <GalgamePreviewModal
+      v-if="previewGid"
+      v-model="isPreviewOpen"
+      :gid="previewGid"
+      :claim-state="previewState"
+    />
 
     <KunModal
       :model-value="isReasonModalOpen"

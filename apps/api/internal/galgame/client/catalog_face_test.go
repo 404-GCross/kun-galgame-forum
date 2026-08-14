@@ -189,7 +189,7 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 	if b.OriginalLanguage != "ja-jp" {
 		t.Errorf("olang = %q, want the ja-jp product key", b.OriginalLanguage)
 	}
-	if b.Status != galgameStatusPublished {
+	if b.Status != GalgameStatusPublished {
 		t.Errorf("status = %d, want published for a live claim", b.Status)
 	}
 }

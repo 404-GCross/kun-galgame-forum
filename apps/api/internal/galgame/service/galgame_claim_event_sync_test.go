@@ -32,7 +32,7 @@ func TestEffectOfTransition(t *testing.T) {
 	}{
 		{"birth into live seeds the stub", event(1, nil, catalogclient.ClaimStateLive, gid), claimEffectSeedStub},
 		{"approval seeds the stub", event(2, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid), claimEffectSeedStub},
-		{"ban drops the stub", event(3, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateHidden, gid), claimEffectDropStub},
+		{"ban unpublishes, never deletes (the children cascade)", event(3, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateHidden, gid), claimEffectUnpublish},
 		{"submit remembers the submitter", event(4, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStatePending, gid), claimEffectRememberSubmitter},
 		{"withdrawal unpublishes, never deletes", event(5, ptr(catalogclient.ClaimStateLive), catalogclient.ClaimStateDraft, gid), claimEffectUnpublish},
 		{"decline unpublishes", event(6, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid), claimEffectUnpublish},
@@ -71,20 +71,26 @@ func TestClaimantAttribution(t *testing.T) {
 
 	publish := event(1, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStateLive, gid)
 	publish.ActorUID = 61516
-	if got := s.claimantOf(t.Context(), publish); got != 61516 {
+	if got := s.claimantOf(t.Context(), publish, 11); got != 61516 {
 		t.Errorf("owner publish: claimant = %d, want the event's actor 61516", got)
 	}
 
 	born := event(2, nil, catalogclient.ClaimStateLive, gid)
 	born.ActorUID = 7
-	if got := s.claimantOf(t.Context(), born); got != 7 {
+	if got := s.claimantOf(t.Context(), born, 11); got != 7 {
 		t.Errorf("born live: claimant = %d, want the event's actor 7", got)
 	}
 
 	approval := event(3, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)
 	approval.ActorUID = 2
-	if got := s.claimantOf(t.Context(), approval); got != 0 {
+	if got := s.claimantOf(t.Context(), approval, 11); got != 0 {
 		t.Errorf("approval without memo: claimant = %d, want 0 (never the reviewer)", got)
+	}
+
+	unban := event(4, ptr(catalogclient.ClaimStateHidden), catalogclient.ClaimStateLive, gid)
+	unban.ActorUID = 2
+	if got := s.claimantOf(t.Context(), unban, 11); got != 0 {
+		t.Errorf("unban: claimant = %d, want 0 — lifting a ban does not make the admin the author", got)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -27,8 +28,12 @@ func (h *GalgameHandler) GetDetail(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrBadRequest("无效的 Galgame ID"))
 	}
 
+	canReview := false
+	if user := middleware.GetUser(c); user != nil {
+		canReview = perm.CanUser(user.ID, user.Roles, perm.GalgameClaimReview)
+	}
 	detail, appErr := h.galgameService.GetDetail(
-		c.Context(), gid, optionalUID(c), middleware.GetAccessToken(c), utils.IsSFW(c),
+		c.Context(), gid, optionalUID(c), middleware.GetAccessToken(c), utils.IsSFW(c), canReview,
 	)
 	if appErr != nil {
 		return response.Error(c, appErr)

@@ -58,6 +58,36 @@ func TestSubmissionFieldsTranslateLocales(t *testing.T) {
 	}
 }
 
+// catalog's editspec refuses a cover element carrying any key outside this set,
+// and the forum swallows that refusal, so a stray key silently loses the banner.
+var coverPatchKeys = map[string]bool{
+	"image_hash": true, "kind": true, "portrait_pinned": true,
+	"sexual": true, "violence": true,
+}
+
+func TestSubmissionCoverPatchCarriesOnlyAcceptedKeys(t *testing.T) {
+	patch := (&SubmissionForm{BannerHash: "  abc123  "}).CoverPatch()
+	covers, ok := patch["catalog.work.covers"].([]any)
+	if !ok || len(covers) != 1 {
+		t.Fatalf("covers = %#v, want one element", patch["catalog.work.covers"])
+	}
+	cover, ok := covers[0].(map[string]any)
+	if !ok {
+		t.Fatalf("cover = %#v, want an object", covers[0])
+	}
+	for key := range cover {
+		if !coverPatchKeys[key] {
+			t.Errorf("cover carries %q, which catalog rejects as an unknown key", key)
+		}
+	}
+	if cover["image_hash"] != "abc123" {
+		t.Errorf("image_hash = %v, want the trimmed hash", cover["image_hash"])
+	}
+	if (&SubmissionForm{BannerHash: "   "}).CoverPatch() != nil {
+		t.Error("a blank hash must produce no patch at all")
+	}
+}
+
 func TestSubmissionOmitsEmptyLists(t *testing.T) {
 	fields := (&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw"}).Fields()
 	if _, present := fields["catalog.work.intros"]; present {
