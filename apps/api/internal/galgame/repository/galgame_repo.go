@@ -52,6 +52,33 @@ func (r *GalgameRepository) FindLocalBatch(ids []int) map[int]GalgameLocalRow {
 	return out
 }
 
+// Owner, not actor. Catalog's by-uid claim face answers "every work this user
+// TOUCHED" — approving someone else's submission puts it under the reviewer —
+// so the profile used to list 13 entries a moderator had merely reviewed, and
+// count them toward creator eligibility. The owner lives here.
+func (r *GalgameRepository) PublishedIDsByCreator(userID, page, limit int) ([]int, int64, error) {
+	base := r.db.Table("galgame").Where("published AND creator_user_id = ?", userID)
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var ids []int
+	err := base.Order("created DESC").
+		Offset((page-1)*limit).Limit(limit).
+		Pluck("id", &ids).Error
+	return ids, total, err
+}
+
+func (r *GalgameRepository) CountPublishedByCreatorSince(userID int, since time.Time) int {
+	var n int64
+	r.db.Table("galgame").
+		Where("published AND creator_user_id = ? AND created >= ?", userID, since).
+		Count(&n)
+	return int(n)
+}
+
 func (r *GalgameRepository) IncrementView(id int) {
 	r.db.Table("galgame").Where("id = ?", id).
 		Update("view", gorm.Expr("view + 1"))

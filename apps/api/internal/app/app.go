@@ -328,7 +328,8 @@ func New(cfg *config.Config) *App {
 		slog.Warn("link-live-checker NOT configured; resource 报告失效 falls back to legacy single-report-expires — set LINK_CHECKER_BASE_URL / LINK_CHECKER_API_KEY")
 	}
 
-	galgameUserStatsSvc := galgameService.NewGalgameUserStatsService(catalogCli, gc)
+	galgameLocalRepo := galgameRepo.NewGalgameRepository(db)
+	galgameUserStatsSvc := galgameService.NewGalgameUserStatsService(catalogCli, gc, galgameLocalRepo)
 
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
 	userService := service.NewUserService(userStateRepo, userStatsRepo, rdb, gc, galgameUserStatsSvc, uc, communityCli)
@@ -361,7 +362,6 @@ func New(cfg *config.Config) *App {
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)
 	galgameQuizSvc := galgameService.NewQuizService(galgameQuizRepo, gc, uc, trustCheck, trustScan)
 	creatorSvc := galgameService.NewCreatorService(galgameRatingRepo, galgameUserStatsSvc, uc)
-	galgameLocalRepo := galgameRepo.NewGalgameRepository(db)
 	galgameInteractionRepo := galgameRepo.NewGalgameInteractionRepository(db)
 	galgameListRepo := galgameRepo.NewGalgameListRepository(db)
 	galgameResourceMetaRepo := galgameRepo.NewGalgameResourceMetaRepository(db)
