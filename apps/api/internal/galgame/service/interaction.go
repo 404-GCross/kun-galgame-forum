@@ -20,9 +20,9 @@ func (InteractionHelpers) CreateGalgameMessageWithContent(
 	senderID, receiverID int,
 	msgType, content string,
 	galgameID int,
-) {
+) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	link := fmt.Sprintf("/galgame/%d", galgameID)
 
@@ -32,13 +32,13 @@ func (InteractionHelpers) CreateGalgameMessageWithContent(
 			senderID, receiverID, msgType, link).
 		Count(&count)
 	if count > 0 {
-		return
+		return nil
 	}
 
-	tx.Create(&msgModel.Message{
+	return tx.Create(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: msgType, Content: content, Link: link, Status: "unread",
-	})
+	}).Error
 }
 
 func (InteractionHelpers) CreateQuizAnswerMessage(
@@ -46,9 +46,9 @@ func (InteractionHelpers) CreateQuizAnswerMessage(
 	senderID, receiverID int,
 	content string,
 	quizID int,
-) {
+) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	link := fmt.Sprintf("/galgame-quiz/%d", quizID)
 
@@ -58,13 +58,13 @@ func (InteractionHelpers) CreateQuizAnswerMessage(
 			senderID, receiverID, "quiz-answered", link).
 		Count(&count)
 	if count > 0 {
-		return
+		return nil
 	}
 
-	tx.Create(&msgModel.Message{
+	return tx.Create(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: "quiz-answered", Content: content, Link: link, Status: "unread",
-	})
+	}).Error
 }
 
 func (InteractionHelpers) CreateGalgameCommentMention(
@@ -72,9 +72,9 @@ func (InteractionHelpers) CreateGalgameCommentMention(
 	senderID, receiverID int,
 	content string,
 	galgameID, commentID, rootID int,
-) {
+) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	link := fmt.Sprintf("/galgame/%d?comment=%d&thread=%d", galgameID, commentID, rootID)
 
@@ -84,11 +84,11 @@ func (InteractionHelpers) CreateGalgameCommentMention(
 			senderID, receiverID, "mentioned", link).
 		Count(&count)
 	if count > 0 {
-		return
+		return nil
 	}
 
-	tx.Create(&msgModel.Message{
+	return tx.Create(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: "mentioned", Content: content, Link: link, Status: "unread",
-	})
+	}).Error
 }

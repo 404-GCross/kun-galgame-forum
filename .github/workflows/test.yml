@@ -1,6 +1,11 @@
 # CI test gate for the Go module under apps/api.
 #
-#   unit — build + vet + `go test ./...`, no external services.
+#   unit — build + vet + errcheck + `go test ./...`, no external services.
+#
+# errcheck is here because `go vet` does not catch a discarded error, and a
+# discarded gorm error is the repo's worst failure mode: the write silently
+# does nothing and the request still answers 200. See apps/api/.errcheck-exclude
+# for the (short) list of calls whose error is genuinely nothing to act on.
 #
 # Every test in apps/api is a pure unit test (no test reads a DB / Meilisearch
 # env var), so a single always-green unit job is the whole gate — there is no
@@ -30,7 +35,7 @@ defaults:
 
 jobs:
   unit:
-    name: unit (build · vet · test)
+    name: unit (build · vet · errcheck · test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -40,4 +45,5 @@ jobs:
           cache-dependency-path: apps/api/go.sum
       - run: go build ./...
       - run: go vet ./...
+      - run: go run github.com/kisielk/errcheck@v1.9.0 -exclude .errcheck-exclude ./...
       - run: go test ./...

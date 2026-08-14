@@ -33,8 +33,8 @@ func (r *FriendLinkRepository) Update(id int, fields map[string]any) error {
 	return r.db.Model(&model.FriendLink{}).Where("id = ?", id).Updates(fields).Error
 }
 
-func (r *FriendLinkRepository) Delete(id int) {
-	r.db.Delete(&model.FriendLink{}, id)
+func (r *FriendLinkRepository) Delete(id int) error {
+	return r.db.Delete(&model.FriendLink{}, id).Error
 }
 
 func (r *FriendLinkRepository) Reorder(category string, ids []int) error {

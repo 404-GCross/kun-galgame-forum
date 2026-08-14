@@ -68,7 +68,9 @@ func (s *CommunityCommentService) afterCreate(userID, galgameID int, content str
 			return e
 		}
 		for _, mid := range mentionIDs {
-			s.helpers.CreateGalgameCommentMention(tx, userID, mid, preview, galgameID, int(post.ID), int(root))
+			if e := s.helpers.CreateGalgameCommentMention(tx, userID, mid, preview, galgameID, int(post.ID), int(root)); e != nil {
+				return e
+			}
 		}
 		return nil
 	})
@@ -108,7 +110,10 @@ func (s *CommunityCommentService) refanMentions(userID, galgameID int, content s
 	}
 	preview := truncate(markdown.StripReferenceTokens(content), 233)
 	for _, mid := range markdown.ExtractMentionIDs(content) {
-		s.helpers.CreateGalgameCommentMention(s.db, userID, mid, preview, galgameID, int(post.ID), int(root))
+		if err := s.helpers.CreateGalgameCommentMention(s.db, userID, mid, preview, galgameID, int(post.ID), int(root)); err != nil {
+			slog.Warn("mention notification insert failed (best-effort)",
+				"galgame_id", galgameID, "post_id", post.ID, "receiver_id", mid, "error", err)
+		}
 	}
 }
 
@@ -197,7 +202,10 @@ func (s *CommunityCommentService) ToggleLike(ctx context.Context, userID int, po
 	}
 	if notify {
 		if gid := parseAnchorGid(res.AnchorID); gid > 0 {
-			s.helpers.CreateGalgameMessageWithContent(s.db, userID, int(res.AuthorID), "liked", "", gid)
+			if err := s.helpers.CreateGalgameMessageWithContent(s.db, userID, int(res.AuthorID), "liked", "", gid); err != nil {
+				slog.Warn("like notification insert failed (best-effort)",
+					"galgame_id", gid, "post_id", postID, "receiver_id", res.AuthorID, "error", err)
+			}
 		}
 	}
 

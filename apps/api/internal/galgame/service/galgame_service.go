@@ -75,18 +75,23 @@ func (s *GalgameService) ToggleLike(
 		return errors.ErrBadRequest("您不能给自己点赞")
 	}
 
-	s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
-		liked := s.interactionRepo.ToggleLike(tx, userID, galgameID)
-		if liked {
-			s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
-				moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
-			s.helpers.CreateGalgameMessageWithContent(tx, userID, ownerID, "liked", name, galgameID)
-		} else {
+	txErr := s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
+		liked, err := s.interactionRepo.ToggleLike(tx, userID, galgameID)
+		if err != nil {
+			return err
+		}
+		if !liked {
 			s.helpers.AdjustMoemoepoint(tx, ownerID, -1,
 				moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
+			return nil
 		}
-		return nil
+		s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
+			moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
+		return s.helpers.CreateGalgameMessageWithContent(tx, userID, ownerID, "liked", name, galgameID)
 	})
+	if txErr != nil {
+		return errors.ErrInternal("点赞失败")
+	}
 	return nil
 }
 

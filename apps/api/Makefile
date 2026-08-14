@@ -1,4 +1,4 @@
-.PHONY: dev build run migrate migrate-down migrate-status clean tools
+.PHONY: dev build run lint migrate migrate-down migrate-status clean tools
 
 # Development with hot reload (requires air: go install github.com/air-verse/air@latest)
 dev:
@@ -11,6 +11,12 @@ build:
 # Run production binary
 run: build
 	./build/server
+
+# Same gate CI runs: vet plus errcheck (a discarded gorm error is a silent
+# no-op write, which vet does not see). Exclusions live in .errcheck-exclude.
+lint:
+	go vet ./...
+	go run github.com/kisielk/errcheck@v1.9.0 -exclude .errcheck-exclude ./...
 
 # Run all pending up migrations
 migrate:

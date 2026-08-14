@@ -49,6 +49,6 @@ func (r *CategoryRepository) FindNamesByIDs(ids []int) map[int]string {
 	return out
 }
 
-func (r *CategoryRepository) UpdateFields(id int, updates map[string]any) {
-	r.db.Model(&model.GalgameWebsiteCategory{}).Where("id = ?", id).Updates(updates)
+func (r *CategoryRepository) UpdateFields(id int, updates map[string]any) error {
+	return r.db.Model(&model.GalgameWebsiteCategory{}).Where("id = ?", id).Updates(updates).Error
 }

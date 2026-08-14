@@ -51,10 +51,12 @@ func (s *CategoryService) GetDetail(name string, isSFW bool) (*dto.WebsiteCatego
 }
 
 func (s *CategoryService) Update(req *dto.UpdateWebsiteCategoryRequest) *errors.AppError {
-	s.categoryRepo.UpdateFields(req.CategoryID, map[string]any{
+	if err := s.categoryRepo.UpdateFields(req.CategoryID, map[string]any{
 		"name":        req.Name,
 		"label":       req.Label,
 		"description": req.Description,
-	})
+	}); err != nil {
+		return errors.ErrInternal("更新分类失败")
+	}
 	return nil
 }

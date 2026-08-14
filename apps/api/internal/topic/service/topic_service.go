@@ -238,7 +238,7 @@ func (s *TopicService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该话题")
 	}
 
-	go s.topicRepo.IncrementView(topicID)
+	go func() { _ = s.topicRepo.IncrementView(topicID) }()
 
 	if sections == nil {
 		sections = []string{}

@@ -97,7 +97,9 @@ func (s *CommentService) CreateComment(
 				moemoepoint.ReasonContentApproved, moemoepoint.Ref("topic_reply", replyID))
 
 			preview := truncate(content, constants.TextPreviewLength)
-			s.helpers.CreateReplyMessage(tx, userID, targetUserID, "commented", preview, topicID, 0, comment.ID)
+			if err := s.helpers.CreateReplyMessage(tx, userID, targetUserID, "commented", preview, topicID, 0, comment.ID); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -206,7 +208,9 @@ func (s *CommentService) ToggleCommentLike(ctx context.Context, userID, commentI
 
 			link := msgService.BuildTopicLink(comment.TopicID, 0, comment.ID)
 			preview := truncate(comment.Content, constants.TextPreviewLength)
-			createDedupMessage(tx, userID, comment.UserID, "liked", preview, link)
+			if err := createDedupMessage(tx, userID, comment.UserID, "liked", preview, link); err != nil {
+				return err
+			}
 		} else if findErr == nil {
 			if err := s.commentRepo.DeleteCommentLike(tx, existing); err != nil {
 				return err

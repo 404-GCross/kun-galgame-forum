@@ -41,21 +41,28 @@ func (r *GalgameInteractionRepository) UserGalgameInteractions(userID int) (like
 	return
 }
 
-func (r *GalgameInteractionRepository) ToggleLike(tx *gorm.DB, userID, galgameID int) (liked bool) {
+func (r *GalgameInteractionRepository) ToggleLike(tx *gorm.DB, userID, galgameID int) (bool, error) {
 	var existing model.GalgameLike
 	result := tx.Where("user_id = ? AND galgame_id = ?", userID, galgameID).First(&existing)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		tx.Clauses(clause.OnConflict{DoNothing: true}).
-			Create(&model.GalgameLocal{ID: galgameID})
-		tx.Create(&model.GalgameLike{UserID: userID, GalgameID: galgameID})
-		tx.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
-			Update("like_count", gorm.Expr("like_count + 1"))
-		return true
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).
+			Create(&model.GalgameLocal{ID: galgameID}).Error; err != nil {
+			return false, err
+		}
+		if err := tx.Create(&model.GalgameLike{UserID: userID, GalgameID: galgameID}).Error; err != nil {
+			return false, err
+		}
+		return true, tx.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
+			Update("like_count", gorm.Expr("like_count + 1")).Error
+	}
+	if result.Error != nil {
+		return false, result.Error
 	}
 
-	tx.Delete(&existing)
-	tx.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
-		Update("like_count", gorm.Expr("like_count - 1"))
-	return false
+	if err := tx.Delete(&existing).Error; err != nil {
+		return false, err
+	}
+	return false, tx.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
+		Update("like_count", gorm.Expr("like_count - 1")).Error
 }

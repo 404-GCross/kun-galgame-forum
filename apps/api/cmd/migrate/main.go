@@ -82,7 +82,10 @@ func main() {
 	var appliedList []string
 	for rows.Next() {
 		var name string
-		rows.Scan(&name)
+		if err := rows.Scan(&name); err != nil {
+			slog.Error("读取已应用迁移失败", "error", err)
+			os.Exit(1)
+		}
 		applied[name] = true
 		appliedList = append(appliedList, name)
 	}

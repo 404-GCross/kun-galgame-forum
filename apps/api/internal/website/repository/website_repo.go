@@ -86,22 +86,22 @@ func (r *WebsiteRepository) Create(tx *gorm.DB, website *model.GalgameWebsite) e
 	return tx.Create(website).Error
 }
 
-func (r *WebsiteRepository) UpdateFields(tx *gorm.DB, id int, updates map[string]any) {
-	tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).Updates(updates)
+func (r *WebsiteRepository) UpdateFields(tx *gorm.DB, id int, updates map[string]any) error {
+	return tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *WebsiteRepository) DeleteByID(id int) error {
 	return r.db.Delete(&model.GalgameWebsite{}, id).Error
 }
 
-func (r *WebsiteRepository) AdjustLikeCount(tx *gorm.DB, id, delta int) {
-	tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).
-		Update("like_count", gorm.Expr("like_count + ?", delta))
+func (r *WebsiteRepository) AdjustLikeCount(tx *gorm.DB, id, delta int) error {
+	return tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).
+		Update("like_count", gorm.Expr("like_count + ?", delta)).Error
 }
 
-func (r *WebsiteRepository) AdjustFavoriteCount(tx *gorm.DB, id, delta int) {
-	tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).
-		Update("favorite_count", gorm.Expr("favorite_count + ?", delta))
+func (r *WebsiteRepository) AdjustFavoriteCount(tx *gorm.DB, id, delta int) error {
+	return tx.Model(&model.GalgameWebsite{}).Where("id = ?", id).
+		Update("favorite_count", gorm.Expr("favorite_count + ?", delta)).Error
 }
 
 func (r *WebsiteRepository) FindLike(tx *gorm.DB, userID, websiteID int) (*model.GalgameWebsiteLike, error) {
@@ -120,20 +120,20 @@ func (r *WebsiteRepository) FindFavorite(tx *gorm.DB, userID, websiteID int) (*m
 	return &fav, nil
 }
 
-func (r *WebsiteRepository) CreateLike(tx *gorm.DB, userID, websiteID int) {
-	tx.Create(&model.GalgameWebsiteLike{UserID: userID, WebsiteID: websiteID})
+func (r *WebsiteRepository) CreateLike(tx *gorm.DB, userID, websiteID int) error {
+	return tx.Create(&model.GalgameWebsiteLike{UserID: userID, WebsiteID: websiteID}).Error
 }
 
-func (r *WebsiteRepository) DeleteLike(tx *gorm.DB, like *model.GalgameWebsiteLike) {
-	tx.Delete(like)
+func (r *WebsiteRepository) DeleteLike(tx *gorm.DB, like *model.GalgameWebsiteLike) error {
+	return tx.Delete(like).Error
 }
 
-func (r *WebsiteRepository) CreateFavorite(tx *gorm.DB, userID, websiteID int) {
-	tx.Create(&model.GalgameWebsiteFavorite{UserID: userID, WebsiteID: websiteID})
+func (r *WebsiteRepository) CreateFavorite(tx *gorm.DB, userID, websiteID int) error {
+	return tx.Create(&model.GalgameWebsiteFavorite{UserID: userID, WebsiteID: websiteID}).Error
 }
 
-func (r *WebsiteRepository) DeleteFavorite(tx *gorm.DB, fav *model.GalgameWebsiteFavorite) {
-	tx.Delete(fav)
+func (r *WebsiteRepository) DeleteFavorite(tx *gorm.DB, fav *model.GalgameWebsiteFavorite) error {
+	return tx.Delete(fav).Error
 }
 
 func (r *WebsiteRepository) HasLike(userID, websiteID int) bool {

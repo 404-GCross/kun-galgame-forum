@@ -33,13 +33,21 @@ func (r *TagRepository) Create(tag *model.GalgameWebsiteTag) error {
 	return r.db.Create(tag).Error
 }
 
-func (r *TagRepository) UpdateFields(id int, updates map[string]any) {
-	r.db.Model(&model.GalgameWebsiteTag{}).Where("id = ?", id).Updates(updates)
+func (r *TagRepository) UpdateFields(id int, updates map[string]any) error {
+	return r.db.Model(&model.GalgameWebsiteTag{}).Where("id = ?", id).Updates(updates).Error
 }
 
-func (r *TagRepository) DeleteByID(id int) {
-	r.db.Where("tag_id = ?", id).Delete(&model.GalgameWebsiteTagRelation{})
-	r.db.Delete(&model.GalgameWebsiteTag{}, id)
+// The relation's column is galgame_website_tag_id. `tag_id` named nothing, so
+// every tag deletion left its relation rows behind — and the delete returned
+// no error because the result was discarded.
+func (r *TagRepository) DeleteByID(id int) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("galgame_website_tag_id = ?", id).
+			Delete(&model.GalgameWebsiteTagRelation{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.GalgameWebsiteTag{}, id).Error
+	})
 }
 
 func (r *TagRepository) FindRelationsByTagID(tagID int) []model.GalgameWebsiteTagRelation {
@@ -93,19 +101,21 @@ func (r *TagRepository) LevelSumsAll() map[int]int {
 	return out
 }
 
-func (r *TagRepository) ReplaceWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) {
-	tx.Where("galgame_website_id = ?", websiteID).Delete(&model.GalgameWebsiteTagRelation{})
-	for _, tagID := range tagIDs {
-		tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameWebsiteTagRelation{
-			GalgameWebsiteID: websiteID, GalgameWebsiteTagID: tagID,
-		})
+func (r *TagRepository) ReplaceWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) error {
+	if err := tx.Where("galgame_website_id = ?", websiteID).
+		Delete(&model.GalgameWebsiteTagRelation{}).Error; err != nil {
+		return err
 	}
+	return r.InsertWebsiteTagRelations(tx, websiteID, tagIDs)
 }
 
-func (r *TagRepository) InsertWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) {
+func (r *TagRepository) InsertWebsiteTagRelations(tx *gorm.DB, websiteID int, tagIDs []int) error {
 	for _, tagID := range tagIDs {
-		tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameWebsiteTagRelation{
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameWebsiteTagRelation{
 			GalgameWebsiteID: websiteID, GalgameWebsiteTagID: tagID,
-		})
+		}).Error; err != nil {
+			return err
+		}
 	}
+	return nil
 }

@@ -39,8 +39,8 @@ func (r *UpdateRepository) UpdateHistory(id int, fields map[string]any) error {
 		Updates(fields).Error
 }
 
-func (r *UpdateRepository) DeleteHistory(id int) {
-	r.db.Delete(&adminModel.UpdateLog{}, id)
+func (r *UpdateRepository) DeleteHistory(id int) error {
+	return r.db.Delete(&adminModel.UpdateLog{}, id).Error
 }
 
 func (r *UpdateRepository) todos(status *int) *gorm.DB {
@@ -78,6 +78,6 @@ func (r *UpdateRepository) UpdateTodo(id int, fields map[string]any) error {
 		Updates(fields).Error
 }
 
-func (r *UpdateRepository) DeleteTodo(id int) {
-	r.db.Delete(&adminModel.Todo{}, id)
+func (r *UpdateRepository) DeleteTodo(id int) error {
+	return r.db.Delete(&adminModel.Todo{}, id).Error
 }

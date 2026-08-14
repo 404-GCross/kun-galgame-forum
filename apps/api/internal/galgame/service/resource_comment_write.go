@@ -121,7 +121,10 @@ func (s *ResourceCommentService) afterCreate(src CommentSource, resourceID int, 
 	switch src.key {
 	case sourceRating.key:
 		if notify {
-			s.helpers.CreateGalgameMessageWithContent(s.db, userID, plan.receiver, plan.msgType, truncate(content, constants.TextPreviewLength), cc.galgameID)
+			if err := s.helpers.CreateGalgameMessageWithContent(s.db, userID, plan.receiver, plan.msgType, truncate(content, constants.TextPreviewLength), cc.galgameID); err != nil {
+				slog.Warn("notification insert failed (best-effort)",
+					"type", plan.msgType, "receiver_id", plan.receiver, "galgame_id", cc.galgameID, "error", err)
+			}
 		}
 		s.feedUpsert(src.feedType, post.ID, userID, content, fmt.Sprintf("/galgame-rating/%d", resourceID), false, post.CreatedAt)
 
@@ -319,7 +322,7 @@ func (s *ResourceCommentService) notifyWebsiteReply(senderID, receiverID int, co
 	if count > 0 {
 		return
 	}
-	s.db.Create(&msgModel.Message{
+	s.notifyCreate(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: "commented", Content: preview, Link: link, Status: "unread",
 	})
@@ -335,20 +338,29 @@ func (s *ResourceCommentService) notifyDeduped(senderID, receiverID int, msgType
 	if count > 0 {
 		return
 	}
-	s.db.Create(&msgModel.Message{
+	s.notifyCreate(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type: msgType, Content: preview, Link: link, Status: "unread",
 	})
 }
 
 func (s *ResourceCommentService) notifyToolset(senderID, receiverID int, msgType, content string, toolsetID int) {
-	s.db.Create(&msgModel.Message{
+	s.notifyCreate(&msgModel.Message{
 		SenderID: senderID, ReceiverID: receiverID,
 		Type:    msgType,
 		Content: markdown.ToPlainText(content, 100),
 		Link:    fmt.Sprintf("/toolset/%d", toolsetID),
 		Status:  "unread",
 	})
+}
+
+// afterCreate runs once the comment is already committed upstream, so a lost
+// notification must not fail the request — but it must not be invisible either.
+func (s *ResourceCommentService) notifyCreate(msg *msgModel.Message) {
+	if err := s.db.Create(msg).Error; err != nil {
+		slog.Warn("notification insert failed (best-effort)",
+			"type", msg.Type, "receiver_id", msg.ReceiverID, "link", msg.Link, "error", err)
+	}
 }
 
 func (s *ResourceCommentService) feedUpsert(feedType string, postID int64, userID int, content, link string, nsfw bool, createdAt string) {

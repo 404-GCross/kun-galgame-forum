@@ -407,10 +407,9 @@ func (s *ResourceService) ToggleLike(
 		}
 		s.helpers.AdjustMoemoepoint(tx, userID, delta,
 			moemoepoint.ReasonLiked, moemoepoint.Ref("galgame_resource", req.GalgameResourceID))
-		s.helpers.CreateGalgameMessageWithContent(
+		return s.helpers.CreateGalgameMessageWithContent(
 			tx, userID, row.UserID, "liked", preview, row.GalgameID,
 		)
-		return nil
 	})
 	if txErr != nil {
 		return errors.ErrInternal("操作失败")
@@ -457,10 +456,9 @@ func (s *ResourceService) MarkExpired(ctx context.Context, userID int, resourceI
 		if err := s.resourceRepo.UpdateStatus(tx, resourceID, 1); err != nil {
 			return err
 		}
-		s.helpers.CreateGalgameMessageWithContent(
+		return s.helpers.CreateGalgameMessageWithContent(
 			tx, userID, row.UserID, "expired", preview, row.GalgameID,
 		)
-		return nil
 	})
 	if txErr != nil {
 		return nil, errors.ErrInternal("更新失败")

@@ -240,7 +240,9 @@ func (s *CollectionService) SetMembership(ctx context.Context, userID, galgameID
 			if firstAdd {
 				s.helpers.AdjustMoemoepoint(tx, ownerID, 1,
 					moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))
-				s.helpers.CreateGalgameMessageWithContent(tx, userID, ownerID, "favorite", name, galgameID)
+				if err := s.helpers.CreateGalgameMessageWithContent(tx, userID, ownerID, "favorite", name, galgameID); err != nil {
+					return err
+				}
 			} else if lastRemove {
 				s.helpers.AdjustMoemoepoint(tx, ownerID, -1,
 					moemoepoint.ReasonLiked, moemoepoint.Ref("galgame", galgameID))

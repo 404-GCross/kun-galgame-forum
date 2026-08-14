@@ -69,8 +69,8 @@ func (r *ResourceRepository) Create(tx *gorm.DB, resource *model.GalgameToolsetR
 	return tx.Create(resource).Error
 }
 
-func (r *ResourceRepository) UpdateFields(resource *model.GalgameToolsetResource, updates map[string]any) {
-	r.db.Model(resource).Updates(updates)
+func (r *ResourceRepository) UpdateFields(resource *model.GalgameToolsetResource, updates map[string]any) error {
+	return r.db.Model(resource).Updates(updates).Error
 }
 
 func (r *ResourceRepository) IncrementDownload(id int) {
@@ -78,6 +78,6 @@ func (r *ResourceRepository) IncrementDownload(id int) {
 		Update("download", gorm.Expr("download + 1"))
 }
 
-func (r *ResourceRepository) Delete(resource *model.GalgameToolsetResource) {
-	r.db.Delete(resource)
+func (r *ResourceRepository) Delete(resource *model.GalgameToolsetResource) error {
+	return r.db.Delete(resource).Error
 }

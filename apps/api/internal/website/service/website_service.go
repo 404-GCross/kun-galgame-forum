@@ -84,8 +84,7 @@ func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *erro
 		if err := s.websiteRepo.Create(tx, &website); err != nil {
 			return err
 		}
-		s.tagRepo.InsertWebsiteTagRelations(tx, website.ID, req.TagIDs)
-		return nil
+		return s.tagRepo.InsertWebsiteTagRelations(tx, website.ID, req.TagIDs)
 	})
 	if txErr != nil {
 		return errors.ErrInternal("创建网站失败")
@@ -209,7 +208,7 @@ func (s *WebsiteService) resolveDetailComments(ctx context.Context, websiteID in
 
 func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError {
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
-		s.websiteRepo.UpdateFields(tx, req.WebsiteID, map[string]any{
+		if err := s.websiteRepo.UpdateFields(tx, req.WebsiteID, map[string]any{
 			"name":            req.Name,
 			"url":             req.URL,
 			"description":     req.Description,
@@ -220,9 +219,10 @@ func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError 
 			"language":        req.Language,
 			"create_time":     req.CreateTime,
 			"domain":          marshalDomain(req.Domain),
-		})
-		s.tagRepo.ReplaceWebsiteTagRelations(tx, req.WebsiteID, req.TagIDs)
-		return nil
+		}); err != nil {
+			return err
+		}
+		return s.tagRepo.ReplaceWebsiteTagRelations(tx, req.WebsiteID, req.TagIDs)
 	})
 	if txErr != nil {
 		return errors.ErrInternal("更新网站失败")
@@ -238,31 +238,47 @@ func (s *WebsiteService) Delete(websiteID int) *errors.AppError {
 }
 
 func (s *WebsiteService) ToggleLike(userID, websiteID int) *errors.AppError {
-	s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
+	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		existing, err := s.websiteRepo.FindLike(tx, userID, websiteID)
 		if err == gorm.ErrRecordNotFound {
-			s.websiteRepo.CreateLike(tx, userID, websiteID)
-			s.websiteRepo.AdjustLikeCount(tx, websiteID, 1)
-		} else if err == nil && existing != nil {
-			s.websiteRepo.DeleteLike(tx, existing)
-			s.websiteRepo.AdjustLikeCount(tx, websiteID, -1)
+			if err := s.websiteRepo.CreateLike(tx, userID, websiteID); err != nil {
+				return err
+			}
+			return s.websiteRepo.AdjustLikeCount(tx, websiteID, 1)
 		}
-		return nil
+		if err == nil && existing != nil {
+			if err := s.websiteRepo.DeleteLike(tx, existing); err != nil {
+				return err
+			}
+			return s.websiteRepo.AdjustLikeCount(tx, websiteID, -1)
+		}
+		return err
 	})
+	if txErr != nil {
+		return errors.ErrInternal("点赞失败")
+	}
 	return nil
 }
 
 func (s *WebsiteService) ToggleFavorite(userID, websiteID int) *errors.AppError {
-	s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
+	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		existing, err := s.websiteRepo.FindFavorite(tx, userID, websiteID)
 		if err == gorm.ErrRecordNotFound {
-			s.websiteRepo.CreateFavorite(tx, userID, websiteID)
-			s.websiteRepo.AdjustFavoriteCount(tx, websiteID, 1)
-		} else if err == nil && existing != nil {
-			s.websiteRepo.DeleteFavorite(tx, existing)
-			s.websiteRepo.AdjustFavoriteCount(tx, websiteID, -1)
+			if err := s.websiteRepo.CreateFavorite(tx, userID, websiteID); err != nil {
+				return err
+			}
+			return s.websiteRepo.AdjustFavoriteCount(tx, websiteID, 1)
 		}
-		return nil
+		if err == nil && existing != nil {
+			if err := s.websiteRepo.DeleteFavorite(tx, existing); err != nil {
+				return err
+			}
+			return s.websiteRepo.AdjustFavoriteCount(tx, websiteID, -1)
+		}
+		return err
 	})
+	if txErr != nil {
+		return errors.ErrInternal("收藏失败")
+	}
 	return nil
 }

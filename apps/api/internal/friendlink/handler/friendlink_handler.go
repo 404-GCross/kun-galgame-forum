@@ -91,7 +91,9 @@ func (h *FriendLinkHandler) Delete(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	h.repo.Delete(req.ID)
+	if err := h.repo.Delete(req.ID); err != nil {
+		return response.Error(c, errors.ErrInternal("删除友链失败"))
+	}
 	return response.OKMessage(c, "友链已删除")
 }
 

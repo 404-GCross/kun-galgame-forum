@@ -146,10 +146,19 @@ func (r *ReplyRepository) DeleteRepliesByIDs(tx *gorm.DB, ids []int) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	tx.Exec("DELETE FROM topic_comment_like WHERE topic_comment_id IN (SELECT id FROM topic_comment WHERE topic_reply_id IN ?)", ids)
-	tx.Where("topic_reply_id IN ?", ids).Delete(&model.TopicComment{})
-	tx.Where("topic_reply_id IN ?", ids).Delete(&model.TopicReplyLike{})
-	tx.Where("topic_reply_id IN ?", ids).Delete(&model.TopicReplyDislike{})
+	if err := tx.Exec(
+		"DELETE FROM topic_comment_like WHERE topic_comment_id IN (SELECT id FROM topic_comment WHERE topic_reply_id IN ?)",
+		ids,
+	).Error; err != nil {
+		return err
+	}
+	for _, m := range []any{
+		&model.TopicComment{}, &model.TopicReplyLike{}, &model.TopicReplyDislike{},
+	} {
+		if err := tx.Where("topic_reply_id IN ?", ids).Delete(m).Error; err != nil {
+			return err
+		}
+	}
 
 	return tx.Where("id IN ?", ids).Delete(&model.TopicReply{}).Error
 }

@@ -119,11 +119,11 @@ func (s *ResourceService) CreateResource(
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("toolset", toolsetID),
 			moemoepoint.Key("resource_create", strconv.Itoa(resource.ID)))
 
-		s.toolsetRepo.AddContributor(tx, toolsetID, userID)
+		if err := s.toolsetRepo.AddContributor(tx, toolsetID, userID); err != nil {
+			return err
+		}
 
-		s.toolsetRepo.UpdateResourceTime(tx, toolsetID, time.Now())
-
-		return nil
+		return s.toolsetRepo.UpdateResourceTime(tx, toolsetID, time.Now())
 	})
 	if txErr != nil {
 		return nil, errors.ErrInternal("创建资源失败")
@@ -171,7 +171,9 @@ func (s *ResourceService) UpdateResource(
 		updates["size"] = req.Size
 	}
 
-	s.resourceRepo.UpdateFields(resource, updates)
+	if err := s.resourceRepo.UpdateFields(resource, updates); err != nil {
+		return nil, errors.ErrInternal("更新资源失败")
+	}
 
 	refreshed, refreshErr := s.resourceRepo.FindByID(resource.ID)
 	if refreshErr != nil {
@@ -210,7 +212,9 @@ func (s *ResourceService) DeleteResource(
 		}
 	}
 
-	s.resourceRepo.Delete(resource)
+	if err := s.resourceRepo.Delete(resource); err != nil {
+		return errors.ErrInternal("删除资源失败")
+	}
 
 	adjustMoemoepoint(s.resourceRepo.DB(), resource.UserID, -3,
 		moemoepoint.ReasonContentRemoved, moemoepoint.Ref("toolset_resource", resource.ID),

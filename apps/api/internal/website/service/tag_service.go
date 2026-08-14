@@ -76,16 +76,20 @@ func (s *TagService) Create(req *dto.CreateWebsiteTagRequest) *errors.AppError {
 }
 
 func (s *TagService) Update(req *dto.UpdateWebsiteTagRequest) *errors.AppError {
-	s.tagRepo.UpdateFields(req.TagID, map[string]any{
+	if err := s.tagRepo.UpdateFields(req.TagID, map[string]any{
 		"name":        req.Name,
 		"label":       req.Label,
 		"description": req.Description,
 		"level":       req.Level,
-	})
+	}); err != nil {
+		return errors.ErrInternal("更新标签失败")
+	}
 	return nil
 }
 
 func (s *TagService) Delete(id int) *errors.AppError {
-	s.tagRepo.DeleteByID(id)
+	if err := s.tagRepo.DeleteByID(id); err != nil {
+		return errors.ErrInternal("删除标签失败")
+	}
 	return nil
 }

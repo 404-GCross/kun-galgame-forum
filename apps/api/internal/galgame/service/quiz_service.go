@@ -331,7 +331,9 @@ func (s *QuizService) AnswerQuiz(
 		if err := s.quizRepo.BumpAnswerStats(tx, req.QuizID, correct); err != nil {
 			return err
 		}
-		s.helpers.CreateQuizAnswerMessage(tx, userID, quiz.UserID, notifyContent, req.QuizID)
+		if err := s.helpers.CreateQuizAnswerMessage(tx, userID, quiz.UserID, notifyContent, req.QuizID); err != nil {
+			return err
+		}
 		if reward > 0 {
 			s.helpers.AdjustMoemoepoint(tx, userID, reward,
 				moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame_quiz_answer", row.ID))

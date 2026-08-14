@@ -359,10 +359,9 @@ func (s *RatingService) ToggleRatingLike(
 		}
 		s.helpers.AdjustMoemoepoint(tx, rating.UserID, delta,
 			moemoepoint.ReasonLiked, moemoepoint.Ref("galgame_rating", req.GalgameRatingID))
-		s.helpers.CreateGalgameMessageWithContent(
+		return s.helpers.CreateGalgameMessageWithContent(
 			tx, userID, rating.UserID, "liked", preview, rating.GalgameID,
 		)
-		return nil
 	})
 	if txErr != nil {
 		return errors.ErrInternal("操作失败")

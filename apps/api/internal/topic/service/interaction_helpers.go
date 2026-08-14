@@ -21,12 +21,12 @@ func (InteractionHelpers) CreateTopicMessageWithContent(
 	senderID, receiverID int,
 	msgType, content string,
 	topicID, replyFloor, commentID int,
-) {
+) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	link := msgService.BuildTopicLink(topicID, replyFloor, commentID)
-	createDedupMessage(tx, senderID, receiverID, msgType, content, link)
+	return createDedupMessage(tx, senderID, receiverID, msgType, content, link)
 }
 
 func (InteractionHelpers) CreateReplyMessage(
@@ -34,31 +34,34 @@ func (InteractionHelpers) CreateReplyMessage(
 	senderID, receiverID int,
 	msgType, content string,
 	topicID, replyFloor, commentID int,
-) {
+) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	link := msgService.BuildTopicLink(topicID, replyFloor, commentID)
-	tx.Create(&msgModel.Message{
+	return tx.Create(&msgModel.Message{
 		SenderID:   senderID,
 		ReceiverID: receiverID,
 		Type:       msgType,
 		Content:    content,
 		Link:       link,
 		Status:     "unread",
-	})
+	}).Error
 }
 
-func (h InteractionHelpers) NotifyMentions(tx *gorm.DB, senderID, topicID, replyFloor, commentID int, content string) {
+func (h InteractionHelpers) NotifyMentions(tx *gorm.DB, senderID, topicID, replyFloor, commentID int, content string) error {
 	preview := truncate(markdown.StripReferenceTokens(content), constants.TextPreviewLength)
 	for _, uid := range markdown.ExtractMentionIDs(content) {
-		h.CreateTopicMessageWithContent(tx, senderID, uid, "mentioned", preview, topicID, replyFloor, commentID)
+		if err := h.CreateTopicMessageWithContent(tx, senderID, uid, "mentioned", preview, topicID, replyFloor, commentID); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func createDedupMessage(tx *gorm.DB, senderID, receiverID int, msgType, content, link string) {
+func createDedupMessage(tx *gorm.DB, senderID, receiverID int, msgType, content, link string) error {
 	if senderID == receiverID || receiverID <= 0 {
-		return
+		return nil
 	}
 	var count int64
 	tx.Model(&msgModel.Message{}).
@@ -66,16 +69,16 @@ func createDedupMessage(tx *gorm.DB, senderID, receiverID int, msgType, content,
 			senderID, receiverID, msgType, link).
 		Count(&count)
 	if count > 0 {
-		return
+		return nil
 	}
-	tx.Create(&msgModel.Message{
+	return tx.Create(&msgModel.Message{
 		SenderID:   senderID,
 		ReceiverID: receiverID,
 		Type:       msgType,
 		Content:    content,
 		Link:       link,
 		Status:     "unread",
-	})
+	}).Error
 }
 
 func recomputeTopicCounts(tx *gorm.DB, topicID int) error {

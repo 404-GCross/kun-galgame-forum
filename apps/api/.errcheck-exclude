@@ -1,0 +1,23 @@
+# errcheck exclusions — functions whose returned error is genuinely nothing to act on.
+#
+# Everything NOT listed here must have its error handled. The gate exists
+# because a discarded gorm error is invisible: the statement fails, the value
+# stays zero, the request answers 200. Two live bugs shipped that way
+# (galgame.user_id, galgame_website_tag_relation.tag_id).
+#
+# Add an entry only when the error cannot be acted on, and say why.
+
+# Deferred reader/closer cleanup — the read already happened.
+(io.Closer).Close
+(*os.File).Close
+(io.ReadCloser).Close
+(*database/sql.Rows).Close
+
+# Response writers: the connection is already gone if these fail.
+(net/http.ResponseWriter).Write
+
+# goldmark's BufWriter wraps a bufio.Writer over an in-memory buffer and its
+# error is checked once at Flush, not per write.
+(github.com/yuin/goldmark/util.BufWriter).Write
+(github.com/yuin/goldmark/util.BufWriter).WriteByte
+(github.com/yuin/goldmark/util.BufWriter).WriteString

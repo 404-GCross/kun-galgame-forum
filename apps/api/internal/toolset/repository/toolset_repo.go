@@ -93,8 +93,8 @@ func (r *ToolsetRepository) Create(tx *gorm.DB, toolset *model.GalgameToolset) e
 	return tx.Create(toolset).Error
 }
 
-func (r *ToolsetRepository) UpdateFields(tx *gorm.DB, id int, updates map[string]any) {
-	tx.Model(&model.GalgameToolset{}).Where("id = ?", id).Updates(updates)
+func (r *ToolsetRepository) UpdateFields(tx *gorm.DB, id int, updates map[string]any) error {
+	return tx.Model(&model.GalgameToolset{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *ToolsetRepository) IncrementView(id int) {
@@ -102,13 +102,13 @@ func (r *ToolsetRepository) IncrementView(id int) {
 		Update("view", gorm.Expr("view + 1"))
 }
 
-func (r *ToolsetRepository) UpdateResourceTime(tx *gorm.DB, id int, now time.Time) {
-	tx.Model(&model.GalgameToolset{}).Where("id = ?", id).
-		Update("resource_update_time", now)
+func (r *ToolsetRepository) UpdateResourceTime(tx *gorm.DB, id int, now time.Time) error {
+	return tx.Model(&model.GalgameToolset{}).Where("id = ?", id).
+		Update("resource_update_time", now).Error
 }
 
-func (r *ToolsetRepository) DeleteByID(tx *gorm.DB, id int) {
-	tx.Delete(&model.GalgameToolset{}, id)
+func (r *ToolsetRepository) DeleteByID(tx *gorm.DB, id int) error {
+	return tx.Delete(&model.GalgameToolset{}, id).Error
 }
 
 func (r *ToolsetRepository) FindAliases(toolsetID int) []model.GalgameToolsetAlias {
@@ -117,17 +117,23 @@ func (r *ToolsetRepository) FindAliases(toolsetID int) []model.GalgameToolsetAli
 	return aliases
 }
 
-func (r *ToolsetRepository) ReplaceAliases(tx *gorm.DB, toolsetID int, aliases []string) {
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetAlias{})
+func (r *ToolsetRepository) ReplaceAliases(tx *gorm.DB, toolsetID int, aliases []string) error {
+	if err := tx.Where("toolset_id = ?", toolsetID).
+		Delete(&model.GalgameToolsetAlias{}).Error; err != nil {
+		return err
+	}
 	for _, name := range aliases {
 		if name == "" {
 			continue
 		}
-		tx.Create(&model.GalgameToolsetAlias{
+		if err := tx.Create(&model.GalgameToolsetAlias{
 			Name:      name,
 			ToolsetID: toolsetID,
-		})
+		}).Error; err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (r *ToolsetRepository) FindContributorIDs(toolsetID int) []int {
@@ -138,24 +144,32 @@ func (r *ToolsetRepository) FindContributorIDs(toolsetID int) []int {
 	return ids
 }
 
-func (r *ToolsetRepository) AddContributor(tx *gorm.DB, toolsetID, userID int) {
+func (r *ToolsetRepository) AddContributor(tx *gorm.DB, toolsetID, userID int) error {
 	var cnt int64
 	tx.Model(&model.GalgameToolsetContributor{}).
 		Where("toolset_id = ? AND user_id = ?", toolsetID, userID).
 		Count(&cnt)
 	if cnt > 0 {
-		return
+		return nil
 	}
-	tx.Create(&model.GalgameToolsetContributor{
+	return tx.Create(&model.GalgameToolsetContributor{
 		ToolsetID: toolsetID,
 		UserID:    userID,
-	})
+	}).Error
 }
 
-func (r *ToolsetRepository) DeleteAllRelated(tx *gorm.DB, toolsetID int) {
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetAlias{})
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetContributor{})
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetPracticality{})
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetResource{})
-	tx.Where("toolset_id = ?", toolsetID).Delete(&model.GalgameToolsetCategoryRelation{})
+func (r *ToolsetRepository) DeleteAllRelated(tx *gorm.DB, toolsetID int) error {
+	related := []any{
+		&model.GalgameToolsetAlias{},
+		&model.GalgameToolsetContributor{},
+		&model.GalgameToolsetPracticality{},
+		&model.GalgameToolsetResource{},
+		&model.GalgameToolsetCategoryRelation{},
+	}
+	for _, m := range related {
+		if err := tx.Where("toolset_id = ?", toolsetID).Delete(m).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

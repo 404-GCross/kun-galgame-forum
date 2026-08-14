@@ -93,7 +93,9 @@ func (h *UpdateHandler) DeleteHistory(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	h.repo.DeleteHistory(req.ID)
+	if err := h.repo.DeleteHistory(req.ID); err != nil {
+		return response.Error(c, errors.ErrInternal("删除更新日志失败"))
+	}
 	return response.OKMessage(c, "更新日志已删除")
 }
 
@@ -173,6 +175,8 @@ func (h *UpdateHandler) DeleteTodo(c fiber.Ctx) error {
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	h.repo.DeleteTodo(req.ID)
+	if err := h.repo.DeleteTodo(req.ID); err != nil {
+		return response.Error(c, errors.ErrInternal("删除待办失败"))
+	}
 	return response.OKMessage(c, "待办已删除")
 }

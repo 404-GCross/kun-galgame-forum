@@ -177,8 +177,7 @@ func (s *TopicWriteService) Create(
 			mpReason = moemoepoint.ReasonContentRemoved
 		}
 		s.helpers.AdjustMoemoepoint(tx, userID, pointsDelta, mpReason, moemoepoint.Ref("topic", topic.ID))
-		s.helpers.NotifyMentions(tx, userID, topic.ID, 0, 0, req.Content)
-		return nil
+		return s.helpers.NotifyMentions(tx, userID, topic.ID, 0, 0, req.Content)
 	})
 
 	if err != nil {
@@ -267,9 +266,7 @@ func (s *TopicWriteService) Update(
 			s.helpers.AdjustMoemoepoint(tx, topic.UserID, delta, mpReason, moemoepoint.Ref("topic", topicID))
 		}
 
-		s.helpers.NotifyMentions(tx, userID, topicID, 0, 0, req.Content)
-
-		return nil
+		return s.helpers.NotifyMentions(tx, userID, topicID, 0, 0, req.Content)
 	})
 
 	if txErr != nil {
@@ -357,8 +354,10 @@ func (s *TopicWriteService) ToggleReaction(ctx context.Context, userID, topicID 
 			}
 			s.helpers.AdjustMoemoepoint(tx, topic.UserID, 1,
 				moemoepoint.ReasonLiked, moemoepoint.Ref("topic", topicID))
-			s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "liked",
-				truncate(topic.Title, constants.TextPreviewLength), topicID, 0, 0)
+			if err := s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "liked",
+				truncate(topic.Title, constants.TextPreviewLength), topicID, 0, 0); err != nil {
+				return err
+			}
 		case "dislike":
 			if err := s.clearTopicReaction(tx, topicID, userID, "like", topic.UserID); err != nil {
 				return err
@@ -447,9 +446,8 @@ func (s *TopicWriteService) Upvote(ctx context.Context, userID, topicID int, des
 			moemoepoint.ReasonContentRemoved, moemoepoint.Ref("topic_upvote", topicID))
 		s.helpers.AdjustMoemoepoint(tx, topic.UserID, constants.RewardUpvoteOwner,
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("topic_upvote", topicID))
-		s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "upvoted",
+		return s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "upvoted",
 			truncate(topic.Title, constants.TextPreviewLength), topicID, 0, 0)
-		return nil
 	})
 
 	if err == gorm.ErrRecordNotFound {
@@ -489,8 +487,10 @@ func (s *TopicWriteService) ToggleFavorite(ctx context.Context, userID, topicID 
 			if userID != topic.UserID {
 				s.helpers.AdjustMoemoepoint(tx, topic.UserID, 1,
 					moemoepoint.ReasonLiked, moemoepoint.Ref("topic", topicID))
-				s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "favorite",
-					truncate(topic.Title, constants.TextPreviewLength), topicID, 0, 0)
+				if err := s.helpers.CreateTopicMessageWithContent(tx, userID, topic.UserID, "favorite",
+					truncate(topic.Title, constants.TextPreviewLength), topicID, 0, 0); err != nil {
+					return err
+				}
 			}
 		} else if findErr == nil {
 			if err := s.topicRepo.DeleteTopicFavorite(tx, existing); err != nil {

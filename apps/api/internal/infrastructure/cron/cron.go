@@ -30,11 +30,11 @@ func Start(
 	}
 	c := cron.New(cron.WithLocation(loc))
 
-	c.AddFunc("0 0 * * *", func() {
+	schedule(c, "0 0 * * *", "每日计数重置", func() {
 		resetDaily(db)
 	})
 
-	c.AddFunc("0 0 * * *", func() {
+	schedule(c, "0 0 * * *", "浏览量滚动统计", func() {
 		if err := viewstats.RunRollup(db); err != nil {
 			slog.Error("浏览量滚动统计失败", "error", err)
 			return
@@ -42,12 +42,12 @@ func Start(
 		slog.Info("浏览量滚动统计完成")
 	})
 
-	c.AddFunc("0 * * * *", func() {
+	schedule(c, "0 * * * *", "上传缓存清理", func() {
 		cleanupUploadCache(rdb)
 	})
 
 	if imgCli != nil {
-		c.AddFunc("0 4 * * *", func() {
+		schedule(c, "0 4 * * *", "内容图 reference-ping", func() {
 			distinct, updated, err := RunReferencePing(context.Background(), db, imgCli)
 			if err != nil {
 				slog.Error("内容图 reference-ping 失败", "distinct", distinct, "updated", updated, "error", err)
@@ -60,15 +60,15 @@ func Start(
 	}
 
 	if galgameClaimSync != nil {
-		c.AddFunc("*/10 * * * *", galgameClaimSync)
+		schedule(c, "*/10 * * * *", "galgame claim 同步", galgameClaimSync)
 	}
 
 	if galgameRevisionSync != nil {
-		c.AddFunc("*/10 * * * *", galgameRevisionSync)
+		schedule(c, "*/10 * * * *", "galgame revision 同步", galgameRevisionSync)
 	}
 
 	if galgameContributorSync != nil {
-		c.AddFunc("*/15 * * * *", galgameContributorSync)
+		schedule(c, "*/15 * * * *", "galgame contributor 同步", galgameContributorSync)
 	}
 
 	c.Start()
@@ -78,6 +78,15 @@ func Start(
 		ctx := c.Stop()
 		<-ctx.Done()
 		slog.Info("定时任务已停止")
+	}
+}
+
+// AddFunc returns an error for a malformed spec, and a job that never registers
+// is indistinguishable from one that registers and does nothing — the same
+// shape as the resetDaily incident below.
+func schedule(c *cron.Cron, spec, name string, fn func()) {
+	if _, err := c.AddFunc(spec, fn); err != nil {
+		slog.Error("定时任务注册失败, 该任务不会运行", "task", name, "spec", spec, "error", err)
 	}
 }
 

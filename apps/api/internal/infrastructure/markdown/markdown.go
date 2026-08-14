@@ -258,7 +258,7 @@ func collectHeadings(root ast.Node, source []byte) []TocLink {
 		return nil
 	}
 	var out []TocLink
-	ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	_ = ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}

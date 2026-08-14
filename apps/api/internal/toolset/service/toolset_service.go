@@ -146,9 +146,13 @@ func (s *ToolsetService) Create(
 			return err
 		}
 
-		s.toolsetRepo.ReplaceAliases(tx, toolset.ID, trimNonEmpty(req.Aliases))
+		if err := s.toolsetRepo.ReplaceAliases(tx, toolset.ID, trimNonEmpty(req.Aliases)); err != nil {
+			return err
+		}
 
-		s.toolsetRepo.AddContributor(tx, toolset.ID, userID)
+		if err := s.toolsetRepo.AddContributor(tx, toolset.ID, userID); err != nil {
+			return err
+		}
 
 		adjustMoemoepoint(tx, userID, 3,
 			moemoepoint.ReasonContentApproved, moemoepoint.Ref("toolset", toolset.ID),
@@ -281,7 +285,7 @@ func (s *ToolsetService) Update(
 	now := time.Now()
 
 	txErr := s.toolsetRepo.DB().Transaction(func(tx *gorm.DB) error {
-		s.toolsetRepo.UpdateFields(tx, id, map[string]any{
+		if err := s.toolsetRepo.UpdateFields(tx, id, map[string]any{
 			"name":        req.Name,
 			"description": req.Description,
 			"type":        req.Type,
@@ -290,9 +294,10 @@ func (s *ToolsetService) Update(
 			"homepage":    homepageJSON,
 			"version":     req.Version,
 			"edited":      now,
-		})
-		s.toolsetRepo.ReplaceAliases(tx, id, trimNonEmpty(req.Aliases))
-		return nil
+		}); err != nil {
+			return err
+		}
+		return s.toolsetRepo.ReplaceAliases(tx, id, trimNonEmpty(req.Aliases))
 	})
 	if txErr != nil {
 		return errors.ErrInternal("更新工具失败")
@@ -326,8 +331,12 @@ func (s *ToolsetService) Delete(userID int, canModerate bool, id int) *errors.Ap
 			}
 		}
 
-		s.toolsetRepo.DeleteAllRelated(tx, id)
-		s.toolsetRepo.DeleteByID(tx, id)
+		if err := s.toolsetRepo.DeleteAllRelated(tx, id); err != nil {
+			return err
+		}
+		if err := s.toolsetRepo.DeleteByID(tx, id); err != nil {
+			return err
+		}
 
 		adjustMoemoepoint(tx, toolset.UserID, -3,
 			moemoepoint.ReasonContentRemoved, moemoepoint.Ref("toolset", id),

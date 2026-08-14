@@ -196,12 +196,12 @@ func (s *ReplyService) CreateReply(
 		if topic.UserID != userID {
 			s.helpers.AdjustMoemoepoint(tx, topic.UserID, constants.RewardReply,
 				moemoepoint.ReasonContentApproved, moemoepoint.Ref("topic", req.TopicID))
-			s.helpers.CreateReplyMessage(tx, userID, topic.UserID, "replied", preview, req.TopicID, newReply.Floor, 0)
+			if err := s.helpers.CreateReplyMessage(tx, userID, topic.UserID, "replied", preview, req.TopicID, newReply.Floor, 0); err != nil {
+				return err
+			}
 		}
 
-		s.helpers.NotifyMentions(tx, userID, req.TopicID, newReply.Floor, 0, req.Content)
-
-		return nil
+		return s.helpers.NotifyMentions(tx, userID, req.TopicID, newReply.Floor, 0, req.Content)
 	})
 
 	if txErr != nil {
@@ -254,9 +254,7 @@ func (s *ReplyService) UpdateReply(
 			return err
 		}
 
-		s.helpers.NotifyMentions(tx, reply.UserID, reply.TopicID, reply.Floor, 0, req.Content)
-
-		return nil
+		return s.helpers.NotifyMentions(tx, reply.UserID, reply.TopicID, reply.Floor, 0, req.Content)
 	})
 
 	if txErr != nil {
@@ -394,8 +392,10 @@ func (s *ReplyService) ToggleReplyReaction(ctx context.Context, userID, replyID 
 			s.helpers.AdjustMoemoepoint(tx, reply.UserID, 1,
 				moemoepoint.ReasonLiked, moemoepoint.Ref("topic_reply", replyID))
 			link := msgService.BuildTopicLink(reply.TopicID, reply.Floor, 0)
-			createDedupMessage(tx, userID, reply.UserID, "liked",
-				truncate(reply.Content, constants.TextPreviewLength), link)
+			if err := createDedupMessage(tx, userID, reply.UserID, "liked",
+				truncate(reply.Content, constants.TextPreviewLength), link); err != nil {
+				return err
+			}
 		case "dislike":
 			if err := s.clearReplyReaction(tx, replyID, userID, reply.UserID, "like"); err != nil {
 				return err
@@ -495,7 +495,7 @@ func (s *ReplyService) PinReply(ctx context.Context, userID int, canModerate boo
 			return err
 		}
 		if isPinning && userID != reply.UserID {
-			s.helpers.CreateTopicMessageWithContent(
+			return s.helpers.CreateTopicMessageWithContent(
 				tx, userID, reply.UserID, "pin-reply",
 				replyPlainPreview(*reply),
 				topicID, reply.Floor, 0,

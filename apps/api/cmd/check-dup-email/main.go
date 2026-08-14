@@ -112,6 +112,8 @@ func main() {
 
 func randomPrefix(n int) string {
 	b := make([]byte, (n+1)/2)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
 	return hex.EncodeToString(b)[:n]
 }
