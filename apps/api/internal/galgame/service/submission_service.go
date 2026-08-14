@@ -185,6 +185,26 @@ func (s *SubmissionService) ListMine(
 		ClaimStates: states,
 		Before:      int64(atoiOr(query.Get("before"), 0)),
 		Limit:       atoiOr(query.Get("limit"), 20),
+		Kind:        "submitted",
+	})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	if page.Items == nil {
+		page.Items = []catalogclient.UserClaimItem{}
+	}
+	return page, nil
+}
+
+func (s *SubmissionService) ListAudit(
+	ctx context.Context,
+	accessToken string,
+	query url.Values,
+) (*catalogclient.UserClaimPage, *errors.AppError) {
+	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
+		Before: int64(atoiOr(query.Get("before"), 0)),
+		Limit:  atoiOr(query.Get("limit"), 20),
+		Kind:   "audited",
 	})
 	if err != nil {
 		return nil, claimActionError(err)

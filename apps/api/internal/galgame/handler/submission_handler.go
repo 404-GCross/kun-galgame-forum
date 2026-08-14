@@ -106,6 +106,18 @@ func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
+func (h *SubmissionHandler) ListAudit(c fiber.Ctx) error {
+	token, appErr := userToken(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	page, appErr := h.svc.ListAudit(c.Context(), token, collectQuery(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, page)
+}
+
 func (h *SubmissionHandler) SearchWithPending(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {

@@ -40,6 +40,9 @@ func (c *Client) MyClaims(ctx context.Context, accessToken string, f UserClaimFi
 	if f.Limit > 0 {
 		q.Set("limit", strconv.Itoa(f.Limit))
 	}
+	if f.Kind != "" {
+		q.Set("kind", f.Kind)
+	}
 	path := userClaimBase + "/claims/mine"
 	if len(q) > 0 {
 		path += "?" + q.Encode()
