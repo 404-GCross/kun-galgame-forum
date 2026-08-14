@@ -26,15 +26,36 @@ const row = computed(() =>
   props.galgame.external_ratings?.find((r) => r.source === props.source)
 )
 
-// Every source publishes something different — bangumi/dlsite a histogram,
-// erogamescape spread stats, vndb neither. Read the capability off the payload
-// instead of hardcoding it per source, so a source that gains data later just
-// starts rendering.
+// Every source publishes something different, and what it publishes changes:
+// erogamescape and vndb both gained a histogram in 2026-08. Read the capability
+// off the payload instead of hardcoding it per source, so a source that gains
+// data later just starts rendering.
 const buckets = computed(() =>
   row.value?.distribution?.length
-    ? externalRatingHistogram(row.value.distribution, meta.value.max)
+    ? externalRatingHistogram(row.value.distribution, meta.value.histogram.keys)
     : null
 )
+
+const categories = computed(() =>
+  meta.value.histogram.keys.map(meta.value.histogram.label)
+)
+
+// The bars are a different population from the vote_count beside them on both
+// sources that gained a histogram, and neither gap is a bug: VNDB's dump drops
+// private lists, and 批评空间's histogram is aggregated from a mirror that syncs
+// on its own cursor. Show the histogram's own denominator rather than let a
+// reader add up the bars and conclude the numbers are broken.
+const barsTotal = computed(() =>
+  buckets.value?.reduce((sum, count) => sum + count, 0)
+)
+
+const barsNote = computed(() => {
+  if (barsTotal.value == null || barsTotal.value === row.value?.vote_count) {
+    return ''
+  }
+  const basis = meta.value.histogram.basis
+  return `分布图共 ${barsTotal.value.toLocaleString('en-US')} 人, 和上面的评分人数不是同一份统计${basis ? `: ${basis}` : ''}。`
+})
 
 const tier = computed(() =>
   kunGalgameRatingTierBadge(meta.value, row.value?.score, row.value?.vote_count)
@@ -134,9 +155,10 @@ const link = computed(() => {
         :galgame-id="galgame.id"
         :source="source"
         :buckets="buckets"
-        :mine="null"
+        :categories="categories"
         :unit="meta.unit"
       />
+      <p v-if="barsNote" class="text-default-400 text-xs">{{ barsNote }}</p>
     </div>
 
     <div v-if="statRows.length" class="space-y-1.5">

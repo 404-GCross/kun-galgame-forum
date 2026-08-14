@@ -90,9 +90,12 @@ type catRatingStats struct {
 	Max     *float64 `json:"max"`
 }
 
-// Distribution and Stats are detail-face only and per-source: bangumi/dlsite
-// publish a histogram, erogamescape publishes Stats instead, vndb neither. The
-// works-list ratings block never carries either.
+// Distribution and Stats are detail-face only, and what each source carries
+// changes over time — erogamescape and vndb both gained a histogram in 2026-08,
+// so nothing downstream may hardcode which source has what. Distribution keys
+// are the source's own buckets, not a shared axis: erogamescape's are deciles
+// (0, 10, … 100), everyone else's are points. The works-list ratings block
+// never carries either field.
 type catRating struct {
 	Source       string            `json:"source"`
 	Score        float64           `json:"score"`

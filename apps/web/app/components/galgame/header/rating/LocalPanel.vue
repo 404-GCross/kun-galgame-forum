@@ -29,6 +29,9 @@ const mean = computed(() =>
   ratingMean(props.ratings.map((rating) => rating.overall))
 )
 const buckets = computed(() => ratingHistogram(props.ratings))
+const categories = KUN_GALGAME_LOCAL_RATING_META.histogram.keys.map(
+  KUN_GALGAME_LOCAL_RATING_META.histogram.label
+)
 const dimensionMeans = computed(() => ratingDimensionMeans(props.ratings))
 const mine = computed(
   () =>
@@ -121,7 +124,8 @@ const playStatusTally = computed(() =>
         :galgame-id="galgame.id"
         :source="KUN_GALGAME_LOCAL_RATING_SOURCE"
         :buckets="buckets"
-        :mine="mine"
+        :categories="categories"
+        :mine-index="mine == null ? -1 : mine - 1"
       />
     </div>
 

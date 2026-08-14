@@ -136,6 +136,15 @@ export const KUN_GALGAME_RATING_TIER_INSUFFICIENT = '评分人数不足'
 export const KUN_GALGAME_RATING_TIER_SCOPE_HINT =
   '分级按各来源自己的刻度独立计算, 不跨来源混算'
 
+export interface KunGalgameRatingHistogramAxis {
+  // The bucket keys catalog ships for this source, ascending. The histogram
+  // arrives sparse, so a key missing from the payload is a real zero.
+  keys: number[]
+  label: (key: number) => string
+  // Why the bars need not add up to the vote_count printed next to them.
+  basis?: string
+}
+
 export interface KunGalgameExternalRatingMeta {
   label: string
   short: string
@@ -146,8 +155,29 @@ export interface KunGalgameExternalRatingMeta {
   formatScore: (score: number) => string
   scoreSuffix: string
   tier: GalgameRatingTierRule
+  histogram: KunGalgameRatingHistogramAxis
   unit?: string
   link?: (ref: string) => string
+}
+
+const kunRatingPointAxis = (max: number): KunGalgameRatingHistogramAxis => ({
+  keys: Array.from({ length: max }, (_, index) => index + 1),
+  label: String
+})
+
+// 批评空间 publishes no histogram of its own; catalog aggregates one from the
+// reviews mirror as deciles keyed by the lower bound — 0, 10, … 100, where 100
+// is the single top score rather than a range. Folding those keys onto a 1-100
+// point axis would leave 90 empty columns and drop the 0 bucket entirely.
+const kunRatingDecileAxis: KunGalgameRatingHistogramAxis = {
+  keys: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+  label: (key) => (key === 100 ? '100' : `${key}-${key + 9}`),
+  basis: '这张图来自评论表, 和上面的中位数各自独立同步'
+}
+
+const kunRatingVndbAxis: KunGalgameRatingHistogramAxis = {
+  ...kunRatingPointAxis(10),
+  basis: 'VNDB 的投票导出不含私密收藏列表里的票'
 }
 
 const kunRatingScoreDecimal = (score: number) =>
@@ -174,12 +204,16 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     label: 'VNDB',
     short: 'VNDB',
     scale: '满分 10',
-    hint: 'VNDB 用户评分的平均值',
-    aggregate: '平均值',
+    // The score is VNDB's c_rating, its weighted headline number — c_average,
+    // the plain mean, is what arrives in `stats`. Calling this one 平均值 makes
+    // the panel's "上面那个是 X, 和这里的平均分不是同一个数" read as nonsense.
+    hint: 'VNDB 用户评分的加权平均',
+    aggregate: '加权平均',
     max: 10,
     formatScore: kunRatingScoreDecimal,
     scoreSuffix: '/10',
     tier: { cutoffs: [5.5, 6.5, 7.4, 8.0], minVotes: 10 },
+    histogram: kunRatingVndbAxis,
     link: (ref) => `https://vndb.org/${ref}`
   },
   bangumi: {
@@ -194,6 +228,7 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     // Bangumi's own vote labels sit on exactly these integers: 5 不过不失,
     // 6 还行, 7 推荐, 8 力荐.
     tier: { cutoffs: [5.0, 6.0, 7.0, 8.0], minVotes: 10 },
+    histogram: kunRatingPointAxis(10),
     link: (ref) => `https://bgm.tv/subject/${ref}`
   },
   erogamescape: {
@@ -210,6 +245,8 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     // = 上位34%" figure describes single VOTES, and per-work medians are far
     // more concentrated — only ~8.5% of works clear 80.
     tier: { cutoffs: [60, 70, 80, 85], minVotes: 10 },
+    histogram: kunRatingDecileAxis,
+    unit: '点',
     link: (ref) =>
       `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${ref}`
   },
@@ -223,6 +260,7 @@ export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
     formatScore: kunRatingScoreDecimal,
     scoreSuffix: '/5',
     tier: { cutoffs: [3.8, 4.2, 4.5, 4.7], minVotes: 10 },
+    histogram: kunRatingPointAxis(5),
     unit: '星'
   }
 }
@@ -239,7 +277,8 @@ export const KUN_GALGAME_LOCAL_RATING_META: KunGalgameExternalRatingMeta = {
   scoreSuffix: '/10',
   // The bayesian prior already pulls thin samples to the middle, so these lines
   // are much tighter than VNDB's and the gate can afford to be 3 instead of 10.
-  tier: { cutoffs: [6.8, 7.3, 7.9, 8.3], minVotes: 3 }
+  tier: { cutoffs: [6.8, 7.3, 7.9, 8.3], minVotes: 3 },
+  histogram: kunRatingPointAxis(10)
 }
 
 export interface KunGalgameRatingTierBadge {

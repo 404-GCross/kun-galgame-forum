@@ -2,23 +2,25 @@
 import VueApexCharts from 'vue3-apexcharts'
 import type { ApexOptions } from 'apexcharts'
 
-const props = defineProps<{
-  galgameId: number
-  source: string
-  buckets: number[]
-  mine: number | null
-  unit?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    galgameId: number
+    source: string
+    buckets: number[]
+    categories: string[]
+    mineIndex?: number
+    unit?: string
+  }>(),
+  { mineIndex: -1 }
+)
 
 const colorMode = useColorMode()
-
-const mineIndex = computed(() => (props.mine == null ? -1 : props.mine - 1))
 
 const series = computed(() => [{ name: '评分人数', data: props.buckets }])
 
 const colors = computed(() =>
   props.buckets.map((_, index) =>
-    index === mineIndex.value ? 'var(--color-warning)' : 'var(--color-primary)'
+    index === props.mineIndex ? 'var(--color-warning)' : 'var(--color-primary)'
   )
 )
 
@@ -37,7 +39,7 @@ const options = computed(
     dataLabels: { enabled: false },
     colors: colors.value,
     xaxis: {
-      categories: props.buckets.map((_, index) => String(index + 1)),
+      categories: props.categories,
       axisTicks: { show: false },
       labels: { style: { colors: 'var(--color-default-500)' } }
     },
@@ -53,7 +55,7 @@ const options = computed(
       // its only tooltip background lives on those two classes — the tooltip
       // rendered fully transparent. colorMode.value is always resolved.
       theme: colorMode.value,
-      x: { formatter: (x: number) => `${x} ${props.unit ?? '分'}` },
+      x: { formatter: (x: string) => `${x} ${props.unit ?? '分'}` },
       y: { formatter: (y: number) => `${y} 人` }
     },
     grid: { borderColor: 'var(--color-default-200)', strokeDashArray: 4 },

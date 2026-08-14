@@ -257,11 +257,15 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 
 func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","ratings":[
-		{"source":"vndb","score":8.1,"vote_count":900,"rank":12},
+		{"source":"vndb","score":8.1,"vote_count":900,"rank":12,
+		 "distribution":[{"score":8,"count":500},{"score":9,"count":300}],
+		 "stats":{"average":8.44}},
 		{"source":"bangumi","score":6.5,"vote_count":5,
 		 "distribution":[{"score":3,"count":1},{"score":10,"count":4}]},
 		{"source":"erogamescape","score":76,"vote_count":28,
-		 "stats":{"average":74.5,"stdev":10,"min":60,"max":100}}
+		 "distribution":[{"score":0,"count":1},{"score":70,"count":9},{"score":100,"count":2}],
+		 "stats":{"average":74.5,"stdev":10,"min":60,"max":100}},
+		{"source":"dlsite","score":4.6,"vote_count":10}
 	]}`
 	f := fullOf(t, body)
 
@@ -270,8 +274,9 @@ func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
 		by[r.Source] = r
 	}
 
-	if got := by["vndb"]; len(got.Distribution) != 0 || got.Stats != nil {
-		t.Errorf("vndb = %+v, want neither a histogram nor stats", got)
+	vndb := by["vndb"]
+	if len(vndb.Distribution) != 2 || vndb.Stats == nil || vndb.Stats.Average == nil {
+		t.Errorf("vndb = %+v, want the histogram and stats it gained in 2026-08", vndb)
 	}
 
 	bgm := by["bangumi"]
@@ -279,11 +284,20 @@ func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
 		t.Errorf("bangumi distribution = %+v, want the sparse buckets verbatim", bgm.Distribution)
 	}
 
+	// erogamescape's buckets are deciles keyed by their lower bound, 0 included.
+	// Anything that renumbers them onto a 1-100 point axis drops the 0 bucket.
 	eg := by["erogamescape"]
+	if len(eg.Distribution) != 3 || eg.Distribution[0].Score != 0 || eg.Distribution[2].Score != 100 {
+		t.Errorf("erogamescape distribution = %+v, want the decile keys verbatim", eg.Distribution)
+	}
 	if eg.Stats == nil || eg.Stats.Average == nil || *eg.Stats.Average != 74.5 {
 		t.Fatalf("erogamescape stats = %+v, want average 74.5 alongside the 76 median", eg.Stats)
 	}
 	if eg.Score == *eg.Stats.Average {
 		t.Error("median and mean collapsed into one number")
+	}
+
+	if got := by["dlsite"]; len(got.Distribution) != 0 || got.Stats != nil {
+		t.Errorf("dlsite = %+v, want a source that sent neither to stay empty", got)
 	}
 }

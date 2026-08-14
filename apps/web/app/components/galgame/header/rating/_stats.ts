@@ -22,15 +22,17 @@ export const ratingHistogram = (
 
 // Catalog ships the histogram sparsely: only the values someone actually voted
 // for are present, so an absent bucket is a real zero and has to be filled back
-// in or the columns silently shift left.
+// in or the columns silently shift left. The keys are not one shared axis
+// either — 批评空间's are deciles (0, 10, … 100), everyone else's are points.
 export const externalRatingHistogram = (
   distribution: GalgameRatingBucket[],
-  max: number
+  keys: number[]
 ) => {
-  const buckets = Array.from({ length: max }, () => 0)
+  const slot = new Map(keys.map((key, index) => [key, index]))
+  const buckets = Array.from({ length: keys.length }, () => 0)
   for (const bucket of distribution) {
-    const index = bucket.score - 1
-    if (index >= 0 && index < max) {
+    const index = slot.get(bucket.score)
+    if (index !== undefined) {
       buckets[index]! += bucket.count
     }
   }
