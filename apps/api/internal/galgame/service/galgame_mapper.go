@@ -84,6 +84,7 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 		EffectivePortraitHeight:    g.EffectivePortraitHeight,
 		EffectivePortraitThumbhash: g.EffectivePortraitThumbhash,
 		ExternalRatings:            externalRatingsOrEmpty(g.ExternalRatings),
+		Refs:                       g.Refs,
 		Covers:                     coversFromNextMoe(g.Covers),
 		Screenshots:                screenshotsFromNextMoe(g.Screenshots),
 		Contributor:                contributorsFromNextMoe(g.Contributor, users),

@@ -63,6 +63,13 @@ const galgameAliasArray = computed(() => {
 
 const isRatingOpen = ref(false)
 
+const isRatingDetailOpen = ref(false)
+const ratingDetailSource = ref('')
+const openRatingDetail = (source: string) => {
+  ratingDetailSource.value = source
+  isRatingDetailOpen.value = true
+}
+
 const coversOpen = ref(false)
 const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
 </script>
@@ -183,6 +190,14 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
         <GalgameHeaderRatingStrip
           :galgame="galgame"
           @open-rating="isRatingOpen = true"
+          @open-detail="openRatingDetail"
+        />
+
+        <GalgameHeaderRatingModal
+          v-model="isRatingDetailOpen"
+          :galgame="galgame"
+          :ratings="galgame.ratings"
+          :source="ratingDetailSource"
         />
 
         <div class="flex flex-wrap items-center gap-2">

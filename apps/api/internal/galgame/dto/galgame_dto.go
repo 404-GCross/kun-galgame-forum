@@ -247,6 +247,7 @@ type GalgameDetail struct {
 	Rating                     float64                  `json:"rating"`
 	RatingCount                int                      `json:"rating_count"`
 	ExternalRatings            []GalgameExternalRating  `json:"external_ratings"`
+	Refs                       map[string]string        `json:"refs,omitempty"`
 	Created                    string                   `json:"created"`
 	Updated                    string                   `json:"updated"`
 	DlsitePurchaseURL          string                   `json:"dlsite_purchase_url,omitempty"`

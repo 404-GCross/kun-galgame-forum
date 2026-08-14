@@ -1,48 +1,59 @@
 <script setup lang="ts">
+import {
+  KUN_GALGAME_EXTERNAL_RATING_CONST,
+  KUN_GALGAME_EXTERNAL_RATING_MAP,
+  KUN_GALGAME_LOCAL_RATING_META,
+  KUN_GALGAME_LOCAL_RATING_SOURCE
+} from '~/constants/galgame-rating'
+
 const props = defineProps<{
   galgame: GalgameDetail
 }>()
 
 const emits = defineEmits<{
   openRating: []
+  openDetail: [string]
 }>()
-
-interface ExternalSourceMeta {
-  label: string
-  hint: string
-}
-
-const EXTERNAL_SOURCES: Record<string, ExternalSourceMeta> = {
-  vndb: { label: 'VNDB', hint: 'VNDB 用户平均分, 满分 10' },
-  bangumi: { label: 'Bangumi', hint: 'Bangumi 用户平均分, 满分 10' },
-  erogamescape: {
-    label: 'ErogameScape',
-    hint: 'ErogameScape 中位数, 满分 100'
-  },
-  dlsite: { label: 'DLsite', hint: 'DLsite 星级, 满分 5' }
-}
-
-const SOURCE_ORDER = ['vndb', 'bangumi', 'erogamescape', 'dlsite']
-
-const formatScore = (score: number) => String(Number(score.toFixed(2)))
 
 const formatVotes = (count: number) => `${count.toLocaleString('en-US')} 人`
 
-const externalTiles = computed(() => {
-  const rows = props.galgame.external_ratings ?? []
-  return SOURCE_ORDER.flatMap((source) => {
-    const row = rows.find((r) => r.source === source)
-    const meta = EXTERNAL_SOURCES[source]
-    if (!row || !meta) return []
-    return [{ ...row, ...meta }]
+const forumCount = computed(() => props.galgame.rating_count ?? 0)
+
+const tiles = computed(() => {
+  const local = forumCount.value
+    ? [
+        {
+          key: KUN_GALGAME_LOCAL_RATING_SOURCE,
+          icon: 'lucide:star',
+          score: (props.galgame.rating ?? 0).toFixed(1),
+          rank: undefined as number | undefined,
+          caption: `${KUN_GALGAME_LOCAL_RATING_META.label} · ${formatVotes(forumCount.value)}`,
+          tooltip: `${KUN_GALGAME_LOCAL_RATING_META.hint}, ${KUN_GALGAME_LOCAL_RATING_META.scale}`
+        }
+      ]
+    : []
+
+  const external = KUN_GALGAME_EXTERNAL_RATING_CONST.flatMap((source) => {
+    const row = props.galgame.external_ratings?.find((r) => r.source === source)
+    if (!row) return []
+    const meta = KUN_GALGAME_EXTERNAL_RATING_MAP[source]
+    return [
+      {
+        key: source as string,
+        icon: '',
+        score: String(Number(row.score.toFixed(2))),
+        rank: row.rank,
+        caption: `${meta.label} · ${formatVotes(row.vote_count)}`,
+        tooltip: `${meta.hint}, ${meta.scale}`
+      }
+    ]
   })
+
+  return [...local, ...external]
 })
 
-const forumCount = computed(() => props.galgame.rating_count ?? 0)
-const forumScore = computed(() => (props.galgame.rating ?? 0).toFixed(1))
-
 const tileClass =
-  'bg-default-100 flex min-w-24 shrink-0 flex-col gap-0.5 rounded-lg px-3 py-2'
+  'bg-default-100 hover:bg-default-200 flex h-full min-w-24 shrink-0 flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors'
 </script>
 
 <template>
@@ -55,7 +66,7 @@ const tileClass =
     <button
       v-if="!forumCount"
       type="button"
-      :class="cn(tileClass, 'hover:bg-default-200 text-left transition-colors')"
+      :class="tileClass"
       @click="emits('openRating')"
     >
       <span
@@ -67,34 +78,30 @@ const tileClass =
       <span class="text-primary text-xs">来评第一个</span>
     </button>
 
-    <div v-else :class="tileClass">
-      <span class="flex items-baseline gap-1">
-        <KunIcon name="lucide:star" class="text-warning" />
-        <span class="text-2xl leading-none font-semibold">
-          {{ forumScore }}
+    <KunTooltip
+      v-for="tile in tiles"
+      :key="tile.key"
+      :text="tile.tooltip"
+      class-name="shrink-0"
+    >
+      <button
+        type="button"
+        :class="tileClass"
+        @click="emits('openDetail', tile.key)"
+      >
+        <span class="flex items-baseline gap-1">
+          <KunIcon v-if="tile.icon" :name="tile.icon" class="text-warning" />
+          <span class="text-2xl leading-none font-semibold">
+            {{ tile.score }}
+          </span>
+          <span v-if="tile.rank" class="text-default-500 text-xs">
+            #{{ tile.rank }}
+          </span>
         </span>
-      </span>
-      <KunTooltip text="本站用户评分, 满分 10 (贝叶斯平均)">
-        <span class="text-default-500 text-xs">
-          本站 · {{ formatVotes(forumCount) }}
-        </span>
-      </KunTooltip>
-    </div>
-
-    <div v-for="tile in externalTiles" :key="tile.source" :class="tileClass">
-      <span class="flex items-baseline gap-1">
-        <span class="text-2xl leading-none font-semibold">
-          {{ formatScore(tile.score) }}
-        </span>
-        <span v-if="tile.rank" class="text-default-500 text-xs">
-          #{{ tile.rank }}
-        </span>
-      </span>
-      <KunTooltip :text="tile.hint">
         <span class="text-default-500 text-xs whitespace-nowrap">
-          {{ tile.label }} · {{ formatVotes(tile.vote_count) }}
+          {{ tile.caption }}
         </span>
-      </KunTooltip>
-    </div>
+      </button>
+    </KunTooltip>
   </KunScrollShadow>
 </template>

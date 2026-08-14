@@ -90,6 +90,68 @@ export const KUN_GALGAME_RATING_SORT_FIELD_CONST = [
   'overall'
 ] as const
 
+export const KUN_GALGAME_EXTERNAL_RATING_CONST = [
+  'vndb',
+  'bangumi',
+  'erogamescape',
+  'dlsite'
+] as const
+export type KunGalgameExternalRatingSource =
+  (typeof KUN_GALGAME_EXTERNAL_RATING_CONST)[number]
+
+export interface KunGalgameExternalRatingMeta {
+  label: string
+  scale: string
+  hint: string
+  max: number
+  link?: (ref: string) => string
+}
+
+// Catalog ships each source on its own native scale and never normalizes across
+// them: vndb/bangumi are a 0-10 mean, dlsite a 0-5 star mean, erogamescape a
+// 0-100 median. `max` is the divisor any cross-source comparison has to use.
+export const KUN_GALGAME_EXTERNAL_RATING_MAP: Record<
+  KunGalgameExternalRatingSource,
+  KunGalgameExternalRatingMeta
+> = {
+  vndb: {
+    label: 'VNDB',
+    scale: '满分 10',
+    hint: 'VNDB 用户评分的平均值',
+    max: 10,
+    link: (ref) => `https://vndb.org/${ref}`
+  },
+  bangumi: {
+    label: 'Bangumi',
+    scale: '满分 10',
+    hint: 'Bangumi 用户评分的平均值',
+    max: 10,
+    link: (ref) => `https://bgm.tv/subject/${ref}`
+  },
+  erogamescape: {
+    label: 'ErogameScape',
+    scale: '满分 100',
+    hint: 'ErogameScape 用户评分的中位数',
+    max: 100,
+    link: (ref) =>
+      `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${ref}`
+  },
+  dlsite: {
+    label: 'DLsite',
+    scale: '满分 5',
+    hint: 'DLsite 购买者的平均星级',
+    max: 5
+  }
+}
+
+export const KUN_GALGAME_LOCAL_RATING_SOURCE = 'kungal'
+export const KUN_GALGAME_LOCAL_RATING_META: KunGalgameExternalRatingMeta = {
+  label: '本站',
+  scale: '满分 10',
+  hint: '本站用户评分的贝叶斯平均',
+  max: 10
+}
+
 export const KUN_GALGAME_DIMENSIONS = [
   'art',
   'story',

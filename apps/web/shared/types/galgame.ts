@@ -126,6 +126,7 @@ export interface GalgameDetail {
   rating?: number
   rating_count?: number
   external_ratings?: GalgameExternalRating[]
+  refs?: Record<string, string>
   created: Date | string
   updated: Date | string
 }
