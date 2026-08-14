@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -106,30 +105,17 @@ type UserClaimPage struct {
 	Total      int64           `json:"total"`
 }
 
+// Kind ("submitted"/"audited") only exists on the bearer /claims/mine face.
+// The by-uid face /catalog/users/{uid}/claims answers ClaimsByActor — every work
+// the user TOUCHED — and huma drops unknown query params without erroring, so
+// asking it to filter by kind returns someone else's works silently. That face
+// has no client here on purpose; a per-user owned list comes from
+// GalgameRepository.PublishedIDsByCreator.
 type UserClaimFilter struct {
-	Site        string
 	ClaimStates []string
 	Before      int64
 	Limit       int
 	Kind        string
-}
-
-func (c *Client) UserClaims(ctx context.Context, uid int64, f UserClaimFilter) (*UserClaimPage, error) {
-	q := url.Values{}
-	if f.Site != "" {
-		q.Set("site", f.Site)
-	}
-	if len(f.ClaimStates) > 0 {
-		q.Set("claim_state", strings.Join(f.ClaimStates, ","))
-	}
-	if f.Before > 0 {
-		q.Set("before", strconv.FormatInt(f.Before, 10))
-	}
-	if f.Limit > 0 {
-		q.Set("limit", strconv.Itoa(f.Limit))
-	}
-	return editGetQuery[UserClaimPage](ctx,
-		c, "/api/v1/catalog/users/"+strconv.FormatInt(uid, 10)+"/claims", q)
 }
 
 func editGetQuery[T any](ctx context.Context, c *Client, path string, q url.Values) (*T, error) {
