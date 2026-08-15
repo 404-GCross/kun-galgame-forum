@@ -46,6 +46,16 @@ const toggleSpoilerLevel = (spoiler: KunGalgameTagSpoiler) => {
   toggleItemInArray(selectedSpoilerLevels, spoiler)
 }
 
+const spoilerCounts = computed(() => {
+  const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0 }
+  for (const tag of props.tags) {
+    if (selectedCategories.value.includes(tag.category)) {
+      counts[tag.spoiler_level] = (counts[tag.spoiler_level] ?? 0) + 1
+    }
+  }
+  return counts
+})
+
 const filteredTags = computed(() => {
   if (
     selectedCategories.value.length === 0 ||
@@ -99,6 +109,9 @@ const countColorByCategory = (category: string): string => {
           @click="toggleSpoilerLevel(Number(key) as KunGalgameTagSpoiler)"
         >
           {{ name }}
+          <span class="text-default-400 text-xs">
+            {{ spoilerCounts[Number(key)] }}
+          </span>
         </KunCheckBox>
       </div>
     </KunScrollShadow>
@@ -178,6 +191,9 @@ const countColorByCategory = (category: string): string => {
               @click="toggleSpoilerLevel(Number(key) as KunGalgameTagSpoiler)"
             >
               {{ name }}
+              <span class="text-default-400 text-xs">
+                {{ spoilerCounts[Number(key)] }}
+              </span>
             </KunCheckBox>
           </div>
         </div>

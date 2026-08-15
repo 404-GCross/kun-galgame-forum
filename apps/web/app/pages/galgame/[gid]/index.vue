@@ -59,7 +59,10 @@ if (galgame) {
       ? new Date(galgame.release_date).getFullYear()
       : undefined
     const platformText = galgame.platform.slice(0, 3).join('、')
-    const contentGenres = galgame.tag
+    // The API hands over every spoiler level so the tag panel can filter on the
+    // client; anything a search engine indexes has to stay at level 0.
+    const safeTags = galgame.tag.filter((t) => t.spoiler_level === 0)
+    const contentGenres = safeTags
       .filter((t) => t.category === 'content')
       .map((t) => t.name)
     const fallbackDescription =
@@ -91,10 +94,8 @@ if (galgame) {
         name: o.name
       })),
 
-      genre: galgame.tag
-        .filter((t) => t.category === 'content')
-        .map((t) => t.name),
-      keywords: galgame.tag
+      genre: contentGenres,
+      keywords: safeTags
         .filter((t) => t.category === 'technical')
         .map((t) => t.name)
         .join(', '),

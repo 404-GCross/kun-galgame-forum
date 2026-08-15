@@ -13,6 +13,8 @@ import (
 
 const catalogIDsChunk = 100
 
+const catalogSpoilerCeiling = 2
+
 var anchorSourceKeys = []string{"curated", "galgame_wiki"}
 
 const (
@@ -382,7 +384,14 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 	if !ok {
 		return nil, false, nil
 	}
-	q := url.Values{"spoilers": {"0"}, "include": {"credits"}}
+	// The tag panel's 剧透等级 filter defaults to level 0 and reveals the rest on
+	// demand, so it needs the rows to filter: asking for spoilers=0 here made
+	// levels 1 and 2 match nothing, forever. SEO text must still cut back to
+	// level 0 — see pages/galgame/[gid]/index.vue.
+	q := url.Values{
+		"spoilers": {strconv.Itoa(catalogSpoilerCeiling)},
+		"include":  {"credits"},
+	}
 	openPopulation(q)
 	data, appErr := c.GetV1(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)
 	if appErr != nil {

@@ -4,14 +4,16 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.Server {
+func detailStub(t *testing.T, gid int, catalogID int64, body string) (*httptest.Server, *url.Values) {
 	t.Helper()
+	var seen url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -20,6 +22,7 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.S
 				`{"source":"curated","external_id":"` + itoa(int64(gid)) +
 				`","type":"work","work":{"id":` + itoa(catalogID) + `}}]}}`))
 		case req.URL.Path == "/v1/catalog/works/"+itoa(catalogID):
+			seen = req.URL.Query()
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":` + body + `}`))
 		default:
 			t.Errorf("unexpected upstream call: %s", req.URL.Path)
@@ -27,13 +30,13 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) *httptest.S
 		}
 	}))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, &seen
 }
 
 func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	t.Helper()
 	const gid, catalogID = 777, 4242
-	srv := detailStub(t, gid, catalogID, body)
+	srv, _ := detailStub(t, gid, catalogID, body)
 	c := New(srv.URL, "nm_test_key", "")
 
 	d, found, appErr := c.CatalogWorkDetail(context.Background(), gid)
@@ -187,6 +190,28 @@ func TestCatalogDetail_WorkCountReachesAllThreeChipFamilies(t *testing.T) {
 	}
 	if len(f.Tag) != 1 || f.Tag[0].Tag.GalgameCount != 9001 {
 		t.Errorf("tag count not projected: %+v", f.Tag)
+	}
+}
+
+func TestCatalogDetail_TagsArriveAtTheFullSpoilerCeiling(t *testing.T) {
+	const gid, catalogID = 777, 4242
+	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja",
+		"tags":[{"name":"純愛","canonical_id":51,"kind":"content","spoiler":0,"sexual":false},
+		        {"name":"ヒロイン死亡","canonical_id":52,"kind":"content","spoiler":2,"sexual":false}]}`
+	srv, seen := detailStub(t, gid, catalogID, body)
+	c := New(srv.URL, "nm_test_key", "")
+
+	d, found, appErr := c.CatalogWorkDetail(context.Background(), gid)
+	if appErr != nil || !found {
+		t.Fatalf("CatalogWorkDetail = (%v, %v)", appErr, found)
+	}
+	if got := seen.Get("spoilers"); got != "2" {
+		t.Errorf("spoilers = %q, want the full ceiling 2 — the tag panel filters client-side", got)
+	}
+
+	f := CatalogDetailToFull(d, gid)
+	if len(f.Tag) != 2 || f.Tag[1].SpoilerLevel != 2 {
+		t.Errorf("Tag = %+v, want the spoiler row carried with its level", f.Tag)
 	}
 }
 

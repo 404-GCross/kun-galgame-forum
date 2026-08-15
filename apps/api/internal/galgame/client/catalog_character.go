@@ -12,8 +12,6 @@ import (
 
 const catalogCharacterWorksCap = 50
 
-const catalogCharacterSpoilerCeiling = 2
-
 type CatalogCharacter struct {
 	ID          int64                       `json:"id"`
 	DisplayName string                      `json:"display_name"`
@@ -68,7 +66,7 @@ func (c *GalgameClient) CatalogCharacterDetail(
 		limit = catalogCharacterWorksCap
 	}
 	q := url.Values{
-		"spoilers": {strconv.Itoa(catalogCharacterSpoilerCeiling)},
+		"spoilers": {strconv.Itoa(catalogSpoilerCeiling)},
 		"limit":    {strconv.Itoa(limit)},
 		"offset":   {strconv.Itoa(max(offset, 0))},
 	}
