@@ -251,7 +251,7 @@ func catalogCoversToNextMoe(d *catWorkDetail) []dto.NextMoeGalgameCover {
 	for i, c := range d.Covers {
 		out = append(out, dto.NextMoeGalgameCover{
 			ImageHash: hashFromURL(c.URL), SortOrder: i,
-			Sexual: c.Sexual, Violence: c.Violence, Kind: c.Kind,
+			Sexual: c.Sexual, Violence: c.Violence, Kind: c.Kind, Source: c.Source,
 			CDNURL: c.URL, Width: c.Width, Height: c.Height, Thumbhash: c.Thumbhash,
 		})
 	}
@@ -263,7 +263,7 @@ func catalogScreenshotsToNextMoe(d *catWorkDetail) []dto.NextMoeGalgameScreensho
 	for i, s := range d.Screenshots {
 		out = append(out, dto.NextMoeGalgameScreenshot{
 			ImageHash: hashFromURL(s.URL), SortOrder: i, Caption: s.Caption,
-			Sexual: s.Sexual, Violence: s.Violence,
+			Sexual: s.Sexual, Violence: s.Violence, Source: s.Source,
 			CDNURL: s.URL, Width: s.Width, Height: s.Height, Thumbhash: s.Thumbhash,
 		})
 	}

@@ -301,3 +301,21 @@ func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
 		t.Errorf("dlsite = %+v, want a source that sent neither to stay empty", got)
 	}
 }
+
+func TestCatalogDetail_ImagesCarryTheirSource(t *testing.T) {
+	body := `{"id":4242,"display_name":"Kun","content_rating":"r18","olang":"ja","covers":[
+		{"url":"https://cdn.example/ab/cd/a.webp","kind":"main","source":"vndb","sexual":1},
+		{"url":"https://cdn.example/ef/gh/b.webp","kind":"main","source":"upscale"}
+	],"screenshots":[
+		{"url":"https://cdn.example/11/22/s1.webp","source":"vndb","sexual":0},
+		{"url":"https://cdn.example/33/44/s2.webp","source":"getchu","sexual":2}
+	]}`
+	f := fullOf(t, body)
+
+	if len(f.Covers) != 2 || f.Covers[0].Source != "vndb" || f.Covers[1].Source != "upscale" {
+		t.Errorf("cover sources = %+v, want vndb then upscale", f.Covers)
+	}
+	if len(f.Screenshots) != 2 || f.Screenshots[0].Source != "vndb" || f.Screenshots[1].Source != "getchu" {
+		t.Errorf("screenshot sources = %+v, want vndb then getchu", f.Screenshots)
+	}
+}

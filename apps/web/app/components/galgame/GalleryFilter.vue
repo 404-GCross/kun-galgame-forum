@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 
+interface SourceOption {
+  key: string
+  label: string
+  total: number
+  on: boolean
+}
+
 const props = defineProps<{
   showNsfw: boolean
   hiddenCount: number
   sexualCounts: Record<number, number>
   violenceCounts: Record<number, number>
+  sources: SourceOption[]
 }>()
+
+const emit = defineEmits<{ toggleSource: [key: string] }>()
 
 const {
   showKUNGalgameGallerySexualLevels: sexualLevels,
@@ -25,6 +35,8 @@ const sexualShown = computed(() =>
 const violenceShown = computed(() =>
   LEVELS.filter((lv) => (props.violenceCounts[lv.value] ?? 0) > 0)
 )
+
+const showSources = computed(() => props.sources.length > 1)
 
 const toggle = (arr: Ref<number[]>, level: number) => {
   arr.value = arr.value.includes(level)
@@ -59,7 +71,7 @@ const confirmViolence = () => {
     <template #trigger>
       <KunButton variant="flat" size="sm">
         <KunIcon name="lucide:funnel" />
-        分级筛选
+        筛选
         <KunChip v-if="hiddenCount" size="sm" color="warning" variant="flat">
           隐藏 {{ hiddenCount }}
         </KunChip>
@@ -67,6 +79,25 @@ const confirmViolence = () => {
     </template>
 
     <div class="space-y-4">
+      <template v-if="showSources">
+        <div class="space-y-2">
+          <p class="text-default-700 text-sm font-medium">图片来源</p>
+          <div class="flex flex-col gap-2">
+            <KunCheckBox
+              v-for="s in sources"
+              :id="`gal-source-${s.key || 'unknown'}`"
+              :key="s.key"
+              type="single"
+              :model-value="s.on"
+              :label="`${s.label} · ${s.total} 张`"
+              @update:model-value="() => emit('toggleSource', s.key)"
+            />
+          </div>
+        </div>
+
+        <KunDivider />
+      </template>
+
       <div class="space-y-2">
         <p class="text-default-700 text-sm font-medium">色情评级</p>
         <p v-if="!sexualShown.length" class="text-default-400 text-xs">

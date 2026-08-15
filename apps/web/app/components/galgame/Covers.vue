@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { galgameImageSourceLabel } from '~/constants/galgameImageSource'
+
 const props = defineProps<{ gid: number; covers: GalgameCover[] }>()
 const open = defineModel<boolean>({ required: true })
 
@@ -87,6 +89,12 @@ const groups = computed(() => {
     covers: byKind.get(k)!
   }))
 })
+
+const showSource = computed(
+  () => new Set(sorted.value.map((c) => c.source ?? '')).size > 1
+)
+const sourceLabel = (cover: GalgameCover) =>
+  galgameImageSourceLabel(cover.source)
 </script>
 
 <template>
@@ -127,6 +135,15 @@ const groups = computed(() => {
                     class-name="bg-default-100"
                   />
                 </KunLightboxGalleryItem>
+
+                <KunChip
+                  v-if="showSource"
+                  size="sm"
+                  color="default"
+                  variant="flat"
+                >
+                  {{ sourceLabel(c) }}
+                </KunChip>
 
                 <KunButton
                   v-if="c.id"

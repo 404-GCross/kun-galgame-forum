@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import {
+  galgameImageSourceLabel,
+  galgameImageSourceRank
+} from '~/constants/galgameImageSource'
+
 const props = defineProps<{
   screenshots: GalgameScreenshot[]
 }>()
@@ -24,20 +29,47 @@ const allShots = computed(() =>
   [...(props.screenshots ?? [])].filter((s) => !!s.image_hash)
 )
 
-const sorted = computed(() =>
-  allShots.value
-    .filter((s) => sexualOk(s) && violenceOk(s))
-    .sort((a, b) => {
-      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
-      return a.image_hash.localeCompare(b.image_hash)
-    })
+const sourceKeys = computed(() =>
+  [...new Set(allShots.value.map((s) => s.source ?? ''))].sort(
+    (a, b) => galgameImageSourceRank(a) - galgameImageSourceRank(b)
+  )
 )
 
-const hiddenCount = computed(() => allShots.value.length - sorted.value.length)
+const hiddenSources = ref<string[]>([])
+watch(sourceKeys, (keys) => {
+  hiddenSources.value = hiddenSources.value.filter((k) => keys.includes(k))
+})
 
-const hasRated = computed(() =>
-  allShots.value.some((s) => s.sexual >= 1 || s.violence >= 1)
+const groups = computed(() =>
+  sourceKeys.value.map((key) => {
+    const shots = allShots.value
+      .filter((s) => (s.source ?? '') === key)
+      .sort((a, b) => {
+        if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+        return a.image_hash.localeCompare(b.image_hash)
+      })
+    const shown = shots.filter((s) => sexualOk(s) && violenceOk(s))
+    return {
+      key,
+      label: galgameImageSourceLabel(key),
+      total: shots.length,
+      shown,
+      hidden: shots.length - shown.length
+    }
+  })
 )
+
+const openGroups = computed(() =>
+  groups.value.filter((g) => !hiddenSources.value.includes(g.key))
+)
+const shownCount = computed(() =>
+  openGroups.value.reduce((n, g) => n + g.shown.length, 0)
+)
+const hiddenCount = computed(() => allShots.value.length - shownCount.value)
+
+// A single-source gallery gets no headers — including the pre-deploy state
+// where the API still sends every screenshot with an empty source.
+const showHeaders = computed(() => sourceKeys.value.length > 1)
 
 const countLevels = (axis: 'sexual' | 'violence'): Record<number, number> => {
   const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
@@ -49,6 +81,26 @@ const countLevels = (axis: 'sexual' | 'violence'): Record<number, number> => {
 }
 const sexualCounts = computed(() => countLevels('sexual'))
 const violenceCounts = computed(() => countLevels('violence'))
+
+const hasRated = computed(() =>
+  allShots.value.some((s) => s.sexual >= 1 || s.violence >= 1)
+)
+const canFilter = computed(() => hasRated.value || showHeaders.value)
+
+const sourceOptions = computed(() =>
+  groups.value.map((g) => ({
+    key: g.key,
+    label: g.label,
+    total: g.total,
+    on: !hiddenSources.value.includes(g.key)
+  }))
+)
+
+const toggleSource = (key: string) => {
+  hiddenSources.value = hiddenSources.value.includes(key)
+    ? hiddenSources.value.filter((k) => k !== key)
+    : [...hiddenSources.value, key]
+}
 
 const thumbSrc = (s: GalgameScreenshot) =>
   s.cdn_url ? withImageVariant(s.cdn_url, 'mini') : galgameImageSrc(s)
@@ -80,60 +132,84 @@ const ratingRing = (s: GalgameScreenshot) => {
         scale="h3"
       />
       <GalgameGalleryFilter
-        v-if="hasRated"
+        v-if="canFilter"
         :show-nsfw="showNsfw"
         :hidden-count="hiddenCount"
         :sexual-counts="sexualCounts"
         :violence-counts="violenceCounts"
+        :sources="sourceOptions"
+        @toggle-source="toggleSource"
       />
     </div>
 
-    <KunLightboxGallery v-if="sorted.length">
-      <div
-        class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]"
-      >
-        <KunLightboxGalleryItem
-          v-for="s in sorted"
-          :key="s.image_hash"
-          :src="galgameImageSrc(s)"
-          :alt="s.caption || ''"
-          :wrap="false"
-          v-slot="{ open }"
-        >
-          <button
-            type="button"
-            class="group hover:ring-primary focus:ring-primary relative block w-full overflow-hidden rounded-lg ring-1 ring-transparent transition-all focus:outline-none"
-            :aria-label="s.caption || '查看截图'"
-            @click="open"
+    <KunLightboxGallery v-if="shownCount">
+      <div class="space-y-5">
+        <section v-for="g in openGroups" :key="g.key" class="space-y-2">
+          <div v-if="showHeaders" class="flex flex-wrap items-center gap-2">
+            <h3 class="text-default-600 text-sm font-medium">
+              {{ g.label }}
+              <span class="text-default-400">({{ g.total }})</span>
+            </h3>
+            <span v-if="g.hidden" class="text-default-400 text-xs">
+              已隐藏 {{ g.hidden }} 张
+            </span>
+          </div>
+
+          <p
+            v-if="!g.shown.length"
+            class="text-default-400 border-default/20 rounded-lg border border-dashed px-3 py-4 text-xs"
           >
-            <KunImage
-              :src="thumbSrc(s)"
+            {{ g.total }} 张图片已按分级隐藏,点击「筛选」调整
+          </p>
+
+          <div
+            v-else
+            class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]"
+          >
+            <KunLightboxGalleryItem
+              v-for="s in g.shown"
+              :key="s.image_hash"
+              :src="galgameImageSrc(s)"
               :alt="s.caption || ''"
-              loading="lazy"
-              object-fit="cover"
-              :thumbhash="s.thumbhash"
-              class="h-full w-full cursor-zoom-in object-cover transition-transform duration-200 group-hover:scale-105"
-              :style="{ aspectRatio: '16/9' }"
-            />
-            <div
-              v-if="s.caption"
-              class="absolute right-0 bottom-0 left-0 truncate bg-black/50 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+              :wrap="false"
+              v-slot="{ open }"
             >
-              {{ s.caption }}
-            </div>
-            <div
-              v-if="s.sexual >= 1 || s.violence >= 1"
-              class="pointer-events-none absolute inset-0 rounded-lg"
-              :style="ratingRing(s)"
-            />
-          </button>
-        </KunLightboxGalleryItem>
+              <button
+                type="button"
+                class="group hover:ring-primary focus:ring-primary relative block w-full overflow-hidden rounded-lg ring-1 ring-transparent transition-all focus:outline-none"
+                :aria-label="s.caption || '查看截图'"
+                @click="open"
+              >
+                <KunImage
+                  :src="thumbSrc(s)"
+                  :alt="s.caption || ''"
+                  loading="lazy"
+                  object-fit="cover"
+                  :thumbhash="s.thumbhash"
+                  class="h-full w-full cursor-zoom-in object-cover transition-transform duration-200 group-hover:scale-105"
+                  :style="{ aspectRatio: '16/9' }"
+                />
+                <div
+                  v-if="s.caption"
+                  class="absolute right-0 bottom-0 left-0 truncate bg-black/50 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  {{ s.caption }}
+                </div>
+                <div
+                  v-if="s.sexual >= 1 || s.violence >= 1"
+                  class="pointer-events-none absolute inset-0 rounded-lg"
+                  :style="ratingRing(s)"
+                />
+              </button>
+            </KunLightboxGalleryItem>
+          </div>
+        </section>
       </div>
     </KunLightboxGallery>
 
     <KunNull
       v-else
-      :description="`${hiddenCount} 张图片已按分级隐藏，点击「分级筛选」调整`"
+      :description="`${hiddenCount} 张图片已按分级 / 来源隐藏,点击「筛选」调整`"
     />
   </div>
 </template>

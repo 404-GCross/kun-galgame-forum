@@ -313,6 +313,7 @@ type catWorkDetail struct {
 		Kind      string `json:"kind"`
 		Sexual    int    `json:"sexual"`
 		Violence  int    `json:"violence"`
+		Source    string `json:"source"`
 		Width     int    `json:"width"`
 		Height    int    `json:"height"`
 		Thumbhash string `json:"thumbhash"`
@@ -323,6 +324,7 @@ type catWorkDetail struct {
 		Caption   string `json:"caption"`
 		Sexual    int    `json:"sexual"`
 		Violence  int    `json:"violence"`
+		Source    string `json:"source"`
 		Width     int    `json:"width"`
 		Height    int    `json:"height"`
 		Thumbhash string `json:"thumbhash"`
