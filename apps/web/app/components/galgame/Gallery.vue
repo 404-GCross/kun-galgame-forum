@@ -36,9 +36,13 @@ const sourceKeys = computed(() =>
 )
 
 const hiddenSources = ref<string[]>([])
+const expandedSources = ref<string[]>([])
 watch(sourceKeys, (keys) => {
   hiddenSources.value = hiddenSources.value.filter((k) => keys.includes(k))
+  expandedSources.value = expandedSources.value.filter((k) => keys.includes(k))
 })
+
+const GROUP_PREVIEW = 8
 
 const groups = computed(() =>
   sourceKeys.value.map((key) => {
@@ -49,15 +53,26 @@ const groups = computed(() =>
         return a.image_hash.localeCompare(b.image_hash)
       })
     const shown = shots.filter((s) => sexualOk(s) && violenceOk(s))
+    const visible = expandedSources.value.includes(key)
+      ? shown
+      : shown.slice(0, GROUP_PREVIEW)
+    const folded = shown.length - visible.length
     return {
       key,
       label: galgameImageSourceLabel(key),
       total: shots.length,
       shown,
+      visible,
+      folded,
+      foldIndex: folded > 0 ? visible.length - 1 : -1,
       hidden: shots.length - shown.length
     }
   })
 )
+
+const expandSource = (key: string) => {
+  expandedSources.value = [...expandedSources.value, key]
+}
 
 const openGroups = computed(() =>
   groups.value.filter((g) => !hiddenSources.value.includes(g.key))
@@ -167,7 +182,7 @@ const ratingRing = (s: GalgameScreenshot) => {
             class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]"
           >
             <KunLightboxGalleryItem
-              v-for="s in g.shown"
+              v-for="(s, i) in g.visible"
               :key="s.image_hash"
               :src="galgameImageSrc(s)"
               :alt="s.caption || ''"
@@ -177,8 +192,10 @@ const ratingRing = (s: GalgameScreenshot) => {
               <button
                 type="button"
                 class="group hover:ring-primary focus:ring-primary relative block w-full overflow-hidden rounded-lg ring-1 ring-transparent transition-all focus:outline-none"
-                :aria-label="s.caption || '查看截图'"
-                @click="open"
+                :aria-label="
+                  i === g.foldIndex ? '显示全部截图' : s.caption || '查看截图'
+                "
+                @click="i === g.foldIndex ? expandSource(g.key) : open()"
               >
                 <KunImage
                   :src="thumbSrc(s)"
@@ -200,6 +217,13 @@ const ratingRing = (s: GalgameScreenshot) => {
                   class="pointer-events-none absolute inset-0 rounded-lg"
                   :style="ratingRing(s)"
                 />
+                <div
+                  v-if="i === g.foldIndex"
+                  class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black/60 text-white"
+                >
+                  <span class="text-lg font-medium">+{{ g.folded }}</span>
+                  <span class="text-xs">显示全部</span>
+                </div>
               </button>
             </KunLightboxGalleryItem>
           </div>
