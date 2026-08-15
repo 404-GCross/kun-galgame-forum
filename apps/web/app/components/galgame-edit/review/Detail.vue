@@ -67,7 +67,10 @@ onMounted(async () => {
   })
   const toMap = (arr?: { id: number; name: string }[]) =>
     new Map((arr ?? []).map((x) => [x.id, x.name]))
-  const maps: Required<GalgameEditNames> = {
+  const maps: Record<
+    'tag' | 'official' | 'engine' | 'series',
+    Map<number, string>
+  > = {
     tag: toMap(detail?.tag),
     official: toMap(detail?.official),
     engine: toMap(detail?.engine),

@@ -29,7 +29,9 @@ const editNames = computed<GalgameEditNames>(() => {
     tag: toMap(d?.tag),
     official: toMap(d?.official),
     engine: toMap(d?.engine),
-    series: toMap(d?.series)
+    series: toMap(d?.series),
+    covers: d?.covers,
+    screenshots: d?.screenshots
   }
 })
 const editConfig = computed(() => createGalgameEditConfig(editNames.value))
@@ -69,6 +71,9 @@ const showNote = ref(true)
 const submitting = ref(false)
 
 const dirtyCount = computed(() => Object.keys(patch.value).length)
+const dirtyLabels = computed(() =>
+  Object.keys(patch.value).map((key) => galgameEditLabel(key))
+)
 
 const automergeByKey = computed(() => {
   const map: Record<string, boolean> = {}
@@ -248,16 +253,31 @@ const handleWithdraw = async (id: number) => {
             :rows="2"
             :maxlength="2000"
           />
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-default-500 text-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="text-default-500 min-w-0 space-y-1 text-sm">
               <template v-if="dirtyCount">
-                已修改 {{ dirtyCount }} 个字段 ·
-                <span :class="willAutomerge ? 'text-success' : 'text-warning'">
-                  {{ willAutomerge ? '保存后立即生效' : '提交后需审核' }}
-                </span>
+                <p>
+                  已修改 {{ dirtyCount }} 个字段 ·
+                  <span
+                    :class="willAutomerge ? 'text-success' : 'text-warning'"
+                  >
+                    {{ willAutomerge ? '保存后立即生效' : '提交后需审核' }}
+                  </span>
+                </p>
+                <div class="flex flex-wrap gap-1">
+                  <KunChip
+                    v-for="name in dirtyLabels"
+                    :key="name"
+                    size="sm"
+                    variant="flat"
+                    color="warning"
+                  >
+                    {{ name }}
+                  </KunChip>
+                </div>
               </template>
-              <template v-else>尚未修改</template>
-            </span>
+              <p v-else>尚未修改</p>
+            </div>
             <div class="flex items-center gap-2">
               <KunButton
                 variant="light"

@@ -41,6 +41,11 @@ export interface EditObjectColumn {
   width?: string
 }
 
+export interface EditContextItem {
+  label: string
+  image?: string
+}
+
 export interface EditFieldConfig {
   label: string
   tabLabel?: string
@@ -67,6 +72,8 @@ export interface EditFieldConfig {
     ids: (string | number)[]
   ) => Promise<EditSelectOption[]> | EditSelectOption[]
   component?: Component
+  contextNote?: string
+  contextItems?: (value: unknown) => EditContextItem[]
 }
 
 export type EditFieldConfigMap = Record<string, EditFieldConfig>

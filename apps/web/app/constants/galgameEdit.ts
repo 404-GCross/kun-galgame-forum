@@ -1,4 +1,6 @@
+import { defineAsyncComponent } from 'vue'
 import type {
+  EditContextItem,
   EditFieldConfig,
   EditFieldConfigMap,
   EditSelectOption
@@ -7,15 +9,71 @@ import {
   KUN_GALGAME_OFFICIAL_KIND_OPTIONS,
   KUN_GALGAME_OFFICIAL_KIND_DEVELOPER
 } from '~/constants/galgameOfficial'
+import { galgameImageSourceLabel } from '~/constants/galgameImageSource'
 
 const K = (name: string) => `catalog.work.${name}`
+
+const TitlesField = defineAsyncComponent(
+  () => import('~/components/galgame/edit/TitlesField.vue')
+)
+const IntrosField = defineAsyncComponent(
+  () => import('~/components/galgame/edit/IntrosField.vue')
+)
 
 export interface GalgameEditNames {
   tag?: Map<number, string>
   official?: Map<number, string>
   engine?: Map<number, string>
   series?: Map<number, string>
+  covers?: GalgameCover[]
+  screenshots?: GalgameScreenshot[]
 }
+
+// Only the curated lane is editable: an edge imported from VNDB / Bangumi /
+// DLsite is reconciled by its own importer and is not in this snapshot at all.
+// Without this the form reads as "the tags vanished" next to a detail page
+// showing eighty of them.
+const UPSTREAM_NOTE =
+  '以下内容来自 VNDB / Bangumi / DLsite 等数据源，由各数据源自行维护，无法在这里增删；上方只管理本站补充的部分。'
+
+const CURATED_IMAGE_SOURCE = 'curated'
+
+const missingFrom = (
+  map: Map<number, string> | undefined,
+  selected: unknown
+): EditContextItem[] => {
+  if (!map) {
+    return []
+  }
+  const chosen = new Set(
+    (Array.isArray(selected) ? selected : []).map((id) => Number(id))
+  )
+  return [...map]
+    .filter(([id]) => !chosen.has(id))
+    .map(([, name]) => ({ label: name }))
+}
+
+const missingLabelsFrom = (
+  map: Map<number, string> | undefined,
+  selected: unknown
+): EditContextItem[] => {
+  const ids = (Array.isArray(selected) ? selected : []).map((row) =>
+    Number((row as { label_id?: number }).label_id)
+  )
+  return missingFrom(map, ids)
+}
+
+const upstreamImages = (
+  images: (GalgameCover | GalgameScreenshot)[] | undefined
+): EditContextItem[] =>
+  (images ?? [])
+    .filter((image) => image.source !== CURATED_IMAGE_SOURCE)
+    .map((image) => ({
+      label: galgameImageSourceLabel(image.source),
+      image: image.cdn_url
+        ? withImageVariant(image.cdn_url, 'mini')
+        : galgameImageSrc(image)
+    }))
 
 const taxName = (name: unknown): string =>
   typeof name === 'string'
@@ -98,7 +156,10 @@ export const GALGAME_EDIT_GROUP_ORDER = [
   GROUP_IMAGES
 ]
 
-export const GALGAME_EDIT_TABBED_GROUPS: string[] = []
+export const GALGAME_EDIT_TABBED_GROUPS: string[] = [
+  GROUP_RELATIONS,
+  GROUP_IMAGES
+]
 
 export const GALGAME_EDIT_IDENTITY_HINT =
   'VNDB / Bangumi ID 属于条目身份, 不能直接修改。如果发现挂错了, 请在「链接」里补上正确的 VNDB / Bangumi 链接, 并在提交说明里写明原因, 由资料库管理员核对后修正。'
@@ -107,21 +168,6 @@ const TITLE_KIND_OPTIONS: EditSelectOption[] = [
   { value: 0, label: '官方名' },
   { value: 1, label: '别名' },
   { value: 2, label: '缩写' }
-]
-
-const TITLE_LANG_OPTIONS: EditSelectOption[] = [
-  { value: 'ja', label: '日语' },
-  { value: 'zh-Hans', label: '简中' },
-  { value: 'zh-Hant', label: '繁中' },
-  { value: 'en', label: '英语' },
-  { value: '', label: '无语言 (别名)' }
-]
-
-const INTRO_LANG_OPTIONS: EditSelectOption[] = [
-  { value: 'ja', label: '日语' },
-  { value: 'zh-Hans', label: '简中' },
-  { value: 'zh-Hant', label: '繁中' },
-  { value: 'en', label: '英语' }
 ]
 
 const imageRow = (value: unknown): string => {
@@ -173,25 +219,7 @@ export const createGalgameEditConfig = (
   [K('titles')]: {
     label: '标题与别名',
     group: GROUP_TITLES,
-    control: 'object-list',
-    columns: [
-      {
-        key: 'lang',
-        label: '语言',
-        control: 'select',
-        options: TITLE_LANG_OPTIONS,
-        width: 'w-32'
-      },
-      { key: 'title', label: '标题', placeholder: '标题 / 别名' },
-      {
-        key: 'kind',
-        label: '类型',
-        control: 'select',
-        options: TITLE_KIND_OPTIONS,
-        width: 'w-28'
-      }
-    ],
-    newRow: () => ({ lang: 'ja', title: '', kind: 0 }),
+    component: TitlesField,
     formatItem: (item) => {
       const row = item as { lang?: string; title?: string; kind?: number }
       const kind =
@@ -210,23 +238,12 @@ export const createGalgameEditConfig = (
   [K('intros')]: {
     label: '介绍',
     group: GROUP_INTRO,
-    control: 'object-list',
-    columns: [
-      {
-        key: 'lang',
-        label: '语言',
-        control: 'select',
-        options: INTRO_LANG_OPTIONS,
-        width: 'w-32'
-      },
-      { key: 'intro', label: '正文', control: 'textarea' }
-    ],
-    newRow: () => ({ lang: 'zh-Hans', intro: '' }),
+    component: IntrosField,
     formatItem: (item) => {
       const row = item as { lang?: string; intro?: string }
       return `${row.lang ?? ''}: ${(row.intro ?? '').slice(0, 40)}`
     },
-    description: '每种语言一条。图片会被后端剥离。'
+    description: '每种语言一条，支持 Markdown。图片会被后端剥离。'
   },
 
   [K('olang')]: {
@@ -257,26 +274,33 @@ export const createGalgameEditConfig = (
 
   [K('series_ids')]: {
     label: '所属系列',
+    tabLabel: '系列',
     group: GROUP_RELATIONS,
     control: 'entity-picker',
     multiple: true,
     searchEntities: searchSeries,
     resolveEntities: resolveFrom(names.series),
     formatItem: idFormatItem(names.series),
-    description: '搜索并选择所属系列'
+    description: '搜索并选择所属系列。只有本站创建的系列可以在这里增删。',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: (value) => missingFrom(names.series, value)
   },
   [K('tag_ids')]: {
     label: '标签',
+    tabLabel: '标签',
     group: GROUP_RELATIONS,
     control: 'entity-picker',
     multiple: true,
     searchEntities: searchTags,
     resolveEntities: resolveFrom(names.tag),
     formatItem: idFormatItem(names.tag),
-    description: '搜索标签名称添加'
+    description: '搜索标签名称添加',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: (value) => missingFrom(names.tag, value)
   },
   [K('labels')]: {
     label: '会社',
+    tabLabel: '会社',
     group: GROUP_RELATIONS,
     control: 'entity-kind-picker',
     entityIdKey: 'label_id',
@@ -285,17 +309,22 @@ export const createGalgameEditConfig = (
     searchEntities: searchOfficials,
     resolveEntities: resolveFrom(names.official),
     formatItem: labelFormatItem(names.official),
-    description: '搜索会社名称添加, 并选择它在本作中的身份 (开发商 / 发行商 …)'
+    description: '搜索会社名称添加, 并选择它在本作中的身份 (开发商 / 发行商 …)',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: (value) => missingLabelsFrom(names.official, value)
   },
   [K('engine_ids')]: {
     label: '引擎',
+    tabLabel: '引擎',
     group: GROUP_RELATIONS,
     control: 'entity-picker',
     multiple: true,
     searchEntities: searchEngines,
     resolveEntities: resolveFrom(names.engine),
     formatItem: idFormatItem(names.engine),
-    description: '搜索引擎名称添加'
+    description: '搜索引擎名称添加',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: (value) => missingFrom(names.engine, value)
   },
 
   [K('links')]: {
@@ -308,21 +337,27 @@ export const createGalgameEditConfig = (
 
   [K('covers')]: {
     label: '封面',
+    tabLabel: '封面',
     group: GROUP_IMAGES,
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadCoverItem,
     pinItemFlag: { key: 'portrait_pinned', label: '竖版封面' },
     description:
-      '“竖版封面”是卡片和列表渲染的那一张，由这里的置顶决定，与顺序无关；详情页头图由系统在横版图中自动挑选（近正方形的碟面、盒背等永不入选）。拖拽只调整画廊里的展示次序。'
+      '“竖版封面”是卡片和列表渲染的那一张，由这里的置顶决定，与顺序无关；详情页头图由系统在横版图中自动挑选（近正方形的碟面、盒背等永不入选）。拖拽只调整画廊里的展示次序。',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: () => upstreamImages(names.covers)
   },
   [K('screenshots')]: {
     label: '画廊',
+    tabLabel: '画廊',
     group: GROUP_IMAGES,
     resolveImage: imageRow,
     formatItem: (item) => imageRow(item) || JSON.stringify(item),
     uploadImage: uploadScreenshotItem,
-    description: '拖拽可调整展示顺序'
+    description: '拖拽可调整展示顺序',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: () => upstreamImages(names.screenshots)
   }
 })
 

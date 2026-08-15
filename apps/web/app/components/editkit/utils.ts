@@ -22,6 +22,11 @@ export const stableStringify = (value: unknown): string => {
 export const editValueEqual = (a: unknown, b: unknown): boolean =>
   stableStringify(a) === stableStringify(b)
 
+export const cloneEditValue = (value: unknown): unknown =>
+  value === null || value === undefined
+    ? null
+    : JSON.parse(JSON.stringify(value))
+
 export const resolveControl = (
   field: EditSchemaField,
   config?: EditFieldConfig

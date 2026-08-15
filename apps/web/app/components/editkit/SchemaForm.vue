@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref, toRaw, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import type { EditFieldConfigMap, EditSchemaField } from './types'
-import { editValueEqual } from './utils'
+import { cloneEditValue, editValueEqual } from './utils'
 
 const props = withDefaults(
   defineProps<{
@@ -29,7 +29,7 @@ watch(
       Reflect.deleteProperty(working, key)
     }
     for (const field of props.fields) {
-      working[field.key] = structuredClone(toRaw(values[field.key]) ?? null)
+      working[field.key] = cloneEditValue(values[field.key])
     }
   },
   { immediate: true, deep: false }
@@ -210,6 +210,7 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
             v-model="working[field.key]"
             :field="field"
             :config="config[field.key]"
+            :baseline="values[field.key]"
             :disabled="disabled"
           />
         </template>
@@ -220,6 +221,7 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
             v-model="working[field.key]"
             :field="field"
             :config="config[field.key]"
+            :baseline="values[field.key]"
             :disabled="disabled"
           />
         </template>
@@ -242,6 +244,7 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
           v-model="working[field.key]"
           :field="field"
           :config="config[field.key]"
+          :baseline="values[field.key]"
           :disabled="disabled"
         />
       </div>
