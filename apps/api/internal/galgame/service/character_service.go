@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,10 @@ type CharacterService struct {
 
 func NewCharacterService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *CharacterService {
 	return &CharacterService{galgameClient: galgameClient, enricher: enricher}
+}
+
+func (s *CharacterService) Search(ctx context.Context, rawQuery url.Values) ([]dto.TaxonomySearchItem, *errors.AppError) {
+	return searchCatalogEntities(ctx, s.galgameClient, "characters", rawQuery)
 }
 
 var characterPage = map[string]func(string) string{

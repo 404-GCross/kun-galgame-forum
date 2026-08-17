@@ -1,0 +1,28 @@
+package service
+
+import (
+	"context"
+	"net/url"
+
+	"kun-galgame-api/internal/galgame/client"
+	"kun-galgame-api/internal/galgame/dto"
+	"kun-galgame-api/pkg/errors"
+)
+
+func searchCatalogEntities(
+	ctx context.Context,
+	c *client.GalgameClient,
+	searchType string,
+	rawQuery url.Values,
+) ([]dto.TaxonomySearchItem, *errors.AppError) {
+	hits, appErr := c.CatalogEntitySearch(ctx, searchType, rawQuery.Get("q"),
+		atoiOr(rawQuery.Get("limit"), 20))
+	if appErr != nil {
+		return nil, appErr
+	}
+	items := make([]dto.TaxonomySearchItem, 0, len(hits))
+	for _, hit := range hits {
+		items = append(items, dto.TaxonomySearchItem{ID: int(hit.ID), Name: hit.Name})
+	}
+	return items, nil
+}

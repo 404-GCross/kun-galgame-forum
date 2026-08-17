@@ -55,10 +55,25 @@ const dirtyCount = computed(() => Object.keys(patch.value).length)
 defineExpose({ dirtyCount })
 
 const UNGROUPED = '__ungrouped'
+const SUPPRESSED_SUFFIX = '.suppressed'
+
+const pairsSuppressed = (key: string) =>
+  props.config[key]?.pairsSuppressed === true
+
+const companionKey = (key: string) => key + SUPPRESSED_SUFFIX
+
+const isPairedCompanion = (key: string) =>
+  key.endsWith(SUPPRESSED_SUFFIX) &&
+  pairsSuppressed(key.slice(0, -SUPPRESSED_SUFFIX.length))
+
+const setSuppressed = (parentKey: string, value: unknown) => {
+  working[companionKey(parentKey)] = value
+}
+
 const sections = computed(() => {
   const byGroup = new Map<string, EditSchemaField[]>()
   for (const field of props.fields) {
-    if (field.deprecated) {
+    if (field.deprecated || isPairedCompanion(field.key)) {
       continue
     }
     const group = props.config[field.key]?.group ?? ''
@@ -211,7 +226,13 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
             :field="field"
             :config="config[field.key]"
             :baseline="values[field.key]"
+            :suppressed="
+              pairsSuppressed(field.key)
+                ? working[companionKey(field.key)]
+                : undefined
+            "
             :disabled="disabled"
+            @update:suppressed="(value) => setSuppressed(field.key, value)"
           />
         </template>
         <template v-else>
@@ -222,7 +243,13 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
             :field="field"
             :config="config[field.key]"
             :baseline="values[field.key]"
+            :suppressed="
+              pairsSuppressed(field.key)
+                ? working[companionKey(field.key)]
+                : undefined
+            "
             :disabled="disabled"
+            @update:suppressed="(value) => setSuppressed(field.key, value)"
           />
         </template>
       </section>
@@ -245,7 +272,13 @@ const subTabItems = (section: { name: string; fields: EditSchemaField[] }) =>
           :field="field"
           :config="config[field.key]"
           :baseline="values[field.key]"
+          :suppressed="
+            pairsSuppressed(field.key)
+              ? working[companionKey(field.key)]
+              : undefined
+          "
           :disabled="disabled"
+          @update:suppressed="(value) => setSuppressed(field.key, value)"
         />
       </div>
     </section>

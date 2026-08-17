@@ -13,11 +13,13 @@ const props = defineProps<{
   config?: EditFieldConfig
   modelValue: unknown
   baseline?: unknown
+  suppressed?: unknown
   disabled?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: unknown]
+  'update:suppressed': [value: unknown]
 }>()
 
 const control = computed(() => resolveControl(props.field, props.config))
@@ -181,10 +183,15 @@ const readonlyImageURLs = computed(() => {
     <template v-if="config?.component">
       <component
         :is="config.component"
+        v-bind="config.fieldProps"
         :model-value="modelValue"
+        :suppressed="suppressed"
         :disabled="!editable"
         @update:model-value="
           (value: unknown) => emit('update:modelValue', value)
+        "
+        @update:suppressed="
+          (value: unknown) => emit('update:suppressed', value)
         "
       />
     </template>

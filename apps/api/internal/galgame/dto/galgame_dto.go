@@ -139,6 +139,7 @@ type GalgameDetailCharacter struct {
 	Latin      string                        `json:"latin,omitempty"`
 	Kind       string                        `json:"kind"`
 	Spoiler    int                           `json:"spoiler"`
+	Identity   string                        `json:"identity,omitempty"`
 	Image      string                        `json:"image,omitempty"`
 	Figure     string                        `json:"figure,omitempty"`
 	ImageMeta  *GalgameArtMeta               `json:"image_meta,omitempty"`

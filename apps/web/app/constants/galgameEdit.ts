@@ -19,12 +19,20 @@ const TitlesField = defineAsyncComponent(
 const IntrosField = defineAsyncComponent(
   () => import('~/components/galgame/edit/IntrosField.vue')
 )
+const RosterField = defineAsyncComponent(
+  () => import('~/components/galgame/edit/RosterField.vue')
+)
+const CreditsField = defineAsyncComponent(
+  () => import('~/components/galgame/edit/CreditsField.vue')
+)
 
 export interface GalgameEditNames {
   tag?: Map<number, string>
   official?: Map<number, string>
   engine?: Map<number, string>
   series?: Map<number, string>
+  character?: Map<number, string>
+  staff?: Map<number, string>
   covers?: GalgameCover[]
   screenshots?: GalgameScreenshot[]
 }
@@ -107,6 +115,8 @@ const browseTaxonomy =
 
 const searchTags = searchTaxonomy('/galgame-tag/search')
 const searchOfficials = searchTaxonomy('/galgame-official/search')
+const searchStaff = searchTaxonomy('/galgame-staff/search')
+const searchCharacters = searchTaxonomy('/galgame-character/search')
 const searchEngines = browseTaxonomy('/galgame-engine')
 const searchSeries = browseTaxonomy('/galgame-series')
 
@@ -144,6 +154,7 @@ const GROUP_TITLES = '标题'
 const GROUP_INTRO = '介绍'
 const GROUP_BASIC = '基本信息'
 const GROUP_RELATIONS = '关联条目'
+const GROUP_CAST = '出演与署名'
 const GROUP_EXTRAS = '链接'
 const GROUP_IMAGES = '图片'
 
@@ -152,12 +163,14 @@ export const GALGAME_EDIT_GROUP_ORDER = [
   GROUP_INTRO,
   GROUP_BASIC,
   GROUP_RELATIONS,
+  GROUP_CAST,
   GROUP_EXTRAS,
   GROUP_IMAGES
 ]
 
 export const GALGAME_EDIT_TABBED_GROUPS: string[] = [
   GROUP_RELATIONS,
+  GROUP_CAST,
   GROUP_IMAGES
 ]
 
@@ -325,6 +338,63 @@ export const createGalgameEditConfig = (
     description: '搜索引擎名称添加',
     contextNote: UPSTREAM_NOTE,
     contextItems: (value) => missingFrom(names.engine, value)
+  },
+
+  [K('roster')]: {
+    label: '出演名单',
+    tabLabel: '角色',
+    group: GROUP_CAST,
+    component: RosterField,
+    pairsSuppressed: true,
+    fieldProps: { names: names.character },
+    formatItem: (item) => {
+      const row = item as { character_id?: number; kind?: number }
+      return names.character?.get(Number(row.character_id)) ?? `#${row.character_id ?? '?'}`
+    },
+    description:
+      '只能改已有出演边的主配和剧透档，不能在这里新建或删除。隐藏会从读面拿掉这条边，行仍留在表里给上游导入器。'
+  },
+  [K('roster.suppressed')]: {
+    label: '隐藏的角色'
+  },
+  [K('credits')]: {
+    label: '本站署名',
+    tabLabel: '署名',
+    group: GROUP_CAST,
+    component: CreditsField,
+    fieldProps: {
+      searchNames: searchStaff,
+      searchCharacters,
+      resolveNames: resolveFrom(names.staff),
+      resolveCharacters: resolveFrom(names.character)
+    },
+    formatItem: (item) => {
+      const row = item as { credit_name_id?: number; role_id?: number }
+      const name =
+        names.staff?.get(Number(row.credit_name_id)) ?? `#${row.credit_name_id ?? '?'}`
+      return name
+    },
+    description: '只管理本站补充的署名。上游导入的署名在详情页制作人员里，不能在这里改，只能整行隐藏。',
+    contextNote: UPSTREAM_NOTE,
+    contextItems: () =>
+      [...(names.staff ?? [])].map(([, name]) => ({ label: name }))
+  },
+  [K('credits.suppressed')]: {
+    label: '隐藏的上游署名',
+    tabLabel: '隐藏署名',
+    group: GROUP_CAST,
+    control: 'string-list',
+    placeholder: '粘贴 credit:职务:名义:角色 后回车',
+    description:
+      '上游署名的行身份键，回显即可、不要自己拼。隐藏后读面不再出现这条署名。'
+  },
+  [K('titles.suppressed')]: {
+    label: '隐藏的标题',
+    group: GROUP_TITLES,
+    control: 'string-list',
+    placeholder: '粘贴 title:类型:语言:标题 后回车',
+    description:
+      '被隐藏的上游标题仍留在表里，读面不再出现。键由 catalog 按标题内容派生，不要改格式。'
   },
 
   [K('links')]: {

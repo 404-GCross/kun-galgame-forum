@@ -54,6 +54,7 @@ export interface GalgameDetailCharacter {
   latin?: string
   kind: string
   spoiler: number
+  identity?: string
   image?: string
   figure?: string
   image_meta?: GalgameArtMeta

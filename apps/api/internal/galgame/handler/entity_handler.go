@@ -199,6 +199,22 @@ func collectQuery(c fiber.Ctx) url.Values {
 	return q
 }
 
+func (h *EntityHandler) SearchStaff(c fiber.Ctx) error {
+	items, appErr := h.staffService.Search(c.Context(), collectQuery(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, items)
+}
+
+func (h *EntityHandler) SearchCharacters(c fiber.Ctx) error {
+	items, appErr := h.characterService.Search(c.Context(), collectQuery(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, items)
+}
+
 func (h *EntityHandler) GetStaffDetail(c fiber.Ctx) error {
 	detail, appErr := h.staffService.GetDetail(
 		c.Context(),

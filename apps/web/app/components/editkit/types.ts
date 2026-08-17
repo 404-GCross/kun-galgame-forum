@@ -72,8 +72,10 @@ export interface EditFieldConfig {
     ids: (string | number)[]
   ) => Promise<EditSelectOption[]> | EditSelectOption[]
   component?: Component
+  fieldProps?: Record<string, unknown>
   contextNote?: string
   contextItems?: (value: unknown) => EditContextItem[]
+  pairsSuppressed?: boolean
 }
 
 export type EditFieldConfigMap = Record<string, EditFieldConfig>

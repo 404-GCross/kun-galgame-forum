@@ -25,11 +25,21 @@ const editNames = computed<GalgameEditNames>(() => {
   const d = detail.value
   const toMap = (arr?: { id: number; name: string }[]) =>
     new Map((arr ?? []).map((x) => [x.id, x.name]))
+  const staff = new Map<number, string>()
+  for (const group of d?.staff ?? []) {
+    for (const person of group.people) {
+      if (!staff.has(person.id)) {
+        staff.set(person.id, person.name)
+      }
+    }
+  }
   return {
     tag: toMap(d?.tag),
     official: toMap(d?.official),
     engine: toMap(d?.engine),
     series: toMap(d?.series),
+    character: toMap(d?.characters),
+    staff,
     covers: d?.covers,
     screenshots: d?.screenshots
   }

@@ -48,6 +48,7 @@ GET    /api/doc/tag                                   cors.New → TagHandler.Ge
 GET    /api/friend-link                               cors.New → FriendLinkHandler.List
 GET    /api/galgame                                   cors.New → GalgameHandler.GetList
 GET    /api/galgame-character/:id                     cors.New → EntityHandler.GetCharacterDetail
+GET    /api/galgame-character/search                  cors.New → EntityHandler.SearchCharacters
 GET    /api/galgame-edit/mine                         cors.New → OptionalAuth → Auth → EditHandler.Mine
 GET    /api/galgame-edit/proposals/:id                cors.New → OptionalAuth → Auth → EditHandler.ProposalDetail
 GET    /api/galgame-edit/queue                        cors.New → OptionalAuth → Auth → RequireModerator → EditHandler.Queue
@@ -76,6 +77,7 @@ GET    /api/galgame-series                            cors.New → EntityHandler
 GET    /api/galgame-series/:id                        cors.New → EntityHandler.GetSeriesDetail
 GET    /api/galgame-series/cards                      cors.New → EntityHandler.GetSeriesCards
 GET    /api/galgame-staff/:id                         cors.New → EntityHandler.GetStaffDetail
+GET    /api/galgame-staff/search                      cors.New → EntityHandler.SearchStaff
 GET    /api/galgame-tag                               cors.New → EntityHandler.GetTagList
 GET    /api/galgame-tag/:id                           cors.New → EntityHandler.GetTagDetail
 GET    /api/galgame-tag/multi                         cors.New → EntityHandler.GetMultiTagGalgames

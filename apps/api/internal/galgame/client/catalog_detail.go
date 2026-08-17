@@ -237,7 +237,7 @@ func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharac
 		}
 		out = append(out, dto.NextMoeGalgameCharacter{
 			ID: int(c.ID), Name: c.Name, Latin: c.Latin,
-			Kind: c.Kind, Spoiler: c.Spoiler,
+			Kind: c.Kind, Spoiler: c.Spoiler, Identity: c.Identity,
 			Image: c.Image, Figure: c.Figure,
 			ImageMeta: ArtMetaDTO(c.ImageMeta), FigureMeta: ArtMetaDTO(c.FigureMeta),
 			Voices: voices,

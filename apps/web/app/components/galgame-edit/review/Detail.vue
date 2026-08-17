@@ -36,6 +36,19 @@ const names = ref<GalgameEditNames>({})
 const editConfig = computed(() => createGalgameEditConfig(names.value))
 const configOf = (key: string) => editConfig.value[key]
 
+const idsFrom = (key: string, el: unknown): number[] => {
+  if (key === 'catalog.work.labels') {
+    return [Number((el as { label_id?: unknown })?.label_id)]
+  }
+  if (key === 'catalog.work.roster') {
+    return [Number((el as { character_id?: unknown })?.character_id)]
+  }
+  if (key === 'catalog.work.credits') {
+    return [Number((el as { credit_name_id?: unknown })?.credit_name_id)]
+  }
+  return [Number(el)]
+}
+
 const relationIds = (key: string): number[] => {
   const pools = [data.value?.values?.[key], effective.value[key]]
   const out = new Set<number>()
@@ -44,13 +57,10 @@ const relationIds = (key: string): number[] => {
       continue
     }
     for (const el of pool) {
-      const id = Number(
-        key === 'catalog.work.labels'
-          ? (el as { label_id?: unknown })?.label_id
-          : el
-      )
-      if (Number.isFinite(id)) {
-        out.add(id)
+      for (const id of idsFrom(key, el)) {
+        if (Number.isFinite(id) && id > 0) {
+          out.add(id)
+        }
       }
     }
   }
@@ -67,32 +77,68 @@ onMounted(async () => {
   })
   const toMap = (arr?: { id: number; name: string }[]) =>
     new Map((arr ?? []).map((x) => [x.id, x.name]))
+  const staff = new Map<number, string>()
+  for (const group of detail?.staff ?? []) {
+    for (const person of group.people) {
+      if (!staff.has(person.id)) {
+        staff.set(person.id, person.name)
+      }
+    }
+  }
   const maps: Record<
-    'tag' | 'official' | 'engine' | 'series',
+    'tag' | 'official' | 'engine' | 'series' | 'character' | 'staff',
     Map<number, string>
   > = {
     tag: toMap(detail?.tag),
     official: toMap(detail?.official),
     engine: toMap(detail?.engine),
-    series: toMap(detail?.series)
+    series: toMap(detail?.series),
+    character: toMap(detail?.characters),
+    staff
   }
+  const creditCharacterIds = (): number[] => {
+    const out = new Set<number>()
+    for (const pool of [data.value?.values?.['catalog.work.credits'], effective.value['catalog.work.credits']]) {
+      if (!Array.isArray(pool)) {
+        continue
+      }
+      for (const el of pool) {
+        const id = Number((el as { character_id?: unknown })?.character_id)
+        if (Number.isFinite(id) && id > 0) {
+          out.add(id)
+        }
+      }
+    }
+    return [...out]
+  }
+
   const families = [
-    { map: maps.tag, key: 'catalog.work.tag_ids', path: 'galgame-tag' },
+    { map: maps.tag, ids: relationIds('catalog.work.tag_ids'), path: 'galgame-tag' },
     {
       map: maps.official,
-      key: 'catalog.work.labels',
+      ids: relationIds('catalog.work.labels'),
       path: 'galgame-official'
     },
     {
       map: maps.engine,
-      key: 'catalog.work.engine_ids',
+      ids: relationIds('catalog.work.engine_ids'),
       path: 'galgame-engine'
     },
-    { map: maps.series, key: 'catalog.work.series_ids', path: 'galgame-series' }
+    { map: maps.series, ids: relationIds('catalog.work.series_ids'), path: 'galgame-series' },
+    {
+      map: maps.character,
+      ids: [...relationIds('catalog.work.roster'), ...creditCharacterIds()],
+      path: 'galgame-character'
+    },
+    {
+      map: maps.staff,
+      ids: relationIds('catalog.work.credits'),
+      path: 'galgame-staff'
+    }
   ]
   await Promise.all(
-    families.flatMap(({ map, key, path }) =>
-      relationIds(key)
+    families.flatMap(({ map, ids, path }) =>
+      ids
         .filter((id) => !map.has(id))
         .map(async (id) => {
           const hit = await kunFetch<{ id: number; name: string }>(

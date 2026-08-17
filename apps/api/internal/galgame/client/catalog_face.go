@@ -341,14 +341,15 @@ type catWorkDetail struct {
 }
 
 type catWorkCharacter struct {
-	ID      int64  `json:"id"`
-	Name    string `json:"name"`
-	Latin   string `json:"latin"`
-	Kind    string `json:"kind"`
-	Spoiler int    `json:"spoiler"`
-	Image   string `json:"image"`
-	Figure  string `json:"figure"`
-	Voices  []struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Latin    string `json:"latin"`
+	Kind     string `json:"kind"`
+	Spoiler  int    `json:"spoiler"`
+	Image    string `json:"image"`
+	Figure   string `json:"figure"`
+	Identity string `json:"identity"`
+	Voices   []struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
 	} `json:"voices"`

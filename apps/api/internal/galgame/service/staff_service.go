@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,6 +19,10 @@ type StaffService struct {
 
 func NewStaffService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *StaffService {
 	return &StaffService{galgameClient: galgameClient, enricher: enricher}
+}
+
+func (s *StaffService) Search(ctx context.Context, rawQuery url.Values) ([]dto.TaxonomySearchItem, *errors.AppError) {
+	return searchCatalogEntities(ctx, s.galgameClient, "names", rawQuery)
 }
 
 var staffPersonPage = map[string]func(string) string{
