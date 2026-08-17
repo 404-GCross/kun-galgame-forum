@@ -177,7 +177,7 @@ func (s *UserService) GetUserStatus(ctx context.Context, userID int) (*dto.UserS
 func (s *UserService) GetNotificationPreferences(userID int) (*dto.NotificationPreferenceResponse, *errors.AppError) {
 	muted := []string{}
 	if state, err := s.stateRepo.FindByID(userID); err == nil && state != nil && len(state.MutedNotificationTypes) > 0 {
-		muted = state.MutedNotificationTypes
+		muted = msgService.SanitizeMutedKeys(state.MutedNotificationTypes)
 	}
 	return &dto.NotificationPreferenceResponse{MutedTypes: muted}, nil
 }

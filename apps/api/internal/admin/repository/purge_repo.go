@@ -168,7 +168,6 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 		for _, q := range []string{
 			"DELETE FROM system_message WHERE user_id = ?",
 			"DELETE FROM system_message_read_state WHERE user_id = ?",
-			"DELETE FROM wiki_message_read_state WHERE user_id = ?",
 		} {
 			if err := del(tx, q, userID); err != nil {
 				return err

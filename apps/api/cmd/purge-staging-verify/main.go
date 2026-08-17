@@ -60,7 +60,6 @@ var colChecks = []colCheck{
 	{"message", "receiver_id", "zero", ""},
 	{"system_message", "user_id", "zero", ""},
 	{"system_message_read_state", "user_id", "zero", ""},
-	{"wiki_message_read_state", "user_id", "zero", ""},
 	{"kungal_user_state", "user_id", "zero", ""},
 	{"user_follow", "follower_id", "zero", ""},
 	{"user_follow", "followed_id", "zero", ""},

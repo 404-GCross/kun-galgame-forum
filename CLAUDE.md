@@ -59,7 +59,7 @@ Four things a sweep must **not** delete, all of them the invisible-constraint ex
 ## Current catalog cutover state
 
 - The `w161-p3` line moves submission, claims, editing, and the cron inbox from the retired wiki family to catalog. Treat the read-only source-workspace file at `${CODEX_SESSION_REPO%/*}/kun-galgame-infra/refs/proj/161-n5-grand-window.md` as the coordination ledger—not a `../` path from this worktree—and verify both branch and deployment state before assuming the cutover is live.
-- The old `/galgame/messages/feed` S2S source is retired; the staged cron consumes `/api/v1/catalog/claim-events/feed` with a distinct cursor/idempotency namespace. The still-present user/admin wiki-message proxy code is legacy retirement debt, not a contract for new work.
+- The old `/galgame/messages/feed` S2S source is retired; the staged cron consumes `/api/v1/catalog/claim-events/feed` with a distinct cursor/idempotency namespace. The forum-side wiki-message proxy and `wiki_message_read_state` table are gone (migration 071).
 - Catalog `site` and catalog source key are different identities. Keep dual-read compatibility where the Wave 161 branch records it; do not collapse them back into one constant.
 
 ## Cross-Service Contracts (inviolable — owned by kun-galgame-infra)

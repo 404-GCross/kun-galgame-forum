@@ -218,11 +218,6 @@ func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query ur
 	return resp.StatusCode, &result, nil
 }
 
-type NextMoeUserGalgames struct {
-	Galgames []GalgameBrief `json:"galgames"`
-	Total    int64          `json:"total"`
-}
-
 func BriefName(b *GalgameBrief) string {
 	if b == nil {
 		return ""

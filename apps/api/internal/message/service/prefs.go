@@ -2,10 +2,7 @@ package service
 
 import "strings"
 
-const (
-	KeyChat    = "chat"
-	wikiPrefix = "wiki:"
-)
+const KeyChat = "chat"
 
 var LocalNotificationTypes = []string{
 	string(NotifyUpvoted), string(NotifyLiked), string(NotifyFavorite),
@@ -15,19 +12,12 @@ var LocalNotificationTypes = []string{
 	"quiz-answered",
 }
 
-var WikiNotificationKeys = []string{
-	"wiki:approved", "wiki:declined", "wiki:banned", "wiki:unbanned",
-}
-
 var allNotificationKeys = func() map[string]bool {
 	m := make(map[string]bool)
 	for _, k := range LocalNotificationTypes {
 		m[k] = true
 	}
 	m[KeyChat] = true
-	for _, k := range WikiNotificationKeys {
-		m[k] = true
-	}
 	return m
 }()
 
@@ -48,7 +38,7 @@ func SplitMuted(muted []string) (local []string, chatMuted bool) {
 		switch {
 		case k == KeyChat:
 			chatMuted = true
-		case strings.HasPrefix(k, wikiPrefix):
+		case strings.HasPrefix(k, "wiki:"):
 		default:
 			local = append(local, k)
 		}

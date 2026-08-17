@@ -67,17 +67,6 @@ type NextMoeOfficialRel struct {
 	Official NextMoeOfficial `json:"official"`
 }
 
-type NextMoeEngine struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Link  string `json:"link"`
-	Intro string `json:"intro"`
-}
-
-type NextMoeEngineRel struct {
-	Engine NextMoeEngine `json:"engine"`
-}
-
 type NextMoeTag struct {
 	ID           int            `json:"id"`
 	Name         string         `json:"name"`
@@ -86,38 +75,8 @@ type NextMoeTag struct {
 	GalgameCount int            `json:"galgame_count"`
 }
 
-type NextMoeTagRel struct {
-	Tag NextMoeTag `json:"tag"`
-}
-
 type NextMoeContributor struct {
 	UserID int `json:"user_id"`
-}
-
-type NextMoeGalgameDetail struct {
-	ID                       int                  `json:"id"`
-	NameEnUs                 string               `json:"name_en_us"`
-	NameJaJp                 string               `json:"name_ja_jp"`
-	NameZhCn                 string               `json:"name_zh_cn"`
-	NameZhTw                 string               `json:"name_zh_tw"`
-	Banner                   string               `json:"banner"`
-	EffectiveBannerHash      string               `json:"effective_banner_hash"`
-	EffectiveBannerURL       string               `json:"effective_banner_url"`
-	EffectiveBannerWidth     int                  `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int                  `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string               `json:"effective_banner_thumbhash,omitempty"`
-	ContentLimit             string               `json:"content_limit"`
-	AgeLimit                 string               `json:"age_limit"`
-	OriginalLanguage         string               `json:"original_language"`
-	SeriesID                 *int                 `json:"series_id"`
-	Official                 []NextMoeOfficialRel `json:"official"`
-	Engine                   []NextMoeEngineRel   `json:"engine"`
-	Tag                      []NextMoeTagRel      `json:"tag"`
-	Contributors             []NextMoeContributor `json:"contributors"`
-}
-
-type NextMoeGalgameDetailResponse struct {
-	Galgame NextMoeGalgameDetail `json:"galgame"`
 }
 
 type NextMoeUser struct {
@@ -130,8 +89,6 @@ type NextMoeTagWithSpoiler struct {
 	SpoilerLevel int        `json:"spoiler_level"`
 	Tag          NextMoeTag `json:"tag"`
 }
-
-type NextMoeEngineAlias []string
 
 type NextMoeGalgameDetailFull struct {
 	ID                         int                        `json:"id"`
@@ -223,36 +180,4 @@ type NextMoeEngineWithAlias struct {
 		Alias        []string `json:"alias"`
 		GalgameCount int      `json:"galgame_count"`
 	} `json:"engine"`
-}
-
-type NextMoeGalgameDetailFullResp struct {
-	Galgame NextMoeGalgameDetailFull `json:"galgame"`
-	Users   map[string]NextMoeUser   `json:"users"`
-}
-
-type NextMoeSeriesSample struct {
-	NameEnUs                 string `json:"name_en_us"`
-	NameJaJp                 string `json:"name_ja_jp"`
-	NameZhCn                 string `json:"name_zh_cn"`
-	NameZhTw                 string `json:"name_zh_tw"`
-	Banner                   string `json:"banner"`
-	ContentLimit             string `json:"content_limit"`
-	EffectiveBannerHash      string `json:"effective_banner_hash"`
-	EffectiveBannerURL       string `json:"effective_banner_url"`
-	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
-}
-
-type NextMoeSeriesBrief struct {
-	ID          int                   `json:"id"`
-	Name        string                `json:"name"`
-	Description string                `json:"description"`
-	Galgame     []NextMoeSeriesSample `json:"galgame"`
-	Created     string                `json:"created"`
-	Updated     string                `json:"updated"`
-}
-
-type NextMoeCreatedResp struct {
-	ID int `json:"id"`
 }
