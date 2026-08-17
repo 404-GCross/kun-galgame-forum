@@ -314,8 +314,10 @@ func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 	}
 	if it.ClaimedBy != nil {
 		b.Status = statusFromClaimState(it.ClaimedBy.State)
+		b.ClaimState = it.ClaimedBy.State
 	} else {
 		b.Status = galgameStatusVndbDraft
+		b.ClaimState = claimStateDraft
 	}
 	b.VndbID = b.Refs["vndb"]
 	b.EffectiveBannerHash, b.EffectiveBannerURL,

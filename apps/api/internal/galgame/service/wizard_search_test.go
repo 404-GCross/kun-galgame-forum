@@ -120,6 +120,10 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)
 	}
+	if page.Items[0].ClaimState != "live" || page.Items[1].ClaimState != "draft" {
+		t.Errorf("claim_state = %q,%q, want live,draft — the wizard branches on it",
+			page.Items[0].ClaimState, page.Items[1].ClaimState)
+	}
 	if page.Items[0].Banner == "" || page.Items[0].Banner != page.Items[0].EffectiveBannerURL {
 		t.Errorf("banner = %q, want it mirrored from effective_banner_url %q",
 			page.Items[0].Banner, page.Items[0].EffectiveBannerURL)
