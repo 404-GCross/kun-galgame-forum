@@ -239,6 +239,7 @@ type GalgameBrief struct {
 	NameZhTw            string  `json:"name_zh_tw"`
 	Banner              string  `json:"banner"`
 	Status              int     `json:"status"`
+	ClaimState          string  `json:"claim_state,omitempty"`
 	ContentLimit        string  `json:"content_limit"`
 	UserID              int     `json:"user_id"`
 	OriginalLanguage    string  `json:"original_language"`
