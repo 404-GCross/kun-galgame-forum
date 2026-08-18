@@ -40,7 +40,13 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":404,"state":"hidden"}},
 			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null},
 			  {"id":15,"display_name":"declined","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":331,"state":"declined"}}
+			   "claimed_by":{"site":"kungal","work_id":331,"state":"declined"}},
+			  {"id":16,"display_name":"pending","cover":"",
+			   "claimed_by":{"site":"kungal","work_id":5150,"state":"pending"}},
+			  {"id":17,"display_name":"gidless","cover":"",
+			   "claimed_by":{"site":"kungal","work_id":0,"state":"live"}},
+			  {"id":18,"display_name":"foreign","cover":"",
+			   "claimed_by":{"site":"moyu","work_id":700,"state":"live"}}
 			]}}`
 		case strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
@@ -83,8 +89,10 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if got := rec.catalogQ.Get("claim_state"); got != "live,draft,pending" {
-		t.Errorf("claim_state = %q, want live,draft,pending — `live` alone hides every unpublished entry", got)
+	if _, sent := rec.catalogQ["claim_state"]; sent {
+		t.Errorf("claim_state = %q, want it absent — the facet is the index's and lags a day; "+
+			"CatalogItemWizardEligible gates on the hydrated registry state instead",
+			rec.catalogQ.Get("claim_state"))
 	}
 	if got := rec.catalogQ.Get("claimed"); got != "true" {
 		t.Errorf("claimed = %q, want true — an unclaimed work has no gid to act on", got)
@@ -113,16 +121,21 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if len(page.Items) != 2 {
-		t.Fatalf("items = %d, want 2 (hidden, declined and unclaimed rows are not actionable)", len(page.Items))
+	if len(page.Items) != 3 {
+		t.Fatalf("items = %d, want 3 — live, draft and pending stay; hidden, declined, unclaimed, "+
+			"gidless and foreign-claimed rows are not actionable", len(page.Items))
 	}
 	for _, it := range page.Items {
 		if it.ClaimState == "declined" || it.ClaimState == "hidden" {
 			t.Errorf("item %d leaked with claim_state=%q — the wizard must drop non-live/draft/pending rows", it.ID, it.ClaimState)
 		}
+		if it.ID <= 0 {
+			t.Errorf("item with claim_state=%q leaked without a gid — its row would link to /galgame/0", it.ClaimState)
+		}
 	}
-	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 {
-		t.Errorf("ids = %d,%d, want the gids 292,9978", page.Items[0].ID, page.Items[1].ID)
+	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 || page.Items[2].ID != 5150 {
+		t.Errorf("ids = %d,%d,%d, want the gids 292,9978,5150",
+			page.Items[0].ID, page.Items[1].ID, page.Items[2].ID)
 	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)

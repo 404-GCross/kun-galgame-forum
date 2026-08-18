@@ -216,8 +216,6 @@ const (
 	claimStateHidden  = "hidden"
 )
 
-const ClaimStateWizard = claimStateLive + "," + claimStateDraft + "," + claimStatePending
-
 func statusFromClaimState(state string) int {
 	if state == claimStateLive {
 		return GalgameStatusPublished
@@ -238,13 +236,16 @@ func CatalogItemRenderable(it *CatalogWorkListItem) bool { return it.isRenderabl
 
 func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 
-// CatalogItemWizardEligible reports whether a search row belongs in the
-// publish wizard's supply: a kungal claim whose live state is live, draft or
-// pending. The index's claim_state facet lags a decline until the next reindex,
-// so the facet filter alone lets a just-declined work through — its hydrated
-// state already reads "declined" while the index still says "pending".
+// CatalogItemWizardEligible reports whether a search row belongs in the publish
+// wizard's supply: a kungal claim carrying a gid, in state live, draft or
+// pending. This is the wizard's ONLY claim-state gate, because the search face
+// answers from two clocks — the claim_state facet is the index's, while
+// claimed_by is re-hydrated from the registry — and they disagree in BOTH
+// directions until the daily reindex-catalog run: a just-declined work passes
+// the facet while already reading "declined", and a just-approved one is
+// dropped by a facet it no longer matches.
 func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
-	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
+	if it.gid() <= 0 {
 		return false
 	}
 	switch it.ClaimedBy.State {

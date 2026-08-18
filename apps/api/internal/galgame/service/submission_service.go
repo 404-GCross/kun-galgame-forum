@@ -281,13 +281,16 @@ func (s *SubmissionService) wizardItems(
 	ctx context.Context,
 	query url.Values,
 ) ([]client.GalgameBrief, int64, *errors.AppError) {
+	// No claim_state here on purpose: that facet is the index's and lags a day,
+	// while the claimed_by CatalogItemWizardEligible reads is the registry's.
+	// Gating on both hid every work that entered an actionable state since the
+	// last reindex — an approved submission stayed unfindable for a day.
 	q := url.Values{
-		"q":           {query.Get("q")},
-		"page":        {strconv.Itoa(atoiOr(query.Get("page"), 1))},
-		"limit":       {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
-		"claimed":     {"true"},
-		"claim_state": {client.ClaimStateWizard},
-		"include":     {wizardSearchInclude},
+		"q":       {query.Get("q")},
+		"page":    {strconv.Itoa(atoiOr(query.Get("page"), 1))},
+		"limit":   {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
+		"claimed": {"true"},
+		"include": {wizardSearchInclude},
 	}
 	client.OpenPopulation(q)
 
