@@ -298,7 +298,7 @@ func (s *SubmissionService) wizardItems(
 	items := make([]client.GalgameBrief, 0, len(res.Items))
 	for i := range res.Items {
 		row := &res.Items[i]
-		if !client.CatalogItemRenderable(row) || client.CatalogItemGID(row) == 0 {
+		if !client.CatalogItemWizardEligible(row) {
 			continue
 		}
 		b := client.CatalogItemToBrief(row)
@@ -315,6 +315,7 @@ func (s *SubmissionService) wizardPending(
 	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
 		ClaimStates: []string{catalogclient.ClaimStatePending, catalogclient.ClaimStateDeclined},
 		Limit:       wizardDefaultLimit,
+		Kind:        catalogclient.ClaimKindSubmitted,
 	})
 	if err != nil {
 		return nil, claimActionError(err)

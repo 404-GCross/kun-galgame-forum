@@ -38,7 +38,9 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":9978,"state":"draft"}},
 			  {"id":13,"display_name":"withdrawn","cover":"",
 			   "claimed_by":{"site":"kungal","work_id":404,"state":"hidden"}},
-			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null}
+			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null},
+			  {"id":15,"display_name":"declined","cover":"",
+			   "claimed_by":{"site":"kungal","work_id":331,"state":"declined"}}
 			]}}`
 		case strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
@@ -112,7 +114,12 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	page := wizardSearch(t, rec.service(t))
 
 	if len(page.Items) != 2 {
-		t.Fatalf("items = %d, want 2 (hidden claim and unclaimed row are not actionable)", len(page.Items))
+		t.Fatalf("items = %d, want 2 (hidden, declined and unclaimed rows are not actionable)", len(page.Items))
+	}
+	for _, it := range page.Items {
+		if it.ClaimState == "declined" || it.ClaimState == "hidden" {
+			t.Errorf("item %d leaked with claim_state=%q — the wizard must drop non-live/draft/pending rows", it.ID, it.ClaimState)
+		}
 	}
 	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 {
 		t.Errorf("ids = %d,%d, want the gids 292,9978", page.Items[0].ID, page.Items[1].ID)
@@ -151,6 +158,9 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	}
 	if got := rec.claimsQ.Get("claim_state"); got != "pending,declined" {
 		t.Errorf("claim_state = %q, want pending,declined", got)
+	}
+	if got := rec.claimsQ.Get("kind"); got != "submitted" {
+		t.Errorf("kind = %q, want submitted — the wizard must list only the caller's own claims, not their reviews", got)
 	}
 	if len(page.Pending) != 1 || page.Pending[0].WorkID != 64689 {
 		t.Fatalf("pending = %+v, want the caller's own pending claim", page.Pending)

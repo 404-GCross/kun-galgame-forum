@@ -238,6 +238,23 @@ func CatalogItemRenderable(it *CatalogWorkListItem) bool { return it.isRenderabl
 
 func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 
+// CatalogItemWizardEligible reports whether a search row belongs in the
+// publish wizard's supply: a kungal claim whose live state is live, draft or
+// pending. The index's claim_state facet lags a decline until the next reindex,
+// so the facet filter alone lets a just-declined work through — its hydrated
+// state already reads "declined" while the index still says "pending".
+func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
+	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
+		return false
+	}
+	switch it.ClaimedBy.State {
+	case claimStateLive, claimStateDraft, claimStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
 func (it *CatalogWorkListItem) gid() int {
 	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
 		return 0
