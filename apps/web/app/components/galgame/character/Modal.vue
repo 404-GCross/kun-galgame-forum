@@ -3,7 +3,7 @@ import {
   KUN_GALGAME_CHARACTER_KIND_MAP,
   KUN_GALGAME_CHARACTER_KIND_COLOR,
   KUN_GALGAME_CHARACTER_SPOILER_MAP,
-  getGalgameCharacterSourceName
+  getGalgameCharacterIntroCredit
 } from '~/constants/galgameCharacter'
 
 const props = defineProps<{
@@ -97,15 +97,20 @@ const traitGroups = computed(() => {
   return groups
 })
 
-const introCredit = computed(() => {
-  const lead = detail.value?.intros.find((i) => i.intro === detail.value?.intro)
-  const parts: string[] = []
-  if (lead?.source) {
-    parts.push(`简介来自 ${getGalgameCharacterSourceName(lead.source)}`)
-  }
-  if (lead?.machine) {
-    parts.push('由机器翻译生成')
-  }
+const introCredit = computed(() =>
+  getGalgameCharacterIntroCredit(
+    detail.value?.intros.find((i) => i.intro === detail.value?.intro)
+  )
+)
+
+const heading = computed(
+  () => detail.value?.name || props.character?.name || ''
+)
+const headingOriginal = computed(() => {
+  const parts = [
+    detail.value?.name_original ?? props.character?.name_original,
+    props.character?.latin
+  ].filter((part): part is string => !!part && part !== heading.value)
   return parts.join(' · ')
 })
 
@@ -183,7 +188,7 @@ watch(
           <div class="space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <h3 class="text-foreground text-xl font-medium">
-                {{ character.name }}
+                {{ heading }}
               </h3>
               <KunChip v-if="kindText" :color="kindColor" size="sm">
                 {{ kindText }}
@@ -192,11 +197,8 @@ watch(
                 {{ spoilerText }}
               </KunChip>
             </div>
-            <p
-              v-if="character.latin && character.latin !== character.name"
-              class="text-default-400 text-sm"
-            >
-              {{ character.latin }}
+            <p v-if="headingOriginal" class="text-default-400 text-sm">
+              {{ headingOriginal }}
             </p>
           </div>
 

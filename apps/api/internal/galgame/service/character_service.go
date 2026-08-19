@@ -51,23 +51,22 @@ func (s *CharacterService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该角色")
 	}
 
-	nameJa, nameZh := client.CatalogNameByScript(ch.Localized, ch.DisplayName, ch.Lang)
+	name, original := client.CatalogEntityNames(ch.Localized, ch.DisplayName, ch.Latin)
 
 	detail := &dto.GalgameCharacterDetail{
-		ID:         int(ch.ID),
-		Name:       client.PickCatalogName(ch.DisplayName, ch.Latin),
-		NameJa:     nameJa,
-		NameZh:     nameZh,
-		Latin:      ch.Latin,
-		Image:      ch.Image,
-		Figure:     ch.Figure,
-		ImageMeta:  client.ArtMetaDTO(ch.ImageMeta),
-		FigureMeta: client.ArtMetaDTO(ch.FigureMeta),
-		Intros:     characterIntros(ch),
-		Traits:     characterTraits(ch, isSFW),
-		Links:      characterLinks(ch),
-		Works:      []dto.GalgameCharacterWork{},
-		NextOffset: ch.NextOffset,
+		ID:           int(ch.ID),
+		Name:         name,
+		NameOriginal: original,
+		Latin:        ch.Latin,
+		Image:        ch.Image,
+		Figure:       ch.Figure,
+		ImageMeta:    client.ArtMetaDTO(ch.ImageMeta),
+		FigureMeta:   client.ArtMetaDTO(ch.FigureMeta),
+		Intros:       characterIntros(ch),
+		Traits:       characterTraits(ch, isSFW),
+		Links:        characterLinks(ch),
+		Works:        []dto.GalgameCharacterWork{},
+		NextOffset:   ch.NextOffset,
 	}
 	detail.Intro = pickCharacterIntro(detail.Intros)
 
@@ -93,7 +92,7 @@ func (s *CharacterService) GetDetail(
 		voices := make([]dto.GalgameDetailCharacterVoice, 0, len(w.Voices))
 		for _, v := range w.Voices {
 			voices = append(voices, dto.GalgameDetailCharacterVoice{
-				ID: int(v.ID), Name: v.Name, Lang: v.Lang, Latin: v.Latin,
+				ID: int(v.ID), Name: v.Name(), Lang: v.Lang, Latin: v.Latin,
 			})
 		}
 		items = append(items, client.CatalogItemToNextMoeItem(&row))
@@ -112,12 +111,7 @@ func (s *CharacterService) GetDetail(
 
 func characterIntros(ch *client.CatalogCharacter) []dto.GalgameCharacterIntro {
 	out := make([]dto.GalgameCharacterIntro, 0, len(ch.Intros))
-	seen := make(map[string]bool, len(ch.Intros))
-	for _, i := range ch.Intros {
-		if strings.TrimSpace(i.Intro) == "" || seen[i.Lang] {
-			continue
-		}
-		seen[i.Lang] = true
+	for _, i := range catalogIntrosByLang(ch.Intros) {
 		out = append(out, dto.GalgameCharacterIntro{
 			Lang: i.Lang, Intro: i.Intro, Source: i.Source, Machine: i.Machine,
 		})

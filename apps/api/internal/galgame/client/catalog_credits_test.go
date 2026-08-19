@@ -8,7 +8,7 @@ import (
 func creditGroup(key, name string, people ...string) catCreditGroup {
 	g := catCreditGroup{RoleKey: key, RoleName: name}
 	for i, p := range people {
-		g.Credits = append(g.Credits, catCreditItem{ID: int64(i + 1), Name: p})
+		g.Credits = append(g.Credits, catCreditItem{ID: int64(i + 1), DisplayName: p})
 	}
 	return g
 }
@@ -62,7 +62,7 @@ func TestCatalogStaff_FoldsDuplicateRolesAndSpellings(t *testing.T) {
 func TestCatalogStaff_VoiceActorCollectsCharacters(t *testing.T) {
 	g := catCreditGroup{RoleKey: "voice-actor", RoleName: "声优"}
 	for _, ch := range []string{"藤田 佳奈", "ナレーション"} {
-		g.Credits = append(g.Credits, catCreditItem{ID: 7, Name: "五十嵐裕美", Character: ch})
+		g.Credits = append(g.Credits, catCreditItem{ID: 7, DisplayName: "五十嵐裕美", Character: ch})
 	}
 
 	staff := catalogStaffFromCredits([]catCreditGroup{g})

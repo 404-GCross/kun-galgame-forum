@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -12,26 +13,24 @@ import (
 )
 
 type CatalogTaxonomyItem struct {
-	ID          int64    `json:"id"`
-	Name        string   `json:"name"`
-	DisplayName string   `json:"display_name"`
-	Kind        string   `json:"kind"`
-	Tier        string   `json:"tier"`
-	WorkCount   int      `json:"work_count"`
-	Description string   `json:"description"`
-	Aliases     []string `json:"aliases"`
-	Sexual      bool     `json:"sexual"`
-	HasNSFW     *bool    `json:"has_nsfw"`
-	LogoHash    string   `json:"logo_hash"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Kind        string                      `json:"kind"`
+	Tier        string                      `json:"tier"`
+	WorkCount   int                         `json:"work_count"`
+	Description string                      `json:"description"`
+	Aliases     []string                    `json:"aliases"`
+	Sexual      bool                        `json:"sexual"`
+	HasNSFW     *bool                       `json:"has_nsfw"`
+	LogoHash    string                      `json:"logo_hash"`
 }
 
 const TagTierHidden = "hidden"
 
 func (t CatalogTaxonomyItem) Label() string {
-	if t.DisplayName != "" {
-		return t.DisplayName
-	}
-	return t.Name
+	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
 }
 
 type CatalogTaxonomyPage struct {
@@ -40,22 +39,17 @@ type CatalogTaxonomyPage struct {
 	Total      int64                 `json:"total"`
 }
 
-type CatalogIntro struct {
-	Lang   string `json:"lang"`
-	Intro  string `json:"intro"`
-	Source string `json:"source"`
-}
-
 type CatalogLabelDetail struct {
-	ID          int64              `json:"id"`
-	DisplayName string             `json:"display_name"`
-	Kind        string             `json:"kind"`
-	Lang        string             `json:"lang"`
-	Aliases     []string           `json:"aliases"`
-	WorkCount   int                `json:"work_count"`
-	Intros      []CatalogIntro     `json:"intros"`
-	Links       []CatalogLabelLink `json:"links"`
-	LogoHash    string             `json:"logo_hash"`
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Kind        string                      `json:"kind"`
+	Lang        string                      `json:"lang"`
+	Aliases     []CatalogAlias              `json:"aliases"`
+	WorkCount   int                         `json:"work_count"`
+	Intros      []CatalogIntro              `json:"intros"`
+	Links       []CatalogLabelLink          `json:"links"`
+	LogoHash    string                      `json:"logo_hash"`
 }
 
 type CatalogLabelLink struct {
@@ -82,14 +76,10 @@ type CatalogEngineDetail struct {
 }
 
 type CatalogSeriesDetail struct {
-	ID          int64  `json:"id"`
-	HasNSFW     *bool  `json:"has_nsfw"`
-	DisplayName string `json:"display_name"`
-	Intros      []struct {
-		Lang   string `json:"lang"`
-		Intro  string `json:"intro"`
-		Source string `json:"source"`
-	} `json:"intros"`
+	ID          int64          `json:"id"`
+	HasNSFW     *bool          `json:"has_nsfw"`
+	DisplayName string         `json:"display_name"`
+	Intros      []CatalogIntro `json:"intros"`
 }
 
 func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, q url.Values) (*CatalogTaxonomyPage, *errors.AppError) {
@@ -198,12 +188,17 @@ func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id st
 }
 
 type CatalogEntityHit struct {
-	ID         int64  `json:"id"`
-	EntityType string `json:"entity_type"`
-	Name       string `json:"name"`
-	Tier       string `json:"tier"`
-	Kind       string `json:"kind"`
-	LogoHash   string `json:"logo_hash"`
+	ID          int64                       `json:"id"`
+	EntityType  string                      `json:"entity_type"`
+	DisplayName string                      `json:"display_name"`
+	Latin       string                      `json:"latin"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Tier        string                      `json:"tier"`
+	Kind        string                      `json:"kind"`
+}
+
+func (h *CatalogEntityHit) Name() string {
+	return CatalogEntityName(h.Localized, h.DisplayName, h.Latin)
 }
 
 func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, *errors.AppError) {

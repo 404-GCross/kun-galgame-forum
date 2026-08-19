@@ -33,8 +33,7 @@ export interface GalgameCharacterWork extends GalgameCard {
 export interface GalgameCharacterDetail {
   id: number
   name: string
-  name_ja?: string
-  name_zh?: string
+  name_original?: string
   latin?: string
   image: string
   figure: string

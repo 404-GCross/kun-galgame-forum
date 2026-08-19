@@ -46,11 +46,7 @@ func (s *OfficialService) Search(
 	}
 	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, o := range hits {
-		items = append(items, dto.TaxonomySearchItem{
-			ID:   int(o.ID),
-			Name: o.Name,
-			Logo: s.galgameClient.ImageURLFromHash(o.LogoHash),
-		})
+		items = append(items, dto.TaxonomySearchItem{ID: int(o.ID), Name: o.Name()})
 	}
 	return items, nil
 }
@@ -85,7 +81,7 @@ func (s *OfficialService) GetDetail(
 			continue
 		}
 		viaIDs = append(viaIDs, m.GID)
-		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name}
+		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name()}
 	}
 
 	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
@@ -101,16 +97,21 @@ func (s *OfficialService) GetDetail(
 		cards[i].ViaOfficial = viaByGID[cards[i].ID]
 	}
 
+	name, original := client.CatalogEntityNames(o.Localized, o.DisplayName, "")
+	intro := preferredIntro(o.Intros)
+
 	return &dto.OfficialDetail{
 		ID:                  int(o.ID),
-		Name:                o.DisplayName,
+		Name:                name,
+		Original:            original,
 		Links:               officialLinks(o.Links),
 		Link:                client.PrimaryLabelLink(o),
 		Logo:                s.galgameClient.ImageURLFromHash(o.LogoHash),
 		Category:            o.Kind,
 		Lang:                o.Lang,
-		Description:         preferredIntro(o.Intros),
-		Alias:               emptyStrSliceIfNil(o.Aliases),
+		Description:         intro.Intro,
+		DescriptionMachine:  intro.Machine,
+		Alias:               officialAliases(o.Aliases, name),
 		Galgame:             cards,
 		GalgameCount:        page.Total,
 		OwnGalgameCount:     page.Total - imprintCount,
@@ -163,4 +164,18 @@ func officialLinks(links []client.CatalogLabelLink) []dto.OfficialLink {
 
 func (s *OfficialService) ResolveLegacyID(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
 	return s.galgameClient.LookupWikiLabel(ctx, wikiID)
+}
+
+// officialAliases flattens the label's alias rows for display, minus whatever
+// the header already shows. Since wave 209 a localized name is an alias row
+// too, so a label rendered as 猫猫社 would otherwise list 猫猫社 as its own alias.
+func officialAliases(aliases []client.CatalogAlias, rendered string) []string {
+	out := make([]string, 0, len(aliases))
+	for _, a := range aliases {
+		if a.Value == "" || a.Value == rendered {
+			continue
+		}
+		out = append(out, a.Value)
+	}
+	return out
 }

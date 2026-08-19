@@ -51,6 +51,7 @@ export interface GalgameArtMeta {
 export interface GalgameDetailCharacter {
   id: number
   name: string
+  name_original?: string
   latin?: string
   kind: string
   spoiler: number
@@ -97,6 +98,7 @@ export interface GalgameDetail {
   name: KunLanguage
   banner: string
   introduction: KunLanguage
+  introduction_machine: KunLanguageFlags
   content_limit: string
   markdown: KunLanguage
   resource_update_time: Date | string

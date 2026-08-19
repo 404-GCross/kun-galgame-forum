@@ -33,7 +33,9 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	}
 	f.Alias = aliases
 
-	f.IntroJaJp, f.IntroZhCn, f.IntroZhTw, f.IntroEnUs = catalogIntros(d)
+	intros, machine := catalogIntros(d)
+	f.IntroJaJp, f.IntroZhCn, f.IntroZhTw, f.IntroEnUs = intros.JaJp, intros.ZhCn, intros.ZhTw, intros.EnUs
+	f.IntroMachine = machine
 
 	if d.ClaimedBy != nil {
 		f.Status = statusFromClaimState(d.ClaimedBy.State)
@@ -65,7 +67,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		}
 		labelAt[l.ID] = len(f.Official)
 		f.Official = append(f.Official, dto.NextMoeOfficialRel{Official: dto.NextMoeOfficial{
-			ID: int(l.ID), Name: l.DisplayName,
+			ID: int(l.ID), Name: l.Name(),
 			Category:     l.LabelKind,
 			Roles:        appendUniqueStr(nil, l.Kind),
 			Lang:         l.Lang,
@@ -215,28 +217,37 @@ func catalogTitles(d *catWorkDetail) (names [4]string, aliases []dto.NextMoeAlia
 	return names, aliases
 }
 
-func catalogIntros(d *catWorkDetail) (jaJP, zhCN, zhTW, enUS string) {
-	slots := map[string]*string{"ja-jp": &jaJP, "zh-cn": &zhCN, "zh-tw": &zhTW, "en-us": &enUS}
+func catalogIntros(d *catWorkDetail) (dto.KunLanguage, dto.KunLanguageFlags) {
+	var text dto.KunLanguage
+	var machine dto.KunLanguageFlags
+	slots := map[string]struct {
+		text    *string
+		machine *bool
+	}{
+		"ja-jp": {&text.JaJp, &machine.JaJp}, "zh-cn": {&text.ZhCn, &machine.ZhCn},
+		"zh-tw": {&text.ZhTw, &machine.ZhTw}, "en-us": {&text.EnUs, &machine.EnUs},
+	}
 	for _, in := range d.Intro {
-		if slot, ok := slots[productLocale(in.Lang)]; ok && *slot == "" {
-			*slot = in.Intro
+		if slot, ok := slots[productLocale(in.Lang)]; ok && *slot.text == "" {
+			*slot.text, *slot.machine = in.Intro, in.Machine
 		}
 	}
-	return jaJP, zhCN, zhTW, enUS
+	return text, machine
 }
 
 func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharacter {
 	out := make([]dto.NextMoeGalgameCharacter, 0, len(chars))
 	for _, c := range chars {
-		if c.Name == "" && c.Latin == "" {
+		if c.DisplayName == "" && c.Latin == "" {
 			continue
 		}
 		voices := make([]dto.NextMoeCharacterVoice, 0, len(c.Voices))
 		for _, v := range c.Voices {
-			voices = append(voices, dto.NextMoeCharacterVoice{ID: int(v.ID), Name: v.Name})
+			voices = append(voices, dto.NextMoeCharacterVoice{ID: int(v.ID), Name: v.Name()})
 		}
+		name, original := CatalogEntityNames(c.Localized, c.DisplayName, c.Latin)
 		out = append(out, dto.NextMoeGalgameCharacter{
-			ID: int(c.ID), Name: c.Name, Latin: c.Latin,
+			ID: int(c.ID), Name: name, NameOriginal: original, Latin: c.Latin,
 			Kind: c.Kind, Spoiler: c.Spoiler, Identity: c.Identity,
 			Image: c.Image, Figure: c.Figure,
 			ImageMeta: ArtMetaDTO(c.ImageMeta), FigureMeta: ArtMetaDTO(c.FigureMeta),

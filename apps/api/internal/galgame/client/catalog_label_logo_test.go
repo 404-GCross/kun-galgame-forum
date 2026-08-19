@@ -27,10 +27,6 @@ func logoCatalog(t *testing.T) *GalgameClient {
 				`{"id":107,"display_name":"Purple SOFTWARE","work_count":42,"logo_hash":"abcd1234ef"},` +
 				`{"id":309,"display_name":"无标社","work_count":3}],` +
 				`"next_cursor":null,"total":2}}`))
-		case "/v1/catalog/search":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[` +
-				`{"id":107,"entity_type":"label","name":"Purple SOFTWARE","logo_hash":"abcd1234ef"},` +
-				`{"id":309,"entity_type":"label","name":"无标社"}]}}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
@@ -91,22 +87,5 @@ func TestCatalogLabelListCarriesLogoHash(t *testing.T) {
 	}
 	if rows[1].LogoHash != "" {
 		t.Fatalf("row 1 logo_hash = %q, want empty", rows[1].LogoHash)
-	}
-}
-
-func TestCatalogLabelSearchCarriesLogoHash(t *testing.T) {
-	hits, appErr := logoCatalog(t).CatalogEntitySearch(
-		context.Background(), "labels", "purple", 20)
-	if appErr != nil {
-		t.Fatalf("entity search: %v", appErr)
-	}
-	if len(hits) != 2 {
-		t.Fatalf("entity search returned %d hits, want 2", len(hits))
-	}
-	if hits[0].LogoHash != "abcd1234ef" {
-		t.Fatalf("hit 0 logo_hash = %q, want abcd1234ef", hits[0].LogoHash)
-	}
-	if hits[1].LogoHash != "" {
-		t.Fatalf("hit 1 logo_hash = %q, want empty", hits[1].LogoHash)
 	}
 }

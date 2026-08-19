@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   getGalgameCharacterLangName,
-  getGalgameCharacterSourceName
+  getGalgameCharacterIntroCredit
 } from '~/constants/galgameCharacter'
 
 const route = useRoute()
@@ -68,7 +68,7 @@ const voiceTitle = (voices: GalgameDetailCharacterVoice[]) =>
   voices.map((v) => v.latin || v.name).join(' / ')
 
 const subtitle = computed(() => {
-  const parts = [data.value?.name_zh, data.value?.latin].filter(
+  const parts = [data.value?.name_original, data.value?.latin].filter(
     (part): part is string => !!part && part !== data.value?.name
   )
   return parts.join(' · ')
@@ -80,18 +80,9 @@ const bustFrame = computed(() => artFrame(data.value?.image_meta))
 const leadIntro = computed(() =>
   data.value?.intros.find((i) => i.intro === data.value?.intro)
 )
-const introCredit = computed(() => {
-  const parts: string[] = []
-  if (leadIntro.value?.source) {
-    parts.push(
-      `简介来自 ${getGalgameCharacterSourceName(leadIntro.value.source)}`
-    )
-  }
-  if (leadIntro.value?.machine) {
-    parts.push('由机器翻译生成')
-  }
-  return parts.join(' · ')
-})
+const introCredit = computed(() =>
+  getGalgameCharacterIntroCredit(leadIntro.value)
+)
 const otherIntros = computed(() =>
   (data.value?.intros ?? []).filter((i) => i.intro !== data.value?.intro)
 )
@@ -207,8 +198,7 @@ if (!moved) {
                 {{ intro.intro }}
               </p>
               <p v-if="intro.source" class="text-default-400 mt-1 text-xs">
-                来自 {{ getGalgameCharacterSourceName(intro.source)
-                }}<template v-if="intro.machine"> · 由机器翻译生成</template>
+                {{ getGalgameCharacterIntroCredit(intro) }}
               </p>
             </KunAccordionItem>
           </KunAccordion>

@@ -55,24 +55,25 @@ func (s *StaffService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该制作人员")
 	}
 
-	nameJa, nameZh := client.CatalogNameByScript(name.Localized, name.DisplayName, name.Lang)
+	rendered, original := client.CatalogEntityNames(name.Localized, name.DisplayName, name.Latin)
+	intro := preferredIntro(name.Intros)
 
 	detail := &dto.StaffDetail{
-		ID:         int(name.ID),
-		Name:       staffDisplayName(name),
-		NameJa:     nameJa,
-		NameZh:     nameZh,
-		Latin:      name.Latin,
-		Intro:      staffIntro(name),
-		Photo:      s.galgameClient.ImageURLFromHash(name.PhotoHash),
-		Gender:     name.Gender,
-		BirthY:     name.BirthY,
-		BirthM:     name.BirthM,
-		BirthD:     name.BirthD,
-		Links:      staffLinks(name),
-		Siblings:   staffSiblings(name),
-		Works:      []dto.StaffWork{},
-		NextOffset: name.NextOffset,
+		ID:           int(name.ID),
+		Name:         rendered,
+		NameOriginal: original,
+		Latin:        name.Latin,
+		Intro:        intro.Intro,
+		IntroMachine: intro.Machine,
+		Photo:        s.galgameClient.ImageURLFromHash(name.PhotoHash),
+		Gender:       name.Gender,
+		BirthY:       name.BirthY,
+		BirthM:       name.BirthM,
+		BirthD:       name.BirthD,
+		Links:        staffLinks(name),
+		Siblings:     staffSiblings(name),
+		Works:        []dto.StaffWork{},
+		NextOffset:   name.NextOffset,
 	}
 
 	ids := make([]int64, 0, len(name.Credits))
@@ -138,33 +139,6 @@ func (s *StaffService) GetDetail(
 	return detail, nil
 }
 
-func staffDisplayName(n *client.CatalogName) string {
-	return client.PickCatalogName(n.DisplayName, n.Latin)
-}
-
-func staffIntro(n *client.CatalogName) string {
-	byLang := make(map[string]string, len(n.Intros))
-	for _, i := range n.Intros {
-		if strings.TrimSpace(i.Intro) == "" {
-			continue
-		}
-		if _, seen := byLang[i.Lang]; !seen {
-			byLang[i.Lang] = i.Intro
-		}
-	}
-	for _, lang := range []string{"zh-Hans", "zh", "zh-Hant", "ja", "en"} {
-		if intro, ok := byLang[lang]; ok {
-			return intro
-		}
-	}
-	for _, i := range n.Intros {
-		if strings.TrimSpace(i.Intro) != "" {
-			return i.Intro
-		}
-	}
-	return ""
-}
-
 func staffLinks(n *client.CatalogName) []dto.StaffLink {
 	out := make([]dto.StaffLink, 0, len(n.Refs)+len(n.Links))
 	for _, ref := range n.Refs {
@@ -190,7 +164,7 @@ func staffLinks(n *client.CatalogName) []dto.StaffLink {
 func staffSiblings(n *client.CatalogName) []dto.StaffSibling {
 	out := make([]dto.StaffSibling, 0, len(n.Siblings))
 	for _, sib := range n.Siblings {
-		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: client.PickCatalogName(sib.DisplayName, sib.Latin)})
+		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: sib.Name()})
 	}
 	return out
 }

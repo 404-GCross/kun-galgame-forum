@@ -58,7 +58,7 @@ if (official && !official.moved_to) {
 
 <template>
   <div v-if="data && !data.moved_to" class="space-y-6">
-    <KunHeader :name="data.name">
+    <KunHeader :name="data.name" :description="data.original">
       <template v-if="data.logo" #headerEndContent>
         <GalgameOfficialBrandMark :src="data.logo" :name="data.name" />
       </template>
@@ -105,6 +105,9 @@ if (official && !official.moved_to) {
               "
             >
               {{ data.description }}
+            </p>
+            <p v-if="data.description_machine" class="text-default-400 text-xs">
+              该简介由机器翻译生成
             </p>
             <KunButton
               v-if="data.description.length > INTRO_CLAMP_CHARS"

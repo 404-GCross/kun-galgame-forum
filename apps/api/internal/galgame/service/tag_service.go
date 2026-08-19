@@ -74,7 +74,7 @@ func (s *TagService) Search(
 		if sexual[int(h.ID)] {
 			continue
 		}
-		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.Name})
+		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.Name()})
 	}
 	return items, nil
 }
@@ -177,25 +177,11 @@ func (s *TagService) GetDetail(
 		Name:         t.Name,
 		Category:     tagCategory(t.Kind, t.Sexual),
 		Hidden:       t.Tier == client.TagTierHidden,
-		Description:  preferredIntro(t.Intros),
+		Description:  preferredIntro(t.Intros).Intro,
 		Alias:        []string{},
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil
-}
-
-func preferredIntro(intros []client.CatalogIntro) string {
-	for _, want := range []string{"zh", "ja", "en"} {
-		for _, in := range intros {
-			if strings.HasPrefix(strings.ToLower(in.Lang), want) {
-				return in.Intro
-			}
-		}
-	}
-	if len(intros) > 0 {
-		return intros[0].Intro
-	}
-	return ""
 }
 
 func catalogItemsToNextMoe(items []client.CatalogWorkListItem) []dto.NextMoeGalgameItem {

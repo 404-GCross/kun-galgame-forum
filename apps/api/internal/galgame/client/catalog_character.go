@@ -22,28 +22,12 @@ type CatalogCharacter struct {
 	Figure      string                      `json:"figure"`
 	ImageMeta   ArtMeta                     `json:"-"`
 	FigureMeta  ArtMeta                     `json:"-"`
-	Intros      []struct {
-		Lang    string `json:"lang"`
-		Intro   string `json:"intro"`
-		Source  string `json:"source"`
-		Machine bool   `json:"machine"`
-	} `json:"intros"`
-	Traits []CatalogCharacterTrait `json:"traits"`
-	Refs   []catRef                `json:"refs"`
-	Works  []struct {
-		Work struct {
-			ID            int64         `json:"id"`
-			DisplayName   string        `json:"display_name"`
-			Medium        string        `json:"medium"`
-			ContentRating string        `json:"content_rating"`
-			ClaimedBy     *catClaimedBy `json:"claimed_by"`
-		} `json:"work"`
-		Voices []struct {
-			ID    int64  `json:"id"`
-			Name  string `json:"name"`
-			Lang  string `json:"lang"`
-			Latin string `json:"latin"`
-		} `json:"voices"`
+	Intros      []CatalogIntro              `json:"intros"`
+	Traits      []CatalogCharacterTrait     `json:"traits"`
+	Refs        []catRef                    `json:"refs"`
+	Works       []struct {
+		Work   catWorkBrief    `json:"work"`
+		Voices []CatalogPerson `json:"voices"`
 	} `json:"works"`
 	NextOffset *int `json:"next_offset"`
 }

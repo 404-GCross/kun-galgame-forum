@@ -66,6 +66,7 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 			EnUs: g.IntroEnUs, JaJp: g.IntroJaJp,
 			ZhCn: g.IntroZhCn, ZhTw: g.IntroZhTw,
 		},
+		IntroductionMachine:        g.IntroMachine,
 		ContentLimit:               g.ContentLimit,
 		Status:                     g.Status,
 		OriginalLanguage:           g.OriginalLanguage,
@@ -240,7 +241,7 @@ func charactersFromNextMoe(chars []dto.NextMoeGalgameCharacter) []dto.GalgameDet
 			voices[j] = dto.GalgameDetailCharacterVoice{ID: v.ID, Name: v.Name}
 		}
 		out[i] = dto.GalgameDetailCharacter{
-			ID: c.ID, Name: c.Name, Latin: c.Latin,
+			ID: c.ID, Name: c.Name, NameOriginal: c.NameOriginal, Latin: c.Latin,
 			Kind: c.Kind, Spoiler: c.Spoiler, Identity: c.Identity,
 			Image: c.Image, Figure: c.Figure,
 			ImageMeta: c.ImageMeta, FigureMeta: c.FigureMeta,

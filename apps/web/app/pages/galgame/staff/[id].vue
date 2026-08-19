@@ -65,7 +65,7 @@ const birthdayText = computed(() =>
 )
 
 const subtitle = computed(() => {
-  const parts = [data.value?.name_zh, data.value?.latin].filter(
+  const parts = [data.value?.name_original, data.value?.latin].filter(
     (part): part is string => !!part && part !== data.value?.name
   )
   return parts.join(' · ')
@@ -105,7 +105,12 @@ if (!moved) {
             <span v-if="birthdayText">生日 {{ birthdayText }}</span>
           </div>
 
-          <p v-if="data.intro" class="text-default-600">{{ data.intro }}</p>
+          <div v-if="data.intro" class="space-y-1">
+            <p class="text-default-600">{{ data.intro }}</p>
+            <p v-if="data.intro_machine" class="text-default-400 text-xs">
+              该简介由机器翻译生成
+            </p>
+          </div>
 
           <div v-if="data.roles.length" class="flex flex-wrap gap-2">
             <KunChip v-for="role in data.roles" :key="role" color="primary">

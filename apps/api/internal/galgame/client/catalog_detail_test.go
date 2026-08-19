@@ -146,12 +146,22 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 
 func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","labels":[
-		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja","work_count":42},
+		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja","work_count":42,
+		 "localized":{"zh-Hans":{"value":"戏画","kind":"translation"}}},
 		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"publisher","lang":"ja","work_count":42},
 		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"brand","lang":"ja","work_count":42},
-		{"id":22,"display_name":"Circle","label_kind":"doujin_circle","kind":"circle","lang":"en","work_count":3}
+		{"id":22,"display_name":"Circle","label_kind":"doujin_circle","kind":"circle","lang":"en","work_count":3,
+		 "localized":{}}
 	]}`
 	f := fullOf(t, body)
+
+	if f.Official[0].Official.Name != "戏画" {
+		t.Errorf("制作方 chip = %q, want the localized rendering 戏画", f.Official[0].Official.Name)
+	}
+	if f.Official[1].Official.Name != "Circle" {
+		t.Errorf("a label with no Chinese name = %q, want its own name, never a blank",
+			f.Official[1].Official.Name)
+	}
 
 	if len(f.Official) != 2 {
 		t.Fatalf("projected %d 制作方 rows, want 2 — one per LABEL, not one per attribution edge: %+v",
@@ -242,10 +252,13 @@ func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
 
 func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","characters":[
-		{"id":11,"name":"藤田 佳奈","latin":"Fujita Kana","kind":"main","spoiler":0,
+		{"id":11,"display_name":"藤田 佳奈","latin":"Fujita Kana","kind":"main","spoiler":0,
+		 "localized":{"zh-Hans":{"value":"藤田佳奈","kind":"translation","machine":true}},
 		 "image":"https://cdn.example/ab/cd/bust.webp","figure":"https://cdn.example/ef/gh/figure.webp",
-		 "voices":[{"id":7,"name":"五十嵐裕美"},{"id":9,"name":"別名義"}]},
-		{"id":12,"name":"名前だけ","kind":"unknown","spoiler":2,"voices":[]}
+		 "voices":[{"id":7,"display_name":"五十嵐裕美",
+		            "localized":{"zh-Hans":{"value":"五十岚裕美","kind":"translation"}}},
+		           {"id":9,"display_name":"別名義","localized":{}}]},
+		{"id":12,"display_name":"名前だけ","kind":"unknown","spoiler":2,"localized":{},"voices":[]}
 	]}`
 	f := fullOf(t, body)
 
@@ -255,6 +268,14 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 	}
 
 	lead := f.Characters[0]
+	if lead.Name != "藤田佳奈" || lead.NameOriginal != "藤田 佳奈" {
+		t.Errorf("roster name/original = %q/%q, want the localized rendering over the record name — "+
+			"the roster is where a reader actually meets a character, and before wave 209 it "+
+			"carried no localized block at all", lead.Name, lead.NameOriginal)
+	}
+	if lead.Voices[0].Name != "五十岚裕美" {
+		t.Errorf("voice name = %q, want the localized rendering", lead.Voices[0].Name)
+	}
 	if lead.Image != "https://cdn.example/ab/cd/bust.webp" {
 		t.Errorf("bust = %q, want the image URL verbatim", lead.Image)
 	}

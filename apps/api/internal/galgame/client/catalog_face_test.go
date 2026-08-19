@@ -530,7 +530,8 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 		w.Header().Set("Content-Type", "application/json")
 		own := liveRow(4242, 777, "Own")
 		via := strings.TrimSuffix(liveRow(4243, 778, "Imprinted"), "}") +
-			`,"via_label":{"id":24,"name":"Key"}}`
+			`,"via_label":{"id":24,"display_name":"Key",` +
+			`"localized":{"zh-Hans":{"value":"键社","kind":"translation"}}}}`
 		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
 			own + `,` + via + `],"next_cursor":null}}`))
 	}))
@@ -562,7 +563,7 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	if members[1].GID != 778 || members[1].Via == nil {
 		t.Fatalf("rolled-up work = %+v, want gid 778 with a via", members[1])
 	}
-	if members[1].Via.ID != 24 || members[1].Via.Name != "Key" {
-		t.Errorf("via = %+v, want {24 Key}", *members[1].Via)
+	if members[1].Via.ID != 24 || members[1].Via.Name() != "键社" {
+		t.Errorf("via = %+v, want id 24 rendered as 键社", *members[1].Via)
 	}
 }

@@ -77,6 +77,7 @@ type OfficialDetail struct {
 	Category            string         `json:"category"`
 	Lang                string         `json:"lang"`
 	Description         string         `json:"description"`
+	DescriptionMachine  bool           `json:"description_machine"`
 	Alias               []string       `json:"alias"`
 	Galgame             []GalgameCard  `json:"galgame"`
 	GalgameCount        int64          `json:"galgame_count"`
@@ -197,21 +198,21 @@ type StaffSibling struct {
 }
 
 type StaffDetail struct {
-	ID         int            `json:"id"`
-	Name       string         `json:"name"`
-	NameJa     string         `json:"name_ja,omitempty"`
-	NameZh     string         `json:"name_zh,omitempty"`
-	Latin      string         `json:"latin,omitempty"`
-	Intro      string         `json:"intro"`
-	Photo      string         `json:"photo"`
-	Gender     *int           `json:"gender"`
-	BirthY     *int           `json:"birth_y"`
-	BirthM     *int           `json:"birth_m"`
-	BirthD     *int           `json:"birth_d"`
-	Links      []StaffLink    `json:"links"`
-	Siblings   []StaffSibling `json:"siblings"`
-	Roles      []string       `json:"roles"`
-	Works      []StaffWork    `json:"works"`
-	NextOffset *int           `json:"next_offset"`
-	MovedTo    int            `json:"moved_to,omitempty"`
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	NameOriginal string         `json:"name_original,omitempty"`
+	Latin        string         `json:"latin,omitempty"`
+	Intro        string         `json:"intro"`
+	IntroMachine bool           `json:"intro_machine"`
+	Photo        string         `json:"photo"`
+	Gender       *int           `json:"gender"`
+	BirthY       *int           `json:"birth_y"`
+	BirthM       *int           `json:"birth_m"`
+	BirthD       *int           `json:"birth_d"`
+	Links        []StaffLink    `json:"links"`
+	Siblings     []StaffSibling `json:"siblings"`
+	Roles        []string       `json:"roles"`
+	Works        []StaffWork    `json:"works"`
+	NextOffset   *int           `json:"next_offset"`
+	MovedTo      int            `json:"moved_to,omitempty"`
 }

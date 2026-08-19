@@ -3,9 +3,14 @@ import { galgameIntroductionLanguageTabs } from '~/constants/galgame'
 
 const introductionLanguage = ref<Language>('zh-cn')
 
-defineProps<{
+const props = defineProps<{
   introduction: KunLanguage
+  introductionMachine?: KunLanguageFlags
 }>()
+
+const isMachine = computed(
+  () => !!props.introductionMachine?.[introductionLanguage.value as Language]
+)
 </script>
 
 <template>
@@ -30,6 +35,9 @@ defineProps<{
       v-if="introduction[introductionLanguage as Language] === ''"
     >
       暂无对应翻译, 为您找到最近似的语言, 欢迎贡献翻译
+    </div>
+    <div v-else-if="isMachine" class="text-default-500 text-sm">
+      本段简介由机器翻译生成, 与原文可能有出入
     </div>
 
     <KunContent

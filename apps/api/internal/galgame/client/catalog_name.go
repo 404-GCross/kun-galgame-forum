@@ -6,22 +6,55 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"kun-galgame-api/pkg/errors"
 )
 
 const catalogNameCreditsCap = 50
 
+// catLocalizedName is one locale slot of the public face's name primitive.
+// Machine marks a machine-translated fill-in: since wave 209 such a row may
+// occupy a locale that has no source-provenance name, so a rendered name can
+// itself be machine text.
 type catLocalizedName struct {
-	Value string `json:"value"`
-	Kind  string `json:"kind"`
+	Value   string `json:"value"`
+	Kind    string `json:"kind"`
+	Machine bool   `json:"machine"`
 }
 
-var (
-	catalogZhLocales = []string{"zh-Hans", "zh", "zh-Hant"}
-	catalogJaLocales = []string{"ja"}
-)
+// CatalogAlias is one row of an entity's alias list. Wave 209 turned these from
+// bare strings into rows that carry their own language and provenance.
+type CatalogAlias struct {
+	Value   string `json:"value"`
+	Lang    string `json:"lang"`
+	Kind    string `json:"kind"`
+	Machine bool   `json:"machine"`
+}
+
+// CatalogIntro is the single intro shape the work, character, name, label and
+// tag faces have all shared since wave 209. Tag intros never set Machine.
+type CatalogIntro struct {
+	Lang    string `json:"lang"`
+	Intro   string `json:"intro"`
+	Source  string `json:"source"`
+	Machine bool   `json:"machine"`
+}
+
+// CatalogPerson is the name projection the public face uses wherever a person
+// is named inside another record: roster voices, credit rows, siblings.
+type CatalogPerson struct {
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Lang        string                      `json:"lang"`
+	Latin       string                      `json:"latin"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+}
+
+func (p *CatalogPerson) Name() string {
+	return CatalogEntityName(p.Localized, p.DisplayName, p.Latin)
+}
+
+var catalogZhLocales = []string{"zh-Hans", "zh", "zh-Hant"}
 
 type CatalogName struct {
 	ID          int64                       `json:"id"`
@@ -31,32 +64,17 @@ type CatalogName struct {
 	Latin       string                      `json:"latin"`
 	PersonID    int64                       `json:"person_id"`
 
-	PhotoHash string `json:"photo_hash"`
-	Gender    *int   `json:"gender"`
-	BirthY    *int   `json:"birth_y"`
-	BirthM    *int   `json:"birth_m"`
-	BirthD    *int   `json:"birth_d"`
-	Siblings  []struct {
-		ID          int64  `json:"id"`
-		DisplayName string `json:"display_name"`
-		Lang        string `json:"lang"`
-		Latin       string `json:"latin"`
-	} `json:"siblings"`
-	Intros []struct {
-		Lang   string `json:"lang"`
-		Intro  string `json:"intro"`
-		Source string `json:"source"`
-	} `json:"intros"`
-	Refs    []catRef         `json:"refs"`
-	Links   []catRelatedLink `json:"links"`
-	Credits []struct {
-		Work struct {
-			ID            int64         `json:"id"`
-			DisplayName   string        `json:"display_name"`
-			Medium        string        `json:"medium"`
-			ContentRating string        `json:"content_rating"`
-			ClaimedBy     *catClaimedBy `json:"claimed_by"`
-		} `json:"work"`
+	PhotoHash string           `json:"photo_hash"`
+	Gender    *int             `json:"gender"`
+	BirthY    *int             `json:"birth_y"`
+	BirthM    *int             `json:"birth_m"`
+	BirthD    *int             `json:"birth_d"`
+	Siblings  []CatalogPerson  `json:"siblings"`
+	Intros    []CatalogIntro   `json:"intros"`
+	Refs      []catRef         `json:"refs"`
+	Links     []catRelatedLink `json:"links"`
+	Credits   []struct {
+		Work  catWorkBrief `json:"work"`
 		Roles []struct {
 			RoleKey     string `json:"role_key"`
 			RoleName    string `json:"role_name"`
@@ -126,20 +144,26 @@ func PickCatalogName(displayName, latin string) string {
 	return latin
 }
 
-func CatalogNameByScript(localized map[string]catLocalizedName, displayName, lang string) (ja, zh string) {
-	switch {
-	case strings.HasPrefix(lang, "ja"):
-		ja = displayName
-	case strings.HasPrefix(lang, "zh"):
-		zh = displayName
+// CatalogEntityName renders an entity name for this site's Chinese readers:
+// localized["zh-Hans"] ?? display_name ?? latin. Wave 209 made that chain
+// terminal across every projection of the public face — detail records, roster
+// rows, voices, credits, via_label and search hits all carry the same three
+// fields — so there is exactly one render path and no projection needs its own.
+func CatalogEntityName(localized map[string]catLocalizedName, displayName, latin string) string {
+	if zh := pickLocalized(localized, catalogZhLocales); zh != "" {
+		return zh
 	}
-	if localizedForm := pickLocalized(localized, catalogJaLocales); localizedForm != "" {
-		ja = localizedForm
+	return PickCatalogName(displayName, latin)
+}
+
+// CatalogEntityNames adds the record's own name for a secondary line, empty
+// when that is already what CatalogEntityName rendered.
+func CatalogEntityNames(localized map[string]catLocalizedName, displayName, latin string) (name, original string) {
+	name = CatalogEntityName(localized, displayName, latin)
+	if displayName != "" && displayName != name {
+		original = displayName
 	}
-	if localizedForm := pickLocalized(localized, catalogZhLocales); localizedForm != "" {
-		zh = localizedForm
-	}
-	return ja, zh
+	return name, original
 }
 
 func pickLocalized(localized map[string]catLocalizedName, locales []string) string {

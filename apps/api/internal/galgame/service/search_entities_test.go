@@ -25,7 +25,10 @@ func TestSearchCatalogEntities_MapsPublicHits(t *testing.T) {
 			"code": 0, "message": "ok",
 			"data": map[string]any{
 				"items": []map[string]any{
-					{"id": 42, "name": "丸戸史明", "entity_type": "name"},
+					{"id": 42, "display_name": "丸戸史明", "entity_type": "name",
+						"localized": map[string]any{
+							"zh-Hans": map[string]any{"value": "丸户史明", "kind": "translation"},
+						}},
 				},
 			},
 		})
@@ -41,7 +44,7 @@ func TestSearchCatalogEntities_MapsPublicHits(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("searchCatalogEntities: %v", appErr)
 	}
-	if len(items) != 1 || items[0].ID != 42 || items[0].Name != "丸戸史明" {
-		t.Errorf("items = %+v, want the mapped hit", items)
+	if len(items) != 1 || items[0].ID != 42 || items[0].Name != "丸户史明" {
+		t.Errorf("items = %+v, want the hit rendered in the reader's locale", items)
 	}
 }

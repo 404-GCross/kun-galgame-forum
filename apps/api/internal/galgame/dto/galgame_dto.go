@@ -134,17 +134,18 @@ type GalgameDetailStaffName struct {
 }
 
 type GalgameDetailCharacter struct {
-	ID         int                           `json:"id"`
-	Name       string                        `json:"name"`
-	Latin      string                        `json:"latin,omitempty"`
-	Kind       string                        `json:"kind"`
-	Spoiler    int                           `json:"spoiler"`
-	Identity   string                        `json:"identity,omitempty"`
-	Image      string                        `json:"image,omitempty"`
-	Figure     string                        `json:"figure,omitempty"`
-	ImageMeta  *GalgameArtMeta               `json:"image_meta,omitempty"`
-	FigureMeta *GalgameArtMeta               `json:"figure_meta,omitempty"`
-	Voices     []GalgameDetailCharacterVoice `json:"voices"`
+	ID           int                           `json:"id"`
+	Name         string                        `json:"name"`
+	NameOriginal string                        `json:"name_original,omitempty"`
+	Latin        string                        `json:"latin,omitempty"`
+	Kind         string                        `json:"kind"`
+	Spoiler      int                           `json:"spoiler"`
+	Identity     string                        `json:"identity,omitempty"`
+	Image        string                        `json:"image,omitempty"`
+	Figure       string                        `json:"figure,omitempty"`
+	ImageMeta    *GalgameArtMeta               `json:"image_meta,omitempty"`
+	FigureMeta   *GalgameArtMeta               `json:"figure_meta,omitempty"`
+	Voices       []GalgameDetailCharacterVoice `json:"voices"`
 }
 
 type GalgameArtMeta struct {
@@ -220,6 +221,7 @@ type GalgameDetail struct {
 	Name                       KunLanguage              `json:"name"`
 	Banner                     string                   `json:"banner"`
 	Introduction               KunLanguage              `json:"introduction"`
+	IntroductionMachine        KunLanguageFlags         `json:"introduction_machine"`
 	Markdown                   KunLanguage              `json:"markdown"`
 	ContentLimit               string                   `json:"content_limit"`
 	ResourceUpdateTime         string                   `json:"resource_update_time"`

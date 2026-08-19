@@ -59,12 +59,17 @@ type catIntros struct {
 }
 
 type catWorkLabel struct {
-	ID          int64  `json:"id"`
-	DisplayName string `json:"display_name"`
-	LabelKind   string `json:"label_kind"`
-	Kind        string `json:"kind"`
-	Lang        string `json:"lang"`
-	WorkCount   int    `json:"work_count"`
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	LabelKind   string                      `json:"label_kind"`
+	Kind        string                      `json:"kind"`
+	Lang        string                      `json:"lang"`
+	WorkCount   int                         `json:"work_count"`
+}
+
+func (l *catWorkLabel) Name() string {
+	return CatalogEntityName(l.Localized, l.DisplayName, "")
 }
 
 type catWorkEngine struct {
@@ -127,8 +132,21 @@ type CatalogWorkListItem struct {
 }
 
 type CatalogLabelVia struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+}
+
+func (v *CatalogLabelVia) Name() string {
+	return CatalogEntityName(v.Localized, v.DisplayName, "")
+}
+
+// catWorkBrief is the shared work projection embedded in the character, name,
+// tag and series faces. Only the id is read: every work row the forum renders
+// is re-hydrated from the works list face, which is where the claim state and
+// the local row live.
+type catWorkBrief struct {
+	ID int64 `json:"id"`
 }
 
 type catWorksListData struct {
@@ -392,7 +410,7 @@ func CatalogItemToDetailBrief(it *CatalogWorkListItem) GalgameDetailBrief {
 	b.IntroZhCN = it.intro("zh-cn")
 	b.IntroZhTW = it.intro("zh-tw")
 	for _, l := range it.Labels {
-		b.Officials = append(b.Officials, l.DisplayName)
+		b.Officials = append(b.Officials, l.Name())
 	}
 	return b
 }

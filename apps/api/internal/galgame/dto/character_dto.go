@@ -28,20 +28,19 @@ type GalgameCharacterWork struct {
 }
 
 type GalgameCharacterDetail struct {
-	ID         int                     `json:"id"`
-	Name       string                  `json:"name"`
-	NameJa     string                  `json:"name_ja,omitempty"`
-	NameZh     string                  `json:"name_zh,omitempty"`
-	Latin      string                  `json:"latin,omitempty"`
-	Image      string                  `json:"image"`
-	Figure     string                  `json:"figure"`
-	ImageMeta  *GalgameArtMeta         `json:"image_meta,omitempty"`
-	FigureMeta *GalgameArtMeta         `json:"figure_meta,omitempty"`
-	Intro      string                  `json:"intro"`
-	Intros     []GalgameCharacterIntro `json:"intros"`
-	Traits     []GalgameCharacterTrait `json:"traits"`
-	Links      []GalgameCharacterLink  `json:"links"`
-	Works      []GalgameCharacterWork  `json:"works"`
-	NextOffset *int                    `json:"next_offset"`
-	MovedTo    int                     `json:"moved_to,omitempty"`
+	ID           int                     `json:"id"`
+	Name         string                  `json:"name"`
+	NameOriginal string                  `json:"name_original,omitempty"`
+	Latin        string                  `json:"latin,omitempty"`
+	Image        string                  `json:"image"`
+	Figure       string                  `json:"figure"`
+	ImageMeta    *GalgameArtMeta         `json:"image_meta,omitempty"`
+	FigureMeta   *GalgameArtMeta         `json:"figure_meta,omitempty"`
+	Intro        string                  `json:"intro"`
+	Intros       []GalgameCharacterIntro `json:"intros"`
+	Traits       []GalgameCharacterTrait `json:"traits"`
+	Links        []GalgameCharacterLink  `json:"links"`
+	Works        []GalgameCharacterWork  `json:"works"`
+	NextOffset   *int                    `json:"next_offset"`
+	MovedTo      int                     `json:"moved_to,omitempty"`
 }

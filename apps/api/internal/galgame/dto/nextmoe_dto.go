@@ -102,6 +102,7 @@ type NextMoeGalgameDetailFull struct {
 	IntroJaJp                  string                     `json:"intro_ja_jp"`
 	IntroZhCn                  string                     `json:"intro_zh_cn"`
 	IntroZhTw                  string                     `json:"intro_zh_tw"`
+	IntroMachine               KunLanguageFlags           `json:"intro_machine"`
 	ContentLimit               string                     `json:"content_limit"`
 	ResourceUpdateTime         string                     `json:"resource_update_time"`
 	ReleaseDate                *string                    `json:"release_date"`
@@ -151,17 +152,18 @@ type NextMoeStaffName struct {
 }
 
 type NextMoeGalgameCharacter struct {
-	ID         int                     `json:"id"`
-	Name       string                  `json:"name"`
-	Latin      string                  `json:"latin,omitempty"`
-	Kind       string                  `json:"kind"`
-	Spoiler    int                     `json:"spoiler"`
-	Identity   string                  `json:"identity,omitempty"`
-	Image      string                  `json:"image,omitempty"`
-	Figure     string                  `json:"figure,omitempty"`
-	ImageMeta  *GalgameArtMeta         `json:"image_meta,omitempty"`
-	FigureMeta *GalgameArtMeta         `json:"figure_meta,omitempty"`
-	Voices     []NextMoeCharacterVoice `json:"voices"`
+	ID           int                     `json:"id"`
+	Name         string                  `json:"name"`
+	NameOriginal string                  `json:"name_original,omitempty"`
+	Latin        string                  `json:"latin,omitempty"`
+	Kind         string                  `json:"kind"`
+	Spoiler      int                     `json:"spoiler"`
+	Identity     string                  `json:"identity,omitempty"`
+	Image        string                  `json:"image,omitempty"`
+	Figure       string                  `json:"figure,omitempty"`
+	ImageMeta    *GalgameArtMeta         `json:"image_meta,omitempty"`
+	FigureMeta   *GalgameArtMeta         `json:"figure_meta,omitempty"`
+	Voices       []NextMoeCharacterVoice `json:"voices"`
 }
 
 type NextMoeCharacterVoice struct {

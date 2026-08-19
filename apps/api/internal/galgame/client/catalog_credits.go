@@ -75,7 +75,8 @@ func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 			b.name = g.RoleName
 		}
 		for _, c := range g.Credits {
-			norm := normalizeCreditName(c.Name)
+			name := c.Name()
+			norm := normalizeCreditName(name)
 			if norm == "" {
 				continue
 			}
@@ -83,11 +84,11 @@ func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 			if !seen {
 				b.at[norm] = len(b.people)
 				b.people = append(b.people, dto.NextMoeStaffName{
-					ID: int(c.ID), Name: c.Name, Latin: c.Latin,
+					ID: int(c.ID), Name: name, Latin: c.Latin,
 				})
 				i = len(b.people) - 1
-			} else if len(c.Name) < len(b.people[i].Name) {
-				b.people[i].Name = c.Name
+			} else if len(name) < len(b.people[i].Name) {
+				b.people[i].Name = name
 			}
 			if c.Character != "" {
 				b.people[i].Characters = appendUniqueStr(b.people[i].Characters, c.Character)

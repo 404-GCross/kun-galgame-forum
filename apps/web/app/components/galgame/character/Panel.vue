@@ -27,6 +27,9 @@ const nameOnly = computed(() =>
   visible.value.filter((c) => !c.figure && !c.image)
 )
 
+const secondaryName = (c: GalgameDetailCharacter) =>
+  [c.name_original, c.latin].find((part) => !!part && part !== c.name) ?? ''
+
 const thumbOf = (url: string) => withImageVariant(url, 'mini')
 
 const figureRatio = computed(() =>
@@ -120,11 +123,8 @@ const open = (character: GalgameDetailCharacter) => {
 
         <div class="bg-default-50 w-full space-y-0.5 px-3 py-2">
           <p class="text-default-800 truncate font-medium">{{ c.name }}</p>
-          <p
-            v-if="c.latin && c.latin !== c.name"
-            class="text-default-400 truncate text-xs"
-          >
-            {{ c.latin }}
+          <p v-if="secondaryName(c)" class="text-default-400 truncate text-xs">
+            {{ secondaryName(c) }}
           </p>
           <p v-if="c.voices.length" class="text-default-500 truncate text-xs">
             CV {{ c.voices.map((v) => v.name).join(' / ') }}

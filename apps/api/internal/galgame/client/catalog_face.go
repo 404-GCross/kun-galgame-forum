@@ -305,11 +305,7 @@ type catWorkDetail struct {
 		Sexual      bool   `json:"sexual"`
 		WorkCount   int    `json:"work_count"`
 	} `json:"tags"`
-	Intro []struct {
-		Lang    string `json:"lang"`
-		Intro   string `json:"intro"`
-		Machine bool   `json:"machine"`
-	} `json:"intro"`
+	Intro  []CatalogIntro `json:"intro"`
 	Covers []struct {
 		URL       string `json:"url"`
 		Kind      string `json:"kind"`
@@ -341,20 +337,18 @@ type catWorkDetail struct {
 }
 
 type catWorkCharacter struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Latin    string `json:"latin"`
-	Kind     string `json:"kind"`
-	Spoiler  int    `json:"spoiler"`
-	Image    string `json:"image"`
-	Figure   string `json:"figure"`
-	Identity string `json:"identity"`
-	Voices   []struct {
-		ID   int64  `json:"id"`
-		Name string `json:"name"`
-	} `json:"voices"`
-	ImageMeta  ArtMeta `json:"-"`
-	FigureMeta ArtMeta `json:"-"`
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Latin       string                      `json:"latin"`
+	Kind        string                      `json:"kind"`
+	Spoiler     int                         `json:"spoiler"`
+	Image       string                      `json:"image"`
+	Figure      string                      `json:"figure"`
+	Identity    string                      `json:"identity"`
+	Voices      []CatalogPerson             `json:"voices"`
+	ImageMeta   ArtMeta                     `json:"-"`
+	FigureMeta  ArtMeta                     `json:"-"`
 }
 
 type catCreditGroup struct {
@@ -364,11 +358,16 @@ type catCreditGroup struct {
 }
 
 type catCreditItem struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Latin       string `json:"latin"`
-	CharacterID int64  `json:"character_id"`
-	Character   string `json:"character"`
+	ID          int64                       `json:"id"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Latin       string                      `json:"latin"`
+	CharacterID int64                       `json:"character_id"`
+	Character   string                      `json:"character"`
+}
+
+func (c *catCreditItem) Name() string {
+	return CatalogEntityName(c.Localized, c.DisplayName, c.Latin)
 }
 
 type catWorkSeries struct {

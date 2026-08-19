@@ -64,6 +64,15 @@ type KunLanguage struct {
 	ZhTw string `json:"zh-tw"`
 }
 
+// KunLanguageFlags is one boolean per KunLanguage slot, keyed identically so a
+// caller can index it with the locale it just rendered.
+type KunLanguageFlags struct {
+	EnUs bool `json:"en-us"`
+	JaJp bool `json:"ja-jp"`
+	ZhCn bool `json:"zh-cn"`
+	ZhTw bool `json:"zh-tw"`
+}
+
 type ResourceCard struct {
 	ID                int         `json:"id"`
 	View              int         `json:"view"`

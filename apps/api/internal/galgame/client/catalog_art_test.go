@@ -35,9 +35,9 @@ func TestHydrateRosterArt_OneBatchKeyedByURL(t *testing.T) {
 	})
 
 	chars := []catWorkCharacter{
-		{ID: 1, Name: "A", Image: bust, Figure: figure},
-		{ID: 2, Name: "B", Figure: unknown},
-		{ID: 3, Name: "C"},
+		{ID: 1, DisplayName: "A", Image: bust, Figure: figure},
+		{ID: 2, DisplayName: "B", Figure: unknown},
+		{ID: 3, DisplayName: "C"},
 	}
 	c.hydrateRosterArt(chars)
 

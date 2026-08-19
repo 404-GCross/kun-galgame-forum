@@ -18,10 +18,10 @@ export interface GalgameStaffSibling {
 export interface GalgameStaffDetail {
   id: number
   name: string
-  name_ja?: string
-  name_zh?: string
+  name_original?: string
   latin?: string
   intro: string
+  intro_machine: boolean
   photo?: string
   gender?: number | null
   birth_y?: number | null

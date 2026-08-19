@@ -29,6 +29,7 @@ export interface GalgameOfficialDetail {
   category: KunGalgameOfficialCategory
   lang: string
   description: string
+  description_machine: boolean
   alias: string[]
   galgame: GalgameCard[]
   galgame_count: number

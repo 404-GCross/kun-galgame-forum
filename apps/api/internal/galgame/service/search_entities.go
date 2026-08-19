@@ -22,7 +22,7 @@ func searchCatalogEntities(
 	}
 	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, hit := range hits {
-		items = append(items, dto.TaxonomySearchItem{ID: int(hit.ID), Name: hit.Name})
+		items = append(items, dto.TaxonomySearchItem{ID: int(hit.ID), Name: hit.Name()})
 	}
 	return items, nil
 }

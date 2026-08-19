@@ -20,71 +20,61 @@ func TestPickCatalogName_HeadlineIsTheCreditedName(t *testing.T) {
 	}
 }
 
-func TestCatalogNameByScript_ReachesTheRenderingTheBucketsHid(t *testing.T) {
-	localized := map[string]catLocalizedName{
-		"zh-Hans": {Value: "美坂栞", Kind: "translation"},
-	}
-
-	ja, zh := CatalogNameByScript(localized, "みさか しおり", "ja")
-	if ja != "みさか しおり" {
-		t.Errorf("the record's own language fills its own script: ja = %q", ja)
-	}
-	if zh != "美坂栞" {
-		t.Errorf("zh = %q, want the rendering the buckets could not publish", zh)
-	}
-	if headline := PickCatalogName("みさか しおり", ""); zh == headline {
-		t.Error("a zh equal to the headline is dropped by the page — the dead slot the buckets produced")
-	}
-}
-
-func TestCatalogNameByScript_AbsenceIsAnAnswer(t *testing.T) {
+func TestCatalogEntityName_RendersTheChineseNameWhenThereIsOne(t *testing.T) {
 	for _, tc := range []struct {
-		why            string
-		localized      map[string]catLocalizedName
-		displayName    string
-		lang           string
-		wantJa, wantZh string
+		why                  string
+		localized            map[string]catLocalizedName
+		displayName, latin   string
+		wantName, wantOrigin string
 	}{
 		{
-			why:       "no localized entry leaves the subtitle empty, not blank-labelled",
-			localized: nil, displayName: "麻枝准", lang: "ja",
-			wantJa: "麻枝准", wantZh: "",
+			why:         "the Chinese name is what a Chinese reader is shown",
+			localized:   map[string]catLocalizedName{"zh-Hans": {Value: "美坂栞", Kind: "translation"}},
+			displayName: "みさか しおり", wantName: "美坂栞", wantOrigin: "みさか しおり",
+		},
+		{
+			why: "a machine fill-in renders like any other name — before wave 209 it was " +
+				"structurally unreachable and the reader got the Japanese one",
+			localized: map[string]catLocalizedName{
+				"zh-Hans": {Value: "猫猫社", Kind: "translation", Machine: true},
+			},
+			displayName: "ねこねこソフト", wantName: "猫猫社", wantOrigin: "ねこねこソフト",
+		},
+		{
+			why:       "no Chinese on file falls back to the record's own name, never a blank",
+			localized: nil, displayName: "麻枝准", wantName: "麻枝准",
+		},
+		{
+			why:       "latin is the last cell, for a record held in no other script",
+			localized: nil, latin: "Frank Klepacki", wantName: "Frank Klepacki",
 		},
 		{
 			why: "a more specific tag wins over the bare one",
 			localized: map[string]catLocalizedName{
 				"zh-Hans": {Value: "简体"}, "zh": {Value: "通用"},
 			},
-			displayName: "原名", lang: "ja",
-			wantJa: "原名", wantZh: "简体",
+			displayName: "原名", wantName: "简体", wantOrigin: "原名",
 		},
 		{
 			why:         "zh-Hant answers when it is the only Chinese on file",
 			localized:   map[string]catLocalizedName{"zh-Hant": {Value: "繁體"}},
-			displayName: "原名", lang: "ja",
-			wantJa: "原名", wantZh: "繁體",
+			displayName: "原名", wantName: "繁體", wantOrigin: "原名",
 		},
 		{
-			why:       "an undeclared language is not silently called Japanese",
-			localized: nil, displayName: "Sound Horizon", lang: "",
-			wantJa: "", wantZh: "",
-		},
-		{
-			why:       "a Chinese record fills its own script and leaves ja empty",
-			localized: nil, displayName: "轻文轻小说", lang: "zh-Hans",
-			wantJa: "", wantZh: "轻文轻小说",
-		},
-		{
-			why:         "an empty value is treated as absent, not as an answer",
+			why:         "an empty value is absent, not an answer",
 			localized:   map[string]catLocalizedName{"zh-Hans": {Value: ""}},
-			displayName: "原名", lang: "ja",
-			wantJa: "原名", wantZh: "",
+			displayName: "原名", wantName: "原名",
+		},
+		{
+			why:         "a name already in Chinese prints once — no second line repeating it",
+			localized:   map[string]catLocalizedName{"zh-Hans": {Value: "轻文轻小说"}},
+			displayName: "轻文轻小说", wantName: "轻文轻小说",
 		},
 	} {
-		ja, zh := CatalogNameByScript(tc.localized, tc.displayName, tc.lang)
-		if ja != tc.wantJa || zh != tc.wantZh {
-			t.Errorf("%s: got (ja=%q, zh=%q), want (ja=%q, zh=%q)",
-				tc.why, ja, zh, tc.wantJa, tc.wantZh)
+		name, origin := CatalogEntityNames(tc.localized, tc.displayName, tc.latin)
+		if name != tc.wantName || origin != tc.wantOrigin {
+			t.Errorf("%s: got (name=%q, original=%q), want (name=%q, original=%q)",
+				tc.why, name, origin, tc.wantName, tc.wantOrigin)
 		}
 	}
 }
