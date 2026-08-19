@@ -141,20 +141,13 @@ func characterTraits(ch *client.CatalogCharacter, isSFW bool) []dto.GalgameChara
 		}
 		out = append(out, dto.GalgameCharacterTrait{
 			ID:      int(t.ID),
-			Name:    preferZhTrait(t.NameZh, t.Name),
-			Group:   preferZhTrait(t.GroupZh, t.Group),
+			Name:    t.LocalName(),
+			Group:   t.LocalGroup(),
 			Spoiler: t.Spoiler,
 			Lie:     t.Lie,
 		})
 	}
 	return out
-}
-
-func preferZhTrait(zh, en string) string {
-	if zh != "" {
-		return zh
-	}
-	return en
 }
 
 func characterLinks(ch *client.CatalogCharacter) []dto.GalgameCharacterLink {

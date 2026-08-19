@@ -32,15 +32,40 @@ type CatalogCharacter struct {
 	NextOffset *int `json:"next_offset"`
 }
 
+// CatalogCharacterTrait carries two generations of the same Chinese name. Wave
+// 212 wave A put the entity name primitive on traits and marked name_zh /
+// group_zh superseded; wave B deletes them, and since they are the only reason
+// a trait renders 金发 rather than Blonde, reading them alone would turn every
+// character's traits back to English on catalog's deploy without erroring.
 type CatalogCharacterTrait struct {
-	ID      int64  `json:"id"`
-	Name    string `json:"name"`
-	NameZh  string `json:"name_zh"`
-	Group   string `json:"group"`
-	GroupZh string `json:"group_zh"`
-	Spoiler int    `json:"spoiler"`
-	Sexual  bool   `json:"sexual"`
-	Lie     bool   `json:"lie"`
+	ID             int64                       `json:"id"`
+	Name           string                      `json:"name"`
+	Localized      map[string]catLocalizedName `json:"localized"`
+	NameZh         string                      `json:"name_zh"`
+	Group          string                      `json:"group"`
+	GroupLocalized map[string]catLocalizedName `json:"group_localized"`
+	GroupZh        string                      `json:"group_zh"`
+	Spoiler        int                         `json:"spoiler"`
+	Sexual         bool                        `json:"sexual"`
+	Lie            bool                        `json:"lie"`
+}
+
+func (t *CatalogCharacterTrait) LocalName() string {
+	return catalogTraitName(t.Localized, t.NameZh, t.Name)
+}
+
+func (t *CatalogCharacterTrait) LocalGroup() string {
+	return catalogTraitName(t.GroupLocalized, t.GroupZh, t.Group)
+}
+
+func catalogTraitName(localized map[string]catLocalizedName, zh, vocabulary string) string {
+	if v := pickLocalized(localized, catalogZhLocales); v != "" {
+		return v
+	}
+	if zh != "" {
+		return zh
+	}
+	return vocabulary
 }
 
 func (c *GalgameClient) CatalogCharacterDetail(
