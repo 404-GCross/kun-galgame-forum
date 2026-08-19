@@ -9,7 +9,7 @@ interface CreditRow {
   note?: string
 }
 
-const ROLE_OPTIONS: EditSelectOption[] = [
+const ROLE_OPTIONS = [
   { value: '247', label: '脚本' },
   { value: '184', label: '原画' },
   { value: '145', label: '人设' },
@@ -24,7 +24,7 @@ const ROLE_OPTIONS: EditSelectOption[] = [
   { value: '4', label: '编辑' },
   { value: '5', label: 'QA' },
   { value: '2', label: '其他' }
-]
+] satisfies EditSelectOption[]
 
 const props = defineProps<{
   modelValue: unknown
@@ -128,7 +128,7 @@ const roleLabel = (id: number) =>
     <div
       v-for="(row, index) in local"
       :key="`${row.role_id}-${row.credit_name_id}-${index}`"
-      class="space-y-2 rounded-lg border border-default-200 p-3"
+      class="border-default-200 space-y-2 rounded-lg border p-3"
     >
       <div class="flex flex-wrap items-start gap-2">
         <KunSelect
@@ -149,8 +149,7 @@ const roleLabel = (id: number) =>
             :search="searchNames"
             :resolve="resolveNames"
             @update:model-value="
-              (value) =>
-                patchRow(index, { credit_name_id: Number(value ?? 0) })
+              (value) => patchRow(index, { credit_name_id: Number(value ?? 0) })
             "
           />
         </div>
