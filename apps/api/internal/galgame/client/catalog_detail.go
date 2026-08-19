@@ -217,6 +217,13 @@ func catalogTitles(d *catWorkDetail) (names [4]string, aliases []dto.NextMoeAlia
 	return names, aliases
 }
 
+func (d *catWorkDetail) introRows() []CatalogIntro {
+	if len(d.Intros) > 0 {
+		return d.Intros
+	}
+	return d.Intro
+}
+
 func catalogIntros(d *catWorkDetail) (dto.KunLanguage, dto.KunLanguageFlags) {
 	var text dto.KunLanguage
 	var machine dto.KunLanguageFlags
@@ -227,7 +234,7 @@ func catalogIntros(d *catWorkDetail) (dto.KunLanguage, dto.KunLanguageFlags) {
 		"ja-jp": {&text.JaJp, &machine.JaJp}, "zh-cn": {&text.ZhCn, &machine.ZhCn},
 		"zh-tw": {&text.ZhTw, &machine.ZhTw}, "en-us": {&text.EnUs, &machine.EnUs},
 	}
-	for _, in := range d.Intro {
+	for _, in := range d.introRows() {
 		if slot, ok := slots[productLocale(in.Lang)]; ok && *slot.text == "" {
 			*slot.text, *slot.machine = in.Intro, in.Machine
 		}

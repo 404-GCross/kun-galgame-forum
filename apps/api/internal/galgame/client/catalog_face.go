@@ -306,7 +306,10 @@ type catWorkDetail struct {
 		Sexual      bool   `json:"sexual"`
 		WorkCount   int    `json:"work_count"`
 	} `json:"tags"`
+	// Wave 212's second half renames this block to "intros", matching every
+	// other catalog face. Both keys decode so the rename is not a cutover.
 	Intro  []CatalogIntro `json:"intro"`
+	Intros []CatalogIntro `json:"intros"`
 	Covers []struct {
 		URL       string `json:"url"`
 		Kind      string `json:"kind"`

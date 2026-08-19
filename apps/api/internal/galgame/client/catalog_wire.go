@@ -1,6 +1,8 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 
 	"kun-galgame-api/internal/galgame/dto"
@@ -48,17 +50,47 @@ type catNameSlot struct {
 	Machine bool   `json:"machine"`
 }
 
-type catIntroSlot struct {
-	Intro   string `json:"intro"`
-	Source  string `json:"source"`
-	Machine bool   `json:"machine"`
-}
+// catIntros is the works-list brief's intro block, held in the [{lang, intro,
+// source, machine}] shape every other catalog face already sends. Wave 212's
+// second half turns the wire shape from an object keyed by the four product
+// locales into exactly that array, so both decode here and the object branch
+// dies with the slots. Decoding only one of the two would take down every
+// galgame detail surface the day catalog switches, the way wave 210's names
+// block did.
+type catIntros []CatalogIntro
 
-type catIntros struct {
-	JaJP *catIntroSlot `json:"ja-jp"`
-	ZhCN *catIntroSlot `json:"zh-cn"`
-	ZhTW *catIntroSlot `json:"zh-tw"`
-	EnUS *catIntroSlot `json:"en-us"`
+// productLocaleSlots is the key order of the retiring object shape. The array
+// shape carries its own BCP-47 lang and never reaches this list.
+var productLocaleSlots = []string{"ja-jp", "zh-cn", "zh-tw", "en-us"}
+
+func (in *catIntros) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 || bytes.Equal(b, []byte("null")) {
+		*in = nil
+		return nil
+	}
+	if b[0] == '[' {
+		var rows []CatalogIntro
+		if err := json.Unmarshal(b, &rows); err != nil {
+			return err
+		}
+		*in = rows
+		return nil
+	}
+
+	var slots map[string]CatalogIntro
+	if err := json.Unmarshal(b, &slots); err != nil {
+		return err
+	}
+	rows := make([]CatalogIntro, 0, len(slots))
+	for _, key := range productLocaleSlots {
+		if slot, ok := slots[key]; ok && slot.Intro != "" {
+			slot.Lang = key
+			rows = append(rows, slot)
+		}
+	}
+	*in = rows
+	return nil
 }
 
 type catWorkLabel struct {
@@ -125,7 +157,7 @@ type CatalogWorkListItem struct {
 	Updated       string        `json:"updated"`
 
 	Names   map[string]catNameSlot `json:"names"`
-	Intros  *catIntros             `json:"intros"`
+	Intros  catIntros              `json:"intros"`
 	Labels  []catWorkLabel         `json:"labels"`
 	Ratings []catRating            `json:"ratings"`
 	Covers  *catCoverSlots         `json:"covers"`
@@ -376,24 +408,12 @@ func (it *CatalogWorkListItem) name(key string) string {
 }
 
 func (it *CatalogWorkListItem) intro(key string) string {
-	if it.Intros == nil {
-		return ""
+	for _, in := range it.Intros {
+		if productLocale(in.Lang) == key {
+			return in.Intro
+		}
 	}
-	slot := (*catIntroSlot)(nil)
-	switch key {
-	case "ja-jp":
-		slot = it.Intros.JaJP
-	case "zh-cn":
-		slot = it.Intros.ZhCN
-	case "zh-tw":
-		slot = it.Intros.ZhTW
-	case "en-us":
-		slot = it.Intros.EnUS
-	}
-	if slot == nil {
-		return ""
-	}
-	return slot.Intro
+	return ""
 }
 
 func CatalogItemToDetailBrief(it *CatalogWorkListItem) GalgameDetailBrief {
