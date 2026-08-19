@@ -47,7 +47,7 @@ const handleChangeImage = async (index: number) => {
       <KunTooltip
         v-for="image in paginatedImages"
         :key="image.index"
-        :text="image.message['zh-cn']"
+        :text="image.message"
         position="bottom"
       >
         <button

@@ -57,7 +57,7 @@ const handleOpenUpdateModal = () => {
     props.website
   editingWebsite.value = {
     ...rest,
-    language: language as keyof KunLanguage,
+    language: language as CreateWebsitePayload['language'],
     tag_ids: tags.map((t) => t.id),
     category_id: category.id,
     age_limit,
