@@ -107,7 +107,7 @@ provide(
         v-if="hasBadge || data?.sections?.length"
         class="flex flex-wrap items-center gap-1.5"
       >
-        <TopicTagGroup
+        <TopicBadgeGroup
           v-if="hasBadge"
           :section="[]"
           :upvote-time="data?.upvote_time"

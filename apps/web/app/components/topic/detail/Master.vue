@@ -37,7 +37,7 @@ provide(
           {{ topic.title }}
         </h1>
 
-        <TopicTagGroup
+        <TopicBadgeGroup
           :section="topic.section"
           :upvote-time="topic.upvote_time"
           :has-best-answer="false"

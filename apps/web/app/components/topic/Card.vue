@@ -19,7 +19,7 @@ const actionsCount = computed(
       {{ topic.title }}
     </h3>
 
-    <TopicTagGroup
+    <TopicBadgeGroup
       :section="props.topic.section"
       :has-best-answer="topic.has_best_answer"
       :is-poll-topic="topic.is_poll_topic"

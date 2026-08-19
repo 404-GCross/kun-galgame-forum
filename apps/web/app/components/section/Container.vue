@@ -83,7 +83,7 @@ watch(
           {{ topic.title }}
         </h2>
 
-        <TopicTagGroup
+        <TopicBadgeGroup
           :section="[]"
           :has-best-answer="topic.has_best_answer"
           :is-poll-topic="false"
