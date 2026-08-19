@@ -2,10 +2,7 @@
 interface SearchHit {
   id: number
   vndb_id?: string
-  name_zh_cn?: string
-  name_ja_jp?: string
-  name_en_us?: string
-  name_zh_tw?: string
+  name?: string
   effective_banner_hash?: string
   effective_banner_url?: string
   claim_state?: string
@@ -24,7 +21,7 @@ const isSearching = ref(false)
 const searchResults = ref<WizardSearchResp | null>(null)
 
 const nameOfHit = (h: SearchHit): string =>
-  galgameNameFromWire(h, h.vndb_id ? `VNDB ${h.vndb_id}` : `#${h.id}`)
+  h.name || (h.vndb_id ? `VNDB ${h.vndb_id}` : `#${h.id}`)
 
 const stateBadge = galgameClaimStateBadge
 
