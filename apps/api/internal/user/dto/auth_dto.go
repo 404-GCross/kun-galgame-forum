@@ -104,18 +104,6 @@ type UserRatingsRequest struct {
 	Limit int `query:"limit" validate:"min=1,max=50"`
 }
 
-type GalgameCard struct {
-	ID           int       `json:"id"`
-	VndbID       string    `json:"vndb_id"`
-	NameEnUS     string    `json:"name_en_us"`
-	NameJaJP     string    `json:"name_ja_jp"`
-	NameZhCN     string    `json:"name_zh_cn"`
-	NameZhTW     string    `json:"name_zh_tw"`
-	Banner       string    `json:"banner"`
-	ContentLimit string    `json:"content_limit"`
-	CreatedAt    time.Time `json:"created"`
-}
-
 type UserTopic struct {
 	ID        int       `json:"id"`
 	Title     string    `json:"title"`

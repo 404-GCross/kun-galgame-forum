@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -55,17 +56,13 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 			EnUs: g.NameEnUs, JaJp: g.NameJaJp,
 			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
 		},
-		Banner: g.Banner,
 		Introduction: dto.KunLanguage{
 			EnUs: markdown.Render(g.IntroEnUs),
 			JaJp: markdown.Render(g.IntroJaJp),
 			ZhCn: markdown.Render(g.IntroZhCn),
 			ZhTw: markdown.Render(g.IntroZhTw),
 		},
-		Markdown: dto.KunLanguage{
-			EnUs: g.IntroEnUs, JaJp: g.IntroJaJp,
-			ZhCn: g.IntroZhCn, ZhTw: g.IntroZhTw,
-		},
+		IntroText:                  cmp.Or(g.IntroZhCn, g.IntroZhTw, g.IntroJaJp, g.IntroEnUs),
 		IntroductionMachine:        g.IntroMachine,
 		ContentLimit:               g.ContentLimit,
 		Status:                     g.Status,

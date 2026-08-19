@@ -138,7 +138,6 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 				EnUS: b.NameEnUs, JaJP: b.NameJaJp,
 				ZhCN: b.NameZhCn, ZhTW: b.NameZhTw,
 			},
-			Banner:              b.Banner,
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			ContentLimit:        b.ContentLimit,
 			View:                lr.View,

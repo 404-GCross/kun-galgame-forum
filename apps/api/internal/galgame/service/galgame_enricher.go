@@ -45,7 +45,6 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 				EnUs: g.NameEnUs, JaJp: g.NameJaJp,
 				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
 			},
-			Banner:                   g.Banner,
 			User:                     frozenCreatorBrief(localMap[g.ID], userMap),
 			ContentLimit:             g.ContentLimit,
 			View:                     localMap[g.ID].View,

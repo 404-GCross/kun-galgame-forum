@@ -96,11 +96,10 @@ export interface GalgameDetail {
   vndb_id: string
   user: KunUser
   name: KunLanguage
-  banner: string
   introduction: KunLanguage
   introduction_machine: KunLanguageFlags
   content_limit: string
-  markdown: KunLanguage
+  intro_text: string
   resource_update_time: Date | string
   release_date: string | null
   release_date_tba: boolean
@@ -151,7 +150,6 @@ export interface GalgameDetail {
 export interface GalgameCard {
   id: number
   name: KunLanguage
-  banner: string
   user: KunUser
   content_limit: string
   view: number

@@ -19,11 +19,8 @@ type Message struct {
 func (Message) TableName() string { return "message" }
 
 type SystemMessage struct {
-	ID          int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	ContentEnUS string `gorm:"column:content_en_us;type:text;default:''" json:"content_en_us"`
-	ContentJaJP string `gorm:"column:content_ja_jp;type:text;default:''" json:"content_ja_jp"`
-	ContentZhCN string `gorm:"column:content_zh_cn;type:text;default:''" json:"content_zh_cn"`
-	ContentZhTW string `gorm:"column:content_zh_tw;type:text;default:''" json:"content_zh_tw"`
+	ID      int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Content string `gorm:"column:content;type:text;default:''" json:"content"`
 
 	UserID int `gorm:"column:user_id;not null" json:"user_id"`
 

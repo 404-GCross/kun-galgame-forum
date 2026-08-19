@@ -1,9 +1,7 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   message: MessageSystemMessage
 }>()
-
-const messageHtml = computed(() => props.message.content['zh-cn'] ?? '')
 </script>
 
 <template>
@@ -30,6 +28,6 @@ const messageHtml = computed(() => props.message.content['zh-cn'] ?? '')
       </span>
     </div>
 
-    <div class="leading-8 break-all" v-html="messageHtml" />
+    <div class="leading-8 break-all" v-html="message.content" />
   </div>
 </template>

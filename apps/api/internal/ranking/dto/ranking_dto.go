@@ -39,7 +39,6 @@ type GalgameRankingItem struct {
 	ID                  int        `json:"id"`
 	Name                LocaleName `json:"name"`
 	User                UserBrief  `json:"user"`
-	Banner              string     `json:"banner"`
 	Value               float64    `json:"value"`
 	SortField           string     `json:"sort_field"`
 	EffectiveBannerHash string     `json:"effective_banner_hash,omitempty"`

@@ -19,7 +19,6 @@ export interface RankingGalgameItem {
   id: number
   name: KunLanguage
   user: KunUser
-  banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
   sort_field: string

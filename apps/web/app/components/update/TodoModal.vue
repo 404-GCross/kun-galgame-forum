@@ -35,10 +35,7 @@ const getInitialFormData = (): UpdateTodoPayload => ({
   todo_id: 0,
   type: 'forum',
   status: 0,
-  content_en_us: '',
-  content_ja_jp: '',
-  content_zh_cn: '',
-  content_zh_tw: '',
+  content: '',
   ...(props.initialData || {})
 })
 
@@ -98,23 +95,8 @@ const handleSubmit = () => {
           required
         />
         <KunTextarea
-          v-model="formData.content_zh_cn"
-          label="简体中文内容 (1000 字符之内)"
-          :rows="5"
-        />
-        <KunTextarea
-          v-model="formData.content_zh_tw"
-          label="繁体中文内容 (1000 字符之内)"
-          :rows="5"
-        />
-        <KunTextarea
-          v-model="formData.content_en_us"
-          label="英文内容 (1000 字符之内)"
-          :rows="5"
-        />
-        <KunTextarea
-          v-model="formData.content_ja_jp"
-          label="日文内容 (1000 字符之内)"
+          v-model="formData.content"
+          label="待办内容 (1000 字符之内)"
           :rows="5"
         />
       </div>

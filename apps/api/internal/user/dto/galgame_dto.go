@@ -16,7 +16,6 @@ type UserBrief struct {
 type UserGalgameCard struct {
 	ID                  int         `json:"id"`
 	Name                KunLanguage `json:"name"`
-	Banner              string      `json:"banner"`
 	User                UserBrief   `json:"user"`
 	ContentLimit        string      `json:"content_limit"`
 	View                int         `json:"view"`

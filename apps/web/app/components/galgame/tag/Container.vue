@@ -107,7 +107,7 @@ const fetchGames = async () => {
         page: gamesPage.value,
         limit: gamesLimit,
         mode: matchMode.value,
-        tagIds: selectedTags.value.map((t) => t.id).join(',')
+        tag_ids: selectedTags.value.map((t) => t.id).join(',')
       }
     }
   )

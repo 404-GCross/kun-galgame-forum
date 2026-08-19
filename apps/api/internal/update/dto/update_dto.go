@@ -12,12 +12,9 @@ type TodoListQuery struct {
 }
 
 type CreateHistoryRequest struct {
-	Type        string `json:"type" validate:"required"`
-	Version     string `json:"version" validate:"max=20"`
-	ContentEnUS string `json:"content_en_us" validate:"max=1000"`
-	ContentJaJP string `json:"content_ja_jp" validate:"max=1000"`
-	ContentZhCN string `json:"content_zh_cn" validate:"max=1000"`
-	ContentZhTW string `json:"content_zh_tw" validate:"max=1000"`
+	Type    string `json:"type" validate:"required"`
+	Version string `json:"version" validate:"max=20"`
+	Content string `json:"content" validate:"max=1000"`
 }
 
 type DeleteHistoryRequest struct {
@@ -25,12 +22,9 @@ type DeleteHistoryRequest struct {
 }
 
 type CreateTodoRequest struct {
-	Type        string `json:"type" validate:"required"`
-	Status      int    `json:"status" validate:"min=0,max=10"`
-	ContentEnUS string `json:"content_en_us" validate:"max=1000"`
-	ContentJaJP string `json:"content_ja_jp" validate:"max=1000"`
-	ContentZhCN string `json:"content_zh_cn" validate:"max=1000"`
-	ContentZhTW string `json:"content_zh_tw" validate:"max=1000"`
+	Type    string `json:"type" validate:"required"`
+	Status  int    `json:"status" validate:"min=0,max=10"`
+	Content string `json:"content" validate:"max=1000"`
 }
 
 type DeleteTodoRequest struct {
@@ -38,21 +32,15 @@ type DeleteTodoRequest struct {
 }
 
 type UpdateHistoryRequest struct {
-	ID          int    `json:"update_log_id" validate:"required,min=1"`
-	Type        string `json:"type" validate:"required"`
-	Version     string `json:"version" validate:"max=20"`
-	ContentEnUS string `json:"content_en_us" validate:"max=1000"`
-	ContentJaJP string `json:"content_ja_jp" validate:"max=1000"`
-	ContentZhCN string `json:"content_zh_cn" validate:"max=1000"`
-	ContentZhTW string `json:"content_zh_tw" validate:"max=1000"`
+	ID      int    `json:"update_log_id" validate:"required,min=1"`
+	Type    string `json:"type" validate:"required"`
+	Version string `json:"version" validate:"max=20"`
+	Content string `json:"content" validate:"max=1000"`
 }
 
 type UpdateTodoRequest struct {
-	ID          int    `json:"todo_id" validate:"required,min=1"`
-	Type        string `json:"type" validate:"required"`
-	Status      int    `json:"status" validate:"min=0,max=10"`
-	ContentEnUS string `json:"content_en_us" validate:"max=1000"`
-	ContentJaJP string `json:"content_ja_jp" validate:"max=1000"`
-	ContentZhCN string `json:"content_zh_cn" validate:"max=1000"`
-	ContentZhTW string `json:"content_zh_tw" validate:"max=1000"`
+	ID      int    `json:"todo_id" validate:"required,min=1"`
+	Type    string `json:"type" validate:"required"`
+	Status  int    `json:"status" validate:"min=0,max=10"`
+	Content string `json:"content" validate:"max=1000"`
 }

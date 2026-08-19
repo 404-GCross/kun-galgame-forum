@@ -69,8 +69,8 @@ if (isIndexable.value) {
         .slice(0, 5)
         .map((g) => getPreferredLanguageText(g.name))
         .join('、')} 等。`,
-    ...(data.value.galgame[0]?.banner
-      ? { ogImage: data.value.galgame[0].banner }
+    ...(data.value.galgame[0]?.effective_banner_url
+      ? { ogImage: data.value.galgame[0].effective_banner_url }
       : {})
   })
 } else {

@@ -42,7 +42,7 @@ func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
 	svc := NewTagService(rec.client(t), &GalgameEnricher{}, nil)
 
 	if _, appErr := svc.GetByMultiTag(context.Background(),
-		url.Values{"tagIds": {"5,7"}}, true); appErr != nil {
+		url.Values{"tag_ids": {"5,7"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
 	if rec.path != "/v1/catalog/works/search" {

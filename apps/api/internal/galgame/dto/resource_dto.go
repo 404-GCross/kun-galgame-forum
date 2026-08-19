@@ -132,7 +132,6 @@ type ResourceDownloadDetail struct {
 type ResourceGalgameSummary struct {
 	ID                       int         `json:"id"`
 	Name                     KunLanguage `json:"name"`
-	Banner                   string      `json:"banner"`
 	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int         `json:"effective_banner_width,omitempty"`

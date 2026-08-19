@@ -422,8 +422,6 @@ func (s *CollectionService) resolvePreviewCovers(ctx context.Context, cols []mod
 			}
 			if b.EffectiveBannerURL != "" {
 				covers = append(covers, b.EffectiveBannerURL)
-			} else if b.Banner != "" {
-				covers = append(covers, b.Banner)
 			}
 		}
 		result[cid] = covers

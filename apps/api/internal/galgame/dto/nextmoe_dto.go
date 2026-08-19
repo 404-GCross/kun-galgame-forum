@@ -10,7 +10,6 @@ type NextMoeGalgameItem struct {
 	NameJaJp                 string  `json:"name_ja_jp"`
 	NameZhCn                 string  `json:"name_zh_cn"`
 	NameZhTw                 string  `json:"name_zh_tw"`
-	Banner                   string  `json:"banner"`
 	ContentLimit             string  `json:"content_limit"`
 	ReleaseDate              *string `json:"release_date"`
 	ReleaseDateTBA           bool    `json:"release_date_tba"`
@@ -97,7 +96,6 @@ type NextMoeGalgameDetailFull struct {
 	NameJaJp                   string                     `json:"name_ja_jp"`
 	NameZhCn                   string                     `json:"name_zh_cn"`
 	NameZhTw                   string                     `json:"name_zh_tw"`
-	Banner                     string                     `json:"banner"`
 	IntroEnUs                  string                     `json:"intro_en_us"`
 	IntroJaJp                  string                     `json:"intro_ja_jp"`
 	IntroZhCn                  string                     `json:"intro_zh_cn"`

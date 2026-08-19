@@ -57,7 +57,6 @@ func (s *RankingService) GetGalgameRanking(
 				ZhCN: b.NameZhCn, ZhTW: b.NameZhTw,
 			},
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-			Banner:              b.Banner,
 			Value:               r.Value,
 			SortField:           req.SortField,
 			EffectiveBannerHash: b.EffectiveBannerHash,

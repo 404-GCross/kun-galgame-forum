@@ -3,7 +3,6 @@ package dto
 type GalgameCard struct {
 	ID                       int            `json:"id"`
 	Name                     KunLanguage    `json:"name"`
-	Banner                   string         `json:"banner"`
 	User                     UserBrief      `json:"user"`
 	ContentLimit             string         `json:"content_limit"`
 	View                     int            `json:"view"`
@@ -31,7 +30,6 @@ type OfficialBrief struct {
 
 type GalgameSample struct {
 	Name                     KunLanguage `json:"name"`
-	Banner                   string      `json:"banner"`
 	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int         `json:"effective_banner_width,omitempty"`

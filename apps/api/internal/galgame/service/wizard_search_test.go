@@ -144,9 +144,8 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 		t.Errorf("claim_state = %q,%q, want live,draft — the wizard branches on it",
 			page.Items[0].ClaimState, page.Items[1].ClaimState)
 	}
-	if page.Items[0].Banner == "" || page.Items[0].Banner != page.Items[0].EffectiveBannerURL {
-		t.Errorf("banner = %q, want it mirrored from effective_banner_url %q",
-			page.Items[0].Banner, page.Items[0].EffectiveBannerURL)
+	if page.Items[0].EffectiveBannerURL == "" {
+		t.Error("effective_banner_url is empty — the wizard row renders the cover from it")
 	}
 }
 

@@ -410,7 +410,6 @@ func (s *RatingService) buildRatingGalgame(
 		g := client.CatalogDetailToFull(d, galgameID)
 		s.galgameClient.HydrateOfficialLinks(ctx, &g)
 		summary.ID = g.ID
-		summary.Banner = g.Banner
 		summary.EffectiveBannerHash = g.EffectiveBannerHash
 		summary.EffectiveBannerURL = g.EffectiveBannerURL
 		summary.EffectiveBannerWidth = g.EffectiveBannerWidth

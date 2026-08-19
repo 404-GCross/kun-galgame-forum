@@ -35,7 +35,6 @@ const statusFilters = [
 const pageData = ref({
   page: 1,
   limit: 30,
-  language: 'zh-cn',
   status: undefined as number | undefined
 })
 
@@ -64,10 +63,7 @@ const openEditTodoModal = (log: UpdateTodo) => {
   editingTodo.value = {
     status: log.status,
     type: 'forum',
-    content_en_us: log.content_en_us,
-    content_ja_jp: log.content_ja_jp,
-    content_zh_cn: log.content_zh_cn,
-    content_zh_tw: log.content_zh_tw,
+    content: log.content,
     todo_id: log.id
   } satisfies UpdateTodoPayload
   showTodoModal.value = true
@@ -142,7 +138,7 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       </div>
 
       <pre class="font-mono break-all whitespace-pre-line">
-        {{ todo.content_zh_cn }}
+        {{ todo.content }}
       </pre>
 
       <div class="flex items-center justify-between">

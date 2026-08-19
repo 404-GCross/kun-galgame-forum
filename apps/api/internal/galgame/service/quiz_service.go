@@ -663,10 +663,6 @@ func (s *QuizService) galgamesDetailFor(ctx context.Context, ids []int) []dto.Qu
 		if !ok {
 			continue
 		}
-		banner := b.EffectiveBannerURL
-		if banner == "" {
-			banner = b.Banner
-		}
 		officials := b.Officials
 		if officials == nil {
 			officials = []string{}
@@ -680,7 +676,7 @@ func (s *QuizService) galgamesDetailFor(ctx context.Context, ids []int) []dto.Qu
 			ContentLimit:     b.ContentLimit,
 			AgeLimit:         b.AgeLimit,
 			OriginalLanguage: b.OriginalLanguage,
-			Banner:           banner,
+			Banner:           b.EffectiveBannerURL,
 			BannerThumbhash:  b.EffectiveBannerThumbhash,
 			Officials:        officials,
 		})
@@ -740,10 +736,6 @@ func (s *QuizService) SearchGalgameOptions(
 		if !ok {
 			continue
 		}
-		banner := b.EffectiveBannerURL
-		if banner == "" {
-			banner = b.Banner
-		}
 		officials := b.Officials
 		if officials == nil {
 			officials = []string{}
@@ -754,7 +746,7 @@ func (s *QuizService) SearchGalgameOptions(
 				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
 				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
 			},
-			Banner:          banner,
+			Banner:          b.EffectiveBannerURL,
 			BannerThumbhash: b.EffectiveBannerThumbhash,
 			Officials:       officials,
 		})

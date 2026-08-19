@@ -61,9 +61,9 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 	svc := rec.service(t)
 
 	_, appErr := svc.GetByMultiTag(context.Background(), url.Values{
-		"tagIds": {"638,41"},
-		"page":   {"3"},
-		"limit":  {"24"},
+		"tag_ids": {"638,41"},
+		"page":    {"3"},
+		"limit":   {"24"},
 	}, false)
 	if appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
@@ -97,7 +97,7 @@ func TestGetByMultiTag_SFWGateStaysClosed(t *testing.T) {
 	svc := rec.service(t)
 
 	if _, appErr := svc.GetByMultiTag(context.Background(),
-		url.Values{"tagIds": {"41"}}, true); appErr != nil {
+		url.Values{"tag_ids": {"41"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
 	if got := rec.get("nsfw"); got != "1" {
@@ -126,7 +126,7 @@ func TestGetByMultiTag_TagFilterShape(t *testing.T) {
 			svc := rec.service(t)
 
 			if _, appErr := svc.GetByMultiTag(context.Background(),
-				url.Values{"tagIds": {tc.tagIDs}}, false); appErr != nil {
+				url.Values{"tag_ids": {tc.tagIDs}}, false); appErr != nil {
 				t.Fatalf("GetByMultiTag: %v", appErr)
 			}
 
@@ -149,7 +149,7 @@ func TestGetByMultiTag_MatchMode(t *testing.T) {
 			rec := &queryRecorder{}
 			svc := rec.service(t)
 
-			q := url.Values{"tagIds": {"41"}}
+			q := url.Values{"tag_ids": {"41"}}
 			if mode != "" {
 				q.Set("mode", mode)
 			}

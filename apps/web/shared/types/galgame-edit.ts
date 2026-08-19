@@ -74,7 +74,6 @@ export interface GalgameEditGameBrief {
   name_ja_jp: string
   name_zh_cn: string
   name_zh_tw: string
-  banner: string
   status: number
   content_limit: string
 }

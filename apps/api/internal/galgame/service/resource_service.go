@@ -517,7 +517,6 @@ func (s *ResourceService) buildGalgameSummary(
 	return dto.ResourceGalgameSummary{
 		ID:                       b.ID,
 		Name:                     briefToName(b),
-		Banner:                   b.Banner,
 		EffectiveBannerHash:      b.EffectiveBannerHash,
 		EffectiveBannerURL:       b.EffectiveBannerURL,
 		EffectiveBannerWidth:     b.EffectiveBannerWidth,

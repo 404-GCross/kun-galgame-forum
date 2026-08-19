@@ -72,7 +72,7 @@ if (galgame) {
       `${contentGenres.length ? `，题材包括${contentGenres.slice(0, 3).join('、')}` : ''}` +
       `。本页收录其基本资料、制作 Staff、登场角色与声优, 以及玩家评分与评价。`
 
-    const introText = markdownToText(getPreferredLanguageText(galgame.markdown))
+    const introText = markdownToText(galgame.intro_text)
       .slice(0, 175)
       .replace(/\\|\n/g, '')
     const description = introText || fallbackDescription

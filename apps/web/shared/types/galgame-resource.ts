@@ -36,7 +36,6 @@ export interface GalgameResourceCard extends GalgameResource {
 export interface GalgameResourceSummary {
   id: number
   name: KunLanguage
-  banner: string
   effective_banner_hash?: string
   effective_banner_url?: string
   effective_banner_width?: number

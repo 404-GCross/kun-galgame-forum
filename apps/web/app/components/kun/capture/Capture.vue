@@ -1,22 +1,11 @@
 <script setup lang="ts">
-import { questionsEN } from './questionsEN'
-import { questionsJP } from './questionsJP'
-import { questionsCN } from './questionsCN'
-import { questionsTW } from './questionsTW'
-import type { Question } from './questionsEN'
+import { questionsCN, type Question } from './questionsCN'
 
 const { isShowCapture, isCaptureSuccessful } = storeToRefs(
   useComponentMessageStore()
 )
 
-const questionsMap = {
-  'en-us': questionsEN,
-  'ja-jp': questionsJP,
-  'zh-cn': questionsCN,
-  'zh-tw': questionsTW
-}
-
-const questions = ref<Question[]>(questionsMap['zh-cn'])
+const questions = ref<Question[]>(questionsCN)
 
 const randomizeQuestion = () => {
   return randomNum(0, questions.value.length - 1)

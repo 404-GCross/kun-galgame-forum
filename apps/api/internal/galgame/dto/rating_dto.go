@@ -126,7 +126,6 @@ type RatingOfficial struct {
 type RatingGalgameDetail struct {
 	ID                       int              `json:"id"`
 	ContentLimit             string           `json:"content_limit"`
-	Banner                   string           `json:"banner"`
 	EffectiveBannerHash      string           `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL       string           `json:"effective_banner_url,omitempty"`
 	EffectiveBannerWidth     int              `json:"effective_banner_width,omitempty"`

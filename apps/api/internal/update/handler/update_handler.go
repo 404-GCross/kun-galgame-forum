@@ -50,9 +50,8 @@ func (h *UpdateHandler) CreateHistory(c fiber.Ctx) error {
 
 	log := adminModel.UpdateLog{
 		Type: req.Type, Version: req.Version,
-		ContentEnUS: req.ContentEnUS, ContentJaJP: req.ContentJaJP,
-		ContentZhCN: req.ContentZhCN, ContentZhTW: req.ContentZhTW,
-		UserID: user.ID,
+		Content: req.Content,
+		UserID:  user.ID,
 	}
 	if err := h.repo.CreateHistory(&log); err != nil {
 		return response.Error(c, errors.ErrInternal("创建更新日志失败"))
@@ -71,12 +70,9 @@ func (h *UpdateHandler) UpdateHistory(c fiber.Ctx) error {
 	}
 
 	fields := map[string]any{
-		"type":          req.Type,
-		"version":       req.Version,
-		"content_en_us": req.ContentEnUS,
-		"content_ja_jp": req.ContentJaJP,
-		"content_zh_cn": req.ContentZhCN,
-		"content_zh_tw": req.ContentZhTW,
+		"type":    req.Type,
+		"version": req.Version,
+		"content": req.Content,
 	}
 	if err := h.repo.UpdateHistory(req.ID, fields); err != nil {
 		return response.Error(c, errors.ErrInternal("更新日志失败"))
@@ -127,9 +123,8 @@ func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 
 	todo := adminModel.Todo{
 		Type: req.Type, Status: req.Status,
-		ContentEnUS: req.ContentEnUS, ContentJaJP: req.ContentJaJP,
-		ContentZhCN: req.ContentZhCN, ContentZhTW: req.ContentZhTW,
-		UserID: user.ID,
+		Content: req.Content,
+		UserID:  user.ID,
 	}
 	if err := h.repo.CreateTodo(&todo); err != nil {
 		return response.Error(c, errors.ErrInternal("创建待办失败"))
@@ -148,12 +143,9 @@ func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	}
 
 	fields := map[string]any{
-		"type":          req.Type,
-		"status":        req.Status,
-		"content_en_us": req.ContentEnUS,
-		"content_ja_jp": req.ContentJaJP,
-		"content_zh_cn": req.ContentZhCN,
-		"content_zh_tw": req.ContentZhTW,
+		"type":    req.Type,
+		"status":  req.Status,
+		"content": req.Content,
 	}
 	if req.Status == 2 {
 		fields["completed_time"] = time.Now()

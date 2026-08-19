@@ -75,22 +75,16 @@ func (r *MessageRepository) MarkAllRead(receiverID int) error {
 }
 
 type SystemMessageRow struct {
-	ID          int
-	ContentEnUS string
-	ContentJaJP string
-	ContentZhCN string
-	ContentZhTW string
-	UserID      int
-	CreatedAt   string
+	ID        int
+	Content   string
+	UserID    int
+	CreatedAt string
 }
 
 func (r *MessageRepository) FindSystemMessages() ([]SystemMessageRow, error) {
 	var rows []SystemMessageRow
 	err := r.db.Table("system_message sm").
-		Select(`sm.id, sm.content_en_us, sm.content_ja_jp,
-			sm.content_zh_cn, sm.content_zh_tw,
-			sm.user_id,
-			sm.created AS created_at`).
+		Select(`sm.id, sm.content, sm.user_id, sm.created AS created_at`).
 		Order("sm.created DESC").
 		Find(&rows).Error
 	return rows, err

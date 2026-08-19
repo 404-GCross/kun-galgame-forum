@@ -305,7 +305,6 @@ func (s *SubmissionService) wizardItems(
 			continue
 		}
 		b := client.CatalogItemToBrief(row)
-		b.Banner = b.EffectiveBannerURL
 		items = append(items, b)
 	}
 	return items, res.Total, nil

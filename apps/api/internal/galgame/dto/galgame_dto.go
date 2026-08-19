@@ -60,7 +60,6 @@ type GalgameScreenshot struct {
 type GalgameListCard struct {
 	ID                       int         `json:"id"`
 	Name                     KunLanguage `json:"name"`
-	Banner                   string      `json:"banner"`
 	User                     UserBrief   `json:"user"`
 	ContentLimit             string      `json:"content_limit"`
 	View                     int         `json:"view"`
@@ -219,10 +218,9 @@ type GalgameDetail struct {
 	VndbID                     string                   `json:"vndb_id"`
 	User                       UserBrief                `json:"user"`
 	Name                       KunLanguage              `json:"name"`
-	Banner                     string                   `json:"banner"`
 	Introduction               KunLanguage              `json:"introduction"`
 	IntroductionMachine        KunLanguageFlags         `json:"introduction_machine"`
-	Markdown                   KunLanguage              `json:"markdown"`
+	IntroText                  string                   `json:"intro_text"`
 	ContentLimit               string                   `json:"content_limit"`
 	ResourceUpdateTime         string                   `json:"resource_update_time"`
 	View                       int                      `json:"view"`

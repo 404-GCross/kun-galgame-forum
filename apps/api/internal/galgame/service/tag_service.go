@@ -84,10 +84,7 @@ func (s *TagService) GetByMultiTag(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*TagMultiPage, *errors.AppError) {
-	ids := rawQuery.Get("tagIds")
-	if ids == "" {
-		ids = rawQuery.Get("tag_ids")
-	}
+	ids := rawQuery.Get("tag_ids")
 
 	q := url.Values{
 		"page":        {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},

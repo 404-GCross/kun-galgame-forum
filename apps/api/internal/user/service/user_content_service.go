@@ -156,7 +156,6 @@ func (s *UserContentService) buildGalgameCards(
 		cards = append(cards, dto.UserGalgameCard{
 			ID:                  b.ID,
 			Name:                briefToLocale(b),
-			Banner:              b.Banner,
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			ContentLimit:        b.ContentLimit,
 			View:                l.View,

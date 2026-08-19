@@ -39,7 +39,7 @@ export interface MessageList {
 export interface MessageSystemMessage {
   id: number
   is_read: boolean
-  content: KunNullable<KunLanguage>
+  content: string
   admin: KunUser
   created: Date | string
 }

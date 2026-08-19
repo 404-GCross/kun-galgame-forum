@@ -6,8 +6,8 @@ interface SearchHit {
   name_ja_jp?: string
   name_en_us?: string
   name_zh_tw?: string
-  banner?: string
   effective_banner_hash?: string
+  effective_banner_url?: string
   claim_state?: string
 }
 
@@ -179,8 +179,8 @@ onMounted(() => {
           class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-center"
         >
           <KunImage
-            v-if="hit.banner"
-            :src="hit.banner"
+            v-if="hit.effective_banner_url"
+            :src="hit.effective_banner_url"
             loading="lazy"
             placeholder="/placeholder.webp"
             class="h-16 w-28 shrink-0 rounded object-cover"

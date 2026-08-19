@@ -353,7 +353,6 @@ func (s *GalgameService) HydrateCardsByIDs(
 				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
 				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
 			},
-			Banner:                   b.Banner,
 			User:                     frozenCreatorBrief(localMap[id], userMap),
 			ContentLimit:             b.ContentLimit,
 			View:                     localMap[id].View,

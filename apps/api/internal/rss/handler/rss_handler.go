@@ -69,7 +69,7 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 		items = append(items, dto.GalgameRSSItem{
 			ID:     row.ID,
 			Name:   pickPreferredName(b),
-			Banner: b.Banner,
+			Banner: b.EffectiveBannerURL,
 			User: dto.GalgameRSSUser{
 				ID: u.ID, Name: u.Name, Avatar: u.Avatar,
 			},

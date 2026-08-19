@@ -130,14 +130,9 @@ func (s *MessageService) GetSystemMessages(ctx context.Context, userID int) ([]d
 	for _, r := range rows {
 		u := userMap[r.UserID]
 		messages = append(messages, dto.SystemMessageResponse{
-			ID:     r.ID,
-			IsRead: int64(r.ID) <= cursor,
-			Content: map[string]string{
-				"en-us": r.ContentEnUS,
-				"ja-jp": r.ContentJaJP,
-				"zh-cn": r.ContentZhCN,
-				"zh-tw": r.ContentZhTW,
-			},
+			ID:      r.ID,
+			IsRead:  int64(r.ID) <= cursor,
+			Content: r.Content,
 			Admin:   dto.KunUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			Created: r.CreatedAt,
 		})

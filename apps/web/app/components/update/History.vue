@@ -4,8 +4,7 @@ import type { UpdateUpdateLogPayload } from './types'
 
 const pageData = ref({
   page: 1,
-  limit: 30,
-  language: 'zh-cn'
+  limit: 30
 })
 
 const canCreateUpdateLog = useCan('update_log.create')
@@ -32,10 +31,7 @@ const openEditUpdateLogModal = (log: UpdateLog) => {
   }
   editingUpdateLog.value = {
     version: log.version,
-    content_en_us: log.content_en_us,
-    content_ja_jp: log.content_ja_jp,
-    content_zh_cn: log.content_zh_cn,
-    content_zh_tw: log.content_zh_tw,
+    content: log.content,
     type: log.type,
     update_log_id: log.id
   } satisfies UpdateUpdateLogPayload
@@ -96,7 +92,7 @@ const handleUpdateLogAction = async (data: UpdateUpdateLogPayload) => {
       <pre
         class="bg-default-100 rounded-md p-4 font-mono text-sm break-all whitespace-pre-line"
       >
-          {{ update.content_zh_cn }}
+          {{ update.content }}
         </pre
       >
     </KunCard>
