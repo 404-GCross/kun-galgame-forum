@@ -1,0 +1,20 @@
+# Compiled cmd/* binaries. 'go build ./cmd/migrate' drops its output here as
+# apps/api/migrate, which git then offers alongside real changes — it was
+# committed once that way and had to be reset out.
+/backfill-comment-parents
+/backfill-content-images
+/backfill-cover-hashes
+/backfill-friend-link-banners
+/backfill-message-links
+/backfill-provider-names
+/backfill-topic-covers
+/check-col-types
+/check-dup-email
+/image-refping
+/migrate
+/purge-staging-verify
+/rewrite-content-image-refs
+/seed-contributors
+/server
+/sync-moemoepoint
+/view-rollup
