@@ -55,7 +55,7 @@ func (s *StaffService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该制作人员")
 	}
 
-	rendered, original := client.CatalogEntityNames(name.Localized, name.DisplayName, name.Latin)
+	rendered, original := client.CatalogEntityNames(ctx, name.Localized, name.DisplayName, name.Latin)
 	intro := preferredIntro(name.Intros)
 
 	detail := &dto.StaffDetail{
@@ -71,7 +71,7 @@ func (s *StaffService) GetDetail(
 		BirthM:       name.BirthM,
 		BirthD:       name.BirthD,
 		Links:        staffLinks(name),
-		Siblings:     staffSiblings(name),
+		Siblings:     staffSiblings(ctx, name),
 		Works:        []dto.StaffWork{},
 		NextOffset:   name.NextOffset,
 	}
@@ -119,7 +119,7 @@ func (s *StaffService) GetDetail(
 		for _, key := range client.SortStaffRoleKeys(onThisWork) {
 			labels = append(labels, labelOf[key])
 		}
-		items = append(items, client.CatalogItemToNextMoeItem(&row))
+		items = append(items, client.CatalogItemToNextMoeItem(ctx, &row))
 		detail.Works = append(detail.Works, dto.StaffWork{
 			CatalogID:  int(row.ID),
 			Roles:      labels,
@@ -161,10 +161,10 @@ func staffLinks(n *client.CatalogName) []dto.StaffLink {
 	return out
 }
 
-func staffSiblings(n *client.CatalogName) []dto.StaffSibling {
+func staffSiblings(ctx context.Context, n *client.CatalogName) []dto.StaffSibling {
 	out := make([]dto.StaffSibling, 0, len(n.Siblings))
 	for _, sib := range n.Siblings {
-		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: sib.Name()})
+		out = append(out, dto.StaffSibling{ID: int(sib.ID), Name: sib.Name(ctx)})
 	}
 	return out
 }

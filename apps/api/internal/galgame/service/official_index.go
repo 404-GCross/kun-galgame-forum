@@ -120,7 +120,7 @@ func (s *OfficialService) buildIndex(ctx context.Context, kind string) (*officia
 			return nil, appErr
 		}
 		for _, o := range res.Items {
-			items = append(items, s.officialRow(o))
+			items = append(items, s.officialRow(ctx, o))
 		}
 		if res.NextCursor == nil || *res.NextCursor == "" || len(items) >= officialIndexCap {
 			break
@@ -145,10 +145,10 @@ func sortOfficialsByCount(items []dto.OfficialListItem) {
 	})
 }
 
-func (s *OfficialService) officialRow(o client.CatalogTaxonomyItem) dto.OfficialListItem {
+func (s *OfficialService) officialRow(ctx context.Context, o client.CatalogTaxonomyItem) dto.OfficialListItem {
 	return dto.OfficialListItem{
 		ID:           int(o.ID),
-		Name:         o.Label(),
+		Name:         o.Label(ctx),
 		Category:     o.Kind,
 		Logo:         s.galgameClient.ImageURLFromHash(o.LogoHash),
 		Alias:        emptyStrSliceIfNil(o.Aliases),

@@ -127,7 +127,7 @@ func (s *GalgameService) entryName(ctx context.Context, galgameID int) string {
 	if !ok {
 		return ""
 	}
-	brief := client.CatalogItemToBrief(&row)
+	brief := client.CatalogItemToBrief(ctx, &row)
 	return client.BriefName(&brief)
 }
 
@@ -144,7 +144,7 @@ func (s *GalgameService) GetDetail(
 	if !found {
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
-	g := client.CatalogDetailToFull(d, galgameID)
+	g := client.CatalogDetailToFull(ctx, d, galgameID)
 	// An entry still in submission is not public: it used to answer 200 to
 	// anyone with the id, canonical tag and VideoGame JSON-LD included, so
 	// search engines indexed games nobody had approved. Crawlers are anonymous,

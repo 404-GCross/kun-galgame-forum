@@ -46,7 +46,7 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 	if !found {
 		t.Fatal("CatalogWorkDetail: not found, want the stubbed work")
 	}
-	return CatalogDetailToFull(d, gid)
+	return CatalogDetailToFull(context.Background(), d, gid)
 }
 
 func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
@@ -219,7 +219,7 @@ func TestCatalogDetail_TagsArriveAtTheFullSpoilerCeiling(t *testing.T) {
 		t.Errorf("spoilers = %q, want the full ceiling 2 — the tag panel filters client-side", got)
 	}
 
-	f := CatalogDetailToFull(d, gid)
+	f := CatalogDetailToFull(context.Background(), d, gid)
 	if len(f.Tag) != 2 || f.Tag[1].SpoilerLevel != 2 {
 		t.Errorf("Tag = %+v, want the spoiler row carried with its level", f.Tag)
 	}

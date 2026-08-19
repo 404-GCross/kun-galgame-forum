@@ -7,7 +7,8 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull {
+func CatalogDetailToFull(ctx context.Context, d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull {
+	characters := catalogRosterToNextMoe(ctx, d.Characters)
 	f := dto.NextMoeGalgameDetailFull{
 		ID:               gid,
 		ContentLimit:     contentLimitOf(d.ClaimedBy, d.ContentRating),
@@ -18,15 +19,15 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		Updated:          d.Updated,
 		Created:          d.Created,
 		Refs:             refsMap(d.Refs),
-		Staff:            catalogStaffFromCredits(d.Credits),
-		Characters:       catalogRosterToNextMoe(d.Characters),
+		Staff:            catalogStaffFromCredits(ctx, d.Credits, characters),
+		Characters:       characters,
 		Covers:           catalogCoversToNextMoe(d),
 		Screenshots:      catalogScreenshotsToNextMoe(d),
 		Contributor:      []dto.NextMoeContributor{},
 	}
 	f.VndbID = f.Refs["vndb"]
 
-	f.Name, f.NameOriginal = CatalogEntityNames(d.Localized, d.DisplayName, d.Latin)
+	f.Name, f.NameOriginal = CatalogEntityNames(ctx, d.Localized, d.DisplayName, d.Latin)
 	f.Alias = catalogAliases(d, f.Name)
 
 	f.Intros = OrderIntros(d.introRows())
@@ -61,7 +62,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		}
 		labelAt[l.ID] = len(f.Official)
 		f.Official = append(f.Official, dto.NextMoeOfficialRel{Official: dto.NextMoeOfficial{
-			ID: int(l.ID), Name: l.Name(),
+			ID: int(l.ID), Name: l.Name(ctx),
 			Category:     l.LabelKind,
 			Roles:        appendUniqueStr(nil, l.Kind),
 			Lang:         l.Lang,
@@ -70,12 +71,12 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		}})
 	}
 	for _, sr := range d.Series {
-		f.Series = append(f.Series, dto.NextMoeSeriesRef{ID: int(sr.ID), Name: sr.Label()})
+		f.Series = append(f.Series, dto.NextMoeSeriesRef{ID: int(sr.ID), Name: sr.Label(ctx)})
 	}
 	for _, e := range d.Engines {
 		var ew dto.NextMoeEngineWithAlias
 		ew.Engine.ID = int(e.ID)
-		ew.Engine.Name = e.Label()
+		ew.Engine.Name = e.Label(ctx)
 		ew.Engine.Alias = []string{}
 		ew.Engine.GalgameCount = e.WorkCount
 		f.Engine = append(f.Engine, ew)
@@ -214,7 +215,7 @@ func (d *catWorkDetail) introRows() []CatalogIntro {
 	return d.Intro
 }
 
-func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharacter {
+func catalogRosterToNextMoe(ctx context.Context, chars []catWorkCharacter) []dto.NextMoeGalgameCharacter {
 	out := make([]dto.NextMoeGalgameCharacter, 0, len(chars))
 	for _, c := range chars {
 		if c.DisplayName == "" && c.Latin == "" {
@@ -222,9 +223,9 @@ func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharac
 		}
 		voices := make([]dto.NextMoeCharacterVoice, 0, len(c.Voices))
 		for _, v := range c.Voices {
-			voices = append(voices, dto.NextMoeCharacterVoice{ID: int(v.ID), Name: v.Name()})
+			voices = append(voices, dto.NextMoeCharacterVoice{ID: int(v.ID), Name: v.Name(ctx)})
 		}
-		name, original := CatalogEntityNames(c.Localized, c.DisplayName, c.Latin)
+		name, original := CatalogEntityNames(ctx, c.Localized, c.DisplayName, c.Latin)
 		out = append(out, dto.NextMoeGalgameCharacter{
 			ID: int(c.ID), Name: name, NameOriginal: original, Latin: c.Latin,
 			Kind: c.Kind, Spoiler: c.Spoiler, Identity: c.Identity,

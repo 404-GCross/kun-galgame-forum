@@ -185,7 +185,7 @@ func (s *SearchService) SearchGalgames(
 		if !client.CatalogItemRenderable(&res.Items[i]) {
 			continue
 		}
-		items = append(items, client.CatalogItemToNextMoeItem(&res.Items[i]))
+		items = append(items, client.CatalogItemToNextMoeItem(ctx, &res.Items[i]))
 	}
 
 	return &dto.PaginatedResult[galgameDto.GalgameCard]{

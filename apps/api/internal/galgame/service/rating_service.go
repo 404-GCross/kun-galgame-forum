@@ -402,7 +402,7 @@ func (s *RatingService) buildRatingGalgame(
 		Official: []dto.RatingOfficial{},
 	}
 	if d, found, appErr := s.galgameClient.CatalogWorkDetail(ctx, galgameID); appErr == nil && found {
-		g := client.CatalogDetailToFull(d, galgameID)
+		g := client.CatalogDetailToFull(ctx, d, galgameID)
 		s.galgameClient.HydrateOfficialLinks(ctx, &g)
 		summary.ID = g.ID
 		summary.EffectiveBannerHash = g.EffectiveBannerHash

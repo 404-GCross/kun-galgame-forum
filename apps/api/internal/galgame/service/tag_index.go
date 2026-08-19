@@ -47,7 +47,7 @@ func (s *TagService) buildIndex(ctx context.Context) ([]indexedTag, *errors.AppE
 			}
 			rows = append(rows, indexedTag{
 				item: dto.TagListItem{
-					ID: int(t.ID), Name: t.Label(),
+					ID: int(t.ID), Name: t.VocabularyLabel(),
 					Category: tagCategory(t.Kind, t.Sexual), GalgameCount: t.WorkCount,
 				},
 				sexual: t.Sexual,

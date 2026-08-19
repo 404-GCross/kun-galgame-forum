@@ -42,6 +42,7 @@ export const kungalgameStoreReset = () => {
   persistSettingsStore.showKUNGalgamePageTransparency = 80
   persistSettingsStore.showKUNGalgameFontStyle = 'system-ui'
   persistSettingsStore.showKUNGalgameContentLimit = 'sfw'
+  persistSettingsStore.showKUNGalgamePreferOriginalName = false
   persistSettingsStore.showKUNGalgameBackground = 0
   persistSettingsStore.showKUNGalgameBackgroundBlur = 0
   persistSettingsStore.showKUNGalgameBackgroundBrightness = 100

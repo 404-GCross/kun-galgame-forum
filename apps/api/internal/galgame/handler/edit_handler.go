@@ -166,7 +166,7 @@ func (h *EditHandler) entryOf(ctx context.Context, workID int64) editEntry {
 	if h.galgameClient != nil {
 		if rows, appErr := h.galgameClient.CatalogRowsByGIDs(ctx, []int{gid}, "names", "all"); appErr == nil {
 			if row, ok := rows[gid]; ok {
-				brief := client.CatalogItemToBrief(&row)
+				brief := client.CatalogItemToBrief(ctx, &row)
 				entry.Name = client.BriefName(&brief)
 			}
 		}
@@ -547,7 +547,7 @@ func (h *EditHandler) enrich(ctx context.Context, items []catalogclient.EditProp
 			briefs = make(map[int]client.GalgameBrief, len(rows))
 			for gid := range rows {
 				row := rows[gid]
-				briefs[gid] = client.CatalogItemToBrief(&row)
+				briefs[gid] = client.CatalogItemToBrief(ctx, &row)
 			}
 		}
 	}

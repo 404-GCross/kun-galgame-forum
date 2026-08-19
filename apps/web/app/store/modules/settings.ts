@@ -24,6 +24,11 @@ export const usePersistSettingsStore = defineStore(
     >(SETTINGS_DEFAULT_FONT_FAMILY)
     const showKUNGalgameContentLimit =
       ref<KUNGalgameSettingsStore['showKUNGalgameContentLimit']>('sfw')
+    // Read by the API off this store's cookie, not sent as a field: every name
+    // the site shows is elected server-side, so the switch has to reach the
+    // request that renders them.
+    const showKUNGalgamePreferOriginalName =
+      ref<KUNGalgameSettingsStore['showKUNGalgamePreferOriginalName']>(false)
     const showKUNGalgameBackground =
       ref<KUNGalgameSettingsStore['showKUNGalgameBackground']>(0)
     const showKUNGalgameBackgroundBlur =
@@ -140,6 +145,7 @@ export const usePersistSettingsStore = defineStore(
       showKUNGalgamePageTransparency,
       showKUNGalgameFontStyle,
       showKUNGalgameContentLimit,
+      showKUNGalgamePreferOriginalName,
       showKUNGalgameBackground,
       showKUNGalgameBackgroundBlur,
       showKUNGalgameBackgroundBrightness,

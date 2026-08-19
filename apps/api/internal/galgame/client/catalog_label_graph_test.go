@@ -57,16 +57,16 @@ func TestCatalogLabelRelationGraphReadsTheContractShape(t *testing.T) {
 	if len(graph.Nodes) != 3 || len(graph.Edges) != 2 {
 		t.Fatalf("graph = %d nodes / %d edges, want 3/2", len(graph.Nodes), len(graph.Edges))
 	}
-	if graph.Nodes[0].LocalName() != "猫猫社" || graph.Nodes[0].WorkCount != 33 {
+	if graph.Nodes[0].LocalName(context.Background()) != "猫猫社" || graph.Nodes[0].WorkCount != 33 {
 		t.Errorf("seed node = %+v, want 猫猫社/33", graph.Nodes[0])
 	}
-	if graph.Nodes[1].LocalName() != "VisualArt's" {
-		t.Errorf("untranslated node = %q, want its display_name", graph.Nodes[1].LocalName())
+	if graph.Nodes[1].LocalName(context.Background()) != "VisualArt's" {
+		t.Errorf("untranslated node = %q, want its display_name", graph.Nodes[1].LocalName(context.Background()))
 	}
 	// A node still on the pre-reshape wire has to keep rendering, so the two
 	// shapes can be deployed in either order.
-	if graph.Nodes[2].LocalName() != "Na-Ga" {
-		t.Errorf("bare-name node = %q, want Na-Ga", graph.Nodes[2].LocalName())
+	if graph.Nodes[2].LocalName(context.Background()) != "Na-Ga" {
+		t.Errorf("bare-name node = %q, want Na-Ga", graph.Nodes[2].LocalName(context.Background()))
 	}
 	if graph.Nodes[1].LogoHash != "" {
 		t.Errorf("logoless node kept %q", graph.Nodes[1].LogoHash)

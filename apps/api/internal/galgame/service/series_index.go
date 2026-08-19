@@ -97,7 +97,7 @@ func (s *SeriesService) buildCard(ctx context.Context, row seriesIndexRow) index
 		if !client.CatalogItemRenderable(&members.Items[i]) {
 			continue
 		}
-		it := client.CatalogItemToNextMoeItem(&members.Items[i])
+		it := client.CatalogItemToNextMoeItem(ctx, &members.Items[i])
 		if it.ID <= 0 {
 			continue
 		}

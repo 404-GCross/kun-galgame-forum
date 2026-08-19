@@ -63,7 +63,7 @@ func (s *ClaimReviewService) PendingQueue(
 	items := make([]PendingClaim, 0, len(page.Items))
 	for i := range page.Items {
 		row := &page.Items[i]
-		name, _ := row.Names()
+		name, _ := row.Names(ctx)
 		items = append(items, PendingClaim{
 			GID:     row.GID(),
 			Name:    name,

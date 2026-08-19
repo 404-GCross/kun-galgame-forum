@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 )
@@ -13,16 +14,18 @@ func TestCatalogProjectionsReadBothNameShapes(t *testing.T) {
 	const reshaped = `{"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}}}`
 	const bare = `{"name":"ねこねこソフト"}`
 
+	ctx := context.Background()
+
 	labels := map[string]func(string) string{
 		"work engine": func(raw string) string {
 			var v catWorkEngine
 			mustDecode(t, raw, &v)
-			return v.Label()
+			return v.Label(ctx)
 		},
 		"work series": func(raw string) string {
 			var v catWorkSeries
 			mustDecode(t, raw, &v)
-			return v.Label()
+			return v.Label(ctx)
 		},
 		"work tag": func(raw string) string {
 			var v catWorkTag
@@ -37,17 +40,17 @@ func TestCatalogProjectionsReadBothNameShapes(t *testing.T) {
 		"engine detail": func(raw string) string {
 			var v CatalogEngineDetail
 			mustDecode(t, raw, &v)
-			return v.Label()
+			return v.Label(ctx)
 		},
 		"series detail": func(raw string) string {
 			var v CatalogSeriesDetail
 			mustDecode(t, raw, &v)
-			return v.Label()
+			return v.Label(ctx)
 		},
 		"relation node": func(raw string) string {
 			var v CatalogLabelRelationNode
 			mustDecode(t, raw, &v)
-			return v.LocalName()
+			return v.LocalName(ctx)
 		},
 	}
 

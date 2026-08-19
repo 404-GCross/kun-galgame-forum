@@ -25,6 +25,8 @@ func (a *App) setupRoutes() {
 
 	api := a.Fiber.Group("/api")
 
+	api.Use(middleware.NamePreference)
+
 	api.Get("/home", a.HomeHandler.GetHome)
 
 	api.Post("/trust/callback", a.TrustHandler.Callback)

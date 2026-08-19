@@ -304,7 +304,7 @@ func (s *SubmissionService) wizardItems(
 		if !client.CatalogItemWizardEligible(row) {
 			continue
 		}
-		b := client.CatalogItemToBrief(row)
+		b := client.CatalogItemToBrief(ctx, row)
 		items = append(items, b)
 	}
 	return items, res.Total, nil

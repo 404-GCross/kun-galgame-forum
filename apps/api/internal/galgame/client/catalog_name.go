@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/namepref"
 )
 
 const catalogNameCreditsCap = 50
@@ -101,8 +103,8 @@ type CatalogPerson struct {
 	Localized   map[string]catLocalizedName `json:"localized"`
 }
 
-func (p *CatalogPerson) Name() string {
-	return CatalogEntityName(p.Localized, p.DisplayName, p.Latin)
+func (p *CatalogPerson) Name(ctx context.Context) string {
+	return CatalogEntityName(ctx, p.Localized, p.DisplayName, p.Latin)
 }
 
 var catalogZhLocales = []string{"zh-Hans", "zh", "zh-Hant"}
@@ -200,21 +202,46 @@ func PickCatalogName(displayName, latin string) string {
 // terminal across every projection of the public face — detail records, roster
 // rows, voices, credits, via_label and search hits all carry the same three
 // fields — so there is exactly one render path and no projection needs its own.
-func CatalogEntityName(localized map[string]catLocalizedName, displayName, latin string) string {
-	if zh := pickLocalized(localized, catalogZhLocales); zh != "" {
+//
+// A reader who asked for 原名 flips the head of that chain, which is why the
+// preference travels on the context rather than a parameter: one switch here
+// reaches every projection, and a projection that took its own shortcut would
+// silently keep rendering Chinese.
+func CatalogEntityName(ctx context.Context, localized map[string]catLocalizedName, displayName, latin string) string {
+	zh := pickLocalized(localized, catalogZhLocales)
+	if namepref.PrefersOriginal(ctx) {
+		return cmp.Or(displayName, zh, latin)
+	}
+	if zh != "" {
 		return zh
 	}
 	return PickCatalogName(displayName, latin)
 }
 
-// CatalogEntityNames adds the record's own name for a secondary line, empty
-// when that is already what CatalogEntityName rendered.
-func CatalogEntityNames(localized map[string]catLocalizedName, displayName, latin string) (name, original string) {
-	name = CatalogEntityName(localized, displayName, latin)
-	if displayName != "" && displayName != name {
-		original = displayName
+// CatalogEntityNames adds the name the reader did not choose for a secondary
+// line, empty when that is already what CatalogEntityName rendered.
+func CatalogEntityNames(ctx context.Context, localized map[string]catLocalizedName, displayName, latin string) (name, original string) {
+	name = CatalogEntityName(ctx, localized, displayName, latin)
+	other := displayName
+	if namepref.PrefersOriginal(ctx) {
+		other = pickLocalized(localized, catalogZhLocales)
+	}
+	if other != "" && other != name {
+		original = other
 	}
 	return name, original
+}
+
+// CatalogVocabularyName renders a translated controlled vocabulary — tags,
+// character traits. It deliberately ignores the 原名 preference: a tag's
+// non-Chinese form is the English vocabulary token it was imported under, so
+// honouring the preference here answers 金发 with Blonde, which is neither a
+// name nor Japanese.
+func CatalogVocabularyName(localized map[string]catLocalizedName, vocabulary string) string {
+	if zh := pickLocalized(localized, catalogZhLocales); zh != "" {
+		return zh
+	}
+	return vocabulary
 }
 
 func pickLocalized(localized map[string]catLocalizedName, locales []string) string {

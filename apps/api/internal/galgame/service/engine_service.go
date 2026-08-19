@@ -35,7 +35,7 @@ func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *err
 		for _, e := range res.Items {
 			items = append(items, dto.EngineListItem{
 				ID:           int(e.ID),
-				Name:         e.Label(),
+				Name:         e.Label(ctx),
 				Description:  e.Description,
 				Alias:        emptyStrSliceIfNil(e.Aliases),
 				GalgameCount: e.WorkCount,
@@ -75,7 +75,7 @@ func (s *EngineService) GetDetail(
 
 	return &dto.EngineDetail{
 		ID:           int(e.ID),
-		Name:         e.Label(),
+		Name:         e.Label(ctx),
 		Description:  e.Description,
 		Alias:        emptyStrSliceIfNil(e.Aliases),
 		Galgame:      listCardsToEntityCards(page.Galgames),

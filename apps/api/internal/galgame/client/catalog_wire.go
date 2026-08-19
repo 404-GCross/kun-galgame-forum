@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -94,8 +95,8 @@ type catWorkLabel struct {
 	WorkCount   int                         `json:"work_count"`
 }
 
-func (l *catWorkLabel) Name() string {
-	return CatalogEntityName(l.Localized, l.DisplayName, "")
+func (l *catWorkLabel) Name(ctx context.Context) string {
+	return CatalogEntityName(ctx, l.Localized, l.DisplayName, "")
 }
 
 type catWorkEngine struct {
@@ -106,8 +107,8 @@ type catWorkEngine struct {
 	WorkCount   int                         `json:"work_count"`
 }
 
-func (e *catWorkEngine) Label() string {
-	return CatalogEntityName(e.Localized, cmp.Or(e.DisplayName, e.Name), "")
+func (e *catWorkEngine) Label(ctx context.Context) string {
+	return CatalogEntityName(ctx, e.Localized, cmp.Or(e.DisplayName, e.Name), "")
 }
 
 type catWorkLink struct {
@@ -170,8 +171,8 @@ type CatalogLabelVia struct {
 	Localized   map[string]catLocalizedName `json:"localized"`
 }
 
-func (v *CatalogLabelVia) Name() string {
-	return CatalogEntityName(v.Localized, v.DisplayName, "")
+func (v *CatalogLabelVia) Name(ctx context.Context) string {
+	return CatalogEntityName(ctx, v.Localized, v.DisplayName, "")
 }
 
 // catWorkBrief is the shared work projection embedded in the character, name,
@@ -377,8 +378,8 @@ func coverFields(covers *catCoverSlots, fallbackURL string) (hash, url string, w
 	return hashFromURL(slot.URL), slot.URL, slot.Width, slot.Height, slot.Thumbhash
 }
 
-func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
-	name, original := it.Names()
+func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBrief {
+	name, original := it.Names(ctx)
 	b := GalgameBrief{
 		ID:               it.gid(),
 		Name:             name,
@@ -407,21 +408,21 @@ func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 // title underneath. Wave 212 put the same primitive on works that every other
 // catalog entity has had since wave 209, retiring the four product-locale slots
 // that structurally could not hold a Korean, Russian or untagged title.
-func (it *CatalogWorkListItem) Names() (name, original string) {
-	return CatalogEntityNames(it.Localized, it.DisplayName, it.Latin)
+func (it *CatalogWorkListItem) Names(ctx context.Context) (name, original string) {
+	return CatalogEntityNames(ctx, it.Localized, it.DisplayName, it.Latin)
 }
 
-func CatalogItemToDetailBrief(it *CatalogWorkListItem) GalgameDetailBrief {
-	b := GalgameDetailBrief{GalgameBrief: CatalogItemToBrief(it)}
+func CatalogItemToDetailBrief(ctx context.Context, it *CatalogWorkListItem) GalgameDetailBrief {
+	b := GalgameDetailBrief{GalgameBrief: CatalogItemToBrief(ctx, it)}
 	b.Intros = OrderIntros(it.Intros)
 	for _, l := range it.Labels {
-		b.Officials = append(b.Officials, l.Name())
+		b.Officials = append(b.Officials, l.Name(ctx))
 	}
 	return b
 }
 
-func CatalogItemToNextMoeItem(it *CatalogWorkListItem) dto.NextMoeGalgameItem {
-	name, original := it.Names()
+func CatalogItemToNextMoeItem(ctx context.Context, it *CatalogWorkListItem) dto.NextMoeGalgameItem {
+	name, original := it.Names(ctx)
 	m := dto.NextMoeGalgameItem{
 		ID:               it.gid(),
 		Name:             name,

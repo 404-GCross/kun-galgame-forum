@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -14,7 +15,7 @@ func creditGroup(key, name string, people ...string) catCreditGroup {
 }
 
 func TestCatalogStaff_FoldsDuplicateRolesAndSpellings(t *testing.T) {
-	staff := catalogStaffFromCredits([]catCreditGroup{
+	staff := catalogStaffFromCredits(context.Background(), []catCreditGroup{
 		creditGroup("voice-actor", "声优", "桃瀬ひな"),
 		creditGroup("developer", "开发", "アンモライト"),
 		creditGroup("illustration", "插画", "一河のあ"),
@@ -22,7 +23,7 @@ func TestCatalogStaff_FoldsDuplicateRolesAndSpellings(t *testing.T) {
 		creditGroup("music", "音乐", "水城 新人", "水城新人(獅子王院みづき、新澄トキ)"),
 		creditGroup("原画", "原画", "一河のあ"),
 		creditGroup("音乐", "音乐", "水城新人"),
-	})
+	}, nil)
 
 	byKey := map[string]int{}
 	keys := make([]string, 0, len(staff))
@@ -65,7 +66,7 @@ func TestCatalogStaff_VoiceActorCollectsCharacters(t *testing.T) {
 		g.Credits = append(g.Credits, catCreditItem{ID: 7, DisplayName: "五十嵐裕美", Character: ch})
 	}
 
-	staff := catalogStaffFromCredits([]catCreditGroup{g})
+	staff := catalogStaffFromCredits(context.Background(), []catCreditGroup{g}, nil)
 	if len(staff) != 1 || len(staff[0].People) != 1 {
 		t.Fatalf("one VA = %d groups / %d people, want 1/1", len(staff), len(staff[0].People))
 	}
@@ -75,11 +76,11 @@ func TestCatalogStaff_VoiceActorCollectsCharacters(t *testing.T) {
 }
 
 func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
-	staff := catalogStaffFromCredits([]catCreditGroup{
+	staff := catalogStaffFromCredits(context.Background(), []catCreditGroup{
 		creditGroup("other-staff", "其他", "STUDIO696", "ワムソフト", "胡太郎"),
 		creditGroup("qa", "QA", "RainbowcatcherBM"),
 		creditGroup("scenario", "脚本", "雪仁"),
-	})
+	}, nil)
 	keys := make([]string, 0, len(staff))
 	for _, g := range staff {
 		keys = append(keys, g.RoleKey)
@@ -90,11 +91,11 @@ func TestCatalogStaff_OtherStaffSinksToTheBottom(t *testing.T) {
 }
 
 func TestCatalogStaff_OtherStaffYieldsToClassifiedRoles(t *testing.T) {
-	staff := catalogStaffFromCredits([]catCreditGroup{
+	staff := catalogStaffFromCredits(context.Background(), []catCreditGroup{
 		creditGroup("scenario", "脚本", "雪仁"),
 		creditGroup("原画", "原画", "一河のあ"),
 		creditGroup("other-staff", "其他", "雪 仁", "一河のあ", "胡太郎"),
-	})
+	}, nil)
 
 	var other []string
 	for _, g := range staff {
@@ -110,10 +111,10 @@ func TestCatalogStaff_OtherStaffYieldsToClassifiedRoles(t *testing.T) {
 }
 
 func TestCatalogStaff_OtherStaffDropsWhenFullyDuplicated(t *testing.T) {
-	staff := catalogStaffFromCredits([]catCreditGroup{
+	staff := catalogStaffFromCredits(context.Background(), []catCreditGroup{
 		creditGroup("scenario", "脚本", "雪仁"),
 		creditGroup("other-staff", "其他", "雪仁"),
-	})
+	}, nil)
 	for _, g := range staff {
 		if g.RoleKey == "other-staff" {
 			t.Errorf("emptied 其他 still renders with %d people", len(g.People))

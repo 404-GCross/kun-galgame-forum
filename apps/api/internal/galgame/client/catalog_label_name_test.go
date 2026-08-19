@@ -32,7 +32,7 @@ func TestCatalogLabel_RendersTheChineseNameAndDecodesObjectAliases(t *testing.T)
 		t.Fatalf("label: found=%v movedTo=%d err=%v", found, movedTo, appErr)
 	}
 
-	name, original := CatalogEntityNames(rec.Localized, rec.DisplayName, "")
+	name, original := CatalogEntityNames(context.Background(), rec.Localized, rec.DisplayName, "")
 	if name != "猫猫社" || original != "ねこねこソフト" {
 		t.Errorf("name/original = %q/%q, want 猫猫社/ねこねこソフト", name, original)
 	}

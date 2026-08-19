@@ -144,7 +144,7 @@ func TestCatalogWorkListItem_NameComesFromTheLocalizedPrimitive(t *testing.T) {
 	if err := json.Unmarshal([]byte(liveRow(4242, 777, "Kun")), &it); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	name, original := it.Names()
+	name, original := it.Names(context.Background())
 	if name != "KunCN" {
 		t.Errorf("name = %q, want the Chinese title KunCN", name)
 	}
@@ -156,7 +156,7 @@ func TestCatalogWorkListItem_NameComesFromTheLocalizedPrimitive(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"display_name":"Kun","latin":"KunLatin","localized":{}}`), &bare); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if name, original := bare.Names(); name != "Kun" || original != "" {
+	if name, original := bare.Names(context.Background()); name != "Kun" || original != "" {
 		t.Errorf("no Chinese on file = (%q, %q), want the work's own title once and no "+
 			"second line repeating it", name, original)
 	}
@@ -590,7 +590,7 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	if members[1].GID != 778 || members[1].Via == nil {
 		t.Fatalf("rolled-up work = %+v, want gid 778 with a via", members[1])
 	}
-	if members[1].Via.ID != 24 || members[1].Via.Name() != "键社" {
+	if members[1].Via.ID != 24 || members[1].Via.Name(context.Background()) != "键社" {
 		t.Errorf("via = %+v, want id 24 rendered as 键社", *members[1].Via)
 	}
 }

@@ -368,8 +368,8 @@ type catCreditItem struct {
 	Character   string                      `json:"character"`
 }
 
-func (c *catCreditItem) Name() string {
-	return CatalogEntityName(c.Localized, c.DisplayName, c.Latin)
+func (c *catCreditItem) Name(ctx context.Context) string {
+	return CatalogEntityName(ctx, c.Localized, c.DisplayName, c.Latin)
 }
 
 type catWorkTag struct {
@@ -386,7 +386,7 @@ type catWorkTag struct {
 }
 
 func (t *catWorkTag) Label() string {
-	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
+	return CatalogVocabularyName(t.Localized, cmp.Or(t.DisplayName, t.Name))
 }
 
 type catWorkSeries struct {
@@ -396,8 +396,8 @@ type catWorkSeries struct {
 	Localized   map[string]catLocalizedName `json:"localized"`
 }
 
-func (s *catWorkSeries) Label() string {
-	return CatalogEntityName(s.Localized, cmp.Or(s.DisplayName, s.Name), "")
+func (s *catWorkSeries) Label(ctx context.Context) string {
+	return CatalogEntityName(ctx, s.Localized, cmp.Or(s.DisplayName, s.Name), "")
 }
 
 func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWorkDetail, bool, *errors.AppError) {

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"cmp"
+	"context"
 	"slices"
 	"sort"
 	"strings"
@@ -46,7 +48,18 @@ const staffRoleLast = "other-staff"
 
 const StaffRoleOtherKey = staffRoleLast
 
-func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
+// roster is the work's own character list, already rendered. A credit row
+// carries only catalog's raw character string, so a 声优 credit printed
+// スィーリア・クマーニ・エイントリー while the character panel two sections down
+// on the same page printed 苏莉亚·库玛尼·爱因特里 for that same character.
+func catalogStaffFromCredits(
+	ctx context.Context, groups []catCreditGroup, roster []dto.NextMoeGalgameCharacter,
+) []dto.NextMoeStaffGroup {
+	rosterName := make(map[int]string, len(roster))
+	for _, c := range roster {
+		rosterName[c.ID] = c.Name
+	}
+
 	type bucket struct {
 		name   string
 		people []dto.NextMoeStaffName
@@ -75,7 +88,7 @@ func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 			b.name = g.RoleName
 		}
 		for _, c := range g.Credits {
-			name := c.Name()
+			name := c.Name(ctx)
 			norm := normalizeCreditName(name)
 			if norm == "" {
 				continue
@@ -90,8 +103,8 @@ func catalogStaffFromCredits(groups []catCreditGroup) []dto.NextMoeStaffGroup {
 			} else if len(name) < len(b.people[i].Name) {
 				b.people[i].Name = name
 			}
-			if c.Character != "" {
-				b.people[i].Characters = appendUniqueStr(b.people[i].Characters, c.Character)
+			if character := cmp.Or(rosterName[int(c.CharacterID)], c.Character); character != "" {
+				b.people[i].Characters = appendUniqueStr(b.people[i].Characters, character)
 			}
 		}
 	}

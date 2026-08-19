@@ -46,7 +46,7 @@ func (s *OfficialService) Search(
 	}
 	items := make([]dto.TaxonomySearchItem, 0, len(hits))
 	for _, o := range hits {
-		items = append(items, dto.TaxonomySearchItem{ID: int(o.ID), Name: o.Name()})
+		items = append(items, dto.TaxonomySearchItem{ID: int(o.ID), Name: o.Name(ctx)})
 	}
 	return items, nil
 }
@@ -81,7 +81,7 @@ func (s *OfficialService) GetDetail(
 			continue
 		}
 		viaIDs = append(viaIDs, m.GID)
-		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name()}
+		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name(ctx)}
 	}
 
 	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
@@ -97,7 +97,7 @@ func (s *OfficialService) GetDetail(
 		cards[i].ViaOfficial = viaByGID[cards[i].ID]
 	}
 
-	name, original := client.CatalogEntityNames(o.Localized, o.DisplayName, "")
+	name, original := client.CatalogEntityNames(ctx, o.Localized, o.DisplayName, "")
 	intro := preferredIntro(o.Intros)
 
 	return &dto.OfficialDetail{
@@ -135,7 +135,7 @@ func (s *OfficialService) GetRelationGraph(ctx context.Context, id string) (*dto
 	for _, n := range graph.Nodes {
 		out.Nodes = append(out.Nodes, dto.OfficialRelationNode{
 			ID:        int(n.ID),
-			Name:      n.LocalName(),
+			Name:      n.LocalName(ctx),
 			Logo:      s.galgameClient.ImageURLFromHash(n.LogoHash),
 			WorkCount: n.WorkCount,
 		})

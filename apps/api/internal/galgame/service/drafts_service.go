@@ -61,7 +61,7 @@ func (s *DraftsService) GetDrafts(
 		return nil, appErr
 	}
 	return &dto.DraftsPage{
-		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items)),
+		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, res.Items)),
 		Total: res.Total,
 	}, nil
 }

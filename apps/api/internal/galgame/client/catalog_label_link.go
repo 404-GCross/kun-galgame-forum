@@ -34,7 +34,7 @@ func (c *GalgameClient) HydrateOfficialLinks(
 		}
 	}
 	links, appErr := cachedBatch(
-		&c.labelLinkMu, c.labelLinkCache, ids, false,
+		ctx, &c.labelLinkMu, c.labelLinkCache, ids, false,
 		func(missing []int) (map[int]string, *errors.AppError) {
 			return c.fetchLabelLinks(ctx, missing), nil
 		},

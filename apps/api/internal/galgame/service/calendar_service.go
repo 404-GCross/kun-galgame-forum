@@ -61,7 +61,7 @@ func (s *CalendarService) GetMonth(
 	return &dto.CalendarMonthPage{
 		Month: page.Month,
 		Today: page.Meta.Today,
-		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(page.Items)),
+		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, page.Items)),
 		Meta: dto.CalendarMeta{
 			PrevMonth: shiftMonth(page.Month, -1),
 			NextMonth: shiftMonth(page.Month, +1),
@@ -89,7 +89,7 @@ func (s *CalendarService) GetPending(
 	}
 	return &dto.CalendarPendingPage{
 		Year:  page.Year,
-		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(page.Items)),
+		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, page.Items)),
 		Count: int(page.Count),
 	}, nil
 }
@@ -104,7 +104,7 @@ func (s *CalendarService) GetTBA(
 		return nil, appErr
 	}
 	return &dto.CalendarTBAPage{
-		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(page.Items)),
+		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, page.Items)),
 		Count: int(page.Count),
 	}, nil
 }
@@ -151,7 +151,7 @@ func (s *CalendarService) GetUpcoming(
 			// that month, so a month-precision entry in the current month stays
 			// visible instead of dropping out.
 			if it.ReleaseDate != nil && *it.ReleaseDate >= monthOf(today) {
-				flat = append(flat, client.CatalogItemToNextMoeItem(it))
+				flat = append(flat, client.CatalogItemToNextMoeItem(ctx, it))
 			}
 		}
 	}

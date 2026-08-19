@@ -24,8 +24,8 @@ type CatalogLabelRelationNode struct {
 	WorkCount   int                         `json:"work_count"`
 }
 
-func (n *CatalogLabelRelationNode) LocalName() string {
-	return CatalogEntityName(n.Localized, cmp.Or(n.DisplayName, n.Name), "")
+func (n *CatalogLabelRelationNode) LocalName(ctx context.Context) string {
+	return CatalogEntityName(ctx, n.Localized, cmp.Or(n.DisplayName, n.Name), "")
 }
 
 type CatalogLabelRelationEdge struct {

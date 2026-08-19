@@ -51,7 +51,7 @@ func (s *CharacterService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该角色")
 	}
 
-	name, original := client.CatalogEntityNames(ch.Localized, ch.DisplayName, ch.Latin)
+	name, original := client.CatalogEntityNames(ctx, ch.Localized, ch.DisplayName, ch.Latin)
 
 	detail := &dto.GalgameCharacterDetail{
 		ID:           int(ch.ID),
@@ -92,10 +92,10 @@ func (s *CharacterService) GetDetail(
 		voices := make([]dto.GalgameDetailCharacterVoice, 0, len(w.Voices))
 		for _, v := range w.Voices {
 			voices = append(voices, dto.GalgameDetailCharacterVoice{
-				ID: int(v.ID), Name: v.Name(), Lang: v.Lang, Latin: v.Latin,
+				ID: int(v.ID), Name: v.Name(ctx), Lang: v.Lang, Latin: v.Latin,
 			})
 		}
-		items = append(items, client.CatalogItemToNextMoeItem(&row))
+		items = append(items, client.CatalogItemToNextMoeItem(ctx, &row))
 		detail.Works = append(detail.Works, dto.GalgameCharacterWork{
 			CatalogID: int(row.ID),
 			Voices:    voices,

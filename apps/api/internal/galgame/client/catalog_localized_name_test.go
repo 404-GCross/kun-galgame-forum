@@ -1,6 +1,9 @@
 package client
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestPickCatalogName_HeadlineIsTheCreditedName(t *testing.T) {
 	for _, tc := range []struct {
@@ -71,7 +74,7 @@ func TestCatalogEntityName_RendersTheChineseNameWhenThereIsOne(t *testing.T) {
 			displayName: "轻文轻小说", wantName: "轻文轻小说",
 		},
 	} {
-		name, origin := CatalogEntityNames(tc.localized, tc.displayName, tc.latin)
+		name, origin := CatalogEntityNames(context.Background(), tc.localized, tc.displayName, tc.latin)
 		if name != tc.wantName || origin != tc.wantOrigin {
 			t.Errorf("%s: got (name=%q, original=%q), want (name=%q, original=%q)",
 				tc.why, name, origin, tc.wantName, tc.wantOrigin)

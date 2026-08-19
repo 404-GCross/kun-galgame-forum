@@ -74,7 +74,7 @@ func (s *TagService) Search(
 		if sexual[int(h.ID)] {
 			continue
 		}
-		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.Name()})
+		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.VocabularyName()})
 	}
 	return items, nil
 }
@@ -106,7 +106,7 @@ func (s *TagService) GetByMultiTag(
 		return nil, appErr
 	}
 	return &TagMultiPage{
-		Galgames: s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items)),
+		Galgames: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, res.Items)),
 		Total:    res.Total,
 	}, nil
 }
@@ -181,13 +181,13 @@ func (s *TagService) GetDetail(
 	}, nil
 }
 
-func catalogItemsToNextMoe(items []client.CatalogWorkListItem) []dto.NextMoeGalgameItem {
+func catalogItemsToNextMoe(ctx context.Context, items []client.CatalogWorkListItem) []dto.NextMoeGalgameItem {
 	out := make([]dto.NextMoeGalgameItem, 0, len(items))
 	for i := range items {
 		if !client.CatalogItemRenderable(&items[i]) {
 			continue
 		}
-		out = append(out, client.CatalogItemToNextMoeItem(&items[i]))
+		out = append(out, client.CatalogItemToNextMoeItem(ctx, &items[i]))
 	}
 	return out
 }

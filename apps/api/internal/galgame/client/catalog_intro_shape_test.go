@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 )
@@ -28,7 +29,7 @@ func TestCatalogIntros_ListBriefReadsBothShapes(t *testing.T) {
 		if err := json.Unmarshal([]byte(tc.body), &it); err != nil {
 			t.Fatalf("%s: unmarshal: %v", tc.shape, err)
 		}
-		b := CatalogItemToDetailBrief(&it)
+		b := CatalogItemToDetailBrief(context.Background(), &it)
 		// Both shapes have to land on the same canonical tags, and the site
 		// reads Chinese first, so zh-Hans leads whichever way the wire came.
 		if len(b.Intros) != 2 {

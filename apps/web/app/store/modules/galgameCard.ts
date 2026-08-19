@@ -10,9 +10,10 @@ export const usePersistGalgameCardStore = defineStore(
     const showLanguage = ref(true)
     const showNsfwBadge = ref(true)
     const showPublisher = ref(true)
-    // Shows the work's own title under the Chinese one. Still named for the
-    // Japanese title it used to be: the key is persisted, so renaming it resets
-    // the preference for everyone who has ever changed it.
+    // Shows whichever title the reader did not pick under the one they did —
+    // the work's own title by default, the Chinese one under 优先显示日语原名.
+    // Still named for the Japanese title it used to be: the key is persisted,
+    // so renaming it resets the preference for everyone who has ever changed it.
     const showJapaneseName = ref(false)
     const isOpenInNewTab = ref(false)
 

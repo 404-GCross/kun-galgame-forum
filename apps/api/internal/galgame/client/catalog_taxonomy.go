@@ -29,8 +29,14 @@ type CatalogTaxonomyItem struct {
 
 const TagTierHidden = "hidden"
 
-func (t CatalogTaxonomyItem) Label() string {
-	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
+func (t CatalogTaxonomyItem) Label(ctx context.Context) string {
+	return CatalogEntityName(ctx, t.Localized, cmp.Or(t.DisplayName, t.Name), "")
+}
+
+// The same row is a tag on one list and a 会社 / 系列 / 引擎 on the next, and
+// only the caller knows which.
+func (t CatalogTaxonomyItem) VocabularyLabel() string {
+	return CatalogVocabularyName(t.Localized, cmp.Or(t.DisplayName, t.Name))
 }
 
 type CatalogTaxonomyPage struct {
@@ -70,7 +76,7 @@ type CatalogTagDetail struct {
 }
 
 func (t *CatalogTagDetail) Label() string {
-	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
+	return CatalogVocabularyName(t.Localized, cmp.Or(t.DisplayName, t.Name))
 }
 
 type CatalogEngineDetail struct {
@@ -83,8 +89,8 @@ type CatalogEngineDetail struct {
 	WorkCount   int                         `json:"work_count"`
 }
 
-func (e *CatalogEngineDetail) Label() string {
-	return CatalogEntityName(e.Localized, cmp.Or(e.DisplayName, e.Name), "")
+func (e *CatalogEngineDetail) Label(ctx context.Context) string {
+	return CatalogEntityName(ctx, e.Localized, cmp.Or(e.DisplayName, e.Name), "")
 }
 
 type CatalogSeriesDetail struct {
@@ -96,8 +102,8 @@ type CatalogSeriesDetail struct {
 	Intros      []CatalogIntro              `json:"intros"`
 }
 
-func (s *CatalogSeriesDetail) Label() string {
-	return CatalogEntityName(s.Localized, cmp.Or(s.DisplayName, s.Name), "")
+func (s *CatalogSeriesDetail) Label(ctx context.Context) string {
+	return CatalogEntityName(ctx, s.Localized, cmp.Or(s.DisplayName, s.Name), "")
 }
 
 func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, q url.Values) (*CatalogTaxonomyPage, *errors.AppError) {
@@ -215,8 +221,12 @@ type CatalogEntityHit struct {
 	Kind        string                      `json:"kind"`
 }
 
-func (h *CatalogEntityHit) Name() string {
-	return CatalogEntityName(h.Localized, h.DisplayName, h.Latin)
+func (h *CatalogEntityHit) Name(ctx context.Context) string {
+	return CatalogEntityName(ctx, h.Localized, h.DisplayName, h.Latin)
+}
+
+func (h *CatalogEntityHit) VocabularyName() string {
+	return CatalogVocabularyName(h.Localized, h.DisplayName)
 }
 
 func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, *errors.AppError) {
@@ -244,7 +254,7 @@ func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, key
 
 func (c *GalgameClient) CatalogSexualTagIDs(ctx context.Context, ids []int) map[int]bool {
 	flags, appErr := cachedBatch(
-		&c.tagSexualMu, c.tagSexualCache, ids, false,
+		ctx, &c.tagSexualMu, c.tagSexualCache, ids, false,
 		func(missing []int) (map[int]bool, *errors.AppError) {
 			return c.fetchSexualTagIDs(ctx, missing), nil
 		},

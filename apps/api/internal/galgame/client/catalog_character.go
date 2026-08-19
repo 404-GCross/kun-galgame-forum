@@ -59,11 +59,8 @@ func (t *CatalogCharacterTrait) LocalGroup() string {
 }
 
 func catalogTraitName(localized map[string]catLocalizedName, zh, vocabulary string) string {
-	if v := pickLocalized(localized, catalogZhLocales); v != "" {
+	if v := CatalogVocabularyName(localized, zh); v != "" {
 		return v
-	}
-	if zh != "" {
-		return zh
 	}
 	return vocabulary
 }

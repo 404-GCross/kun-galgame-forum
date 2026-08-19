@@ -7,6 +7,7 @@ export interface KUNGalgameSettingsStore {
   showKUNGalgamePageTransparency: number
   showKUNGalgameFontStyle: string
   showKUNGalgameContentLimit: string
+  showKUNGalgamePreferOriginalName: boolean
   showKUNGalgameBackground: number
   showKUNGalgameBackgroundBlur: number
   showKUNGalgameBackgroundBrightness: number

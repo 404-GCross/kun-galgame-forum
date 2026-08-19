@@ -15,15 +15,20 @@ import (
 
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/namepref"
 )
 
 const briefCacheTTL = 2 * time.Minute
 
 const batchCacheMaxEntries = 4096
 
+// origName is part of the key because the cached values hold names this
+// request already rendered: without it, the first reader to warm an entry
+// decides which language every other reader sees for the next two minutes.
 type batchCacheKey struct {
-	id  int
-	sfw bool
+	id       int
+	sfw      bool
+	origName bool
 }
 
 type batchCacheEntry[T any] struct {
@@ -33,18 +38,20 @@ type batchCacheEntry[T any] struct {
 }
 
 func cachedBatch[T any](
+	ctx context.Context,
 	mu *sync.RWMutex,
 	cache map[batchCacheKey]batchCacheEntry[T],
 	ids []int,
 	sfw bool,
 	fetch func([]int) (map[int]T, *errors.AppError),
 ) (map[int]T, *errors.AppError) {
+	origName := namepref.PrefersOriginal(ctx)
 	result := make(map[int]T, len(ids))
 	var missing []int
 	now := time.Now()
 	mu.RLock()
 	for _, id := range ids {
-		if e, ok := cache[batchCacheKey{id, sfw}]; ok && now.Before(e.expire) {
+		if e, ok := cache[batchCacheKey{id, sfw, origName}]; ok && now.Before(e.expire) {
 			if e.found {
 				result[id] = e.val
 			}
@@ -67,7 +74,7 @@ func cachedBatch[T any](
 	}
 	for _, id := range missing {
 		v, ok := fetched[id]
-		cache[batchCacheKey{id, sfw}] = batchCacheEntry[T]{found: ok, val: v, expire: expire}
+		cache[batchCacheKey{id, sfw, origName}] = batchCacheEntry[T]{found: ok, val: v, expire: expire}
 		if ok {
 			result[id] = v
 		}
@@ -259,7 +266,7 @@ type GalgameDetailBrief struct {
 }
 
 func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameDetailBrief, *errors.AppError) {
-	return cachedBatch(&c.detailMu, c.detailCache, ids, isSFW, func(miss []int) (map[int]GalgameDetailBrief, *errors.AppError) {
+	return cachedBatch(ctx, &c.detailMu, c.detailCache, ids, isSFW, func(miss []int) (map[int]GalgameDetailBrief, *errors.AppError) {
 		rows, appErr := c.CatalogRowsByGIDs(ctx, miss, catalogDetailBriefInclude, contentLimitFor(isSFW))
 		if appErr != nil {
 			return nil, appErr
@@ -267,7 +274,7 @@ func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isS
 		result := make(map[int]GalgameDetailBrief, len(rows))
 		for gid := range rows {
 			row := rows[gid]
-			result[gid] = CatalogItemToDetailBrief(&row)
+			result[gid] = CatalogItemToDetailBrief(ctx, &row)
 		}
 		return result, nil
 	})
@@ -278,7 +285,7 @@ func (c *GalgameClient) GetBatch(ctx context.Context, ids []int) (map[int]Galgam
 }
 
 func (c *GalgameClient) GetBatchPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameBrief, *errors.AppError) {
-	return cachedBatch(&c.briefMu, c.briefCache, ids, isSFW, func(miss []int) (map[int]GalgameBrief, *errors.AppError) {
+	return cachedBatch(ctx, &c.briefMu, c.briefCache, ids, isSFW, func(miss []int) (map[int]GalgameBrief, *errors.AppError) {
 		return c.batchByGIDs(ctx, miss, contentLimitFor(isSFW))
 	})
 }
@@ -294,7 +301,7 @@ func (c *GalgameClient) batchByGIDs(ctx context.Context, ids []int, contentLimit
 	result := make(map[int]GalgameBrief, len(rows))
 	for gid := range rows {
 		row := rows[gid]
-		result[gid] = CatalogItemToBrief(&row)
+		result[gid] = CatalogItemToBrief(ctx, &row)
 	}
 	return result, nil
 }

@@ -57,7 +57,7 @@ func (s *SeriesService) walkIndex(ctx context.Context) ([]seriesIndexRow, *error
 			items = append(items, seriesIndexRow{
 				SeriesListItem: dto.SeriesListItem{
 					ID:           int(e.ID),
-					Name:         e.Label(),
+					Name:         e.Label(ctx),
 					GalgameCount: e.WorkCount,
 				},
 				hasNSFW: e.HasNSFW,
@@ -131,7 +131,7 @@ func (s *SeriesService) cardsByID(ctx context.Context, ids []int, isSFW bool) *d
 				return
 			}
 			built := s.buildCard(ctx, seriesIndexRow{
-				SeriesListItem: dto.SeriesListItem{ID: int(rec.ID), Name: rec.Label()},
+				SeriesListItem: dto.SeriesListItem{ID: int(rec.ID), Name: rec.Label(ctx)},
 				hasNSFW:        rec.HasNSFW,
 			})
 			if built.card.GalgameCount == 0 {
@@ -177,7 +177,7 @@ func (s *SeriesService) GetDetail(
 
 	return &dto.SeriesDetail{
 		ID:                 int(rec.ID),
-		Name:               rec.Label(),
+		Name:               rec.Label(ctx),
 		Description:        seriesIntro(rec),
 		Galgame:            listCardsToEntityCards(page.Galgames),
 		GalgameCount:       page.Total,
@@ -204,7 +204,7 @@ func (s *SeriesService) unpublishedMembers(ctx context.Context, id string, isSFW
 	if appErr != nil {
 		return []dto.GalgameCard{}
 	}
-	return s.enricher.ToCards(ctx, catalogItemsToNextMoe(res.Items))
+	return s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, res.Items))
 }
 
 func seriesIntro(rec *client.CatalogSeriesDetail) string {
