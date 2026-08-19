@@ -232,6 +232,7 @@ func BriefName(b *GalgameBrief) string {
 
 type GalgameBrief struct {
 	ID                  int     `json:"id"`
+	WorkID              int64   `json:"work_id"`
 	VndbID              string  `json:"vndb_id"`
 	NameEnUs            string  `json:"name_en_us"`
 	NameJaJp            string  `json:"name_ja_jp"`

@@ -112,6 +112,35 @@ func (s *SubmissionService) Claim(
 	return res, nil
 }
 
+// ClaimUnclaimed claims a bodyless catalog work (claim state "none") on behalf
+// of the user: it first adopts the work (claim: none → draft, anchoring it to
+// the forum via product_work_id = work id) and then publishes it (publish:
+// draft → live). The registry-issued work id becomes the forum gid, matching
+// what SubmitWork already does for brand-new submissions.
+func (s *SubmissionService) ClaimUnclaimed(
+	ctx context.Context,
+	accessToken string,
+	uid int64,
+	workID int64,
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	if _, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionClaim, catalogclient.UserClaimActionRequest{
+		ProductWorkID: workID,
+	}); err != nil {
+		return nil, claimActionError(err)
+	}
+	res, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionPublish, catalogclient.UserClaimActionRequest{})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), int(workID)); err != nil {
+		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", workID, "error", err)
+	}
+	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
+		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", int(workID)),
+		moemoepoint.Key("claim", strconv.FormatInt(workID, 10), strconv.FormatInt(uid, 10)))
+	return res, nil
+}
+
 func (s *SubmissionService) Resubmit(
 	ctx context.Context,
 	accessToken string,
@@ -285,8 +314,7 @@ func (s *SubmissionService) wizardItems(
 		"q":           {query.Get("q")},
 		"page":        {strconv.Itoa(atoiOr(query.Get("page"), 1))},
 		"limit":       {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
-		"claimed":     {"true"},
-		"claim_state": {client.ClaimStateWizard},
+		"claim_state": {client.ClaimStateWizardWithNone},
 		"include":     {wizardSearchInclude},
 	}
 	client.OpenPopulation(q)
@@ -298,7 +326,7 @@ func (s *SubmissionService) wizardItems(
 	items := make([]client.GalgameBrief, 0, len(res.Items))
 	for i := range res.Items {
 		row := &res.Items[i]
-		if !client.CatalogItemRenderable(row) || client.CatalogItemGID(row) == 0 {
+		if !client.CatalogItemWizardEligible(row) {
 			continue
 		}
 		b := client.CatalogItemToBrief(row)

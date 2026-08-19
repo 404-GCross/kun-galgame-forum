@@ -81,11 +81,11 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if got := rec.catalogQ.Get("claim_state"); got != "live,draft,pending" {
-		t.Errorf("claim_state = %q, want live,draft,pending — `live` alone hides every unpublished entry", got)
+	if got := rec.catalogQ.Get("claim_state"); got != "live,draft,pending,none" {
+		t.Errorf("claim_state = %q, want live,draft,pending,none — `live` alone hides every unpublished entry, and omitting `none` hides the bodyless supply", got)
 	}
-	if got := rec.catalogQ.Get("claimed"); got != "true" {
-		t.Errorf("claimed = %q, want true — an unclaimed work has no gid to act on", got)
+	if got := rec.catalogQ.Get("claimed"); got != "" {
+		t.Errorf("claimed = %q, want it absent — the wizard must also surface unclaimed works", got)
 	}
 	if got := rec.catalogQ.Get("q"); got != "sakura" {
 		t.Errorf("q = %q, want sakura", got)
@@ -111,18 +111,21 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if len(page.Items) != 2 {
-		t.Fatalf("items = %d, want 2 (hidden claim and unclaimed row are not actionable)", len(page.Items))
+	if len(page.Items) != 3 {
+		t.Fatalf("items = %d, want 3 (only the hidden row is not actionable)", len(page.Items))
 	}
 	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 {
 		t.Errorf("ids = %d,%d, want the gids 292,9978", page.Items[0].ID, page.Items[1].ID)
 	}
+	if page.Items[2].ID != 0 || page.Items[2].WorkID != 14 {
+		t.Errorf("unclaimed row = id %d work_id %d, want gid 0 + catalog work id 14", page.Items[2].ID, page.Items[2].WorkID)
+	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)
 	}
-	if page.Items[0].ClaimState != "live" || page.Items[1].ClaimState != "draft" {
-		t.Errorf("claim_state = %q,%q, want live,draft — the wizard branches on it",
-			page.Items[0].ClaimState, page.Items[1].ClaimState)
+	if page.Items[0].ClaimState != "live" || page.Items[1].ClaimState != "draft" || page.Items[2].ClaimState != "draft" {
+		t.Errorf("claim_state = %q,%q,%q, want live,draft,draft — the wizard branches on it",
+			page.Items[0].ClaimState, page.Items[1].ClaimState, page.Items[2].ClaimState)
 	}
 	if page.Items[0].Banner == "" || page.Items[0].Banner != page.Items[0].EffectiveBannerURL {
 		t.Errorf("banner = %q, want it mirrored from effective_banner_url %q",
