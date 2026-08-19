@@ -17,7 +17,7 @@ export interface RankingTopicItem {
 
 export interface RankingGalgameItem {
   id: number
-  name: KunLanguage
+  name: string
   user: KunUser
   effective_banner_hash?: string
   effective_banner_url?: string

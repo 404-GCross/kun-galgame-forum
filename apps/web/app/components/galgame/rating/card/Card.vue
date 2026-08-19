@@ -65,7 +65,7 @@ const systemRating = (rating: GalgameRatingCard) => {
         <h2
           class="hover:text-primary line-clamp-2 font-medium transition-colors"
         >
-          {{ getPreferredLanguageText(rating.galgame.name) }}
+          {{ rating.galgame.name }}
         </h2>
 
         <div class="text-default-700 flex items-center gap-1 text-sm">

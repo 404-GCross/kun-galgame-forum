@@ -28,21 +28,14 @@ type UserBrief struct {
 	Avatar string `json:"avatar"`
 }
 
-type LocaleName struct {
-	EnUS string `json:"en-us"`
-	JaJP string `json:"ja-jp"`
-	ZhCN string `json:"zh-cn"`
-	ZhTW string `json:"zh-tw"`
-}
-
 type GalgameRankingItem struct {
-	ID                  int        `json:"id"`
-	Name                LocaleName `json:"name"`
-	User                UserBrief  `json:"user"`
-	Value               float64    `json:"value"`
-	SortField           string     `json:"sort_field"`
-	EffectiveBannerHash string     `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string     `json:"effective_banner_url,omitempty"`
+	ID                  int       `json:"id"`
+	Name                string    `json:"name"`
+	User                UserBrief `json:"user"`
+	Value               float64   `json:"value"`
+	SortField           string    `json:"sort_field"`
+	EffectiveBannerHash string    `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL  string    `json:"effective_banner_url,omitempty"`
 }
 
 type TopicRankingItem struct {

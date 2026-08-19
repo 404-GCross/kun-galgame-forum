@@ -68,7 +68,7 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 		u := userMap[userclient.DerefID(row.CreatorUserID)]
 		items = append(items, dto.GalgameRSSItem{
 			ID:     row.ID,
-			Name:   pickPreferredName(b),
+			Name:   b.Name,
 			Banner: b.EffectiveBannerURL,
 			User: dto.GalgameRSSUser{
 				ID: u.ID, Name: u.Name, Avatar: u.Avatar,
@@ -78,14 +78,4 @@ func (h *RSSHandler) GetGalgameRSS(c fiber.Ctx) error {
 		})
 	}
 	return response.OK(c, items)
-}
-
-func pickPreferredName(b client.GalgameBrief) string {
-	candidates := []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs}
-	for _, n := range candidates {
-		if n != "" {
-			return n
-		}
-	}
-	return ""
 }

@@ -11,7 +11,7 @@ const { data } = await useKunFetch<GalgameQuizPlay>(
 
 const quiz = data.value
 const galgameNames = (quiz?.galgames ?? [])
-  .map((g) => getPreferredLanguageText(g.name))
+  .map((g) => g.name)
   .filter(Boolean)
   .join('、')
 const banner = quiz?.galgames?.[0]?.banner

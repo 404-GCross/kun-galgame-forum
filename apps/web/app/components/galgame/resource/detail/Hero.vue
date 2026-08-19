@@ -9,7 +9,7 @@ const props = defineProps<{
   galgame: GalgameResourceSummary
 }>()
 
-const galgameName = computed(() => getPreferredLanguageText(props.galgame.name))
+const galgameName = computed(() => props.galgame.name)
 
 const typeLabels = computed(() => {
   if (!props.galgame.type.length) return ['暂无数据']
@@ -43,7 +43,7 @@ const platformLabels = computed(() => {
           loading="eager"
           fetchpriority="high"
           :thumbhash="resolveBannerThumbhash(galgame)"
-          :alt="getPreferredLanguageText(galgame.name)"
+          :alt="galgame.name"
         />
 
         <KunChip

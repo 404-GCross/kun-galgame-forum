@@ -51,11 +51,8 @@ func (s *RankingService) GetGalgameRanking(
 		}
 		u := userMap[userclient.DerefID(r.CreatorUserID)]
 		items = append(items, dto.GalgameRankingItem{
-			ID: r.ID,
-			Name: dto.LocaleName{
-				EnUS: b.NameEnUs, JaJP: b.NameJaJp,
-				ZhCN: b.NameZhCn, ZhTW: b.NameZhTw,
-			},
+			ID:                  r.ID,
+			Name:                b.Name,
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			Value:               r.Value,
 			SortField:           req.SortField,

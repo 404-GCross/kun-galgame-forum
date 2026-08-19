@@ -222,21 +222,14 @@ func BriefName(b *GalgameBrief) string {
 	if b == nil {
 		return ""
 	}
-	for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
-		if n != "" {
-			return n
-		}
-	}
-	return ""
+	return b.Name
 }
 
 type GalgameBrief struct {
 	ID                  int     `json:"id"`
 	VndbID              string  `json:"vndb_id"`
-	NameEnUs            string  `json:"name_en_us"`
-	NameJaJp            string  `json:"name_ja_jp"`
-	NameZhCn            string  `json:"name_zh_cn"`
-	NameZhTw            string  `json:"name_zh_tw"`
+	Name                string  `json:"name"`
+	NameOriginal        string  `json:"name_original"`
 	Status              int     `json:"status"`
 	ClaimState          string  `json:"claim_state,omitempty"`
 	ContentLimit        string  `json:"content_limit"`

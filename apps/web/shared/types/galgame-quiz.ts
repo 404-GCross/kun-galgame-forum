@@ -21,12 +21,12 @@ export type QuizMyStatus =
 export interface QuizGalgameBrief {
   id: number
   content_limit: string
-  name: KunLanguage
+  name: string
 }
 
 export interface QuizGalgameDetail {
   id: number
-  name: KunLanguage
+  name: string
   content_limit: string
   age_limit: string
   original_language: string
@@ -150,7 +150,7 @@ export interface QuizQualityResult {
 
 export interface QuizGalgameOption {
   id: number
-  name: KunLanguage
+  name: string
   banner: string
   banner_thumbhash?: string
   officials: string[]

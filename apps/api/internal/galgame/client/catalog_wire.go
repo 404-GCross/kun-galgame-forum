@@ -40,16 +40,6 @@ type catCoverSlots struct {
 	Banner   *catCoverSlot `json:"banner"`
 }
 
-// catNameSlot is one locale slot of the works-list brief's names block. Wave
-// 210 turned each slot from a bare string into this object; decoding it as a
-// string fails the whole response, which takes down every galgame surface at
-// once — the block rides on /catalog/works, works/search, calendar, and the
-// lookup detail view, and the forum asks for include=names on all of them.
-type catNameSlot struct {
-	Value   string `json:"value"`
-	Machine bool   `json:"machine"`
-}
-
 // catIntros is the works-list brief's intro block, held in the [{lang, intro,
 // source, machine}] shape every other catalog face already sends. Wave 212's
 // second half turns the wire shape from an object keyed by the four product
@@ -156,12 +146,13 @@ type CatalogWorkListItem struct {
 	Cover         string        `json:"cover"`
 	Updated       string        `json:"updated"`
 
-	Names   map[string]catNameSlot `json:"names"`
-	Intros  catIntros              `json:"intros"`
-	Labels  []catWorkLabel         `json:"labels"`
-	Ratings []catRating            `json:"ratings"`
-	Covers  *catCoverSlots         `json:"covers"`
-	Refs    []catRef               `json:"refs"`
+	Localized map[string]catLocalizedName `json:"localized"`
+	Latin     string                      `json:"latin"`
+	Intros    catIntros                   `json:"intros"`
+	Labels    []catWorkLabel              `json:"labels"`
+	Ratings   []catRating                 `json:"ratings"`
+	Covers    *catCoverSlots              `json:"covers"`
+	Refs      []catRef                    `json:"refs"`
 
 	ViaLabel *CatalogLabelVia `json:"via_label"`
 }
@@ -309,6 +300,15 @@ func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
 	}
 }
 
+func (it *CatalogWorkListItem) GID() int { return it.gid() }
+
+func (it *CatalogWorkListItem) ClaimState() string {
+	if it.ClaimedBy == nil {
+		return ""
+	}
+	return it.ClaimedBy.State
+}
+
 func (it *CatalogWorkListItem) gid() int {
 	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
 		return 0
@@ -371,12 +371,11 @@ func coverFields(covers *catCoverSlots, fallbackURL string) (hash, url string, w
 }
 
 func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
+	name, original := it.Names()
 	b := GalgameBrief{
 		ID:               it.gid(),
-		NameEnUs:         it.name("en-us"),
-		NameJaJp:         it.name("ja-jp"),
-		NameZhCn:         it.name("zh-cn"),
-		NameZhTw:         it.name("zh-tw"),
+		Name:             name,
+		NameOriginal:     original,
 		AgeLimit:         ageLimitFromRating(it.ContentRating),
 		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
 		OriginalLanguage: productLocale(it.OLang),
@@ -397,14 +396,12 @@ func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 	return b
 }
 
-func (it *CatalogWorkListItem) name(key string) string {
-	if len(it.Names) == 0 {
-		if key == "ja-jp" {
-			return it.DisplayName
-		}
-		return ""
-	}
-	return it.Names[key].Value
+// Names renders the title this site shows and, when it differs, the work's own
+// title underneath. Wave 212 put the same primitive on works that every other
+// catalog entity has had since wave 209, retiring the four product-locale slots
+// that structurally could not hold a Korean, Russian or untagged title.
+func (it *CatalogWorkListItem) Names() (name, original string) {
+	return CatalogEntityNames(it.Localized, it.DisplayName, it.Latin)
 }
 
 func (it *CatalogWorkListItem) intro(key string) string {
@@ -429,12 +426,11 @@ func CatalogItemToDetailBrief(it *CatalogWorkListItem) GalgameDetailBrief {
 }
 
 func CatalogItemToNextMoeItem(it *CatalogWorkListItem) dto.NextMoeGalgameItem {
+	name, original := it.Names()
 	m := dto.NextMoeGalgameItem{
 		ID:               it.gid(),
-		NameEnUs:         it.name("en-us"),
-		NameJaJp:         it.name("ja-jp"),
-		NameZhCn:         it.name("zh-cn"),
-		NameZhTw:         it.name("zh-tw"),
+		Name:             name,
+		NameOriginal:     original,
 		ReleaseDate:      it.ReleaseDate,
 		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
 		ReleasePrecision: releasePrecisionOf(it.ReleaseDate),

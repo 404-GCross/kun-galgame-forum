@@ -46,10 +46,7 @@ func ratingRowToCard(
 		Galgame: dto.RatingGalgameBrief{
 			ID:           brief.ID,
 			ContentLimit: brief.ContentLimit,
-			Name: dto.KunLanguage{
-				EnUs: brief.NameEnUs, JaJp: brief.NameJaJp,
-				ZhCn: brief.NameZhCn, ZhTw: brief.NameZhTw,
-			},
+			Name:         brief.Name,
 		},
 	}
 }

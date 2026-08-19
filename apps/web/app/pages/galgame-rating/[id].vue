@@ -29,7 +29,7 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
   }
 
   const rating = data.value
-  const titleBase = getPreferredLanguageText(rating.galgame.name)
+  const titleBase = rating.galgame.name
   const pageUrl = `${kungal.domain.main}${route.path}`
   const gameUrl = `${kungal.domain.main}/galgame/${rating.galgame.id}`
 
@@ -125,12 +125,11 @@ if (data.value) {
       ]
     })
 
-    const titleBase = getPreferredLanguageText(data.value.galgame.name)
-    const jaTitle = data.value.galgame.name['ja-jp']
-    const title =
-      jaTitle && titleBase !== jaTitle
-        ? `${data.value.user.name} 对 ${titleBase} (${jaTitle}) 的评价`
-        : `${data.value.user.name} 对 ${titleBase} 的评价`
+    const titleBase = data.value.galgame.name
+    const original = data.value.galgame.name_original
+    const title = original
+      ? `${data.value.user.name} 对 ${titleBase} (${original}) 的评价`
+      : `${data.value.user.name} 对 ${titleBase} 的评价`
 
     const description = (
       data.value.short_summary

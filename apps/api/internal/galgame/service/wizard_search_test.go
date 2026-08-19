@@ -33,7 +33,7 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			body = `{"code":0,"message":"ok","data":{"total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
 			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
-			   "names":{"ja-jp":{"value":"白恋サクラ"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
+			   "localized":{"zh-Hans":{"value":"白恋樱","kind":"official"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
 			  {"id":12,"display_name":"B","cover":"",
 			   "claimed_by":{"site":"kungal","work_id":9978,"state":"draft"}},
 			  {"id":13,"display_name":"withdrawn","cover":"",

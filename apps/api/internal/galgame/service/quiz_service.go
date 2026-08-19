@@ -643,10 +643,7 @@ func (s *QuizService) galgameBriefsFor(ctx context.Context, ids []int) []dto.Qui
 		out = append(out, dto.QuizGalgameBrief{
 			ID:           b.ID,
 			ContentLimit: b.ContentLimit,
-			Name: dto.KunLanguage{
-				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-			},
+			Name:         b.Name,
 		})
 	}
 	return out
@@ -668,11 +665,8 @@ func (s *QuizService) galgamesDetailFor(ctx context.Context, ids []int) []dto.Qu
 			officials = []string{}
 		}
 		out = append(out, dto.QuizGalgameDetail{
-			ID: b.ID,
-			Name: dto.KunLanguage{
-				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-			},
+			ID:               b.ID,
+			Name:             b.Name,
 			ContentLimit:     b.ContentLimit,
 			AgeLimit:         b.AgeLimit,
 			OriginalLanguage: b.OriginalLanguage,
@@ -741,11 +735,8 @@ func (s *QuizService) SearchGalgameOptions(
 			officials = []string{}
 		}
 		options = append(options, dto.QuizGalgameOption{
-			ID: b.ID,
-			Name: dto.KunLanguage{
-				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-			},
+			ID:              b.ID,
+			Name:            b.Name,
 			Banner:          b.EffectiveBannerURL,
 			BannerThumbhash: b.EffectiveBannerThumbhash,
 			Officials:       officials,

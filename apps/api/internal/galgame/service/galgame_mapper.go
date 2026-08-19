@@ -49,13 +49,11 @@ func frozenCreatorIDs(ids []int, localMap map[int]repository.GalgameLocalRow) []
 
 func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]dto.NextMoeUser) dto.GalgameDetail {
 	return dto.GalgameDetail{
-		ID:     g.ID,
-		VndbID: g.VndbID,
-		User:   lookupNextMoeUser(users, g.UserID),
-		Name: dto.KunLanguage{
-			EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-		},
+		ID:           g.ID,
+		VndbID:       g.VndbID,
+		User:         lookupNextMoeUser(users, g.UserID),
+		Name:         g.Name,
+		NameOriginal: g.NameOriginal,
 		Introduction: dto.KunLanguage{
 			EnUs: markdown.Render(g.IntroEnUs),
 			JaJp: markdown.Render(g.IntroJaJp),
@@ -292,10 +290,7 @@ func detailRatingFromRow(
 		Galgame: dto.GalgameDetailRatingGalgame{
 			ID:           g.ID,
 			ContentLimit: g.ContentLimit,
-			Name: dto.KunLanguage{
-				EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-			},
+			Name:         g.Name,
 		},
 	}
 }

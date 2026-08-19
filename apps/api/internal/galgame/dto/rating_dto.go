@@ -86,9 +86,9 @@ type RatingScores struct {
 }
 
 type RatingGalgameBrief struct {
-	ID           int         `json:"id"`
-	ContentLimit string      `json:"content_limit"`
-	Name         KunLanguage `json:"name"`
+	ID           int    `json:"id"`
+	ContentLimit string `json:"content_limit"`
+	Name         string `json:"name"`
 }
 
 type RatingCard struct {
@@ -136,7 +136,8 @@ type RatingGalgameDetail struct {
 	Rating                   int64            `json:"rating"`
 	RatingCount              int64            `json:"rating_count"`
 	Official                 []RatingOfficial `json:"official"`
-	Name                     KunLanguage      `json:"name"`
+	Name                     string           `json:"name"`
+	NameOriginal             string           `json:"name_original"`
 }
 
 type RatingDetail struct {

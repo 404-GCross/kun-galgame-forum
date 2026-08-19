@@ -40,11 +40,9 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 	cards := make([]dto.GalgameCard, len(items))
 	for i, g := range items {
 		cards[i] = dto.GalgameCard{
-			ID: g.ID,
-			Name: dto.KunLanguage{
-				EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-				ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-			},
+			ID:                       g.ID,
+			Name:                     g.Name,
+			NameOriginal:             g.NameOriginal,
 			User:                     frozenCreatorBrief(localMap[g.ID], userMap),
 			ContentLimit:             g.ContentLimit,
 			View:                     localMap[g.ID].View,

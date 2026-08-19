@@ -198,7 +198,7 @@ const correctRate = computed(() =>
             :to="`/galgame/${g.id}`"
             class="text-sm"
           >
-            {{ getPreferredLanguageText(g.name) }}
+            {{ g.name }}
           </KunLink>
           <KunChip
             v-if="

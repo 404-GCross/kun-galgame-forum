@@ -92,7 +92,7 @@ onMounted(async () => {
             </div>
             <div class="min-w-0 flex-1">
               <KunLink :to="`/galgame/${g.id}`" class="font-medium">
-                {{ getPreferredLanguageText(g.name) }}
+                {{ g.name }}
               </KunLink>
               <div class="mt-1 flex flex-wrap items-center gap-1">
                 <KunChip v-if="g.age_limit" size="sm" variant="flat">

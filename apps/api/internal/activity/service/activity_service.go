@@ -899,10 +899,8 @@ func (s *ActivityService) enrichGalgameItems(
 	}
 
 	briefName := func(b client.GalgameBrief) string {
-		for _, n := range []string{b.NameZhCn, b.NameZhTw, b.NameJaJp, b.NameEnUs} {
-			if n != "" {
-				return n
-			}
+		if b.Name != "" {
+			return b.Name
 		}
 		return fmt.Sprintf("galgame#%d", b.ID)
 	}

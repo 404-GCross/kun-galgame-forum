@@ -70,10 +70,8 @@ export interface GalgameEditUser {
 export interface GalgameEditGameBrief {
   id: number
   vndb_id: string
-  name_en_us: string
-  name_ja_jp: string
-  name_zh_cn: string
-  name_zh_tw: string
+  name: string
+  name_original: string
   status: number
   content_limit: string
 }

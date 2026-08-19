@@ -1,12 +1,5 @@
 package dto
 
-type KunLanguage struct {
-	EnUs string `json:"en-us"`
-	JaJp string `json:"ja-jp"`
-	ZhCn string `json:"zh-cn"`
-	ZhTw string `json:"zh-tw"`
-}
-
 type UserBrief struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
@@ -14,19 +7,20 @@ type UserBrief struct {
 }
 
 type UserGalgameCard struct {
-	ID                  int         `json:"id"`
-	Name                KunLanguage `json:"name"`
-	User                UserBrief   `json:"user"`
-	ContentLimit        string      `json:"content_limit"`
-	View                int         `json:"view"`
-	LikeCount           int         `json:"like_count"`
-	ResourceUpdateTime  string      `json:"resource_update_time"`
-	Platform            []string    `json:"platform"`
-	Language            []string    `json:"language"`
-	ReleaseDate         *string     `json:"release_date"`
-	ReleaseDateTBA      bool        `json:"release_date_tba"`
-	EffectiveBannerHash string      `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL  string      `json:"effective_banner_url,omitempty"`
+	ID                  int       `json:"id"`
+	Name                string    `json:"name"`
+	NameOriginal        string    `json:"name_original"`
+	User                UserBrief `json:"user"`
+	ContentLimit        string    `json:"content_limit"`
+	View                int       `json:"view"`
+	LikeCount           int       `json:"like_count"`
+	ResourceUpdateTime  string    `json:"resource_update_time"`
+	Platform            []string  `json:"platform"`
+	Language            []string  `json:"language"`
+	ReleaseDate         *string   `json:"release_date"`
+	ReleaseDateTBA      bool      `json:"release_date_tba"`
+	EffectiveBannerHash string    `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL  string    `json:"effective_banner_url,omitempty"`
 }
 
 type UserGalgameComment struct {

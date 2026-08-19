@@ -21,7 +21,7 @@ const getLanguageName = getGalgameOriginalLanguageName
         :src="getEffectiveBanner(galgame)"
         loading="lazy"
         :thumbhash="resolveBannerThumbhash(galgame)"
-        :alt="getPreferredLanguageText(galgame.name)"
+        :alt="galgame.name"
       />
     </div>
 
@@ -30,7 +30,7 @@ const getLanguageName = getGalgameOriginalLanguageName
         <h1
           class="text-content hover:text-primary text-lg font-bold transition-colors sm:text-2xl"
         >
-          {{ `${getPreferredLanguageText(galgame.name)}` }}
+          {{ `${galgame.name}` }}
         </h1>
       </KunLink>
 

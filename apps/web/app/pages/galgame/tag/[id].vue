@@ -67,7 +67,7 @@ if (isIndexable.value) {
       data.value.description ||
       `含有标签「${data.value.name}」的 Galgame 作品合集, 例如 ${data.value.galgame
         .slice(0, 5)
-        .map((g) => getPreferredLanguageText(g.name))
+        .map((g) => g.name)
         .join('、')} 等。`,
     ...(data.value.galgame[0]?.effective_banner_url
       ? { ogImage: data.value.galgame[0].effective_banner_url }

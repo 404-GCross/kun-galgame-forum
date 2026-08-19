@@ -95,7 +95,8 @@ export interface GalgameDetail {
   id: number
   vndb_id: string
   user: KunUser
-  name: KunLanguage
+  name: string
+  name_original: string
   introduction: KunLanguage
   introduction_machine: KunLanguageFlags
   content_limit: string
@@ -149,7 +150,8 @@ export interface GalgameDetail {
 
 export interface GalgameCard {
   id: number
-  name: KunLanguage
+  name: string
+  name_original: string
   user: KunUser
   content_limit: string
   view: number

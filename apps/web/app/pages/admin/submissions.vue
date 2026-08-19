@@ -7,10 +7,9 @@ definePageMeta({
 useKunDisableSeo('Galgame 审核')
 
 interface PendingClaim {
-  id: number
-  display_name: string
-  claimed_by: { site: string; work_id: number; state: string } | null
-  names?: Record<string, string>
+  gid: number
+  name: string
+  state: string
   updated?: string
 }
 
@@ -59,19 +58,9 @@ const loadMore = async () => {
   nextCursor.value = next.next_cursor ?? ''
 }
 
-const gidOf = (row: PendingClaim) => row.claimed_by?.work_id ?? 0
+const gidOf = (row: PendingClaim) => row.gid
 
-const displayName = (row: PendingClaim): string => {
-  const localized = row.names
-    ? getPreferredLanguageText({
-        'en-us': row.names['en-us'] ?? '',
-        'ja-jp': row.names['ja-jp'] ?? '',
-        'zh-cn': row.names['zh-cn'] ?? '',
-        'zh-tw': row.names['zh-tw'] ?? ''
-      })
-    : ''
-  return localized || row.display_name || `#${gidOf(row)}`
-}
+const displayName = (row: PendingClaim): string => row.name || `#${row.gid}`
 
 const isActing = ref<Record<number, boolean>>({})
 
@@ -81,7 +70,7 @@ const isPreviewOpen = ref(false)
 
 const openPreview = (row: PendingClaim) => {
   previewGid.value = gidOf(row)
-  previewState.value = row.claimed_by?.state ?? ''
+  previewState.value = row.state
   isPreviewOpen.value = true
 }
 
@@ -181,7 +170,7 @@ const handleConfirmReason = async () => {
     <div v-if="items.length" class="flex flex-col gap-3">
       <div
         v-for="row in items"
-        :key="row.id"
+        :key="row.gid"
         class="dark:border-default-200 flex flex-col gap-3 rounded-lg border border-transparent p-3 backdrop-blur-none transition-all duration-200 sm:flex-row sm:items-start"
       >
         <div class="min-w-0 flex-1 space-y-1">
@@ -192,9 +181,9 @@ const handleConfirmReason = async () => {
             <KunChip
               size="xs"
               variant="flat"
-              :color="galgameClaimStateBadge(row.claimed_by?.state).color"
+              :color="galgameClaimStateBadge(row.state).color"
             >
-              {{ galgameClaimStateBadge(row.claimed_by?.state).label }}
+              {{ galgameClaimStateBadge(row.state).label }}
             </KunChip>
           </div>
           <div

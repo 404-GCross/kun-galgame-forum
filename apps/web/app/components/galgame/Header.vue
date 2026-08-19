@@ -52,14 +52,11 @@ const toggleResourceBan = async () => {
   }
 }
 
-const galgameAliasArray = computed(() => {
-  const nameArray = Object.entries(props.galgame.name)
-    .filter(
-      ([_, value]) => value !== getPreferredLanguageText(props.galgame.name)
-    )
-    .map(([_, value]) => value)
-  return nameArray.concat(props.galgame.alias)
-})
+const galgameAliasArray = computed(() =>
+  props.galgame.name_original
+    ? [props.galgame.name_original, ...props.galgame.alias]
+    : props.galgame.alias
+)
 
 const isRatingOpen = ref(false)
 
@@ -86,7 +83,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
       <KunLightboxGallery>
         <KunLightboxGalleryItem
           :src="getEffectivePortrait(galgame)"
-          :alt="getPreferredLanguageText(galgame.name)"
+          :alt="galgame.name"
           :wrap="false"
           v-slot="{ open }"
         >
@@ -96,7 +93,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
             loading="eager"
             fetchpriority="high"
             :thumbhash="resolvePortraitThumbhash(galgame)"
-            :alt="getPreferredLanguageText(galgame.name)"
+            :alt="galgame.name"
             @click="open"
           />
         </KunLightboxGalleryItem>
@@ -134,7 +131,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
     <div class="col-start-2 row-start-1 flex min-w-0 flex-col gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <h1 class="text-2xl md:text-3xl">
-          {{ getPreferredLanguageText(galgame.name) }}
+          {{ galgame.name }}
         </h1>
       </div>
 
@@ -276,7 +273,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
                   menu
                   subject-kind="galgame"
                   :subject-id="galgame.id"
-                  :snapshot="getPreferredLanguageText(galgame.name)"
+                  :snapshot="galgame.name"
                   :subject-url="`${kungal.domain.main}/galgame/${galgame.id}`"
                 />
                 <KunButton

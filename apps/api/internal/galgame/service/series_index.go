@@ -119,10 +119,7 @@ func (s *SeriesService) buildCard(ctx context.Context, row seriesIndexRow) index
 			sampleNSFW = true
 		}
 		card.SampleGalgame = append(card.SampleGalgame, dto.SeriesSample{
-			Name: dto.KunLanguage{
-				EnUs: it.NameEnUs, JaJp: it.NameJaJp,
-				ZhCn: it.NameZhCn, ZhTw: it.NameZhTw,
-			},
+			Name:                     it.Name,
 			EffectiveBannerHash:      it.EffectiveBannerHash,
 			EffectiveBannerURL:       it.EffectiveBannerURL,
 			EffectiveBannerThumbhash: it.EffectiveBannerThumbhash,

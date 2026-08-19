@@ -58,7 +58,7 @@ watch([open, () => props.source], ([isOpen, next]) => {
       <div>
         <h3 class="text-lg font-bold">评分详情</h3>
         <p class="text-default-500 line-clamp-1 text-sm">
-          {{ getPreferredLanguageText(galgame.name) }}
+          {{ galgame.name }}
         </p>
       </div>
 

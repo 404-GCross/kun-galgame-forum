@@ -84,9 +84,7 @@ const upstreamImages = (
     }))
 
 const taxName = (name: unknown): string =>
-  typeof name === 'string'
-    ? name
-    : getPreferredLanguageText(name as never) || ''
+  typeof name === 'string' ? name : ''
 
 interface TaxonomyHit {
   id: number
@@ -349,7 +347,10 @@ export const createGalgameEditConfig = (
     fieldProps: { names: names.character },
     formatItem: (item) => {
       const row = item as { character_id?: number; kind?: number }
-      return names.character?.get(Number(row.character_id)) ?? `#${row.character_id ?? '?'}`
+      return (
+        names.character?.get(Number(row.character_id)) ??
+        `#${row.character_id ?? '?'}`
+      )
     },
     description:
       '只能改已有出演边的主配和剧透档，不能在这里新建或删除。隐藏会从读面拿掉这条边，行仍留在表里给上游导入器。'
@@ -371,10 +372,12 @@ export const createGalgameEditConfig = (
     formatItem: (item) => {
       const row = item as { credit_name_id?: number; role_id?: number }
       const name =
-        names.staff?.get(Number(row.credit_name_id)) ?? `#${row.credit_name_id ?? '?'}`
+        names.staff?.get(Number(row.credit_name_id)) ??
+        `#${row.credit_name_id ?? '?'}`
       return name
     },
-    description: '只管理本站补充的署名。上游导入的署名在详情页制作人员里，不能在这里改，只能整行隐藏。',
+    description:
+      '只管理本站补充的署名。上游导入的署名在详情页制作人员里，不能在这里改，只能整行隐藏。',
     contextNote: UPSTREAM_NOTE,
     contextItems: () =>
       [...(names.staff ?? [])].map(([, name]) => ({ label: name }))

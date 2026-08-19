@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 
-	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/infrastructure/markdown"
@@ -54,13 +53,6 @@ func appendUniqueStr(slice []string, val string) []string {
 		}
 	}
 	return append(slice, val)
-}
-
-func briefToName(b client.GalgameBrief) dto.KunLanguage {
-	return dto.KunLanguage{
-		EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-		ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-	}
 }
 
 func userBriefToDTO(u userclient.User) dto.UserBrief {

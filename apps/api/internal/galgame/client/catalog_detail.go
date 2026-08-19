@@ -26,12 +26,8 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	}
 	f.VndbID = f.Refs["vndb"]
 
-	names, aliases := catalogTitles(d)
-	f.NameJaJp, f.NameZhCn, f.NameZhTw, f.NameEnUs = names[0], names[1], names[2], names[3]
-	if f.NameJaJp == "" && f.NameZhCn == "" && f.NameZhTw == "" && f.NameEnUs == "" {
-		f.NameJaJp = d.DisplayName
-	}
-	f.Alias = aliases
+	f.Name, f.NameOriginal = CatalogEntityNames(d.Localized, d.DisplayName, d.Latin)
+	f.Alias = catalogAliases(d, f.Name)
 
 	intros, machine := catalogIntros(d)
 	f.IntroJaJp, f.IntroZhCn, f.IntroZhTw, f.IntroEnUs = intros.JaJp, intros.ZhCn, intros.ZhTw, intros.EnUs
@@ -197,24 +193,20 @@ func catalogTagCategory(kind string, sexual bool) string {
 	return kind
 }
 
-func catalogTitles(d *catWorkDetail) (names [4]string, aliases []dto.NextMoeAlias) {
-	aliases = []dto.NextMoeAlias{}
-	idx := map[string]int{"ja-jp": 0, "zh-cn": 1, "zh-tw": 2, "en-us": 3}
+// catalogAliases lists every other title the work is known by. titles[] is the
+// full row set rather than the four slots the old election squeezed them into,
+// so a Korean or untagged title now reaches the reader instead of vanishing.
+func catalogAliases(d *catWorkDetail, rendered string) []dto.NextMoeAlias {
+	out := []dto.NextMoeAlias{}
+	seen := map[string]bool{rendered: true, d.DisplayName: true, "": true}
 	for _, t := range d.Titles {
-		key := productLocale(t.Lang)
-		i, isProductKey := idx[key]
-		if isProductKey && t.Kind == "official" && names[i] == "" {
-			names[i] = t.Title
+		if seen[t.Title] {
 			continue
 		}
-		aliases = append(aliases, dto.NextMoeAlias{Name: t.Title})
+		seen[t.Title] = true
+		out = append(out, dto.NextMoeAlias{Name: t.Title})
 	}
-	for _, t := range d.Titles {
-		if i, ok := idx[productLocale(t.Lang)]; ok && names[i] == "" {
-			names[i] = t.Title
-		}
-	}
-	return names, aliases
+	return out
 }
 
 func (d *catWorkDetail) introRows() []CatalogIntro {

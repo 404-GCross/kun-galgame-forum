@@ -24,9 +24,20 @@ func NewClaimReviewService(
 
 const pendingQueueLimit = 30
 
+// PendingClaim is the review queue's own row. It used to serialise the raw
+// catalog list item, which handed the admin page catalog's wire shape — the
+// four-slot names block among it — and re-elected the display title in
+// TypeScript instead of reusing the one election every other surface uses.
+type PendingClaim struct {
+	GID     int    `json:"gid"`
+	Name    string `json:"name"`
+	State   string `json:"state"`
+	Updated string `json:"updated"`
+}
+
 type PendingQueuePage struct {
-	Items      []client.CatalogWorkListItem `json:"items"`
-	NextCursor string                       `json:"next_cursor"`
+	Items      []PendingClaim `json:"items"`
+	NextCursor string         `json:"next_cursor"`
 }
 
 func (s *ClaimReviewService) PendingQueue(
@@ -49,9 +60,16 @@ func (s *ClaimReviewService) PendingQueue(
 	if appErr != nil {
 		return nil, appErr
 	}
-	items := page.Items
-	if items == nil {
-		items = []client.CatalogWorkListItem{}
+	items := make([]PendingClaim, 0, len(page.Items))
+	for i := range page.Items {
+		row := &page.Items[i]
+		name, _ := row.Names()
+		items = append(items, PendingClaim{
+			GID:     row.GID(),
+			Name:    name,
+			State:   row.ClaimState(),
+			Updated: row.Updated,
+		})
 	}
 	return &PendingQueuePage{Items: items, NextCursor: page.NextCursor}, nil
 }

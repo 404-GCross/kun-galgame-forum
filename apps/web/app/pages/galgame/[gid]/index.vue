@@ -40,7 +40,7 @@ if (galgame && galgame.status !== GalgameStatus.Published) {
 
 if (galgame) {
   if (galgame.content_limit === 'nsfw') {
-    const title = getPreferredLanguageText(galgame.name)
+    const title = galgame.name
     const trustedVisitor = !!userId || isNsfwMode.value
     useKunDisableSeo(trustedVisitor ? title : '')
 
@@ -48,10 +48,9 @@ if (galgame) {
       isShowGalgame.value = false
     }
   } else {
-    const titleBase = getPreferredLanguageText(galgame.name)
-    const jaTitle = galgame.name['ja-jp']
-    const title =
-      jaTitle && titleBase !== jaTitle ? `${titleBase} | ${jaTitle}` : titleBase
+    const titleBase = galgame.name
+    const original = galgame.name_original
+    const title = original ? `${titleBase} | ${original}` : titleBase
     const pageUrl = `${kungal.domain.main}${route.path}`
 
     const developer = galgame.official[0]?.name

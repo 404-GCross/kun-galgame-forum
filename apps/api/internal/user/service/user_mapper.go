@@ -1,8 +1,6 @@
 package service
 
 import (
-	"kun-galgame-api/internal/galgame/client"
-	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/repository"
 )
 
@@ -20,13 +18,6 @@ func emptyStrSlice(s []string) []string {
 		return []string{}
 	}
 	return s
-}
-
-func briefToLocale(b client.GalgameBrief) dto.KunLanguage {
-	return dto.KunLanguage{
-		EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-		ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-	}
 }
 
 func groupResourceMeta(rows []repository.GalgameResourceMeta) (platforms, languages map[int][]string) {

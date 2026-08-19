@@ -58,24 +58,25 @@ type GalgameScreenshot struct {
 }
 
 type GalgameListCard struct {
-	ID                       int         `json:"id"`
-	Name                     KunLanguage `json:"name"`
-	User                     UserBrief   `json:"user"`
-	ContentLimit             string      `json:"content_limit"`
-	View                     int         `json:"view"`
-	LikeCount                int         `json:"like_count"`
-	Rating                   float64     `json:"rating"`
-	RatingCount              int         `json:"rating_count"`
-	ResourceUpdateTime       string      `json:"resource_update_time"`
-	Platform                 []string    `json:"platform"`
-	Language                 []string    `json:"language"`
-	ReleaseDate              *string     `json:"release_date"`
-	ReleaseDateTBA           bool        `json:"release_date_tba"`
-	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int         `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int         `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string      `json:"effective_banner_thumbhash,omitempty"`
+	ID                       int       `json:"id"`
+	Name                     string    `json:"name"`
+	NameOriginal             string    `json:"name_original"`
+	User                     UserBrief `json:"user"`
+	ContentLimit             string    `json:"content_limit"`
+	View                     int       `json:"view"`
+	LikeCount                int       `json:"like_count"`
+	Rating                   float64   `json:"rating"`
+	RatingCount              int       `json:"rating_count"`
+	ResourceUpdateTime       string    `json:"resource_update_time"`
+	Platform                 []string  `json:"platform"`
+	Language                 []string  `json:"language"`
+	ReleaseDate              *string   `json:"release_date"`
+	ReleaseDateTBA           bool      `json:"release_date_tba"`
+	EffectiveBannerHash      string    `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string    `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int       `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int       `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string    `json:"effective_banner_thumbhash,omitempty"`
 }
 
 type GalgameListPage struct {
@@ -161,9 +162,9 @@ type GalgameDetailCharacterVoice struct {
 }
 
 type GalgameDetailRatingGalgame struct {
-	ID           int         `json:"id"`
-	ContentLimit string      `json:"content_limit"`
-	Name         KunLanguage `json:"name"`
+	ID           int    `json:"id"`
+	ContentLimit string `json:"content_limit"`
+	Name         string `json:"name"`
 }
 
 type GalgameDetailRating struct {
@@ -217,7 +218,8 @@ type GalgameDetail struct {
 	ID                         int                      `json:"id"`
 	VndbID                     string                   `json:"vndb_id"`
 	User                       UserBrief                `json:"user"`
-	Name                       KunLanguage              `json:"name"`
+	Name                       string                   `json:"name"`
+	NameOriginal               string                   `json:"name_original"`
 	Introduction               KunLanguage              `json:"introduction"`
 	IntroductionMachine        KunLanguageFlags         `json:"introduction_machine"`
 	IntroText                  string                   `json:"intro_text"`

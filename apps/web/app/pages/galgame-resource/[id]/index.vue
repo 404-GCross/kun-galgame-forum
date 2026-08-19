@@ -15,7 +15,7 @@ const { data, refresh } = await useKunFetch<
 })
 
 if (data.value && data.value !== 'not found') {
-  const titleBase = getPreferredLanguageText(data.value.galgame.name)
+  const titleBase = data.value.galgame.name
 
   if (data.value.galgame.content_limit === 'nsfw') {
     useKunDisableSeo(titleBase)

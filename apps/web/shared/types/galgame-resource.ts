@@ -30,12 +30,12 @@ export interface GalgameResourceDetailLink extends GalgameResource {
 }
 
 export interface GalgameResourceCard extends GalgameResource {
-  galgame_name: KunLanguage
+  galgame_name: string
 }
 
 export interface GalgameResourceSummary {
   id: number
-  name: KunLanguage
+  name: string
   effective_banner_hash?: string
   effective_banner_url?: string
   effective_banner_width?: number

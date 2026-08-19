@@ -36,7 +36,7 @@ const { data } = await useKunFetch<RankingGalgameItem[]>('/ranking/galgame', {
         <div class="flex-1">
           <div class="flex flex-col items-start justify-between gap-3">
             <h2 class="font-semibold">
-              {{ getPreferredLanguageText(galgame.name) }}
+              {{ galgame.name }}
             </h2>
             <div class="mt-1 flex items-center gap-2">
               <KunAvatar

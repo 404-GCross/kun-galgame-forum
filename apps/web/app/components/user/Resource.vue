@@ -110,7 +110,7 @@ const submitFix = async (index: number) => {
             color="default"
             class-name="mb-2 inline-flex items-center gap-1 text-lg font-medium hover:text-primary"
           >
-            {{ getPreferredLanguageText(res.galgame_name) }}
+            {{ res.galgame_name }}
             <KunIcon
               name="lucide:arrow-up-right"
               class="text-base opacity-60"
@@ -169,7 +169,7 @@ const submitFix = async (index: number) => {
           :href="`/galgame/${res.galgame_id}?tab=resource`"
         >
           <div>
-            {{ getPreferredLanguageText(res.galgame_name) }}
+            {{ res.galgame_name }}
           </div>
 
           <div class="flex items-center justify-between">

@@ -130,26 +130,35 @@ func liveRow(catalogID int64, gid int, name string) string {
 	return `{"id":` + itoa(catalogID) + `,"medium":"galgame","display_name":"` + name +
 		`","content_rating":"all_ages","olang":"ja","release_date":"2024-06-14",` +
 		`"claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
-		`"updated":"2026-01-01T00:00:00Z","names":{"ja-jp":{"value":"` + name +
-		`"},"zh-cn":{"value":"` + name + `CN","machine":true}},` +
+		`"updated":"2026-01-01T00:00:00Z","latin":"` + name + `Latin",` +
+		`"localized":{"zh-Hans":{"value":"` + name + `CN","kind":"official","machine":true}},` +
 		`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null},` +
 		`"refs":[{"source":"dlsite","external_id":"RJ01"},{"source":"vndb","external_id":"v19658"}]}`
 }
 
-func TestCatalogWorkListItem_NamesBlockIsAnObjectPerSlot(t *testing.T) {
+// Wave 212 retired the four product-locale slots for the primitive every other
+// catalog entity has carried since wave 209. The slots could not hold a Korean,
+// Russian or untagged title at all, and 41,386 production rows have no lang.
+func TestCatalogWorkListItem_NameComesFromTheLocalizedPrimitive(t *testing.T) {
 	var it CatalogWorkListItem
 	if err := json.Unmarshal([]byte(liveRow(4242, 777, "Kun")), &it); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got := it.Names["ja-jp"]; got.Value != "Kun" || got.Machine {
-		t.Errorf("ja-jp = %+v, want the source title Kun with machine false", got)
+	name, original := it.Names()
+	if name != "KunCN" {
+		t.Errorf("name = %q, want the Chinese title KunCN", name)
 	}
-	if got := it.Names["zh-cn"]; got.Value != "KunCN" || !got.Machine {
-		t.Errorf("zh-cn = %+v, want KunCN flagged machine — the flag is the only way a "+
-			"reader can tell a translated title from one the publisher shipped", got)
+	if original != "Kun" {
+		t.Errorf("original = %q, want the work's own title Kun on the second line", original)
 	}
-	if got := it.name("zh-tw"); got != "" {
-		t.Errorf("absent slot = %q, want empty rather than a fallback into another locale", got)
+
+	var bare CatalogWorkListItem
+	if err := json.Unmarshal([]byte(`{"display_name":"Kun","latin":"KunLatin","localized":{}}`), &bare); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if name, original := bare.Names(); name != "Kun" || original != "" {
+		t.Errorf("no Chinese on file = (%q, %q), want the work's own title once and no "+
+			"second line repeating it", name, original)
 	}
 }
 
@@ -189,7 +198,7 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 	if _, leaked := got[4242]; leaked {
 		t.Error("result is keyed by the catalog id — the two id spaces overlap, so this attaches another game's local stats")
 	}
-	if b.NameJaJp != "Kun" || b.NameZhCn != "KunCN" {
+	if b.Name != "KunCN" || b.NameOriginal != "Kun" {
 		t.Errorf("names not projected: %+v", b)
 	}
 	if b.EffectiveBannerURL != "https://cdn.example/ab/cd/abcdef.webp" || b.EffectiveBannerThumbhash != "TH" {

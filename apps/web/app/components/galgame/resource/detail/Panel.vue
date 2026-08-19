@@ -29,7 +29,7 @@ const resourcePlatformLabel = computed(
     KUN_GALGAME_RESOURCE_PLATFORM_MAP[props.resource.platform] ||
     props.resource.platform
 )
-const galgameTitle = getPreferredLanguageText(props.galgame.name)
+const galgameTitle = props.galgame.name
 </script>
 
 <template>

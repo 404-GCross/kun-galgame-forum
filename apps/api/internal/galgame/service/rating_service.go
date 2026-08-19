@@ -238,12 +238,7 @@ func (s *RatingService) CreateRating(
 		Galgame: dto.RatingGalgameBrief{
 			ID:           req.GalgameID,
 			ContentLimit: briefMap[req.GalgameID].ContentLimit,
-			Name: dto.KunLanguage{
-				EnUs: briefMap[req.GalgameID].NameEnUs,
-				JaJp: briefMap[req.GalgameID].NameJaJp,
-				ZhCn: briefMap[req.GalgameID].NameZhCn,
-				ZhTw: briefMap[req.GalgameID].NameZhTw,
-			},
+			Name:         briefMap[req.GalgameID].Name,
 		},
 	}, nil
 }
@@ -418,10 +413,8 @@ func (s *RatingService) buildRatingGalgame(
 		summary.ContentLimit = g.ContentLimit
 		summary.AgeLimit = g.AgeLimit
 		summary.OriginalLanguage = g.OriginalLanguage
-		summary.Name = dto.KunLanguage{
-			EnUs: g.NameEnUs, JaJp: g.NameJaJp,
-			ZhCn: g.NameZhCn, ZhTw: g.NameZhTw,
-		}
+		summary.Name = g.Name
+		summary.NameOriginal = g.NameOriginal
 		summary.Official = nextMoeOfficialsToDTO(g.Official)
 	}
 

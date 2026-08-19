@@ -12,15 +12,7 @@ const briefName = (item: GalgameEditProposalItem): string => {
   if (!item.galgame) {
     return `Galgame #${item.gid || item.entity_id}`
   }
-  const name: KunLanguage = {
-    'en-us': item.galgame.name_en_us,
-    'ja-jp': item.galgame.name_ja_jp,
-    'zh-cn': item.galgame.name_zh_cn,
-    'zh-tw': item.galgame.name_zh_tw
-  }
-  return (
-    getPreferredLanguageText(name) || `Galgame #${item.gid || item.entity_id}`
-  )
+  return item.galgame.name || `Galgame #${item.gid || item.entity_id}`
 }
 
 const withdrawing = ref(false)

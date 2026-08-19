@@ -43,7 +43,7 @@ export type UserGalgame = GalgameCard
 export interface UserGalgameResource {
   id: number
   galgame_id: number
-  galgame_name: KunLanguage
+  galgame_name: string
   type: string
   language: string
   platform: string

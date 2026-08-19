@@ -78,20 +78,20 @@ type DeleteQuizRequest struct {
 }
 
 type QuizGalgameBrief struct {
-	ID           int         `json:"id"`
-	ContentLimit string      `json:"content_limit"`
-	Name         KunLanguage `json:"name"`
+	ID           int    `json:"id"`
+	ContentLimit string `json:"content_limit"`
+	Name         string `json:"name"`
 }
 
 type QuizGalgameDetail struct {
-	ID               int         `json:"id"`
-	Name             KunLanguage `json:"name"`
-	ContentLimit     string      `json:"content_limit"`
-	AgeLimit         string      `json:"age_limit"`
-	OriginalLanguage string      `json:"original_language"`
-	Banner           string      `json:"banner"`
-	BannerThumbhash  string      `json:"banner_thumbhash,omitempty"`
-	Officials        []string    `json:"officials"`
+	ID               int      `json:"id"`
+	Name             string   `json:"name"`
+	ContentLimit     string   `json:"content_limit"`
+	AgeLimit         string   `json:"age_limit"`
+	OriginalLanguage string   `json:"original_language"`
+	Banner           string   `json:"banner"`
+	BannerThumbhash  string   `json:"banner_thumbhash,omitempty"`
+	Officials        []string `json:"officials"`
 }
 
 type QuizStats struct {
@@ -178,9 +178,9 @@ type QuizGalgameSearchRequest struct {
 }
 
 type QuizGalgameOption struct {
-	ID              int         `json:"id"`
-	Name            KunLanguage `json:"name"`
-	Banner          string      `json:"banner"`
-	BannerThumbhash string      `json:"banner_thumbhash,omitempty"`
-	Officials       []string    `json:"officials"`
+	ID              int      `json:"id"`
+	Name            string   `json:"name"`
+	Banner          string   `json:"banner"`
+	BannerThumbhash string   `json:"banner_thumbhash,omitempty"`
+	Officials       []string `json:"officials"`
 }

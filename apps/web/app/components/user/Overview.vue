@@ -53,7 +53,7 @@ const topicItems = computed(() =>
 )
 const resourceItems = computed(() =>
   (resources.data.value?.resources ?? []).map((r) => ({
-    text: getPreferredLanguageText(r.galgame_name),
+    text: r.galgame_name,
     time: r.created,
     href: `/galgame/${r.galgame_id}`
   }))

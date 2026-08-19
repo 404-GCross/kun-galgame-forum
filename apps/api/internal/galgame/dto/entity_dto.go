@@ -2,7 +2,8 @@ package dto
 
 type GalgameCard struct {
 	ID                       int            `json:"id"`
-	Name                     KunLanguage    `json:"name"`
+	Name                     string         `json:"name"`
+	NameOriginal             string         `json:"name_original"`
 	User                     UserBrief      `json:"user"`
 	ContentLimit             string         `json:"content_limit"`
 	View                     int            `json:"view"`
@@ -29,12 +30,12 @@ type OfficialBrief struct {
 }
 
 type GalgameSample struct {
-	Name                     KunLanguage `json:"name"`
-	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int         `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int         `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string      `json:"effective_banner_thumbhash,omitempty"`
+	Name                     string `json:"name"`
+	EffectiveBannerHash      string `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 }
 
 type TaxonomySearchItem struct {
@@ -126,10 +127,10 @@ type SeriesListItem struct {
 }
 
 type SeriesSample struct {
-	Name                     KunLanguage `json:"name"`
-	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
-	EffectiveBannerThumbhash string      `json:"effective_banner_thumbhash,omitempty"`
+	Name                     string `json:"name"`
+	EffectiveBannerHash      string `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string `json:"effective_banner_url,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
 }
 
 type SeriesCard struct {

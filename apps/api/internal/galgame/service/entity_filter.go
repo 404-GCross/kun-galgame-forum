@@ -33,6 +33,7 @@ func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {
 		out[i] = dto.GalgameCard{
 			ID:                       c.ID,
 			Name:                     c.Name,
+			NameOriginal:             c.NameOriginal,
 			User:                     c.User,
 			ContentLimit:             c.ContentLimit,
 			View:                     c.View,

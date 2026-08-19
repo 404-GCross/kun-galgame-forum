@@ -155,7 +155,8 @@ func (s *UserContentService) buildGalgameCards(
 		u := userMap[userclient.DerefID(l.CreatorUserID)]
 		cards = append(cards, dto.UserGalgameCard{
 			ID:                  b.ID,
-			Name:                briefToLocale(b),
+			Name:                b.Name,
+			NameOriginal:        b.NameOriginal,
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			ContentLimit:        b.ContentLimit,
 			View:                l.View,
@@ -354,7 +355,7 @@ func (s *UserContentService) GetUserResources(
 		if links == nil {
 			links = []string{}
 		}
-		name := briefToLocale(b)
+		name := b.Name
 		items = append(items, dto.UserResourceItem{
 			ID:          r.ID,
 			GalgameID:   r.GalgameID,
@@ -413,7 +414,7 @@ func (s *UserContentService) GetUserRatings(
 		if hasBrief {
 			galgame = dto.UserRatingGalgame{
 				ID:           b.ID,
-				Name:         briefToLocale(b),
+				Name:         b.Name,
 				ContentLimit: b.ContentLimit,
 			}
 		}

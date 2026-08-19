@@ -348,11 +348,9 @@ func (s *GalgameService) HydrateCardsByIDs(
 			continue
 		}
 		cards = append(cards, dto.GalgameListCard{
-			ID: id,
-			Name: dto.KunLanguage{
-				EnUs: b.NameEnUs, JaJp: b.NameJaJp,
-				ZhCn: b.NameZhCn, ZhTw: b.NameZhTw,
-			},
+			ID:                       id,
+			Name:                     b.Name,
+			NameOriginal:             b.NameOriginal,
 			User:                     frozenCreatorBrief(localMap[id], userMap),
 			ContentLimit:             b.ContentLimit,
 			View:                     localMap[id].View,

@@ -35,14 +35,9 @@ watch(
 
 const badge = computed(() => galgameClaimStateBadge(props.claimState))
 
-const title = computed(() =>
-  detail.value ? getPreferredLanguageText(detail.value.name) : ''
-)
+const title = computed(() => detail.value?.name ?? '')
 
-const originalName = computed(() => {
-  const ja = detail.value?.name['ja-jp']
-  return ja && ja !== title.value ? ja : ''
-})
+const originalName = computed(() => detail.value?.name_original ?? '')
 
 const metaRows = computed(() => {
   const d = detail.value

@@ -63,7 +63,7 @@ watch(
     pickedGalgameIds.value = [...d.galgame_ids]
     initialSelected.value = d.galgames.map((g) => ({
       id: g.id,
-      name: getPreferredLanguageText(g.name) || `#${g.id}`
+      name: g.name || `#${g.id}`
     }))
     await nextTick()
     if (!editorRef.value) await nextTick()

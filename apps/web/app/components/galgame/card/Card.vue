@@ -31,7 +31,7 @@ const gridClass = computed(() =>
 
 const cardHref = (galgame: GalgameCard) => {
   if (galgame.status === GalgameStatus.VndbDraft) {
-    return `/edit/galgame/publish?q=${encodeURIComponent(getPreferredLanguageText(galgame.name))}`
+    return `/edit/galgame/publish?q=${encodeURIComponent(galgame.name)}`
   }
   return galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
 }
@@ -51,7 +51,7 @@ const cardHref = (galgame: GalgameCard) => {
         <KunImage
           :src="getEffectiveBanner(galgame, { variant: 'mini' })"
           loading="lazy"
-          :alt="getPreferredLanguageText(galgame.name)"
+          :alt="galgame.name"
           placeholder="/placeholder.webp"
           :thumbhash="resolveBannerThumbhash(galgame)"
           class="h-full w-full object-cover transition-transform duration-300"
@@ -156,18 +156,14 @@ const cardHref = (galgame: GalgameCard) => {
         <h2
           class="hover:text-primary line-clamp-2 font-medium transition-colors"
         >
-          {{ getPreferredLanguageText(galgame.name) }}
+          {{ galgame.name }}
         </h2>
 
         <p
-          v-if="
-            showJapaneseName &&
-            galgame.name['ja-jp'] &&
-            galgame.name['ja-jp'] !== getPreferredLanguageText(galgame.name)
-          "
+          v-if="showJapaneseName && galgame.name_original"
           class="text-default-500 mt-1 line-clamp-1 text-sm"
         >
-          {{ galgame.name['ja-jp'] }}
+          {{ galgame.name_original }}
         </p>
 
         <slot name="meta" :galgame="galgame" />

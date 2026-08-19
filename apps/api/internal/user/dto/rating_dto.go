@@ -1,9 +1,9 @@
 package dto
 
 type UserRatingGalgame struct {
-	ID           int         `json:"id"`
-	Name         KunLanguage `json:"name"`
-	ContentLimit string      `json:"content_limit"`
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	ContentLimit string `json:"content_limit"`
 }
 
 type UserRatingItem struct {

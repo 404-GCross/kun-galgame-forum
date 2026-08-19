@@ -1,7 +1,7 @@
 import type { GalgameCard } from './galgame'
 
 export interface GalgameSeriesSample {
-  name: KunLanguage
+  name: string
   effective_banner_hash?: string
   effective_banner_url?: string
   effective_banner_thumbhash?: string

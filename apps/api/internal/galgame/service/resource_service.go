@@ -101,7 +101,7 @@ func (s *ResourceService) GetResourceList(
 			continue
 		}
 		card := rowToCard(r, u, likedSet[r.ID])
-		card.GalgameName = briefToName(b)
+		card.GalgameName = b.Name
 		card.DlsitePurchaseURL, card.DlsiteCouponURL = s.dlsiteLinks(b)
 		cards = append(cards, card)
 	}
@@ -516,7 +516,7 @@ func (s *ResourceService) buildGalgameSummary(
 
 	return dto.ResourceGalgameSummary{
 		ID:                       b.ID,
-		Name:                     briefToName(b),
+		Name:                     b.Name,
 		EffectiveBannerHash:      b.EffectiveBannerHash,
 		EffectiveBannerURL:       b.EffectiveBannerURL,
 		EffectiveBannerWidth:     b.EffectiveBannerWidth,
@@ -557,7 +557,7 @@ func (s *ResourceService) buildRecommendations(
 		}
 		card := rowToCard(r, u, likedSet[r.ID])
 		if b, ok := briefMap[galgameID]; ok {
-			card.GalgameName = briefToName(b)
+			card.GalgameName = b.Name
 		}
 		cards = append(cards, card)
 	}

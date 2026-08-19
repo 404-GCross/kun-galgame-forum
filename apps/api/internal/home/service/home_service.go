@@ -133,11 +133,8 @@ func (s *HomeService) getHomeGalgames(ctx context.Context, isSFW bool) ([]dto.Ho
 		}
 		u := userMap[userclient.DerefID(lr.CreatorUserID)]
 		result = append(result, dto.HomeGalgame{
-			ID: lr.ID,
-			Name: dto.LocaleName{
-				EnUS: b.NameEnUs, JaJP: b.NameJaJp,
-				ZhCN: b.NameZhCn, ZhTW: b.NameZhTw,
-			},
+			ID:                  lr.ID,
+			Name:                b.Name,
 			User:                dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			ContentLimit:        b.ContentLimit,
 			View:                lr.View,

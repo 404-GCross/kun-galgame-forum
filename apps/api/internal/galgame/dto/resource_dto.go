@@ -74,28 +74,28 @@ type KunLanguageFlags struct {
 }
 
 type ResourceCard struct {
-	ID                int         `json:"id"`
-	View              int         `json:"view"`
-	GalgameID         int         `json:"galgame_id"`
-	User              UserBrief   `json:"user"`
-	Type              string      `json:"type"`
-	Language          string      `json:"language"`
-	Platform          string      `json:"platform"`
-	Size              string      `json:"size"`
-	Status            int         `json:"status"`
-	Download          int         `json:"download"`
-	LikeCount         int         `json:"like_count"`
-	IsLiked           bool        `json:"is_liked"`
-	CommentCount      int         `json:"comment_count"`
-	DlsitePurchaseURL string      `json:"dlsite_purchase_url,omitempty"`
-	DlsiteCouponURL   string      `json:"dlsite_coupon_url,omitempty"`
-	LinkDomain        string      `json:"link_domain"`
-	ProviderNames     []string    `json:"provider_names"`
-	Note              string      `json:"note"`
-	NoteHtml          string      `json:"note_html"`
-	Created           string      `json:"created"`
-	Edited            *string     `json:"edited"`
-	GalgameName       KunLanguage `json:"galgame_name,omitempty"`
+	ID                int       `json:"id"`
+	View              int       `json:"view"`
+	GalgameID         int       `json:"galgame_id"`
+	User              UserBrief `json:"user"`
+	Type              string    `json:"type"`
+	Language          string    `json:"language"`
+	Platform          string    `json:"platform"`
+	Size              string    `json:"size"`
+	Status            int       `json:"status"`
+	Download          int       `json:"download"`
+	LikeCount         int       `json:"like_count"`
+	IsLiked           bool      `json:"is_liked"`
+	CommentCount      int       `json:"comment_count"`
+	DlsitePurchaseURL string    `json:"dlsite_purchase_url,omitempty"`
+	DlsiteCouponURL   string    `json:"dlsite_coupon_url,omitempty"`
+	LinkDomain        string    `json:"link_domain"`
+	ProviderNames     []string  `json:"provider_names"`
+	Note              string    `json:"note"`
+	NoteHtml          string    `json:"note_html"`
+	Created           string    `json:"created"`
+	Edited            *string   `json:"edited"`
+	GalgameName       string    `json:"galgame_name,omitempty"`
 }
 
 type ResourceMeta struct {
@@ -130,21 +130,21 @@ type ResourceDownloadDetail struct {
 }
 
 type ResourceGalgameSummary struct {
-	ID                       int         `json:"id"`
-	Name                     KunLanguage `json:"name"`
-	EffectiveBannerHash      string      `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string      `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int         `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int         `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string      `json:"effective_banner_thumbhash,omitempty"`
-	ContentLimit             string      `json:"content_limit"`
-	View                     int         `json:"view"`
-	ResourceUpdateTime       string      `json:"resource_update_time"`
-	OriginalLanguage         string      `json:"original_language"`
-	AgeLimit                 string      `json:"age_limit"`
-	Platform                 []string    `json:"platform"`
-	Language                 []string    `json:"language"`
-	Type                     []string    `json:"type"`
+	ID                       int      `json:"id"`
+	Name                     string   `json:"name"`
+	EffectiveBannerHash      string   `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL       string   `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth     int      `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int      `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string   `json:"effective_banner_thumbhash,omitempty"`
+	ContentLimit             string   `json:"content_limit"`
+	View                     int      `json:"view"`
+	ResourceUpdateTime       string   `json:"resource_update_time"`
+	OriginalLanguage         string   `json:"original_language"`
+	AgeLimit                 string   `json:"age_limit"`
+	Platform                 []string `json:"platform"`
+	Language                 []string `json:"language"`
+	Type                     []string `json:"type"`
 }
 
 type ResourceDetailPage struct {

@@ -6,10 +6,8 @@ type NextMoeAlias struct {
 
 type NextMoeGalgameItem struct {
 	ID                       int     `json:"id"`
-	NameEnUs                 string  `json:"name_en_us"`
-	NameJaJp                 string  `json:"name_ja_jp"`
-	NameZhCn                 string  `json:"name_zh_cn"`
-	NameZhTw                 string  `json:"name_zh_tw"`
+	Name                     string  `json:"name"`
+	NameOriginal             string  `json:"name_original"`
 	ContentLimit             string  `json:"content_limit"`
 	ReleaseDate              *string `json:"release_date"`
 	ReleaseDateTBA           bool    `json:"release_date_tba"`
@@ -92,10 +90,8 @@ type NextMoeTagWithSpoiler struct {
 type NextMoeGalgameDetailFull struct {
 	ID                         int                        `json:"id"`
 	VndbID                     string                     `json:"vndb_id"`
-	NameEnUs                   string                     `json:"name_en_us"`
-	NameJaJp                   string                     `json:"name_ja_jp"`
-	NameZhCn                   string                     `json:"name_zh_cn"`
-	NameZhTw                   string                     `json:"name_zh_tw"`
+	Name                       string                     `json:"name"`
+	NameOriginal               string                     `json:"name_original"`
 	IntroEnUs                  string                     `json:"intro_en_us"`
 	IntroJaJp                  string                     `json:"intro_ja_jp"`
 	IntroZhCn                  string                     `json:"intro_zh_cn"`

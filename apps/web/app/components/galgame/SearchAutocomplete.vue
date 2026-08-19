@@ -39,7 +39,7 @@ const onSearch = async (raw: string) => {
   options.value = (data ?? [])
     .filter((o) => !exclude.has(o.id))
     .map((o) => {
-      const name = getPreferredLanguageText(o.name) || `#${o.id}`
+      const name = o.name || `#${o.id}`
       return {
         id: o.id,
         name,

@@ -28,6 +28,10 @@ type gidLookupEntry struct {
 	expire    time.Time
 }
 
+// The works list gates localized{} and latin behind include=names, the same
+// switch as the four-slot names block it replaces. Dropping "names" here
+// because nothing reads that block any more leaves every list row with only
+// display_name, so every Chinese title on the site reverts to the original.
 const (
 	catalogBriefInclude       = "names,covers,refs"
 	catalogDetailBriefInclude = "names,intros,labels,covers,refs"
@@ -280,14 +284,16 @@ func (c *GalgameClient) CatalogRowsByGIDs(ctx context.Context, gids []int, inclu
 }
 
 type catWorkDetail struct {
-	ID            int64         `json:"id"`
-	DisplayName   string        `json:"display_name"`
-	OLang         string        `json:"olang"`
-	ContentRating string        `json:"content_rating"`
-	ReleaseDate   *string       `json:"release_date"`
-	Updated       string        `json:"updated"`
-	Created       string        `json:"created"`
-	ClaimedBy     *catClaimedBy `json:"claimed_by"`
+	ID            int64                       `json:"id"`
+	DisplayName   string                      `json:"display_name"`
+	Localized     map[string]catLocalizedName `json:"localized"`
+	Latin         string                      `json:"latin"`
+	OLang         string                      `json:"olang"`
+	ContentRating string                      `json:"content_rating"`
+	ReleaseDate   *string                     `json:"release_date"`
+	Updated       string                      `json:"updated"`
+	Created       string                      `json:"created"`
+	ClaimedBy     *catClaimedBy               `json:"claimed_by"`
 
 	Titles []struct {
 		Lang    string `json:"lang"`

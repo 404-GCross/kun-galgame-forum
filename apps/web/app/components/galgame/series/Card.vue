@@ -7,9 +7,7 @@ const includedGamesText = computed(() => {
   if (!props.series.sample_galgame.length) {
     return '暂无 Galgame'
   }
-  const names = props.series.sample_galgame.map(
-    (g) => `《${getPreferredLanguageText(g.name)}》`
-  )
+  const names = props.series.sample_galgame.map((g) => `《${g.name}》`)
   return `${names.join('、')}${props.series.galgame_count > 5 ? ' 等' : ''}`
 })
 </script>
