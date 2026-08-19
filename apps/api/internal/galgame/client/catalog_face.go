@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/url"
@@ -301,17 +302,8 @@ type catWorkDetail struct {
 		Kind    string `json:"kind"`
 		Machine bool   `json:"machine"`
 	} `json:"titles"`
-	Refs []catRef `json:"refs"`
-	Tags []struct {
-		Name        string `json:"name"`
-		Source      string `json:"source"`
-		CanonicalID int64  `json:"canonical_id"`
-		Tier        string `json:"tier"`
-		Kind        string `json:"kind"`
-		Spoiler     int    `json:"spoiler"`
-		Sexual      bool   `json:"sexual"`
-		WorkCount   int    `json:"work_count"`
-	} `json:"tags"`
+	Refs []catRef     `json:"refs"`
+	Tags []catWorkTag `json:"tags"`
 	// Wave 212's second half renames this block to "intros", matching every
 	// other catalog face. Both keys decode so the rename is not a cutover.
 	Intro  []CatalogIntro `json:"intro"`
@@ -380,9 +372,32 @@ func (c *catCreditItem) Name() string {
 	return CatalogEntityName(c.Localized, c.DisplayName, c.Latin)
 }
 
+type catWorkTag struct {
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Source      string                      `json:"source"`
+	CanonicalID int64                       `json:"canonical_id"`
+	Tier        string                      `json:"tier"`
+	Kind        string                      `json:"kind"`
+	Spoiler     int                         `json:"spoiler"`
+	Sexual      bool                        `json:"sexual"`
+	WorkCount   int                         `json:"work_count"`
+}
+
+func (t *catWorkTag) Label() string {
+	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
+}
+
 type catWorkSeries struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+}
+
+func (s *catWorkSeries) Label() string {
+	return CatalogEntityName(s.Localized, cmp.Or(s.DisplayName, s.Name), "")
 }
 
 func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWorkDetail, bool, *errors.AppError) {

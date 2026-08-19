@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"strings"
 
@@ -98,9 +99,15 @@ func (l *catWorkLabel) Name() string {
 }
 
 type catWorkEngine struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	WorkCount int    `json:"work_count"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	WorkCount   int                         `json:"work_count"`
+}
+
+func (e *catWorkEngine) Label() string {
+	return CatalogEntityName(e.Localized, cmp.Or(e.DisplayName, e.Name), "")
 }
 
 type catWorkLink struct {

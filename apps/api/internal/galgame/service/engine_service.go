@@ -75,7 +75,7 @@ func (s *EngineService) GetDetail(
 
 	return &dto.EngineDetail{
 		ID:           int(e.ID),
-		Name:         e.Name,
+		Name:         e.Label(),
 		Description:  e.Description,
 		Alias:        emptyStrSliceIfNil(e.Aliases),
 		Galgame:      listCardsToEntityCards(page.Galgames),

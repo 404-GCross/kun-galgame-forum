@@ -171,7 +171,7 @@ func (s *TagService) GetDetail(
 
 	return &dto.TagDetail{
 		ID:           int(t.ID),
-		Name:         t.Name,
+		Name:         t.Label(),
 		Category:     tagCategory(t.Kind, t.Sexual),
 		Hidden:       t.Tier == client.TagTierHidden,
 		Description:  preferredIntro(t.Intros).Intro,

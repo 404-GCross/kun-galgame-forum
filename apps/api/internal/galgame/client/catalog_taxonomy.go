@@ -58,28 +58,46 @@ type CatalogLabelLink struct {
 }
 
 type CatalogTagDetail struct {
-	ID        int64          `json:"id"`
-	Name      string         `json:"name"`
-	Tier      string         `json:"tier"`
-	Kind      string         `json:"kind"`
-	WorkCount int            `json:"work_count"`
-	Sexual    bool           `json:"sexual"`
-	Intros    []CatalogIntro `json:"intros"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Tier        string                      `json:"tier"`
+	Kind        string                      `json:"kind"`
+	WorkCount   int                         `json:"work_count"`
+	Sexual      bool                        `json:"sexual"`
+	Intros      []CatalogIntro              `json:"intros"`
+}
+
+func (t *CatalogTagDetail) Label() string {
+	return CatalogEntityName(t.Localized, cmp.Or(t.DisplayName, t.Name), "")
 }
 
 type CatalogEngineDetail struct {
-	ID          int64    `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Aliases     []string `json:"aliases"`
-	WorkCount   int      `json:"work_count"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Description string                      `json:"description"`
+	Aliases     []string                    `json:"aliases"`
+	WorkCount   int                         `json:"work_count"`
+}
+
+func (e *CatalogEngineDetail) Label() string {
+	return CatalogEntityName(e.Localized, cmp.Or(e.DisplayName, e.Name), "")
 }
 
 type CatalogSeriesDetail struct {
-	ID          int64          `json:"id"`
-	HasNSFW     *bool          `json:"has_nsfw"`
-	DisplayName string         `json:"display_name"`
-	Intros      []CatalogIntro `json:"intros"`
+	ID          int64                       `json:"id"`
+	HasNSFW     *bool                       `json:"has_nsfw"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	Intros      []CatalogIntro              `json:"intros"`
+}
+
+func (s *CatalogSeriesDetail) Label() string {
+	return CatalogEntityName(s.Localized, cmp.Or(s.DisplayName, s.Name), "")
 }
 
 func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, q url.Values) (*CatalogTaxonomyPage, *errors.AppError) {

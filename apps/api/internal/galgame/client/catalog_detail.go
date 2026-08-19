@@ -72,12 +72,12 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		}})
 	}
 	for _, sr := range d.Series {
-		f.Series = append(f.Series, dto.NextMoeSeriesRef{ID: int(sr.ID), Name: sr.Name})
+		f.Series = append(f.Series, dto.NextMoeSeriesRef{ID: int(sr.ID), Name: sr.Label()})
 	}
 	for _, e := range d.Engines {
 		var ew dto.NextMoeEngineWithAlias
 		ew.Engine.ID = int(e.ID)
-		ew.Engine.Name = e.Name
+		ew.Engine.Name = e.Label()
 		ew.Engine.Alias = []string{}
 		ew.Engine.GalgameCount = e.WorkCount
 		f.Engine = append(f.Engine, ew)
@@ -92,7 +92,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 		f.Tag = append(f.Tag, dto.NextMoeTagWithSpoiler{
 			SpoilerLevel: t.Spoiler,
 			Tag: dto.NextMoeTag{
-				ID: int(t.CanonicalID), Name: t.Name,
+				ID: int(t.CanonicalID), Name: t.Label(),
 				Category:     catalogTagCategory(t.Kind, t.Sexual),
 				GalgameCount: t.WorkCount,
 			},
