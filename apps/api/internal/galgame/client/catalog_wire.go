@@ -38,11 +38,14 @@ type catCoverSlots struct {
 	Banner   *catCoverSlot `json:"banner"`
 }
 
-type catNames struct {
-	JaJP string `json:"ja-jp"`
-	ZhCN string `json:"zh-cn"`
-	ZhTW string `json:"zh-tw"`
-	EnUS string `json:"en-us"`
+// catNameSlot is one locale slot of the works-list brief's names block. Wave
+// 210 turned each slot from a bare string into this object; decoding it as a
+// string fails the whole response, which takes down every galgame surface at
+// once — the block rides on /catalog/works, works/search, calendar, and the
+// lookup detail view, and the forum asks for include=names on all of them.
+type catNameSlot struct {
+	Value   string `json:"value"`
+	Machine bool   `json:"machine"`
 }
 
 type catIntroSlot struct {
@@ -121,12 +124,12 @@ type CatalogWorkListItem struct {
 	Cover         string        `json:"cover"`
 	Updated       string        `json:"updated"`
 
-	Names   *catNames      `json:"names"`
-	Intros  *catIntros     `json:"intros"`
-	Labels  []catWorkLabel `json:"labels"`
-	Ratings []catRating    `json:"ratings"`
-	Covers  *catCoverSlots `json:"covers"`
-	Refs    []catRef       `json:"refs"`
+	Names   map[string]catNameSlot `json:"names"`
+	Intros  *catIntros             `json:"intros"`
+	Labels  []catWorkLabel         `json:"labels"`
+	Ratings []catRating            `json:"ratings"`
+	Covers  *catCoverSlots         `json:"covers"`
+	Refs    []catRef               `json:"refs"`
 
 	ViaLabel *CatalogLabelVia `json:"via_label"`
 }
@@ -363,23 +366,13 @@ func CatalogItemToBrief(it *CatalogWorkListItem) GalgameBrief {
 }
 
 func (it *CatalogWorkListItem) name(key string) string {
-	if it.Names == nil {
+	if len(it.Names) == 0 {
 		if key == "ja-jp" {
 			return it.DisplayName
 		}
 		return ""
 	}
-	switch key {
-	case "ja-jp":
-		return it.Names.JaJP
-	case "zh-cn":
-		return it.Names.ZhCN
-	case "zh-tw":
-		return it.Names.ZhTW
-	case "en-us":
-		return it.Names.EnUS
-	}
-	return ""
+	return it.Names[key].Value
 }
 
 func (it *CatalogWorkListItem) intro(key string) string {

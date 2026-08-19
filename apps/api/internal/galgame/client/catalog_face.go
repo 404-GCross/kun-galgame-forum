@@ -290,9 +290,10 @@ type catWorkDetail struct {
 	ClaimedBy     *catClaimedBy `json:"claimed_by"`
 
 	Titles []struct {
-		Lang  string `json:"lang"`
-		Title string `json:"title"`
-		Kind  string `json:"kind"`
+		Lang    string `json:"lang"`
+		Title   string `json:"title"`
+		Kind    string `json:"kind"`
+		Machine bool   `json:"machine"`
 	} `json:"titles"`
 	Refs []catRef `json:"refs"`
 	Tags []struct {

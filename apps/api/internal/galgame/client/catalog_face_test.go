@@ -130,9 +130,27 @@ func liveRow(catalogID int64, gid int, name string) string {
 	return `{"id":` + itoa(catalogID) + `,"medium":"galgame","display_name":"` + name +
 		`","content_rating":"all_ages","olang":"ja","release_date":"2024-06-14",` +
 		`"claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
-		`"updated":"2026-01-01T00:00:00Z","names":{"ja-jp":"` + name + `","zh-cn":"` + name + `CN"},` +
+		`"updated":"2026-01-01T00:00:00Z","names":{"ja-jp":{"value":"` + name +
+		`"},"zh-cn":{"value":"` + name + `CN","machine":true}},` +
 		`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null},` +
 		`"refs":[{"source":"dlsite","external_id":"RJ01"},{"source":"vndb","external_id":"v19658"}]}`
+}
+
+func TestCatalogWorkListItem_NamesBlockIsAnObjectPerSlot(t *testing.T) {
+	var it CatalogWorkListItem
+	if err := json.Unmarshal([]byte(liveRow(4242, 777, "Kun")), &it); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got := it.Names["ja-jp"]; got.Value != "Kun" || got.Machine {
+		t.Errorf("ja-jp = %+v, want the source title Kun with machine false", got)
+	}
+	if got := it.Names["zh-cn"]; got.Value != "KunCN" || !got.Machine {
+		t.Errorf("zh-cn = %+v, want KunCN flagged machine — the flag is the only way a "+
+			"reader can tell a translated title from one the publisher shipped", got)
+	}
+	if got := it.name("zh-tw"); got != "" {
+		t.Errorf("absent slot = %q, want empty rather than a fallback into another locale", got)
+	}
 }
 
 func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
