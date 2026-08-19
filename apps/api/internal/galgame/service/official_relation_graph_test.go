@@ -19,8 +19,8 @@ func graphService(t *testing.T) *OfficialService {
 			return
 		}
 		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
-			`{"id":24,"name":"Key","logo_hash":"aabbccddeeff","work_count":33},` +
-			`{"id":993,"name":"VisualArt's","logo_hash":"","work_count":120}],` +
+			`{"id":24,"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo_hash":"aabbccddeeff","work_count":33},` +
+			`{"id":993,"display_name":"VisualArt's","logo_hash":"","work_count":120}],` +
 			`"edges":[{"from":24,"to":993,"relation":"parent"}]}}`))
 	}))
 	t.Cleanup(srv.Close)
@@ -43,6 +43,10 @@ func TestOfficialRelationGraphResolvesLogosToCDNURLs(t *testing.T) {
 	}
 	if got := graph.Nodes[1].Logo; got != "" {
 		t.Errorf("logoless node = %q, want empty", got)
+	}
+	if graph.Nodes[0].Name != "猫猫社" || graph.Nodes[1].Name != "VisualArt's" {
+		t.Errorf("node names = %q / %q, want 猫猫社 / VisualArt's",
+			graph.Nodes[0].Name, graph.Nodes[1].Name)
 	}
 	if graph.Nodes[1].WorkCount != 120 {
 		t.Errorf("work_count = %d, want 120", graph.Nodes[1].WorkCount)

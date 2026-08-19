@@ -23,14 +23,14 @@ func graphCatalog(t *testing.T) (*GalgameClient, func() (string, string)) {
 		switch r.URL.Path {
 		case "/v1/catalog/labels/24/relation-graph":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
-				`{"id":24,"name":"Key","logo_hash":"aabbccdd","work_count":33},` +
-				`{"id":993,"name":"VisualArt's","logo_hash":"","work_count":120},` +
+				`{"id":24,"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo_hash":"aabbccdd","work_count":33},` +
+				`{"id":993,"display_name":"VisualArt's","localized":{},"logo_hash":"","work_count":120},` +
 				`{"id":994,"name":"Na-Ga","logo_hash":"11223344","work_count":0}],` +
 				`"edges":[{"from":24,"to":993,"relation":"parent"},` +
 				`{"from":994,"to":993,"relation":"parent"}]}}`))
 		case "/v1/catalog/labels/309/relation-graph":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
-				`{"id":309,"name":"无关系社","logo_hash":"","work_count":2}],"edges":[]}}`))
+				`{"id":309,"display_name":"无关系社","logo_hash":"","work_count":2}],"edges":[]}}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
@@ -57,8 +57,16 @@ func TestCatalogLabelRelationGraphReadsTheContractShape(t *testing.T) {
 	if len(graph.Nodes) != 3 || len(graph.Edges) != 2 {
 		t.Fatalf("graph = %d nodes / %d edges, want 3/2", len(graph.Nodes), len(graph.Edges))
 	}
-	if graph.Nodes[0].Name != "Key" || graph.Nodes[0].WorkCount != 33 {
-		t.Errorf("seed node = %+v, want Key/33", graph.Nodes[0])
+	if graph.Nodes[0].LocalName() != "猫猫社" || graph.Nodes[0].WorkCount != 33 {
+		t.Errorf("seed node = %+v, want 猫猫社/33", graph.Nodes[0])
+	}
+	if graph.Nodes[1].LocalName() != "VisualArt's" {
+		t.Errorf("untranslated node = %q, want its display_name", graph.Nodes[1].LocalName())
+	}
+	// A node still on the pre-reshape wire has to keep rendering, so the two
+	// shapes can be deployed in either order.
+	if graph.Nodes[2].LocalName() != "Na-Ga" {
+		t.Errorf("bare-name node = %q, want Na-Ga", graph.Nodes[2].LocalName())
 	}
 	if graph.Nodes[1].LogoHash != "" {
 		t.Errorf("logoless node kept %q", graph.Nodes[1].LogoHash)

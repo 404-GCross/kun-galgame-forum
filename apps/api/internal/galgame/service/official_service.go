@@ -135,7 +135,7 @@ func (s *OfficialService) GetRelationGraph(ctx context.Context, id string) (*dto
 	for _, n := range graph.Nodes {
 		out.Nodes = append(out.Nodes, dto.OfficialRelationNode{
 			ID:        int(n.ID),
-			Name:      n.Name,
+			Name:      n.LocalName(),
 			Logo:      s.galgameClient.ImageURLFromHash(n.LogoHash),
 			WorkCount: n.WorkCount,
 		})

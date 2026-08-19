@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,11 +10,22 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
+// CatalogLabelRelationNode carries two generations of the node's name. The
+// relation graph was the last label projection still sending a bare "name",
+// and the day catalog reshaped it to the wave 209 primitive every node on the
+// live 会社关系图 rendered with an empty label — the decode found no "name"
+// key and reported nothing, so the graph drew unnamed boxes instead of failing.
 type CatalogLabelRelationNode struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	LogoHash  string `json:"logo_hash"`
-	WorkCount int    `json:"work_count"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	DisplayName string                      `json:"display_name"`
+	Localized   map[string]catLocalizedName `json:"localized"`
+	LogoHash    string                      `json:"logo_hash"`
+	WorkCount   int                         `json:"work_count"`
+}
+
+func (n *CatalogLabelRelationNode) LocalName() string {
+	return CatalogEntityName(n.Localized, cmp.Or(n.DisplayName, n.Name), "")
 }
 
 type CatalogLabelRelationEdge struct {
