@@ -193,6 +193,7 @@ POST   /api/galgame/:gid/resubmit                     cors.New → OptionalAuth 
 POST   /api/galgame/collection                        cors.New → OptionalAuth → Auth → GalgameCollectionHandler.Create
 POST   /api/galgame/comments/:postId/flag             cors.New → OptionalAuth → Auth → CommunityCommentHandler.Flag
 POST   /api/galgame/submit                            cors.New → OptionalAuth → Auth → SubmissionHandler.Submit
+POST   /api/galgame/work/:workId/claim                cors.New → OptionalAuth → Auth → SubmissionHandler.ClaimUnclaimed
 POST   /api/image/cover                               cors.New → OptionalAuth → Auth → ImageHandler.UploadCoverImage
 POST   /api/image/galgame                             cors.New → OptionalAuth → Auth → ImageHandler.UploadGalgameImage
 POST   /api/image/message                             cors.New → OptionalAuth → Auth → ImageHandler.UploadMessageImage
