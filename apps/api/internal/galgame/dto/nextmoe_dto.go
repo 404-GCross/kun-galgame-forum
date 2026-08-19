@@ -92,11 +92,7 @@ type NextMoeGalgameDetailFull struct {
 	VndbID                     string                     `json:"vndb_id"`
 	Name                       string                     `json:"name"`
 	NameOriginal               string                     `json:"name_original"`
-	IntroEnUs                  string                     `json:"intro_en_us"`
-	IntroJaJp                  string                     `json:"intro_ja_jp"`
-	IntroZhCn                  string                     `json:"intro_zh_cn"`
-	IntroZhTw                  string                     `json:"intro_zh_tw"`
-	IntroMachine               KunLanguageFlags           `json:"intro_machine"`
+	Intros                     []GalgameIntro             `json:"intros"`
 	ContentLimit               string                     `json:"content_limit"`
 	ResourceUpdateTime         string                     `json:"resource_update_time"`
 	ReleaseDate                *string                    `json:"release_date"`

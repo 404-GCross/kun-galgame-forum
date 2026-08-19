@@ -115,10 +115,7 @@ const hasContributorCard = computed(
           <KunTabPanels v-model="activeTab">
             <KunTabPanel value="intro" class-name="space-y-12">
               <div class="space-y-3">
-                <GalgameIntroduction
-                  :introduction="galgame.introduction"
-                  :introduction-machine="galgame.introduction_machine"
-                />
+                <GalgameIntroduction :introduction="galgame.introduction" />
 
                 <div
                   v-if="sortedRatings.length && sortedRatings.length < 3"

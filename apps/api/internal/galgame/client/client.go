@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
@@ -253,11 +254,8 @@ func (b GalgameBrief) DlsiteWorkno() string { return b.Refs["dlsite"] }
 
 type GalgameDetailBrief struct {
 	GalgameBrief
-	IntroEnUS string   `json:"intro_en_us"`
-	IntroJaJP string   `json:"intro_ja_jp"`
-	IntroZhCN string   `json:"intro_zh_cn"`
-	IntroZhTW string   `json:"intro_zh_tw"`
-	Officials []string `json:"officials"`
+	Intros    []dto.GalgameIntro `json:"intros"`
+	Officials []string           `json:"officials"`
 }
 
 func (c *GalgameClient) GetBatchDetailPublic(ctx context.Context, ids []int, isSFW bool) (map[int]GalgameDetailBrief, *errors.AppError) {

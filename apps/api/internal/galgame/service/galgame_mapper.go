@@ -1,7 +1,6 @@
 package service
 
 import (
-	"cmp"
 	"fmt"
 	"strings"
 
@@ -47,21 +46,34 @@ func frozenCreatorIDs(ids []int, localMap map[int]repository.GalgameLocalRow) []
 	})
 }
 
+// renderIntros renders each language's markdown in place. The rows arrive in
+// the order the site presents them, so the first one is also what IntroText
+// takes — but IntroText needs the source markdown, not this.
+func renderIntros(rows []dto.GalgameIntro) []dto.GalgameIntro {
+	out := make([]dto.GalgameIntro, 0, len(rows))
+	for _, r := range rows {
+		r.Intro = markdown.Render(r.Intro)
+		out = append(out, r)
+	}
+	return out
+}
+
+func firstIntroText(rows []dto.GalgameIntro) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	return rows[0].Intro
+}
+
 func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]dto.NextMoeUser) dto.GalgameDetail {
 	return dto.GalgameDetail{
-		ID:           g.ID,
-		VndbID:       g.VndbID,
-		User:         lookupNextMoeUser(users, g.UserID),
-		Name:         g.Name,
-		NameOriginal: g.NameOriginal,
-		Introduction: dto.KunLanguage{
-			EnUs: markdown.Render(g.IntroEnUs),
-			JaJp: markdown.Render(g.IntroJaJp),
-			ZhCn: markdown.Render(g.IntroZhCn),
-			ZhTw: markdown.Render(g.IntroZhTw),
-		},
-		IntroText:                  cmp.Or(g.IntroZhCn, g.IntroZhTw, g.IntroJaJp, g.IntroEnUs),
-		IntroductionMachine:        g.IntroMachine,
+		ID:                         g.ID,
+		VndbID:                     g.VndbID,
+		User:                       lookupNextMoeUser(users, g.UserID),
+		Name:                       g.Name,
+		NameOriginal:               g.NameOriginal,
+		Introduction:               renderIntros(g.Intros),
+		IntroText:                  firstIntroText(g.Intros),
 		ContentLimit:               g.ContentLimit,
 		Status:                     g.Status,
 		OriginalLanguage:           g.OriginalLanguage,

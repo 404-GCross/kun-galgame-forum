@@ -91,14 +91,19 @@ export interface GalgameExternalRating {
   stats?: GalgameRatingStats
 }
 
+export interface GalgameIntro {
+  lang: string
+  intro: string
+  machine: boolean
+}
+
 export interface GalgameDetail {
   id: number
   vndb_id: string
   user: KunUser
   name: string
   name_original: string
-  introduction: KunLanguage
-  introduction_machine: KunLanguageFlags
+  introduction: GalgameIntro[]
   content_limit: string
   intro_text: string
   resource_update_time: Date | string

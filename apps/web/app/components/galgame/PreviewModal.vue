@@ -112,9 +112,7 @@ const metaRows = computed(() => {
         </div>
 
         <KunScrollShadow class="max-h-80">
-          <KunContent
-            :content="getPreferredLanguageText(detail.introduction)"
-          />
+          <KunContent :content="detail.introduction[0]?.intro ?? ''" />
         </KunScrollShadow>
       </div>
     </div>

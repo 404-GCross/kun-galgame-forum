@@ -1,5 +1,3 @@
-import type { KunTabItem } from '@kungal/ui-vue'
-
 export type KunGalgameResourceTypeOptions =
   | 'all'
   | 'game'
@@ -158,24 +156,15 @@ export const KUN_GALGAME_RESOURCE_SORT_FIELD_MAP: Record<string, string> = {
   rating: '评分'
 }
 
-export const galgameIntroductionLanguageTabs: KunTabItem[] = [
-  {
-    textValue: '英语介绍',
-    value: 'en-us'
-  },
-  {
-    textValue: '日语介绍',
-    value: 'ja-jp'
-  },
-  {
-    textValue: '简体中文',
-    value: 'zh-cn'
-  },
-  {
-    textValue: '繁体中文',
-    value: 'zh-tw'
-  }
-]
+export const KUN_GALGAME_INTRO_LANGUAGE_MAP: Record<string, string> = {
+  'zh-Hans': '简体中文',
+  'zh-Hant': '繁体中文',
+  ja: '日语',
+  en: '英语'
+}
+
+export const getGalgameIntroLanguageName = (lang: string): string =>
+  KUN_GALGAME_INTRO_LANGUAGE_MAP[lang] ?? lang
 
 export const KUN_GALGAME_AGE_LIMIT_MAP: Record<string, string> = {
   all: '本游戏不含有成人内容',

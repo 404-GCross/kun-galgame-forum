@@ -906,12 +906,10 @@ func (s *ActivityService) enrichGalgameItems(
 	}
 
 	preferredIntro := func(d client.GalgameDetailBrief) string {
-		for _, s := range []string{d.IntroZhCN, d.IntroZhTW, d.IntroJaJP, d.IntroEnUS} {
-			if s != "" {
-				return s
-			}
+		if len(d.Intros) == 0 {
+			return ""
 		}
-		return ""
+		return d.Intros[0].Intro
 	}
 
 	creationGIDs := make([]int, 0)

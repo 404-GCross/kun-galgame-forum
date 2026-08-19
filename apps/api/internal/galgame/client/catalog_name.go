@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 
+	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 )
 
@@ -38,6 +41,54 @@ type CatalogIntro struct {
 	Intro   string `json:"intro"`
 	Source  string `json:"source"`
 	Machine bool   `json:"machine"`
+}
+
+// introLangOrder is the order the site presents introductions in. Anything
+// catalog sends that is not listed keeps its own tag and sorts after these.
+var introLangOrder = []string{"zh-Hans", "zh-Hant", "ja", "en"}
+
+// canonicalIntroLang folds the retiring product-locale keys onto the BCP-47 tags
+// the detail face already sends, so a work read through the list brief and the
+// same work read through the detail agree on what to call a language.
+func canonicalIntroLang(lang string) string {
+	switch strings.ToLower(strings.TrimSpace(lang)) {
+	case "zh-cn", "zh-hans", "zh":
+		return "zh-Hans"
+	case "zh-tw", "zh-hant", "zh-hk":
+		return "zh-Hant"
+	case "ja-jp", "ja":
+		return "ja"
+	case "en-us", "en":
+		return "en"
+	default:
+		return strings.TrimSpace(lang)
+	}
+}
+
+// OrderIntros drops blanks, keeps the first row per language and sorts the rest
+// into introLangOrder. Rendering is the caller's job — IntroText needs the raw
+// markdown, the reader needs it rendered.
+func OrderIntros(rows []CatalogIntro) []dto.GalgameIntro {
+	out := make([]dto.GalgameIntro, 0, len(rows))
+	seen := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		lang := canonicalIntroLang(r.Lang)
+		if r.Intro == "" || lang == "" || seen[lang] {
+			continue
+		}
+		seen[lang] = true
+		out = append(out, dto.GalgameIntro{Lang: lang, Intro: r.Intro, Machine: r.Machine})
+	}
+	rank := func(lang string) int {
+		for i, l := range introLangOrder {
+			if l == lang {
+				return i
+			}
+		}
+		return len(introLangOrder)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return rank(out[i].Lang) < rank(out[j].Lang) })
+	return out
 }
 
 // CatalogPerson is the name projection the public face uses wherever a person

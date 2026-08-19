@@ -29,12 +29,16 @@ func TestCatalogIntros_ListBriefReadsBothShapes(t *testing.T) {
 			t.Fatalf("%s: unmarshal: %v", tc.shape, err)
 		}
 		b := CatalogItemToDetailBrief(&it)
-		if b.IntroJaJP != "日本語" || b.IntroZhCN != "简体" {
-			t.Errorf("%s: ja=%q zh-cn=%q, want 日本語 / 简体", tc.shape, b.IntroJaJP, b.IntroZhCN)
+		// Both shapes have to land on the same canonical tags, and the site
+		// reads Chinese first, so zh-Hans leads whichever way the wire came.
+		if len(b.Intros) != 2 {
+			t.Fatalf("%s: intros = %+v, want exactly the two languages present", tc.shape, b.Intros)
 		}
-		if b.IntroZhTW != "" || b.IntroEnUS != "" {
-			t.Errorf("%s: zh-tw=%q en-us=%q, want both empty — an absent language is "+
-				"absent, never another locale's text", tc.shape, b.IntroZhTW, b.IntroEnUS)
+		if b.Intros[0].Lang != "zh-Hans" || b.Intros[0].Intro != "简体" {
+			t.Errorf("%s: first = %+v, want zh-Hans/简体", tc.shape, b.Intros[0])
+		}
+		if b.Intros[1].Lang != "ja" || b.Intros[1].Intro != "日本語" {
+			t.Errorf("%s: second = %+v, want ja/日本語", tc.shape, b.Intros[1])
 		}
 	}
 }
@@ -62,8 +66,8 @@ func TestCatalogIntros_ListBriefSurvivesAnAbsentBlock(t *testing.T) {
 		if err := json.Unmarshal([]byte(body), &it); err != nil {
 			t.Fatalf("%s: unmarshal: %v", body, err)
 		}
-		if got := it.intro("zh-cn"); got != "" {
-			t.Errorf("%s: intro = %q, want empty", body, got)
+		if got := OrderIntros(it.Intros); len(got) != 0 {
+			t.Errorf("%s: intros = %+v, want none", body, got)
 		}
 	}
 }
@@ -79,12 +83,16 @@ func TestCatalogIntros_DetailReadsBothKeys(t *testing.T) {
 		if err := json.Unmarshal([]byte(tc.body), &d); err != nil {
 			t.Fatalf("%s: unmarshal: %v", tc.key, err)
 		}
-		text, machine := catalogIntros(&d)
-		if text.JaJp != "日本語" || text.ZhCn != "简体" {
-			t.Errorf("%s: ja=%q zh-cn=%q, want 日本語 / 简体", tc.key, text.JaJp, text.ZhCn)
+		rows := OrderIntros(d.introRows())
+		if len(rows) != 2 || rows[0].Lang != "zh-Hans" || rows[1].Lang != "ja" {
+			t.Fatalf("%s: rows = %+v, want zh-Hans then ja", tc.key, rows)
 		}
-		if machine.JaJp || !machine.ZhCn {
-			t.Errorf("%s: machine = %+v, want only zh-cn flagged", tc.key, machine)
+		if rows[0].Intro != "简体" || rows[1].Intro != "日本語" {
+			t.Errorf("%s: text = %q / %q, want 简体 / 日本語", tc.key, rows[0].Intro, rows[1].Intro)
+		}
+		if !rows[0].Machine || rows[1].Machine {
+			t.Errorf("%s: machine = %v / %v, want only the Chinese row flagged",
+				tc.key, rows[0].Machine, rows[1].Machine)
 		}
 	}
 }
@@ -97,7 +105,8 @@ func TestCatalogIntros_DetailPrefersTheNewKeyWhenBothArrive(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &d); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if text, _ := catalogIntros(&d); text.ZhCn != "新" {
-		t.Errorf("zh-cn = %q, want 新 — during dual emit the renamed key is the live one", text.ZhCn)
+	rows := OrderIntros(d.introRows())
+	if len(rows) != 1 || rows[0].Intro != "新" {
+		t.Errorf("rows = %+v, want 新 — during dual emit the renamed key is the live one", rows)
 	}
 }

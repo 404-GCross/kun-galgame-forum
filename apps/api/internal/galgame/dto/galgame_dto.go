@@ -214,14 +214,23 @@ type GalgameExternalRating struct {
 	Stats        *GalgameRatingStats   `json:"stats,omitempty"`
 }
 
+// GalgameIntro is one language's introduction. The language list is whatever
+// catalog actually carries rather than a fixed set: the four product slots this
+// replaces always shipped an empty 繁體中文, because catalog has never held a
+// zh-Hant intro row, and the reader got a tab that could only say 暂无对应翻译.
+type GalgameIntro struct {
+	Lang    string `json:"lang"`
+	Intro   string `json:"intro"`
+	Machine bool   `json:"machine"`
+}
+
 type GalgameDetail struct {
 	ID                         int                      `json:"id"`
 	VndbID                     string                   `json:"vndb_id"`
 	User                       UserBrief                `json:"user"`
 	Name                       string                   `json:"name"`
 	NameOriginal               string                   `json:"name_original"`
-	Introduction               KunLanguage              `json:"introduction"`
-	IntroductionMachine        KunLanguageFlags         `json:"introduction_machine"`
+	Introduction               []GalgameIntro           `json:"introduction"`
 	IntroText                  string                   `json:"intro_text"`
 	ContentLimit               string                   `json:"content_limit"`
 	ResourceUpdateTime         string                   `json:"resource_update_time"`

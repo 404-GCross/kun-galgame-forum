@@ -411,21 +411,9 @@ func (it *CatalogWorkListItem) Names() (name, original string) {
 	return CatalogEntityNames(it.Localized, it.DisplayName, it.Latin)
 }
 
-func (it *CatalogWorkListItem) intro(key string) string {
-	for _, in := range it.Intros {
-		if productLocale(in.Lang) == key {
-			return in.Intro
-		}
-	}
-	return ""
-}
-
 func CatalogItemToDetailBrief(it *CatalogWorkListItem) GalgameDetailBrief {
 	b := GalgameDetailBrief{GalgameBrief: CatalogItemToBrief(it)}
-	b.IntroEnUS = it.intro("en-us")
-	b.IntroJaJP = it.intro("ja-jp")
-	b.IntroZhCN = it.intro("zh-cn")
-	b.IntroZhTW = it.intro("zh-tw")
+	b.Intros = OrderIntros(it.Intros)
 	for _, l := range it.Labels {
 		b.Officials = append(b.Officials, l.Name())
 	}

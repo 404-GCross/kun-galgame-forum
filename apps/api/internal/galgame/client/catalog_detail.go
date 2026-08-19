@@ -29,9 +29,7 @@ func CatalogDetailToFull(d *catWorkDetail, gid int) dto.NextMoeGalgameDetailFull
 	f.Name, f.NameOriginal = CatalogEntityNames(d.Localized, d.DisplayName, d.Latin)
 	f.Alias = catalogAliases(d, f.Name)
 
-	intros, machine := catalogIntros(d)
-	f.IntroJaJp, f.IntroZhCn, f.IntroZhTw, f.IntroEnUs = intros.JaJp, intros.ZhCn, intros.ZhTw, intros.EnUs
-	f.IntroMachine = machine
+	f.Intros = OrderIntros(d.introRows())
 
 	if d.ClaimedBy != nil {
 		f.Status = statusFromClaimState(d.ClaimedBy.State)
@@ -214,24 +212,6 @@ func (d *catWorkDetail) introRows() []CatalogIntro {
 		return d.Intros
 	}
 	return d.Intro
-}
-
-func catalogIntros(d *catWorkDetail) (dto.KunLanguage, dto.KunLanguageFlags) {
-	var text dto.KunLanguage
-	var machine dto.KunLanguageFlags
-	slots := map[string]struct {
-		text    *string
-		machine *bool
-	}{
-		"ja-jp": {&text.JaJp, &machine.JaJp}, "zh-cn": {&text.ZhCn, &machine.ZhCn},
-		"zh-tw": {&text.ZhTw, &machine.ZhTw}, "en-us": {&text.EnUs, &machine.EnUs},
-	}
-	for _, in := range d.introRows() {
-		if slot, ok := slots[productLocale(in.Lang)]; ok && *slot.text == "" {
-			*slot.text, *slot.machine = in.Intro, in.Machine
-		}
-	}
-	return text, machine
 }
 
 func catalogRosterToNextMoe(chars []catWorkCharacter) []dto.NextMoeGalgameCharacter {
