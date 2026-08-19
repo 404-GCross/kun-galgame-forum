@@ -4,6 +4,10 @@
 -- deploy skips it. Run it by hand with `--only=073` once the single-content
 -- code is live and has been observed. Dropping before that deploy would break
 -- the running API, which still selects content_zh_cn.
+--
+-- 074 must be applied first: the feed_sync_todo / feed_sync_update_log
+-- trigger bodies read content_zh_cn, and Postgres lets this DROP succeed
+-- anyway — the failure only shows up on the next INSERT.
 BEGIN;
 
 ALTER TABLE update_log
