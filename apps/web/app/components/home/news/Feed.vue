@@ -130,6 +130,7 @@ const groups = computed<NewsGroup[]>(() => {
               v-else-if="group.source"
               :href="group.source.homepage_url"
               target="_blank"
+              rel="noopener"
               color="default"
               size="sm"
               underline="hover"

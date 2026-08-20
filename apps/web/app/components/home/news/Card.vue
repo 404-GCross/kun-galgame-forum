@@ -9,7 +9,7 @@ const sourceName = computed(() => props.source?.name ?? '合作站点')
 
 <template>
   <KunCard is-hoverable padding="md" content-class="gap-0">
-    <div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
+    <div class="grid grid-cols-[auto_1fr] gap-y-1.5">
       <KunImage
         v-if="item.banner_url"
         :src="item.banner_url"
@@ -17,53 +17,61 @@ const sourceName = computed(() => props.source?.name ?? '合作站点')
         aspect-ratio="16/9"
         object-fit="cover"
         loading="lazy"
-        class-name="w-full shrink-0 overflow-hidden rounded-lg sm:w-48"
+        class-name="col-start-1 row-start-1 mr-3 w-28 shrink-0 self-start overflow-hidden rounded-lg sm:row-span-3 sm:mr-4 sm:w-48"
       />
 
-      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div class="flex items-start gap-2">
-          <KunChip
-            v-if="item.lane === 'column'"
-            size="sm"
-            color="secondary"
-            variant="flat"
-            class="mt-0.5 shrink-0"
-          >
-            专栏
-          </KunChip>
-          <KunLink
-            :href="item.source_url"
-            target="_blank"
-            color="default"
-            underline="none"
-            class-name="hover:text-primary line-clamp-2 text-base font-medium transition-colors"
-          >
-            {{ item.title }}
-          </KunLink>
-        </div>
-
-        <p class="text-default-500 line-clamp-2 text-sm">
-          {{ item.preview }}
-        </p>
-
-        <div
-          class="text-default-400 mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-xs"
+      <div class="col-start-2 row-start-1 flex items-start gap-2">
+        <KunChip
+          v-if="item.lane === 'column'"
+          size="sm"
+          color="secondary"
+          variant="flat"
+          class="mt-0.5 shrink-0"
         >
-          <span>{{ formatTimeDifference(item.published_at) }}</span>
-          <span aria-hidden="true">·</span>
-          <span class="truncate">{{ sourceName }}</span>
-          <KunLink
-            :href="item.source_url"
-            target="_blank"
-            color="primary"
-            size="sm"
-            underline="hover"
-            is-show-anchor-icon
-            class-name="ml-auto shrink-0"
-          >
-            阅读原文
-          </KunLink>
-        </div>
+          专栏
+        </KunChip>
+        <!-- rel="noopener" is load-bearing, not decoration: the default for an
+             outbound link is `noopener noreferrer`, and noreferrer strips the
+             Referer header, so every click reached the partner's analytics as
+             direct traffic. Bringing them referred traffic is the condition they
+             gave us. Needs @kungal/ui-vue >= 2.24.0, where rel replaces the
+             default instead of adding to it. -->
+        <KunLink
+          :href="item.source_url"
+          target="_blank"
+          rel="noopener"
+          color="default"
+          underline="none"
+          class-name="hover:text-primary line-clamp-2 wrap-anywhere break-normal text-sm font-medium transition-colors sm:text-base"
+        >
+          {{ item.title }}
+        </KunLink>
+      </div>
+
+      <p
+        class="text-default-500 col-start-1 col-end-3 row-start-2 line-clamp-2 text-sm sm:col-start-2"
+      >
+        {{ item.preview }}
+      </p>
+
+      <div
+        class="text-default-400 col-start-1 col-end-3 row-start-3 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-xs sm:col-start-2"
+      >
+        <span>{{ formatTimeDifference(item.published_at) }}</span>
+        <span aria-hidden="true">·</span>
+        <span class="truncate">{{ sourceName }}</span>
+        <KunLink
+          :href="item.source_url"
+          target="_blank"
+          rel="noopener"
+          color="primary"
+          size="sm"
+          underline="hover"
+          is-show-anchor-icon
+          class-name="ml-auto shrink-0"
+        >
+          阅读原文
+        </KunLink>
       </div>
     </div>
   </KunCard>
