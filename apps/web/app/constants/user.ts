@@ -215,17 +215,29 @@ export const userTopicGroupOptions = [
   { value: 'reply', label: '回复', icon: 'carbon:reply' },
   { value: 'comment', label: '评论', icon: 'uil:comment-dots' }
 ]
-export const userGalgameGroupOptions = [
-  { value: 'galgame', label: 'Galgame', icon: 'lucide:gamepad-2' },
-  { value: 'rating', label: '评分', icon: 'lucide:star' },
-  { value: 'quiz', label: '题库', icon: 'lucide:brain' },
-  { value: 'resource', label: '资源', icon: 'lucide:package' },
-  { value: 'toolset', label: '工具', icon: 'lucide:wrench' }
-]
+export const userGalgameGroupOptions = (isOwner: boolean) => {
+  const options = [
+    { value: 'galgame', label: 'Galgame', icon: 'lucide:gamepad-2' },
+    { value: 'rating', label: '评分', icon: 'lucide:star' },
+    { value: 'quiz', label: '题库', icon: 'lucide:brain' },
+    { value: 'resource', label: '资源', icon: 'lucide:package' },
+    { value: 'toolset', label: '工具', icon: 'lucide:wrench' }
+  ]
+  // Catalog only ever hands a user their own playtime rows, so this tab cannot
+  // exist on someone else's profile.
+  if (isOwner) {
+    options.push({ value: 'playtime', label: '时长', icon: 'lucide:clock' })
+  }
+  return options
+}
 
 export const userSegmentGroup = (segment: string): string => {
   if (['topic', 'reply', 'comment'].includes(segment)) return 'topic'
-  if (['galgame', 'rating', 'quiz', 'resource', 'toolset'].includes(segment))
+  if (
+    ['galgame', 'rating', 'quiz', 'resource', 'toolset', 'playtime'].includes(
+      segment
+    )
+  )
     return 'galgame'
   return segment
 }
@@ -241,7 +253,8 @@ export const userSegmentHref = (userId: number, segment: string): string => {
     rating: `${base}/rating`,
     quiz: `${base}/quiz`,
     resource: `${base}/resource/valid`,
-    toolset: `${base}/toolset`
+    toolset: `${base}/toolset`,
+    playtime: `${base}/playtime`
   }
   return map[segment] ?? `${base}/${segment}`
 }

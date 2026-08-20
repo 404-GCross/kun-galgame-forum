@@ -137,6 +137,7 @@ type App struct {
 	GalgameClaimReviewHandler      *galgameHandler.ClaimReviewHandler
 	GalgameEditHandler             *galgameHandler.EditHandler
 	GalgameCoverVoteHandler        *galgameHandler.CoverVoteHandler
+	GalgamePlaytimeHandler         *galgameHandler.PlaytimeHandler
 	ActivityHandler                *activityHandler.ActivityHandler
 	ImageHandler                   *imageHandler.ImageHandler
 	SearchHandler                  *searchHandler.SearchHandler
@@ -387,6 +388,7 @@ func New(cfg *config.Config) *App {
 	galgameProxySvc := galgameService.NewGalgameProxyService(gc, galgameLocalRepo, uc)
 	galgameSubmissionSvc := galgameService.NewSubmissionService(gc, catalogCli, galgameLocalRepo)
 	galgameClaimReviewSvc := galgameService.NewClaimReviewService(gc, catalogCli)
+	galgamePlaytimeSvc := galgameService.NewPlaytimeService(galgameCoreSvc, gc, catalogCli, cfg.OAuth.ClientID)
 	galgameClaimSync := galgameService.NewGalgameClaimEventSync(catalogCli, galgameLocalRepo, rdb)
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
 	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
@@ -528,6 +530,7 @@ func New(cfg *config.Config) *App {
 		GalgameClaimReviewHandler:  galgameHandler.NewClaimReviewHandler(galgameClaimReviewSvc),
 		GalgameEditHandler:         galgameHandler.NewEditHandler(catalogCli, gc, uc, notifier, galgameLocalRepo),
 		GalgameCoverVoteHandler:    galgameHandler.NewCoverVoteHandler(catalogCli, gc),
+		GalgamePlaytimeHandler:     galgameHandler.NewPlaytimeHandler(galgamePlaytimeSvc),
 		ActivityHandler:            activityHandler.NewActivityHandler(activityService.NewActivityService(activityRepo.NewActivityRepository(db), gc, uc, rdb)),
 		ImageHandler:               imageHandler.NewImageHandler(imageService.NewImageService(imageRepo.NewImageRepository(db), imgCli, catalogCli)),
 		SearchHandler:              searchHandler.NewSearchHandler(searchService.NewSearchService(searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc)),

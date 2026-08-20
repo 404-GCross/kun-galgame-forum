@@ -44,3 +44,36 @@ export const KUN_GALGAME_PLAYTIME_SOURCE_MAP: Record<
     minVotes: 0
   }
 }
+
+export const KUN_GALGAME_PLAYTIME_STATUS_CONST = [
+  'playing',
+  'finished',
+  'on_hold',
+  'dropped'
+] as const
+
+export type KunGalgamePlaytimeStatus =
+  (typeof KUN_GALGAME_PLAYTIME_STATUS_CONST)[number]
+
+export const KUN_GALGAME_PLAYTIME_STATUS_MAP: Record<
+  KunGalgamePlaytimeStatus,
+  string
+> = {
+  playing: '游玩中',
+  finished: '已通关',
+  on_hold: '搁置中',
+  dropped: '已弃坑'
+}
+
+export const KUN_GALGAME_PLAYTIME_STATUS_OPTIONS = [
+  { value: 'playing', label: '游玩中', icon: 'lucide:play' },
+  { value: 'finished', label: '已通关', icon: 'lucide:flag' },
+  { value: 'on_hold', label: '搁置中', icon: 'lucide:pause' },
+  { value: 'dropped', label: '已弃坑', icon: 'lucide:x' }
+] as const
+
+// Both floors are catalog's, not ours: it refuses anything above the ceiling,
+// and its aggregate ignores anything under the floor — which is how a report
+// gets withdrawn from the public median without a delete endpoint.
+export const KUN_GALGAME_PLAYTIME_HOURS_MAX = 1000
+export const KUN_GALGAME_PLAYTIME_MINUTES_FLOOR = 10

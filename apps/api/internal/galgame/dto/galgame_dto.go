@@ -285,4 +285,14 @@ type GalgameDetail struct {
 	Updated                    string                   `json:"updated"`
 	DlsitePurchaseURL          string                   `json:"dlsite_purchase_url,omitempty"`
 	DlsiteCouponURL            string                   `json:"dlsite_coupon_url,omitempty"`
+	MyPlaytime                 *GalgameMyPlaytime       `json:"my_playtime,omitempty"`
+}
+
+// Clients counts the applications the viewer has reported this work from —
+// catalog folds them with MAX(minutes), because two apps watching one save
+// file are not two playthroughs.
+type GalgameMyPlaytime struct {
+	Minutes int    `json:"minutes"`
+	Status  string `json:"status"`
+	Clients int    `json:"clients"`
 }
