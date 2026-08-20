@@ -53,6 +53,7 @@ func CatalogDetailToFull(ctx context.Context, d *catWorkDetail, gid int) dto.Nex
 	}
 
 	f.ExternalRatings = catalogExternalRatings(d.Ratings)
+	f.Playtimes = catalogPlaytimes(d.Playtimes)
 
 	labelAt := make(map[int64]int, len(d.Labels))
 	for _, l := range d.Labels {
@@ -150,6 +151,19 @@ func catalogExternalRatings(rows []catRating) []dto.GalgameExternalRating {
 			Source: r.Source, Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank,
 			Distribution: catalogRatingBuckets(r.Distribution),
 			Stats:        catalogRatingStats(r.Stats),
+		})
+	}
+	return out
+}
+
+func catalogPlaytimes(rows []catPlaytime) []dto.NextMoeGalgamePlaytime {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]dto.NextMoeGalgamePlaytime, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, dto.NextMoeGalgamePlaytime{
+			Source: r.Source, Minutes: r.Minutes, VoteCount: r.VoteCount,
 		})
 	}
 	return out

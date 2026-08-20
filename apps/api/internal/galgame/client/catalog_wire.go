@@ -116,6 +116,12 @@ type catWorkLink struct {
 	URL    string `json:"url"`
 }
 
+type catPlaytime struct {
+	Source    string `json:"source"`
+	Minutes   int    `json:"minutes"`
+	VoteCount int    `json:"vote_count"`
+}
+
 type catRatingBucket struct {
 	Score int `json:"score"`
 	Count int `json:"count"`

@@ -91,6 +91,12 @@ export interface GalgameExternalRating {
   stats?: GalgameRatingStats
 }
 
+export interface GalgamePlaytime {
+  source: string
+  minutes: number
+  vote_count: number
+}
+
 export interface GalgameIntro {
   lang: string
   intro: string
@@ -148,6 +154,7 @@ export interface GalgameDetail {
   rating?: number
   rating_count?: number
   external_ratings?: GalgameExternalRating[]
+  playtimes?: GalgamePlaytime[]
   refs?: Record<string, string>
   created: Date | string
   updated: Date | string

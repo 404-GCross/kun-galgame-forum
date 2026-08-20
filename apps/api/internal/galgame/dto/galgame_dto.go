@@ -214,6 +214,12 @@ type GalgameExternalRating struct {
 	Stats        *GalgameRatingStats   `json:"stats,omitempty"`
 }
 
+type GalgamePlaytime struct {
+	Source    string `json:"source"`
+	Minutes   int    `json:"minutes"`
+	VoteCount int    `json:"vote_count"`
+}
+
 // GalgameIntro is one language's introduction. The language list is whatever
 // catalog actually carries rather than a fixed set: the four product slots this
 // replaces always shipped an empty 繁體中文, because catalog has never held a
@@ -273,6 +279,7 @@ type GalgameDetail struct {
 	Rating                     float64                  `json:"rating"`
 	RatingCount                int                      `json:"rating_count"`
 	ExternalRatings            []GalgameExternalRating  `json:"external_ratings"`
+	Playtimes                  []GalgamePlaytime        `json:"playtimes"`
 	Refs                       map[string]string        `json:"refs,omitempty"`
 	Created                    string                   `json:"created"`
 	Updated                    string                   `json:"updated"`

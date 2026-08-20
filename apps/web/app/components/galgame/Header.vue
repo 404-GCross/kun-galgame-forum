@@ -69,6 +69,23 @@ const openRatingDetail = (source: string) => {
 
 const coversOpen = ref(false)
 const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
+
+const vndbPlaytime = computed(() =>
+  props.galgame.playtimes?.find((p) => p.source === 'vndb')
+)
+
+const vndbPlaytimeText = computed(() => {
+  const minutes = vndbPlaytime.value?.minutes
+  if (!minutes || minutes <= 0) {
+    return ''
+  }
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours <= 0) {
+    return `${rest} 分钟`
+  }
+  return rest > 0 ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`
+})
 </script>
 
 <template>
@@ -189,6 +206,17 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
           @open-rating="isRatingOpen = true"
           @open-detail="openRatingDetail"
         />
+
+        <div
+          v-if="vndbPlaytimeText"
+          class="text-default-600 flex items-center gap-2 text-sm"
+        >
+          <KunIcon name="lucide:clock" />
+          <span>
+            游戏时长：{{ vndbPlaytimeText }}
+            <span class="text-default-400">(来源于VNDB)</span>
+          </span>
+        </div>
 
         <GalgameHeaderRatingModal
           v-model="isRatingDetailOpen"
