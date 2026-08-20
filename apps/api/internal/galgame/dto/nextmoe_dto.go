@@ -87,12 +87,6 @@ type NextMoeTagWithSpoiler struct {
 	Tag          NextMoeTag `json:"tag"`
 }
 
-type NextMoeGalgamePlaytime struct {
-	Source    string `json:"source"`
-	Minutes   int    `json:"minutes"`
-	VoteCount int    `json:"vote_count"`
-}
-
 type NextMoeGalgameDetailFull struct {
 	ID                         int                        `json:"id"`
 	VndbID                     string                     `json:"vndb_id"`
@@ -119,7 +113,7 @@ type NextMoeGalgameDetailFull struct {
 	EffectivePortraitHeight    int                        `json:"effective_portrait_height,omitempty"`
 	EffectivePortraitThumbhash string                     `json:"effective_portrait_thumbhash,omitempty"`
 	ExternalRatings            []GalgameExternalRating    `json:"external_ratings"`
-	Playtimes                  []NextMoeGalgamePlaytime   `json:"playtimes"`
+	Playtimes                  []GalgamePlaytime          `json:"playtimes"`
 	Covers                     []NextMoeGalgameCover      `json:"covers"`
 	Screenshots                []NextMoeGalgameScreenshot `json:"screenshots"`
 	Alias                      []NextMoeAlias             `json:"alias"`

@@ -156,13 +156,13 @@ func catalogExternalRatings(rows []catRating) []dto.GalgameExternalRating {
 	return out
 }
 
-func catalogPlaytimes(rows []catPlaytime) []dto.NextMoeGalgamePlaytime {
+func catalogPlaytimes(rows []catPlaytime) []dto.GalgamePlaytime {
 	if len(rows) == 0 {
 		return nil
 	}
-	out := make([]dto.NextMoeGalgamePlaytime, 0, len(rows))
+	out := make([]dto.GalgamePlaytime, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, dto.NextMoeGalgamePlaytime{
+		out = append(out, dto.GalgamePlaytime{
 			Source: r.Source, Minutes: r.Minutes, VoteCount: r.VoteCount,
 		})
 	}

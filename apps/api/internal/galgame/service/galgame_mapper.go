@@ -90,8 +90,8 @@ func galgameDetailFromNextMoe(g dto.NextMoeGalgameDetailFull, users map[string]d
 		EffectivePortraitWidth:     g.EffectivePortraitWidth,
 		EffectivePortraitHeight:    g.EffectivePortraitHeight,
 		EffectivePortraitThumbhash: g.EffectivePortraitThumbhash,
-		ExternalRatings:            externalRatingsOrEmpty(g.ExternalRatings),
-		Playtimes:                  playtimesOrEmpty(g.Playtimes),
+		ExternalRatings:            sliceOrEmpty(g.ExternalRatings),
+		Playtimes:                  sliceOrEmpty(g.Playtimes),
 		Refs:                       g.Refs,
 		Covers:                     coversFromNextMoe(g.Covers),
 		Screenshots:                screenshotsFromNextMoe(g.Screenshots),
@@ -115,22 +115,11 @@ func lookupNextMoeUser(users map[string]dto.NextMoeUser, userID int) dto.UserBri
 	return dto.UserBrief{ID: userID}
 }
 
-func externalRatingsOrEmpty(rows []dto.GalgameExternalRating) []dto.GalgameExternalRating {
+func sliceOrEmpty[T any](rows []T) []T {
 	if rows == nil {
-		return []dto.GalgameExternalRating{}
+		return []T{}
 	}
 	return rows
-}
-
-func playtimesOrEmpty(rows []dto.NextMoeGalgamePlaytime) []dto.GalgamePlaytime {
-	if rows == nil {
-		return []dto.GalgamePlaytime{}
-	}
-	out := make([]dto.GalgamePlaytime, len(rows))
-	for i, r := range rows {
-		out[i] = dto.GalgamePlaytime{Source: r.Source, Minutes: r.Minutes, VoteCount: r.VoteCount}
-	}
-	return out
 }
 
 func coversFromNextMoe(rows []dto.NextMoeGalgameCover) []dto.GalgameCover {
