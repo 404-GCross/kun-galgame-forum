@@ -1,25 +1,25 @@
 package handler
 
 import (
-	"time"
-
 	adminModel "kun-galgame-api/internal/admin/model"
 	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/internal/update/dto"
 	"kun-galgame-api/internal/update/repository"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/userclient"
 	"kun-galgame-api/pkg/utils"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 type UpdateHandler struct {
-	repo *repository.UpdateRepository
+	repo       *repository.UpdateRepository
+	userClient *userclient.Client
 }
 
-func NewUpdateHandler(repo *repository.UpdateRepository) *UpdateHandler {
-	return &UpdateHandler{repo: repo}
+func NewUpdateHandler(repo *repository.UpdateRepository, userClient *userclient.Client) *UpdateHandler {
+	return &UpdateHandler{repo: repo, userClient: userClient}
 }
 
 func (h *UpdateHandler) GetHistory(c fiber.Ctx) error {
@@ -104,8 +104,31 @@ func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
 	todos := h.repo.FindTodosPaginated(req.Page, req.Limit, req.Status)
 	total := h.repo.CountTodos(req.Status)
 
+	uids := userclient.CollectIDs(todos, func(t adminModel.Todo) int { return t.UserID })
+	for _, t := range todos {
+		if t.ClaimedUserID != nil {
+			uids = append(uids, *t.ClaimedUserID)
+		}
+	}
+	userMap := h.userClient.Hydrate(c.Context(), uids)
+
+	items := make([]dto.TodoItem, 0, len(todos))
+	for _, t := range todos {
+		u := userMap[t.UserID]
+		item := dto.TodoItem{
+			Todo: t,
+			User: dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
+		}
+		if t.ClaimedUserID != nil {
+			if cu, ok := userMap[*t.ClaimedUserID]; ok {
+				item.ClaimedUser = &dto.UserBrief{ID: cu.ID, Name: cu.Name, Avatar: cu.Avatar}
+			}
+		}
+		items = append(items, item)
+	}
+
 	return response.OK(c, fiber.Map{
-		"todos": todos,
+		"todos": items,
 		"total": total,
 	})
 }
@@ -133,7 +156,8 @@ func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 }
 
 func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
-	if _, appErr := middleware.MustGetUser(c); appErr != nil {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
 		return response.Error(c, appErr)
 	}
 
@@ -142,20 +166,111 @@ func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
+	todo, err := h.repo.FindTodoByID(req.ID)
+	if err != nil {
+		return response.Error(c, errors.ErrNotFound("待办不存在"))
+	}
+	if todo.UserID != user.ID {
+		return response.Error(c, errors.ErrForbidden("只有发起者可以编辑该待办"))
+	}
+	if todo.Status == 2 || todo.Status == 3 {
+		return response.Error(c, errors.ErrForbidden("已完成或已废弃的待办不可编辑"))
+	}
+
 	fields := map[string]any{
 		"type":    req.Type,
-		"status":  req.Status,
 		"content": req.Content,
-	}
-	if req.Status == 2 {
-		fields["completed_time"] = time.Now()
-	} else {
-		fields["completed_time"] = nil
 	}
 	if err := h.repo.UpdateTodo(req.ID, fields); err != nil {
 		return response.Error(c, errors.ErrInternal("更新待办失败"))
 	}
 	return response.OKMessage(c, "待办已更新")
+}
+
+func (h *UpdateHandler) ClaimTodo(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	var req dto.TodoActionRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	todo, err := h.repo.FindTodoByID(req.TodoID)
+	if err != nil {
+		return response.Error(c, errors.ErrNotFound("待办不存在"))
+	}
+	if todo.Status != 0 {
+		return response.Error(c, errors.ErrForbidden("该待办已被认领或已结束"))
+	}
+	if err := h.repo.ClaimTodo(req.TodoID, user.ID); err != nil {
+		return response.Error(c, errors.ErrInternal("认领待办失败"))
+	}
+	return response.OKMessage(c, "已认领该待办")
+}
+
+func (h *UpdateHandler) CompleteTodo(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	var req dto.TodoActionRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	todo, err := h.repo.FindTodoByID(req.TodoID)
+	if err != nil {
+		return response.Error(c, errors.ErrNotFound("待办不存在"))
+	}
+	if todo.Status != 1 {
+		return response.Error(c, errors.ErrForbidden("该待办未处于进行中状态"))
+	}
+	if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
+		return response.Error(c, errors.ErrForbidden("只有认领者可以完成该待办"))
+	}
+	if err := h.repo.CompleteTodo(req.TodoID); err != nil {
+		return response.Error(c, errors.ErrInternal("完成待办失败"))
+	}
+	return response.OKMessage(c, "待办已完成")
+}
+
+func (h *UpdateHandler) DiscardTodo(c fiber.Ctx) error {
+	user, appErr := middleware.MustGetUser(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	var req dto.TodoActionRequest
+	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	todo, err := h.repo.FindTodoByID(req.TodoID)
+	if err != nil {
+		return response.Error(c, errors.ErrNotFound("待办不存在"))
+	}
+
+	switch todo.Status {
+	case 0:
+		if todo.UserID != user.ID {
+			return response.Error(c, errors.ErrForbidden("只有发起者可以废弃该待办"))
+		}
+	case 1:
+		if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
+			return response.Error(c, errors.ErrForbidden("只有认领者可以废弃该待办"))
+		}
+	default:
+		return response.Error(c, errors.ErrForbidden("该待办不可废弃"))
+	}
+
+	if err := h.repo.DiscardTodo(req.TodoID); err != nil {
+		return response.Error(c, errors.ErrInternal("废弃待办失败"))
+	}
+	return response.OKMessage(c, "待办已废弃")
 }
 
 func (h *UpdateHandler) DeleteTodo(c fiber.Ctx) error {

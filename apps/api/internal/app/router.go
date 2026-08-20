@@ -399,9 +399,15 @@ func (a *App) setupRoutes() {
 	updateAdmin.Post("/update/history", middleware.RequirePermission(perm.UpdateLogCreate), a.UpdateHandler.CreateHistory)
 	updateAdmin.Put("/update/history", middleware.RequirePermission(perm.UpdateLogEdit), a.UpdateHandler.UpdateHistory)
 	updateAdmin.Delete("/update/history", middleware.RequirePermission(perm.UpdateLogDelete), a.UpdateHandler.DeleteHistory)
-	updateAdmin.Post("/update/todo", middleware.RequirePermission(perm.UpdateLogCreate), a.UpdateHandler.CreateTodo)
-	updateAdmin.Put("/update/todo", middleware.RequirePermission(perm.UpdateLogEdit), a.UpdateHandler.UpdateTodo)
+	updateAdmin.Post("/update/todo/claim", middleware.RequirePermission(perm.UpdateLogEdit), a.UpdateHandler.ClaimTodo)
 	updateAdmin.Delete("/update/todo", middleware.RequirePermission(perm.UpdateLogDelete), a.UpdateHandler.DeleteTodo)
+
+	// Creating, editing, completing and discarding a todo are open to any
+	// logged-in user; ownership is enforced in the handlers.
+	authed.Post("/update/todo", a.UpdateHandler.CreateTodo)
+	authed.Put("/update/todo", a.UpdateHandler.UpdateTodo)
+	authed.Post("/update/todo/complete", a.UpdateHandler.CompleteTodo)
+	authed.Post("/update/todo/discard", a.UpdateHandler.DiscardTodo)
 
 	friendAdmin := authed.Group("")
 	friendAdmin.Post("/admin/friend-link", middleware.RequirePermission(perm.FriendLinkCreate), a.FriendLinkHandler.Create)

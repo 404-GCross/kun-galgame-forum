@@ -73,6 +73,30 @@ func (r *UpdateRepository) CreateTodo(todo *adminModel.Todo) error {
 	return r.db.Create(todo).Error
 }
 
+func (r *UpdateRepository) FindTodoByID(id int) (*adminModel.Todo, error) {
+	var todo adminModel.Todo
+	err := r.db.First(&todo, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &todo, nil
+}
+
+func (r *UpdateRepository) ClaimTodo(id, userID int) error {
+	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
+		Updates(map[string]any{"status": 1, "claimed_user_id": userID}).Error
+}
+
+func (r *UpdateRepository) CompleteTodo(id int) error {
+	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
+		Updates(map[string]any{"status": 2, "completed_time": time.Now()}).Error
+}
+
+func (r *UpdateRepository) DiscardTodo(id int) error {
+	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
+		Updates(map[string]any{"status": 3, "completed_time": nil}).Error
+}
+
 func (r *UpdateRepository) UpdateTodo(id int, fields map[string]any) error {
 	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
 		Updates(fields).Error

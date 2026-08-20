@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import {
   KUN_TODO_TYPE_MAP,
   KUN_UPDATE_LOG_STATUS_MAP
 } from '~/constants/update'
-import type { UpdateTodoPayload } from './types'
+import type { TodoSubmitPayload, UpdateTodoPayload } from './types'
 
-const canCreateUpdateLog = useCan('update_log.create')
+const { id: userId } = storeToRefs(usePersistUserStore())
+
 const canEditUpdateLog = useCan('update_log.edit')
 
 const iconMap: Record<number, string> = {
@@ -48,10 +50,20 @@ const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
   { query: pageData }
 )
 
+const isCreator = (todo: UpdateTodo) => todo.user_id === userId.value
+
+const isClaimer = (todo: UpdateTodo) =>
+  todo.claimed_user_id !== null &&
+  todo.claimed_user_id !== undefined &&
+  todo.claimed_user_id === userId.value
+
 const showTodoModal = ref(false)
 const editingTodo = ref<UpdateTodoPayload>({} as UpdateTodoPayload)
 
 const openCreateTodoModal = () => {
+  if (!requireLogin()) {
+    return
+  }
   editingTodo.value = {} as UpdateTodoPayload
   showTodoModal.value = true
 }
@@ -61,15 +73,14 @@ const openEditTodoModal = (log: UpdateTodo) => {
     return
   }
   editingTodo.value = {
-    status: log.status,
-    type: 'forum',
+    type: log.type as UpdateTodoPayload['type'],
     content: log.content,
     todo_id: log.id
   } satisfies UpdateTodoPayload
   showTodoModal.value = true
 }
 
-const handleTodoAction = async (data: UpdateTodoPayload) => {
+const handleTodoAction = async (data: TodoSubmitPayload) => {
   const result = await kunFetch('/update/todo', {
     method: data.todo_id ? 'PUT' : 'POST',
     body: data
@@ -77,6 +88,42 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
 
   if (result) {
     useMessage(data.todo_id ? '更新成功' : '发布待办成功', 'success')
+    refresh()
+  }
+}
+
+const claimTodo = async (todo: UpdateTodo) => {
+  const result = await kunFetch('/update/todo/claim', {
+    method: 'POST',
+    body: { todo_id: todo.id }
+  })
+
+  if (result) {
+    useMessage('已认领该待办', 'success')
+    refresh()
+  }
+}
+
+const completeTodo = async (todo: UpdateTodo) => {
+  const result = await kunFetch('/update/todo/complete', {
+    method: 'POST',
+    body: { todo_id: todo.id }
+  })
+
+  if (result) {
+    useMessage('待办已完成', 'success')
+    refresh()
+  }
+}
+
+const discardTodo = async (todo: UpdateTodo) => {
+  const result = await kunFetch('/update/todo/discard', {
+    method: 'POST',
+    body: { todo_id: todo.id }
+  })
+
+  if (result) {
+    useMessage('待办已废弃', 'success')
     refresh()
   }
 }
@@ -89,7 +136,7 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       description="这里记录了网站将会实现的功能, 以及更改的功能, 包括 Galgame 以及话题, 以及网站所有方向可能发生的各种更新等等"
     >
       <template #endContent>
-        <div v-if="canCreateUpdateLog" class="flex justify-end">
+        <div class="flex justify-end">
           <KunButton @click="openCreateTodoModal">创建待办</KunButton>
         </div>
       </template>
@@ -127,14 +174,36 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       :key="todo.id"
       content-class="space-y-3"
     >
-      <div class="flex items-center gap-3">
-        <KunChip color="primary">
-          {{ KUN_TODO_TYPE_MAP[todo.type] }}
-        </KunChip>
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <KunChip color="primary">
+            {{ KUN_TODO_TYPE_MAP[todo.type] }}
+          </KunChip>
 
-        <span class="text-default-600 text-sm">
-          该企划创建于 <KunTime :time="todo.created" type="datetime" />
-        </span>
+          <span class="text-default-600 text-sm">
+            该企划创建于 <KunTime :time="todo.created" type="datetime" />
+          </span>
+        </div>
+
+        <div
+          v-if="todo.status === 1 && todo.claimed_user"
+          class="text-default-500 flex items-center gap-2 text-sm"
+        >
+          <KunAvatar :user="todo.claimed_user" size="xs" :is-navigation="false" />
+          <span>已被 {{ todo.claimed_user.name }} 认领</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <KunAvatar :user="todo.user" size="sm" />
+        <KunLink
+          color="default"
+          underline="hover"
+          :to="`/user/${todo.user.id}`"
+          class-name="text-sm"
+        >
+          {{ todo.user.name }}
+        </KunLink>
       </div>
 
       <pre class="font-mono break-all whitespace-pre-line">
@@ -155,14 +224,44 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
           </span>
         </div>
 
-        <KunButton
-          variant="flat"
-          size="sm"
-          v-if="canEditUpdateLog"
-          @click="openEditTodoModal(todo)"
-        >
-          编辑
-        </KunButton>
+        <div class="flex items-center gap-2">
+          <KunButton
+            v-if="isCreator(todo) && !canEditUpdateLog && todo.status === 0"
+            variant="flat"
+            size="sm"
+            color="danger"
+            @click="discardTodo(todo)"
+          >
+            废弃
+          </KunButton>
+
+          <KunButton
+            v-if="isCreator(todo) && todo.status < 2"
+            variant="flat"
+            size="sm"
+            @click="openEditTodoModal(todo)"
+          >
+            编辑
+          </KunButton>
+
+          <KunButton
+            v-if="canEditUpdateLog && todo.status === 0"
+            size="sm"
+            color="primary"
+            @click="claimTodo(todo)"
+          >
+            认领此任务
+          </KunButton>
+
+          <template v-if="isClaimer(todo) && todo.status === 1">
+            <KunButton size="sm" color="primary" @click="completeTodo(todo)">
+              完成
+            </KunButton>
+            <KunButton size="sm" color="danger" @click="discardTodo(todo)">
+              废弃
+            </KunButton>
+          </template>
+        </div>
       </div>
     </KunCard>
 

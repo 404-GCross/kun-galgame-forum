@@ -216,7 +216,10 @@ POST   /api/topic/:tid/reply                          cors.New → middleware.Na
 POST   /api/topic/draft                               cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicDraftHandler.Save
 POST   /api/trust/callback                            cors.New → middleware.NamePreference → TrustHandler.Callback
 POST   /api/update/history                            cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.CreateHistory
-POST   /api/update/todo                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.CreateTodo
+POST   /api/update/todo                               cors.New → middleware.NamePreference → OptionalAuth → Auth → UpdateHandler.CreateTodo
+POST   /api/update/todo/claim                         cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.ClaimTodo
+POST   /api/update/todo/complete                      cors.New → middleware.NamePreference → OptionalAuth → Auth → UpdateHandler.CompleteTodo
+POST   /api/update/todo/discard                       cors.New → middleware.NamePreference → OptionalAuth → Auth → UpdateHandler.DiscardTodo
 POST   /api/user/avatar                               cors.New → middleware.NamePreference → Auth → ProfileHandler.UploadAvatar
 POST   /api/user/check-in                             cors.New → middleware.NamePreference → Auth → UserHandler.CheckIn
 POST   /api/user/creator/apply                        cors.New → middleware.NamePreference → Auth → CreatorHandler.Apply
@@ -269,7 +272,7 @@ PUT    /api/topic/:tid/reply/pin                      cors.New → middleware.Na
 PUT    /api/topic/:tid/reply/reaction                 cors.New → middleware.NamePreference → OptionalAuth → Auth → ReplyHandler.ToggleReplyReaction
 PUT    /api/topic/:tid/upvote                         cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.Upvote
 PUT    /api/update/history                            cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.UpdateHistory
-PUT    /api/update/todo                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.UpdateTodo
+PUT    /api/update/todo                               cors.New → middleware.NamePreference → OptionalAuth → Auth → UpdateHandler.UpdateTodo
 PUT    /api/user/bio                                  cors.New → middleware.NamePreference → Auth → ProfileHandler.UpdateBio
 PUT    /api/user/notification-preferences             cors.New → middleware.NamePreference → Auth → UserHandler.UpdateNotificationPreferences
 PUT    /api/user/username                             cors.New → middleware.NamePreference → Auth → ProfileHandler.UpdateUsername
