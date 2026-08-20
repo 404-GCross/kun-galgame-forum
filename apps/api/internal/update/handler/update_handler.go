@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/userclient"
 	"kun-galgame-api/pkg/utils"
@@ -270,7 +271,8 @@ func (h *UpdateHandler) CompleteTodo(c fiber.Ctx) error {
 	if todo.Status != adminModel.TodoStatusClaimed {
 		return response.Error(c, errors.ErrForbidden("该待办未处于进行中状态"))
 	}
-	if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
+	isClaimer := todo.ClaimedUserID != nil && *todo.ClaimedUserID == user.ID
+	if !isClaimer && !perm.CanUser(user.ID, user.Roles, perm.UpdateLogEdit) {
 		return response.Error(c, errors.ErrForbidden("只有认领者可以完成该待办"))
 	}
 	moved, err := h.repo.CompleteTodo(req.TodoID, user.ID)
