@@ -272,7 +272,10 @@ const discardTodo = async (todo: UpdateTodo) => {
           </KunButton>
 
           <KunButton
-            v-if="isClaimer(todo) && todo.status === KUN_TODO_STATUS.CLAIMED"
+            v-if="
+              (isClaimer(todo) || canEditUpdateLog) &&
+              todo.status === KUN_TODO_STATUS.CLAIMED
+            "
             size="sm"
             color="danger"
             @click="discardTodo(todo)"

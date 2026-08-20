@@ -90,10 +90,15 @@ func (r *UpdateRepository) ClaimTodo(id, userID int) (moved bool, err error) {
 	return res.RowsAffected > 0, res.Error
 }
 
-func (r *UpdateRepository) CompleteTodo(id, claimerID int) (moved bool, err error) {
+// CompleteTodo carries no actor. An earlier attempt to let editors close a
+// claimed todo also kept `claimed_user_id = <requester>` here, so every such
+// UPDATE matched zero rows and the caller answered a passing permission check
+// with "该待办的状态刚刚发生了变化, 请刷新后重试". The status CAS is the whole
+// concurrency guard: a claimed todo cannot change claimer without leaving
+// status 1 first, and who may end it is the handler's decision.
+func (r *UpdateRepository) CompleteTodo(id int) (moved bool, err error) {
 	res := r.db.Model(&adminModel.Todo{}).
-		Where("id = ? AND status = ? AND claimed_user_id = ?",
-			id, adminModel.TodoStatusClaimed, claimerID).
+		Where("id = ? AND status = ?", id, adminModel.TodoStatusClaimed).
 		Updates(map[string]any{"status": adminModel.TodoStatusDone, "completed_time": time.Now()})
 	return res.RowsAffected > 0, res.Error
 }

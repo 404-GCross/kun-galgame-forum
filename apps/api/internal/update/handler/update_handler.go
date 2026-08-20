@@ -253,6 +253,16 @@ func (h *UpdateHandler) ClaimTodo(c fiber.Ctx) error {
 	return response.OKMessage(c, "已认领该待办")
 }
 
+// Ending a claimed todo — completing or discarding it — is the claimer's call or
+// a board editor's. Only update_log.edit holders can claim in the first place
+// (see setupRoutes), so this reads as "the claimer, or one of their peers".
+func canEndClaimedTodo(todo *adminModel.Todo, uid int, roles []string) bool {
+	if todo.ClaimedUserID != nil && *todo.ClaimedUserID == uid {
+		return true
+	}
+	return perm.CanUser(uid, roles, perm.UpdateLogEdit)
+}
+
 func (h *UpdateHandler) CompleteTodo(c fiber.Ctx) error {
 	user, appErr := middleware.MustGetUser(c)
 	if appErr != nil {
@@ -271,11 +281,10 @@ func (h *UpdateHandler) CompleteTodo(c fiber.Ctx) error {
 	if todo.Status != adminModel.TodoStatusClaimed {
 		return response.Error(c, errors.ErrForbidden("该待办未处于进行中状态"))
 	}
-	isClaimer := todo.ClaimedUserID != nil && *todo.ClaimedUserID == user.ID
-	if !isClaimer && !perm.CanUser(user.ID, user.Roles, perm.UpdateLogEdit) {
-		return response.Error(c, errors.ErrForbidden("只有认领者可以完成该待办"))
+	if !canEndClaimedTodo(todo, user.ID, user.Roles) {
+		return response.Error(c, errors.ErrForbidden("只有认领者或看板编辑者可以完成该待办"))
 	}
-	moved, err := h.repo.CompleteTodo(req.TodoID, user.ID)
+	moved, err := h.repo.CompleteTodo(req.TodoID)
 	if err != nil {
 		return response.Error(c, errors.ErrInternal("完成待办失败"))
 	}
@@ -307,8 +316,8 @@ func (h *UpdateHandler) DiscardTodo(c fiber.Ctx) error {
 			return response.Error(c, errors.ErrForbidden("只有发起者可以废弃该待办"))
 		}
 	case adminModel.TodoStatusClaimed:
-		if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
-			return response.Error(c, errors.ErrForbidden("只有认领者可以废弃该待办"))
+		if !canEndClaimedTodo(todo, user.ID, user.Roles) {
+			return response.Error(c, errors.ErrForbidden("只有认领者或看板编辑者可以废弃该待办"))
 		}
 	default:
 		return response.Error(c, errors.ErrForbidden("该待办不可废弃"))

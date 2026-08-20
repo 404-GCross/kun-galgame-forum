@@ -33,7 +33,8 @@ type Todo struct {
 func (Todo) TableName() string { return "todo" }
 
 // The board's lifecycle. Anyone may open a todo at TodoStatusPending; a user
-// with update_log.edit claims it, and only that claimer ends it.
+// with update_log.edit claims it, and the claimer or any other holder of that
+// permission ends it — a claimer who goes quiet used to strand the task.
 const (
 	TodoStatusPending = iota
 	TodoStatusClaimed
