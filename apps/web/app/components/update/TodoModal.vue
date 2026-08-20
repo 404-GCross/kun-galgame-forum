@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import {
-  KUN_UPDATE_LOG_STATUS_MAP,
-  kunTodoTypeOptions
-} from '~/constants/update'
+import { kunTodoTypeOptions } from '~/constants/update'
 import { createTodoSchema, updateTodoSchema } from '~/validations/todo'
-import type { TodoSubmitPayload, UpdateTodoPayload } from './types'
+import type { CreateTodoPayload, UpdateTodoPayload } from './types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -13,7 +10,7 @@ const props = defineProps<{
 
 const emits = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [data: TodoSubmitPayload]
+  submit: [data: CreateTodoPayload | UpdateTodoPayload]
 }>()
 
 const isModalOpen = computed({
@@ -24,24 +21,15 @@ const isModalOpen = computed({
 const isEditing = computed(() => !!props.initialData?.todo_id)
 const isSubmitting = ref(false)
 
-const todoStatusOptions = Object.entries(KUN_UPDATE_LOG_STATUS_MAP).map(
-  (todo) => ({
-    label: todo[1],
-    value: Number(todo[0])
-  })
-)
-
 interface TodoFormData {
   todo_id: number
-  status: number
-  type: string
+  type: CreateTodoPayload['type']
   content: string
 }
 
 const getInitialFormData = (): TodoFormData => ({
   todo_id: 0,
   type: 'forum',
-  status: 0,
   content: '',
   ...(props.initialData || {})
 })
@@ -58,11 +46,14 @@ watch(
   }
 )
 
+// Parsed by the schema that matches the mode, so what is emitted is exactly
+// what that endpoint accepts — a create has no todo_id and, since the status
+// is the server's to decide, no status either.
 const handleSubmit = () => {
   isSubmitting.value = true
-  const schema = isEditing.value ? updateTodoSchema : createTodoSchema
-
-  const result = schema.safeParse(formData)
+  const result = isEditing.value
+    ? updateTodoSchema.safeParse(formData)
+    : createTodoSchema.safeParse(formData)
 
   if (!result.success) {
     const message = JSON.parse(result.error.message)[0]
@@ -71,10 +62,7 @@ const handleSubmit = () => {
     return
   }
 
-  emits('submit', {
-    todo_id: formData.todo_id,
-    ...result.data
-  } as TodoSubmitPayload)
+  emits('submit', result.data)
   isSubmitting.value = false
   isModalOpen.value = false
 }
@@ -92,13 +80,6 @@ const handleSubmit = () => {
       </h2>
 
       <div class="space-y-4">
-        <KunSelect
-          v-if="!isEditing"
-          v-model="formData.status"
-          :options="todoStatusOptions"
-          label="待办状态"
-          required
-        />
         <KunSelect
           v-model="formData.type"
           :options="kunTodoTypeOptions"

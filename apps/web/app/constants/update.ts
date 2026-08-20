@@ -48,9 +48,16 @@ export const kunTodoTypeOptions = [
 ] as const
 export const KUN_TODO_TYPE_CONST = ['forum', 'patch'] as const
 
+export const KUN_TODO_STATUS = {
+  PENDING: 0,
+  CLAIMED: 1,
+  DONE: 2,
+  DISCARDED: 3
+} as const
+
 export const KUN_UPDATE_LOG_STATUS_MAP: Record<string, string> = {
-  0: '待处理',
-  1: '进行中',
-  2: '已完成',
-  3: '已废弃'
+  [KUN_TODO_STATUS.PENDING]: '待处理',
+  [KUN_TODO_STATUS.CLAIMED]: '进行中',
+  [KUN_TODO_STATUS.DONE]: '已完成',
+  [KUN_TODO_STATUS.DISCARDED]: '已废弃'
 }

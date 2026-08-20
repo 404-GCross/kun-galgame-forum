@@ -505,7 +505,7 @@ func New(cfg *config.Config) *App {
 		WebsiteHandler:                 websiteHandler.NewWebsiteHandler(websiteCoreSvc),
 		WebsiteCategoryHandler:         websiteHandler.NewCategoryHandler(websiteCategorySvc),
 		WebsiteTagHandler:              websiteHandler.NewTagHandler(websiteTagSvc),
-		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db), uc),
+		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db), uc, trustCheck, trustScan),
 		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.NextMoeAPI.ImageCDNBase),
 		TrustHandler:                   trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
 		RSSHandler:                     rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),

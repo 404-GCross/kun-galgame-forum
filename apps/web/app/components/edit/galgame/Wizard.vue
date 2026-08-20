@@ -137,9 +137,10 @@ onMounted(() => {
         </KunButton>
       </div>
       <p class="text-default-500 text-sm">
-        搜索覆盖已发布的 Galgame、尚未发布的草稿 (可一键认领)、资料库中本站尚未收录的作品
-        (标记为「未认领」, 可一键收录), 以及他人正在审核中的投稿 (标记为「审核中」,
-        无法认领); 同时会显示您自己的待审核 / 已拒绝投稿。
+        搜索覆盖已发布的 Galgame、尚未发布的草稿
+        (可一键认领)、资料库中本站尚未收录的作品 (标记为「未认领」, 可一键收录),
+        以及他人正在审核中的投稿 (标记为「审核中」, 无法认领);
+        同时会显示您自己的待审核 / 已拒绝投稿。
       </p>
     </div>
 
@@ -217,7 +218,9 @@ onMounted(() => {
             :disabled="isClaiming"
             @click="handleClaim(hit)"
           >
-            {{ isUnclaimedState(hit.claim_state) ? '收录并发布' : '认领并发布' }}
+            {{
+              isUnclaimedState(hit.claim_state) ? '收录并发布' : '认领并发布'
+            }}
           </KunButton>
           <span
             v-else-if="hit.claim_state === CLAIM_STATE_PENDING"

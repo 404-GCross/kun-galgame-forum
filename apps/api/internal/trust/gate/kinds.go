@@ -6,6 +6,7 @@ const (
 	SubjectKindGalgameComment = "galgame_comment"
 	SubjectKindGalgame        = "galgame"
 	SubjectKindUser           = "user"
+	SubjectKindTodo           = "forum_todo"
 )
 
 var CanonicalSubjectKinds = []string{
@@ -23,6 +24,7 @@ var CanonicalSubjectKinds = []string{
 	SubjectKindGalgameComment,
 	SubjectKindGalgame,
 	SubjectKindUser,
+	SubjectKindTodo,
 }
 
 func CanonicalSubjectKindItems() []trustclient.EnsureSubjectKindItem {

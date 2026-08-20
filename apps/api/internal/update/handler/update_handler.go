@@ -1,10 +1,16 @@
 package handler
 
 import (
+	"log/slog"
+	"strconv"
+
 	adminModel "kun-galgame-api/internal/admin/model"
 	"kun-galgame-api/internal/middleware"
+	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/internal/update/dto"
 	"kun-galgame-api/internal/update/repository"
+	"net/http"
+
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/userclient"
@@ -16,11 +22,22 @@ import (
 type UpdateHandler struct {
 	repo       *repository.UpdateRepository
 	userClient *userclient.Client
+	check      *gate.CheckService
+	scan       *gate.ScanService
 }
 
-func NewUpdateHandler(repo *repository.UpdateRepository, userClient *userclient.Client) *UpdateHandler {
-	return &UpdateHandler{repo: repo, userClient: userClient}
+func NewUpdateHandler(
+	repo *repository.UpdateRepository,
+	userClient *userclient.Client,
+	check *gate.CheckService,
+	scan *gate.ScanService,
+) *UpdateHandler {
+	return &UpdateHandler{repo: repo, userClient: userClient, check: check, scan: scan}
 }
+
+// The guarded UPDATEs answer moved=false when the row left the state the
+// handler had just read, which is a race, not a rule the caller broke.
+var errStaleTodo = errors.New(errors.CodeBiz, "该待办的状态刚刚发生了变化, 请刷新后重试", http.StatusConflict)
 
 func (h *UpdateHandler) GetHistory(c fiber.Ctx) error {
 	var req dto.ListQuery
@@ -115,10 +132,7 @@ func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
 	items := make([]dto.TodoItem, 0, len(todos))
 	for _, t := range todos {
 		u := userMap[t.UserID]
-		item := dto.TodoItem{
-			Todo: t,
-			User: dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-		}
+		item := dto.TodoItemOf(t, dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar})
 		if t.ClaimedUserID != nil {
 			if cu, ok := userMap[*t.ClaimedUserID]; ok {
 				item.ClaimedUser = &dto.UserBrief{ID: cu.ID, Name: cu.Name, Avatar: cu.Avatar}
@@ -144,14 +158,26 @@ func (h *UpdateHandler) CreateTodo(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
+	authorID := int64(user.ID)
+	decision, matched := h.check.Decision(c.Context(), req.Content, &authorID)
+	if decision == gate.DecisionDeny {
+		return response.Error(c, gate.ErrContentBlocked())
+	}
+
 	todo := adminModel.Todo{
-		Type: req.Type, Status: req.Status,
+		Type:    req.Type,
+		Status:  adminModel.TodoStatusPending,
 		Content: req.Content,
 		UserID:  user.ID,
 	}
 	if err := h.repo.CreateTodo(&todo); err != nil {
 		return response.Error(c, errors.ErrInternal("创建待办失败"))
 	}
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTodo,
+			"subject_id", todo.ID, "author_id", user.ID, "matched", matched)
+	}
+	h.scan.ScanBg(gate.SubjectKindTodo, strconv.Itoa(todo.ID), req.Content, authorID)
 	return response.OKMessage(c, "待办已创建")
 }
 
@@ -173,8 +199,14 @@ func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	if todo.UserID != user.ID {
 		return response.Error(c, errors.ErrForbidden("只有发起者可以编辑该待办"))
 	}
-	if todo.Status == 2 || todo.Status == 3 {
+	if todo.Status == adminModel.TodoStatusDone || todo.Status == adminModel.TodoStatusDiscarded {
 		return response.Error(c, errors.ErrForbidden("已完成或已废弃的待办不可编辑"))
+	}
+
+	authorID := int64(user.ID)
+	decision, matched := h.check.Decision(c.Context(), req.Content, &authorID)
+	if decision == gate.DecisionDeny {
+		return response.Error(c, gate.ErrContentBlocked())
 	}
 
 	fields := map[string]any{
@@ -184,6 +216,11 @@ func (h *UpdateHandler) UpdateTodo(c fiber.Ctx) error {
 	if err := h.repo.UpdateTodo(req.ID, fields); err != nil {
 		return response.Error(c, errors.ErrInternal("更新待办失败"))
 	}
+	if decision == gate.DecisionHold {
+		slog.Info("trust check hold", "subject_kind", gate.SubjectKindTodo,
+			"subject_id", todo.ID, "author_id", user.ID, "matched", matched)
+	}
+	h.scan.ScanBg(gate.SubjectKindTodo, strconv.Itoa(todo.ID), req.Content, authorID)
 	return response.OKMessage(c, "待办已更新")
 }
 
@@ -202,11 +239,15 @@ func (h *UpdateHandler) ClaimTodo(c fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, errors.ErrNotFound("待办不存在"))
 	}
-	if todo.Status != 0 {
+	if todo.Status != adminModel.TodoStatusPending {
 		return response.Error(c, errors.ErrForbidden("该待办已被认领或已结束"))
 	}
-	if err := h.repo.ClaimTodo(req.TodoID, user.ID); err != nil {
+	moved, err := h.repo.ClaimTodo(req.TodoID, user.ID)
+	if err != nil {
 		return response.Error(c, errors.ErrInternal("认领待办失败"))
+	}
+	if !moved {
+		return response.Error(c, errStaleTodo)
 	}
 	return response.OKMessage(c, "已认领该待办")
 }
@@ -226,14 +267,18 @@ func (h *UpdateHandler) CompleteTodo(c fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, errors.ErrNotFound("待办不存在"))
 	}
-	if todo.Status != 1 {
+	if todo.Status != adminModel.TodoStatusClaimed {
 		return response.Error(c, errors.ErrForbidden("该待办未处于进行中状态"))
 	}
 	if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
 		return response.Error(c, errors.ErrForbidden("只有认领者可以完成该待办"))
 	}
-	if err := h.repo.CompleteTodo(req.TodoID); err != nil {
+	moved, err := h.repo.CompleteTodo(req.TodoID, user.ID)
+	if err != nil {
 		return response.Error(c, errors.ErrInternal("完成待办失败"))
+	}
+	if !moved {
+		return response.Error(c, errStaleTodo)
 	}
 	return response.OKMessage(c, "待办已完成")
 }
@@ -255,11 +300,11 @@ func (h *UpdateHandler) DiscardTodo(c fiber.Ctx) error {
 	}
 
 	switch todo.Status {
-	case 0:
+	case adminModel.TodoStatusPending:
 		if todo.UserID != user.ID {
 			return response.Error(c, errors.ErrForbidden("只有发起者可以废弃该待办"))
 		}
-	case 1:
+	case adminModel.TodoStatusClaimed:
 		if todo.ClaimedUserID == nil || *todo.ClaimedUserID != user.ID {
 			return response.Error(c, errors.ErrForbidden("只有认领者可以废弃该待办"))
 		}
@@ -267,8 +312,12 @@ func (h *UpdateHandler) DiscardTodo(c fiber.Ctx) error {
 		return response.Error(c, errors.ErrForbidden("该待办不可废弃"))
 	}
 
-	if err := h.repo.DiscardTodo(req.TodoID); err != nil {
+	moved, err := h.repo.DiscardTodo(req.TodoID, todo.Status)
+	if err != nil {
 		return response.Error(c, errors.ErrInternal("废弃待办失败"))
+	}
+	if !moved {
+		return response.Error(c, errStaleTodo)
 	}
 	return response.OKMessage(c, "待办已废弃")
 }

@@ -26,6 +26,7 @@ func TestCanonicalSubjectKindsCoversGateConstants(t *testing.T) {
 		SubjectKindGalgameComment,
 		SubjectKindGalgame,
 		SubjectKindUser,
+		SubjectKindTodo,
 	}
 	for _, k := range required {
 		if !set[k] {

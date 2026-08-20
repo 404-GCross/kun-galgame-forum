@@ -66,10 +66,6 @@ func (r *UpdateRepository) FindTodosPaginated(page, limit int, status *int) []ad
 }
 
 func (r *UpdateRepository) CreateTodo(todo *adminModel.Todo) error {
-	if todo.Status == 2 {
-		now := time.Now()
-		todo.CompletedTime = &now
-	}
 	return r.db.Create(todo).Error
 }
 
@@ -82,19 +78,31 @@ func (r *UpdateRepository) FindTodoByID(id int) (*adminModel.Todo, error) {
 	return &todo, nil
 }
 
-func (r *UpdateRepository) ClaimTodo(id, userID int) error {
-	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
-		Updates(map[string]any{"status": 1, "claimed_user_id": userID}).Error
+// The three transitions below are guarded UPDATEs, not read-then-writes: two
+// users hitting 认领 at the same moment both read status 0, both were told
+// they had claimed it, and the second write silently replaced the first
+// claimer. moved=false means the row left the expected state in between.
+
+func (r *UpdateRepository) ClaimTodo(id, userID int) (moved bool, err error) {
+	res := r.db.Model(&adminModel.Todo{}).
+		Where("id = ? AND status = ?", id, adminModel.TodoStatusPending).
+		Updates(map[string]any{"status": adminModel.TodoStatusClaimed, "claimed_user_id": userID})
+	return res.RowsAffected > 0, res.Error
 }
 
-func (r *UpdateRepository) CompleteTodo(id int) error {
-	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
-		Updates(map[string]any{"status": 2, "completed_time": time.Now()}).Error
+func (r *UpdateRepository) CompleteTodo(id, claimerID int) (moved bool, err error) {
+	res := r.db.Model(&adminModel.Todo{}).
+		Where("id = ? AND status = ? AND claimed_user_id = ?",
+			id, adminModel.TodoStatusClaimed, claimerID).
+		Updates(map[string]any{"status": adminModel.TodoStatusDone, "completed_time": time.Now()})
+	return res.RowsAffected > 0, res.Error
 }
 
-func (r *UpdateRepository) DiscardTodo(id int) error {
-	return r.db.Model(&adminModel.Todo{}).Where("id = ?", id).
-		Updates(map[string]any{"status": 3, "completed_time": nil}).Error
+func (r *UpdateRepository) DiscardTodo(id, fromStatus int) (moved bool, err error) {
+	res := r.db.Model(&adminModel.Todo{}).
+		Where("id = ? AND status = ?", id, fromStatus).
+		Updates(map[string]any{"status": adminModel.TodoStatusDiscarded, "completed_time": nil})
+	return res.RowsAffected > 0, res.Error
 }
 
 func (r *UpdateRepository) UpdateTodo(id int, fields map[string]any) error {

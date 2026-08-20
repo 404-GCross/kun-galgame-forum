@@ -16,9 +16,7 @@ export interface UpdateTodo {
   type: string
   content: string
   completed_time: Date | string | null
-  user_id: number
   user: KunUser
-  claimed_user_id: number | null
   claimed_user?: KunUser | null
   created: Date | string
   updated: Date | string

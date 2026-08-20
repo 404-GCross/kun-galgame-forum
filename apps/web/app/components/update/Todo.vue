@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import {
+  KUN_TODO_STATUS,
   KUN_TODO_TYPE_MAP,
   KUN_UPDATE_LOG_STATUS_MAP
 } from '~/constants/update'
-import type { TodoSubmitPayload, UpdateTodoPayload } from './types'
+import type { CreateTodoPayload, UpdateTodoPayload } from './types'
 
 const { id: userId } = storeToRefs(usePersistUserStore())
 
@@ -50,12 +51,10 @@ const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
   { query: pageData }
 )
 
-const isCreator = (todo: UpdateTodo) => todo.user_id === userId.value
+const isCreator = (todo: UpdateTodo) => todo.user.id === userId.value
 
 const isClaimer = (todo: UpdateTodo) =>
-  todo.claimed_user_id !== null &&
-  todo.claimed_user_id !== undefined &&
-  todo.claimed_user_id === userId.value
+  !!todo.claimed_user && todo.claimed_user.id === userId.value
 
 const showTodoModal = ref(false)
 const editingTodo = ref<UpdateTodoPayload>({} as UpdateTodoPayload)
@@ -80,14 +79,17 @@ const openEditTodoModal = (log: UpdateTodo) => {
   showTodoModal.value = true
 }
 
-const handleTodoAction = async (data: TodoSubmitPayload) => {
+const handleTodoAction = async (
+  data: CreateTodoPayload | UpdateTodoPayload
+) => {
+  const isEdit = 'todo_id' in data
   const result = await kunFetch('/update/todo', {
-    method: data.todo_id ? 'PUT' : 'POST',
+    method: isEdit ? 'PUT' : 'POST',
     body: data
   })
 
   if (result) {
-    useMessage(data.todo_id ? '更新成功' : '发布待办成功', 'success')
+    useMessage(isEdit ? '更新成功' : '发布待办成功', 'success')
     refresh()
   }
 }
@@ -186,10 +188,14 @@ const discardTodo = async (todo: UpdateTodo) => {
         </div>
 
         <div
-          v-if="todo.status === 1 && todo.claimed_user"
+          v-if="todo.status === KUN_TODO_STATUS.CLAIMED && todo.claimed_user"
           class="text-default-500 flex items-center gap-2 text-sm"
         >
-          <KunAvatar :user="todo.claimed_user" size="xs" :is-navigation="false" />
+          <KunAvatar
+            :user="todo.claimed_user"
+            size="xs"
+            :is-navigation="false"
+          />
           <span>已被 {{ todo.claimed_user.name }} 认领</span>
         </div>
       </div>
@@ -226,7 +232,7 @@ const discardTodo = async (todo: UpdateTodo) => {
 
         <div class="flex items-center gap-2">
           <KunButton
-            v-if="isCreator(todo) && !canEditUpdateLog && todo.status === 0"
+            v-if="isCreator(todo) && todo.status === KUN_TODO_STATUS.PENDING"
             variant="flat"
             size="sm"
             color="danger"
@@ -236,7 +242,7 @@ const discardTodo = async (todo: UpdateTodo) => {
           </KunButton>
 
           <KunButton
-            v-if="isCreator(todo) && todo.status < 2"
+            v-if="isCreator(todo) && todo.status < KUN_TODO_STATUS.DONE"
             variant="flat"
             size="sm"
             @click="openEditTodoModal(todo)"
@@ -245,7 +251,7 @@ const discardTodo = async (todo: UpdateTodo) => {
           </KunButton>
 
           <KunButton
-            v-if="canEditUpdateLog && todo.status === 0"
+            v-if="canEditUpdateLog && todo.status === KUN_TODO_STATUS.PENDING"
             size="sm"
             color="primary"
             @click="claimTodo(todo)"
@@ -253,7 +259,9 @@ const discardTodo = async (todo: UpdateTodo) => {
             认领此任务
           </KunButton>
 
-          <template v-if="isClaimer(todo) && todo.status === 1">
+          <template
+            v-if="isClaimer(todo) && todo.status === KUN_TODO_STATUS.CLAIMED"
+          >
             <KunButton size="sm" color="primary" @click="completeTodo(todo)">
               完成
             </KunButton>

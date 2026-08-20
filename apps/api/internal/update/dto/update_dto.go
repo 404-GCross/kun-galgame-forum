@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	adminModel "kun-galgame-api/internal/admin/model"
 )
 
@@ -11,9 +13,23 @@ type UserBrief struct {
 }
 
 type TodoItem struct {
-	adminModel.Todo
-	User        UserBrief  `json:"user"`
-	ClaimedUser *UserBrief `json:"claimed_user,omitempty"`
+	ID            int        `json:"id"`
+	Type          string     `json:"type"`
+	Status        int        `json:"status"`
+	Content       string     `json:"content"`
+	CompletedTime *time.Time `json:"completed_time"`
+	User          UserBrief  `json:"user"`
+	ClaimedUser   *UserBrief `json:"claimed_user,omitempty"`
+	Created       time.Time  `json:"created"`
+	Updated       time.Time  `json:"updated"`
+}
+
+func TodoItemOf(t adminModel.Todo, user UserBrief) TodoItem {
+	return TodoItem{
+		ID: t.ID, Type: t.Type, Status: t.Status, Content: t.Content,
+		CompletedTime: t.CompletedTime, User: user,
+		Created: t.CreatedAt, Updated: t.UpdatedAt,
+	}
 }
 
 type ListQuery struct {
@@ -37,9 +53,12 @@ type DeleteHistoryRequest struct {
 	ID int `query:"update_log_id" validate:"required,min=1"`
 }
 
+// No Status: a todo is always born pending. Taking one from the request let
+// any signed-in user open a todo that was already 已完成, and one born
+// 进行中 had no claimer, so nothing could claim, complete or discard it ever
+// again.
 type CreateTodoRequest struct {
 	Type    string `json:"type" validate:"required"`
-	Status  int    `json:"status" validate:"min=0,max=10"`
 	Content string `json:"content" validate:"max=1000"`
 }
 
