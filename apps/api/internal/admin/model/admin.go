@@ -23,7 +23,8 @@ type Todo struct {
 	Content       string     `gorm:"column:content;type:text;default:''" json:"content"`
 	CompletedTime *time.Time `gorm:"column:completed_time" json:"completed_time"`
 
-	UserID int `gorm:"column:user_id;not null" json:"user_id"`
+	ClaimedUserID *int `gorm:"column:claimed_user_id" json:"claimed_user_id"`
+	UserID        int  `gorm:"column:user_id;not null" json:"user_id"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`

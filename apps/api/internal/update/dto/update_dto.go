@@ -1,5 +1,21 @@
 package dto
 
+import (
+	adminModel "kun-galgame-api/internal/admin/model"
+)
+
+type UserBrief struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}
+
+type TodoItem struct {
+	adminModel.Todo
+	User        UserBrief  `json:"user"`
+	ClaimedUser *UserBrief `json:"claimed_user,omitempty"`
+}
+
 type ListQuery struct {
 	Page  int `query:"page" validate:"min=1"`
 	Limit int `query:"limit" validate:"min=1,max=50"`
@@ -41,6 +57,9 @@ type UpdateHistoryRequest struct {
 type UpdateTodoRequest struct {
 	ID      int    `json:"todo_id" validate:"required,min=1"`
 	Type    string `json:"type" validate:"required"`
-	Status  int    `json:"status" validate:"min=0,max=10"`
 	Content string `json:"content" validate:"max=1000"`
+}
+
+type TodoActionRequest struct {
+	TodoID int `json:"todo_id" validate:"required,min=1"`
 }

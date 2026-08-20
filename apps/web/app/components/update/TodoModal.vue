@@ -4,7 +4,7 @@ import {
   kunTodoTypeOptions
 } from '~/constants/update'
 import { createTodoSchema, updateTodoSchema } from '~/validations/todo'
-import type { UpdateTodoPayload } from './types'
+import type { TodoSubmitPayload, UpdateTodoPayload } from './types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emits = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [data: UpdateTodoPayload]
+  submit: [data: TodoSubmitPayload]
 }>()
 
 const isModalOpen = computed({
@@ -31,7 +31,14 @@ const todoStatusOptions = Object.entries(KUN_UPDATE_LOG_STATUS_MAP).map(
   })
 )
 
-const getInitialFormData = (): UpdateTodoPayload => ({
+interface TodoFormData {
+  todo_id: number
+  status: number
+  type: string
+  content: string
+}
+
+const getInitialFormData = (): TodoFormData => ({
   todo_id: 0,
   type: 'forum',
   status: 0,
@@ -39,7 +46,7 @@ const getInitialFormData = (): UpdateTodoPayload => ({
   ...(props.initialData || {})
 })
 
-const formData = reactive<UpdateTodoPayload>(getInitialFormData())
+const formData = reactive<TodoFormData>(getInitialFormData())
 
 watch(
   () => isModalOpen.value,
@@ -64,7 +71,10 @@ const handleSubmit = () => {
     return
   }
 
-  emits('submit', { todo_id: formData.todo_id, ...result.data })
+  emits('submit', {
+    todo_id: formData.todo_id,
+    ...result.data
+  } as TodoSubmitPayload)
   isSubmitting.value = false
   isModalOpen.value = false
 }
@@ -78,11 +88,12 @@ const handleSubmit = () => {
   >
     <form @submit.prevent>
       <h2 class="mb-6 text-xl font-bold">
-        {{ isEditing ? '编辑更新日志' : '创建新更新日志' }}
+        {{ isEditing ? '编辑待办' : '创建新待办' }}
       </h2>
 
       <div class="space-y-4">
         <KunSelect
+          v-if="!isEditing"
           v-model="formData.status"
           :options="todoStatusOptions"
           label="待办状态"
