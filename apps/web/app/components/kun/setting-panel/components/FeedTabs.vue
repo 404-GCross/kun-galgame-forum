@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KUN_FEED_KIND_GROUPS } from '~/constants/activity'
+import { KUN_FEED_KIND_GROUPS, isNewsFeedTab } from '~/constants/activity'
 
 const settings = usePersistSettingsStore()
 const { feedTabs } = storeToRefs(settings)
@@ -54,7 +54,13 @@ const toggleKind = (kind: string) => {
 
     <KunSelect v-model="editingId" :options="tabOptions" />
 
-    <div v-if="editingTab" class="space-y-3">
+    <KunInfo
+      v-if="isNewsFeedTab(editingTab)"
+      color="info"
+      description="Gal 情报来自合作站点转载的情报流，不是站内动态，因此没有可勾选的种类。"
+    />
+
+    <div v-else-if="editingTab" class="space-y-3">
       <div
         v-for="group in KUN_FEED_KIND_GROUPS"
         :key="group.label"

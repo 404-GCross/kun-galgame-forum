@@ -15,6 +15,7 @@ type Config struct {
 	Search         SearchConfig
 	CORS           CORSConfig
 	NextMoeAPI     NextMoeAPIConfig
+	NewsAPI        NewsAPIConfig
 	ImageClient    ImageClientConfig
 	ArtifactClient ArtifactClientConfig
 	LinkChecker    LinkCheckerConfig
@@ -65,6 +66,15 @@ type NextMoeAPIConfig struct {
 	BaseURL      string
 	APIKey       string
 	ImageCDNBase string
+}
+
+// NewsAPIConfig is a SECOND NextMoe credential, not a copy of the first: the
+// news face is gated on scope news:read, which the catalog key does not carry.
+// An empty APIKey leaves /news answering 503 instead of failing startup — the
+// forum's catalogue must not stop booting over a partner index.
+type NewsAPIConfig struct {
+	BaseURL string
+	APIKey  string
 }
 
 // The affiliate link is assembled SERVER-side and shipped as a ready URL: the
@@ -202,6 +212,10 @@ func Load() (*Config, error) {
 			BaseURL:      nextMoeBase,
 			APIKey:       nextMoeKey,
 			ImageCDNBase: envOrDefault("KUN_IMAGE_PUBLIC_BASE_URL", "https://image.kungal.iloveren.link"),
+		},
+		NewsAPI: NewsAPIConfig{
+			BaseURL: envOrDefault("KUN_NEWS_API_BASE", nextMoeBase),
+			APIKey:  envOrDefault("KUN_NEWS_API_KEY", ""),
 		},
 		ImageClient: ImageClientConfig{
 			BaseURL:      envOrDefault("KUN_IMAGE_CLIENT_BASE_URL", "http://127.0.0.1:9278"),

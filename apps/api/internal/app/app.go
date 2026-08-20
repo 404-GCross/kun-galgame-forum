@@ -36,6 +36,7 @@ import (
 	msgRepo "kun-galgame-api/internal/message/repository"
 	msgService "kun-galgame-api/internal/message/service"
 	"kun-galgame-api/internal/moemoepoint"
+	newsHandler "kun-galgame-api/internal/news/handler"
 	rankingHandler "kun-galgame-api/internal/ranking/handler"
 	rankingRepo "kun-galgame-api/internal/ranking/repository"
 	rankingService "kun-galgame-api/internal/ranking/service"
@@ -74,6 +75,7 @@ import (
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/linkcheck"
+	"kun-galgame-api/pkg/newsclient"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
@@ -121,6 +123,7 @@ type App struct {
 	FriendLinkHandler              *friendHandler.FriendLinkHandler
 	TrustHandler                   *trustHandler.TrustHandler
 	RSSHandler                     *rssHandler.RSSHandler
+	NewsHandler                    *newsHandler.NewsHandler
 	GalgameHandler                 *galgameHandler.GalgameHandler
 	GalgameCollectionHandler       *galgameHandler.GalgameCollectionHandler
 	GalgameCommunityCommentHandler *galgameHandler.CommunityCommentHandler
@@ -169,6 +172,16 @@ func New(cfg *config.Config) *App {
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
 	)
+
+	newsCli := newsclient.New(newsclient.Config{
+		BaseURL: cfg.NewsAPI.BaseURL,
+		APIKey:  cfg.NewsAPI.APIKey,
+	})
+	if newsCli.Configured() {
+		slog.Info("news face client configured", "base_url", cfg.NewsAPI.BaseURL)
+	} else {
+		slog.Warn("news face client NOT configured; /news returns 503 — set KUN_NEWS_API_KEY (scope news:read)")
+	}
 
 	oauthClient := oauth.NewClient(cfg.OAuth)
 
@@ -509,6 +522,7 @@ func New(cfg *config.Config) *App {
 		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.NextMoeAPI.ImageCDNBase),
 		TrustHandler:                   trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),
 		RSSHandler:                     rssHandler.NewRSSHandler(rssRepo.NewRSSRepository(db), gc, uc),
+		NewsHandler:                    newsHandler.NewNewsHandler(newsCli, uc),
 		GalgameHandler:                 galgameHandler.NewGalgameHandler(galgameCoreSvc),
 		GalgameCollectionHandler:       galgameHandler.NewGalgameCollectionHandler(galgameCollectionSvc),
 		GalgameCommunityCommentHandler: galgameHandler.NewCommunityCommentHandler(galgameCommunityCommentSvc),

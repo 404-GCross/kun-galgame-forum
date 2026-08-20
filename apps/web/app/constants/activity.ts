@@ -207,12 +207,21 @@ export const KUN_FEED_KIND_GROUPS: { label: string; kinds: KunFeedKind[] }[] = [
   }
 ]
 
+// A tab reads either this site's own activity feed or an outside face. An
+// activity tab is defined by its `kinds`; a news tab has none, because its
+// content comes from the partner index rather than from feed_activity.
+export type KunFeedSource = 'activity' | 'news'
+
 export interface KunFeedTab {
   id: string
   name: string
   icon: string
   kinds: string[]
+  source?: KunFeedSource
 }
+
+export const isNewsFeedTab = (tab?: KunFeedTab): boolean =>
+  tab?.source === 'news'
 
 const KUN_ALL_TAB_KINDS = [
   'TOPIC_NORMAL',
@@ -234,7 +243,7 @@ const KUN_ALL_TAB_KINDS = [
   'UPDATE_LOG_CREATION'
 ]
 
-export const KUN_FEED_TABS_VERSION = 6
+export const KUN_FEED_TABS_VERSION = 7
 
 export const KUN_DEFAULT_FEED_TABS: KunFeedTab[] = [
   {
@@ -268,6 +277,13 @@ export const KUN_DEFAULT_FEED_TABS: KunFeedTab[] = [
     name: '全站动态',
     icon: 'lucide:layers',
     kinds: [...KUN_ALL_TAB_KINDS]
+  },
+  {
+    id: 'news',
+    name: 'Gal 情报',
+    icon: 'lucide:newspaper',
+    kinds: [],
+    source: 'news'
   },
   {
     id: 'resource',
