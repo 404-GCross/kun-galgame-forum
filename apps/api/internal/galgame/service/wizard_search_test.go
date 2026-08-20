@@ -94,8 +94,8 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 			"CatalogItemWizardEligible gates on the hydrated registry state instead",
 			rec.catalogQ.Get("claim_state"))
 	}
-	if got := rec.catalogQ.Get("claimed"); got != "true" {
-		t.Errorf("claimed = %q, want true — an unclaimed work has no gid to act on", got)
+	if got := rec.catalogQ.Get("claimed"); got != "" {
+		t.Errorf("claimed = %q, want it absent — the wizard must also surface unclaimed works", got)
 	}
 	if got := rec.catalogQ.Get("q"); got != "sakura" {
 		t.Errorf("q = %q, want sakura", got)
@@ -121,21 +121,26 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 	rec := &wizardRecorder{}
 	page := wizardSearch(t, rec.service(t))
 
-	if len(page.Items) != 3 {
-		t.Fatalf("items = %d, want 3 — live, draft and pending stay; hidden, declined, unclaimed, "+
-			"gidless and foreign-claimed rows are not actionable", len(page.Items))
+	if len(page.Items) != 4 {
+		t.Fatalf("items = %d, want 4 — live, draft, pending and the unclaimed row stay; "+
+			"hidden, declined, gidless and foreign-claimed rows are not actionable", len(page.Items))
 	}
 	for _, it := range page.Items {
 		if it.ClaimState == "declined" || it.ClaimState == "hidden" {
 			t.Errorf("item %d leaked with claim_state=%q — the wizard must drop non-live/draft/pending rows", it.ID, it.ClaimState)
 		}
-		if it.ID <= 0 {
-			t.Errorf("item with claim_state=%q leaked without a gid — its row would link to /galgame/0", it.ClaimState)
+		if it.ID <= 0 && it.WorkID <= 0 {
+			t.Errorf("item with claim_state=%q leaked with neither a gid nor a work id — "+
+				"its row has nothing to act on", it.ClaimState)
 		}
 	}
-	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 || page.Items[2].ID != 5150 {
+	if page.Items[0].ID != 292 || page.Items[1].ID != 9978 || page.Items[3].ID != 5150 {
 		t.Errorf("ids = %d,%d,%d, want the gids 292,9978,5150",
-			page.Items[0].ID, page.Items[1].ID, page.Items[2].ID)
+			page.Items[0].ID, page.Items[1].ID, page.Items[3].ID)
+	}
+	if page.Items[2].ID != 0 || page.Items[2].WorkID != 14 {
+		t.Errorf("unclaimed row = id %d work_id %d, want gid 0 + catalog work id 14",
+			page.Items[2].ID, page.Items[2].WorkID)
 	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)

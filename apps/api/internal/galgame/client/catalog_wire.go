@@ -289,14 +289,18 @@ func CatalogItemRenderable(it *CatalogWorkListItem) bool { return it.isRenderabl
 func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 
 // CatalogItemWizardEligible reports whether a search row belongs in the publish
-// wizard's supply: a kungal claim carrying a gid, in state live, draft or
-// pending. This is the wizard's ONLY claim-state gate, because the search face
-// answers from two clocks — the claim_state facet is the index's, while
-// claimed_by is re-hydrated from the registry — and they disagree in BOTH
-// directions until the daily reindex-catalog run: a just-declined work passes
-// the facet while already reading "declined", and a just-approved one is
-// dropped by a facet it no longer matches.
+// wizard's supply: an unclaimed registry row, which anyone may adopt, or a
+// kungal claim carrying a gid, in state live, draft or pending. This is the
+// wizard's ONLY claim-state gate, because the search face answers from two
+// clocks — the claim_state facet is the index's, while claimed_by is
+// re-hydrated from the registry — and they disagree in BOTH directions until
+// the daily reindex-catalog run: a just-declined work passes the facet while
+// already reading "declined", and a just-approved one is dropped by a facet it
+// no longer matches.
 func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
+	if it.ClaimedBy == nil {
+		return true
+	}
 	if it.gid() <= 0 {
 		return false
 	}
@@ -382,6 +386,7 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 	name, original := it.Names(ctx)
 	b := GalgameBrief{
 		ID:               it.gid(),
+		WorkID:           it.ID,
 		Name:             name,
 		NameOriginal:     original,
 		AgeLimit:         ageLimitFromRating(it.ContentRating),

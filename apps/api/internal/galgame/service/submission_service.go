@@ -112,6 +112,35 @@ func (s *SubmissionService) Claim(
 	return res, nil
 }
 
+// ClaimUnclaimed claims a bodyless catalog work (claim state "none") on behalf
+// of the user: it first adopts the work (claim: none → draft, anchoring it to
+// the forum via product_work_id = work id) and then publishes it (publish:
+// draft → live). The registry-issued work id becomes the forum gid, matching
+// what SubmitWork already does for brand-new submissions.
+func (s *SubmissionService) ClaimUnclaimed(
+	ctx context.Context,
+	accessToken string,
+	uid int64,
+	workID int64,
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	if _, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionClaim, catalogclient.UserClaimActionRequest{
+		ProductWorkID: workID,
+	}); err != nil {
+		return nil, claimActionError(err)
+	}
+	res, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionPublish, catalogclient.UserClaimActionRequest{})
+	if err != nil {
+		return nil, claimActionError(err)
+	}
+	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), int(workID)); err != nil {
+		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", workID, "error", err)
+	}
+	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
+		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", int(workID)),
+		moemoepoint.Key("claim", strconv.FormatInt(workID, 10), strconv.FormatInt(uid, 10)))
+	return res, nil
+}
+
 func (s *SubmissionService) Resubmit(
 	ctx context.Context,
 	accessToken string,
@@ -281,15 +310,16 @@ func (s *SubmissionService) wizardItems(
 	ctx context.Context,
 	query url.Values,
 ) ([]client.GalgameBrief, int64, *errors.AppError) {
-	// No claim_state here on purpose: that facet is the index's and lags a day,
-	// while the claimed_by CatalogItemWizardEligible reads is the registry's.
-	// Gating on both hid every work that entered an actionable state since the
-	// last reindex — an approved submission stayed unfindable for a day.
+	// Neither claim_state nor claimed here on purpose: both are the index's and
+	// lag a day, while the claimed_by CatalogItemWizardEligible reads is the
+	// registry's. Gating on both hid every work that entered an actionable state
+	// since the last reindex — an approved submission stayed unfindable for a
+	// day — and claimed=true additionally hid the whole unclaimed supply, which
+	// is exactly what the wizard's 认领并发布 button exists to adopt.
 	q := url.Values{
 		"q":       {query.Get("q")},
 		"page":    {strconv.Itoa(atoiOr(query.Get("page"), 1))},
 		"limit":   {strconv.Itoa(atoiOr(query.Get("limit"), wizardDefaultLimit))},
-		"claimed": {"true"},
 		"include": {wizardSearchInclude},
 	}
 	client.OpenPopulation(q)

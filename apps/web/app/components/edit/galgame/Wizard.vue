@@ -1,6 +1,7 @@
 <script setup lang="ts">
 interface SearchHit {
   id: number
+  work_id?: number
   vndb_id?: string
   name?: string
   effective_banner_hash?: string
@@ -42,22 +43,27 @@ const handleSearch = async () => {
 
 const isClaiming = ref(false)
 
-const handleClaim = async (gid: number) => {
+const handleClaim = async (hit: SearchHit) => {
   const ok = await useComponentMessageStore().alert(
     '认领此草稿吗?',
     '认领后该条目立即变为已发布状态, 您将成为该 Galgame 的创建者, 并获得 +3 萌萌点。若该条目其实是他人正在审核中的投稿, 认领会被拒绝。'
   )
   if (!ok) return
 
+  const unclaimed = hit.id === 0
+  const endpoint = unclaimed
+    ? `/galgame/work/${hit.work_id}/claim`
+    : `/galgame/${hit.id}/claim`
+
   isClaiming.value = true
-  const result = await kunFetch<{ to_state: string }>(`/galgame/${gid}/claim`, {
+  const result = await kunFetch<{ to_state: string }>(endpoint, {
     method: 'POST',
     body: {}
   })
   isClaiming.value = false
   if (result?.to_state) {
     useKunLoliInfo('认领成功, 已发布', 5)
-    await navigateTo(`/galgame/${gid}`)
+    await navigateTo(`/galgame/${unclaimed ? hit.work_id : hit.id}`)
   }
 }
 
@@ -203,7 +209,7 @@ onMounted(() => {
             size="sm"
             :loading="isClaiming"
             :disabled="isClaiming"
-            @click="handleClaim(hit.id)"
+            @click="handleClaim(hit)"
           >
             认领并发布
           </KunButton>
