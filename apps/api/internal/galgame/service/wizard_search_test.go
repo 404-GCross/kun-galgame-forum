@@ -142,6 +142,11 @@ func TestWizard_ItemsAreKeyedByGIDAndDropWithdrawnRows(t *testing.T) {
 		t.Errorf("unclaimed row = id %d work_id %d, want gid 0 + catalog work id 14",
 			page.Items[2].ID, page.Items[2].WorkID)
 	}
+	if page.Items[2].ClaimState != "none" {
+		t.Errorf("unclaimed row claim_state = %q, want none — calling it a draft made the wizard "+
+			"offer 认领此草稿 over a work nobody had ever touched, and routed it at the gid endpoint",
+			page.Items[2].ClaimState)
+	}
 	if page.Items[0].VndbID != "v22610" {
 		t.Errorf("vndb_id = %q, want v22610", page.Items[0].VndbID)
 	}

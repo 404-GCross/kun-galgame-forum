@@ -74,7 +74,7 @@ func (h *SubmissionHandler) ClaimUnclaimed(c fiber.Ctx) error {
 	}
 	workID, parseErr := strconv.ParseInt(c.Params("workId"), 10, 64)
 	if parseErr != nil || workID <= 0 {
-		return response.Error(c, errors.ErrBadRequest("无效的 Galgame ID"))
+		return response.Error(c, errors.ErrBadRequest("无效的作品 ID"))
 	}
 	user := middleware.GetUser(c)
 	if user == nil {

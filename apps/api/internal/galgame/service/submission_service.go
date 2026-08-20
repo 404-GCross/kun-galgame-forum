@@ -14,6 +14,8 @@ import (
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/errors"
+
+	"gorm.io/gorm"
 )
 
 type SubmissionService struct {
@@ -112,33 +114,81 @@ func (s *SubmissionService) Claim(
 	return res, nil
 }
 
-// ClaimUnclaimed claims a bodyless catalog work (claim state "none") on behalf
-// of the user: it first adopts the work (claim: none → draft, anchoring it to
-// the forum via product_work_id = work id) and then publishes it (publish:
-// draft → live). The registry-issued work id becomes the forum gid, matching
-// what SubmitWork already does for brand-new submissions.
+// The wizard row for an unclaimed work carries no gid, so the response has to
+// name the one the claim just minted rather than let the caller assume it.
+type ClaimUnclaimedResult struct {
+	catalogclient.ClaimActionResult
+	GID int `json:"gid"`
+}
+
+// ClaimUnclaimed adopts a bodyless catalog work (claim state "none") for the
+// user and publishes it in one call: claim (none → draft) then publish
+// (draft → live).
+//
+// The claim anchors product_work_id at the catalog work id, which is what
+// Submit ends up with too (it omits the field and the registry mints an
+// identity the claim then adopts). It is also the only id the forum has here:
+// catalog rejects a claim with no product_work_id.
 func (s *SubmissionService) ClaimUnclaimed(
 	ctx context.Context,
 	accessToken string,
 	uid int64,
 	workID int64,
-) (*catalogclient.ClaimActionResult, *errors.AppError) {
-	if _, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionClaim, catalogclient.UserClaimActionRequest{
-		ProductWorkID: workID,
+) (*ClaimUnclaimedResult, *errors.AppError) {
+	res, appErr := adoptAndPublish(ctx, s.catalog, accessToken, workID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	gid := int(workID)
+	// Stamp the row now instead of waiting for the claim-event cron, exactly as
+	// Submit does: the caller is redirected to /galgame/:gid the moment this
+	// returns, and until the row exists that page renders IsOnForum=false — a
+	// "未收录" banner and no resource or comment section, right after telling
+	// the user 认领成功, 已发布.
+	if err := s.galgameRepo.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
+			return err
+		}
+		return s.galgameRepo.SetCreatorIfUnset(tx, gid, int(uid))
 	}); err != nil {
-		return nil, claimActionError(err)
+		slog.Warn("claim: 建立本地 galgame 行失败, 等待 claim 事件同步补齐",
+			"gid", gid, "uid", uid, "error", err)
 	}
-	res, err := s.catalog.ActOnClaimUser(ctx, accessToken, workID, catalogclient.ClaimActionPublish, catalogclient.UserClaimActionRequest{})
-	if err != nil {
-		return nil, claimActionError(err)
-	}
-	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), int(workID)); err != nil {
-		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", workID, "error", err)
+	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
+		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
 	}
 	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
-		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", int(workID)),
-		moemoepoint.Key("claim", strconv.FormatInt(workID, 10), strconv.FormatInt(uid, 10)))
-	return res, nil
+		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
+		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(uid, 10)))
+	return &ClaimUnclaimedResult{ClaimActionResult: *res, GID: gid}, nil
+}
+
+// adoptAndPublish is one user gesture but two transactions upstream, so the
+// claim failing is only fatal when the publish fails as well. That is what
+// makes a retry work: the second attempt's claim is refused (the work is
+// already this user's draft) while its publish succeeds. Returning early on the
+// claim error instead left a half-adopted work with no way to finish it — and
+// the wizard would keep offering it as unclaimed until the next daily reindex,
+// so every retry hit the same refused claim.
+func adoptAndPublish(
+	ctx context.Context,
+	catalog *catalogclient.Client,
+	accessToken string,
+	workID int64,
+) (*catalogclient.ClaimActionResult, *errors.AppError) {
+	_, claimErr := catalog.ActOnClaimUser(ctx, accessToken, workID,
+		catalogclient.ClaimActionClaim, catalogclient.UserClaimActionRequest{ProductWorkID: workID})
+
+	res, pubErr := catalog.ActOnClaimUser(ctx, accessToken, workID,
+		catalogclient.ClaimActionPublish, catalogclient.UserClaimActionRequest{})
+	if pubErr == nil {
+		return res, nil
+	}
+	if claimErr != nil {
+		return nil, claimActionError(claimErr)
+	}
+	return nil, claimActionError(pubErr)
 }
 
 func (s *SubmissionService) Resubmit(

@@ -266,6 +266,7 @@ const (
 	claimStateDraft   = "draft"
 	claimStatePending = "pending"
 	claimStateHidden  = "hidden"
+	claimStateNone    = "none"
 )
 
 func statusFromClaimState(state string) int {
@@ -400,7 +401,7 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 		b.ClaimState = it.ClaimedBy.State
 	} else {
 		b.Status = galgameStatusVndbDraft
-		b.ClaimState = claimStateDraft
+		b.ClaimState = claimStateNone
 	}
 	b.VndbID = b.Refs["vndb"]
 	b.EffectiveBannerHash, b.EffectiveBannerURL,

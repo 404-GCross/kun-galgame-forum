@@ -17,6 +17,7 @@ export const CLAIM_STATE_DRAFT = 'draft'
 export const CLAIM_STATE_PENDING = 'pending'
 export const CLAIM_STATE_DECLINED = 'declined'
 export const CLAIM_STATE_HIDDEN = 'hidden'
+export const CLAIM_STATE_NONE = 'none'
 export const galgameClaimStateBadge = (
   state: string | undefined
 ): GalgameClaimStateBadge => {
@@ -31,6 +32,8 @@ export const galgameClaimStateBadge = (
       return { label: '已拒绝', color: 'danger' }
     case CLAIM_STATE_HIDDEN:
       return { label: '已下架', color: 'default' }
+    case CLAIM_STATE_NONE:
+      return { label: '未认领', color: 'primary' }
     default:
       return { label: '未知', color: 'default' }
   }
@@ -42,8 +45,14 @@ export const galgameClaimStateBadge = (
 export const galgameClaimGid = (item: UserClaimItem): number =>
   item.product_work_id ?? 0
 
+// A kungal draft is claimed already and only needs publishing; a `none` row is
+// not claimed by anyone yet and needs adopting first. Both end at the same
+// button, but they hit different endpoints — see isUnclaimedState.
 export const isClaimableState = (state: string | undefined): boolean =>
-  state === CLAIM_STATE_DRAFT
+  state === CLAIM_STATE_DRAFT || state === CLAIM_STATE_NONE
+
+export const isUnclaimedState = (state: string | undefined): boolean =>
+  state === CLAIM_STATE_NONE
 
 export const isPublicState = (state: string | undefined): boolean =>
   state === CLAIM_STATE_LIVE
