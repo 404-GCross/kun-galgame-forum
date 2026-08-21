@@ -49,3 +49,39 @@ func TestFoldRecords_CollapsesClientsTheWayCatalogDoes(t *testing.T) {
 		t.Errorf("status = %q, want dropped", nine.status)
 	}
 }
+
+// A cleared record is not deleted upstream — it is written down to 0 and the
+// aggregate stops counting it. The profile page counted it anyway and printed
+// "1 部作品 · 合计 · 已通关 1 部" for a work with nothing left to show.
+func TestPlaytimeWithdrawn_TreatsASubFloorReportAsAbsent(t *testing.T) {
+	cases := []struct {
+		minutes int
+		want    bool
+	}{
+		{0, true},
+		{catalogclient.PlaytimeMinutesFloor - 1, true},
+		{catalogclient.PlaytimeMinutesFloor, false},
+		{720, false},
+	}
+	for _, c := range cases {
+		if got := playtimeWithdrawn(c.minutes); got != c.want {
+			t.Errorf("playtimeWithdrawn(%d) = %v, want %v", c.minutes, got, c.want)
+		}
+	}
+}
+
+// The fold takes MAX across a user's clients, so a work is withdrawn only when
+// EVERY client is under the floor: clearing the forum's own row must not hide a
+// desktop tracker's live one.
+func TestFoldRecords_KeepsAWorkAnotherClientStillReports(t *testing.T) {
+	rows := []catalogclient.PlaytimeRecord{
+		{WorkID: 7, Minutes: 0, Status: catalogclient.PlaytimeStatusFinished,
+			ClientID: "forum", UpdatedAt: "2026-08-10T00:00:00Z"},
+		{WorkID: 7, Minutes: 480, Status: catalogclient.PlaytimeStatusPlaying,
+			ClientID: "tracker", UpdatedAt: "2026-08-09T00:00:00Z"},
+	}
+	_, byWork := foldRecords(rows, "forum")
+	if playtimeWithdrawn(byWork[7].minutes) {
+		t.Errorf("folded minutes = %d, want the tracker's 480 to keep the work visible", byWork[7].minutes)
+	}
+}

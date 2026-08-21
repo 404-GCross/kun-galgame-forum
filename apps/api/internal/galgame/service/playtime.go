@@ -20,6 +20,16 @@ const (
 	playtimeSweepPages = 5
 )
 
+// Catalog has no delete endpoint: a report is withdrawn by dropping it under
+// the floor its aggregate counts from. So a sub-floor row is a WITHDRAWN
+// report, not a very short session, and every read has to treat it as absent.
+// Clearing a record and then opening the profile page printed
+// "1 部作品 · 合计 · 已通关 1 部" — the withdrawn work still counted twice, with
+// no duration left to render between the separators.
+func playtimeWithdrawn(minutes int) bool {
+	return minutes < catalogclient.PlaytimeMinutesFloor
+}
+
 func (s *GalgameService) hydrateMyPlaytime(ctx context.Context, gid int, accessToken string) *dto.GalgameMyPlaytime {
 	if s.catalog == nil || accessToken == "" || s.galgameClient == nil {
 		return nil
@@ -42,7 +52,7 @@ func (s *GalgameService) hydrateMyPlaytime(ctx context.Context, gid int, accessT
 		}
 		return nil
 	}
-	if got == nil {
+	if got == nil || playtimeWithdrawn(got.Minutes) {
 		return nil
 	}
 	return &dto.GalgameMyPlaytime{Minutes: got.Minutes, Status: got.Status, Clients: got.Clients}
@@ -93,7 +103,13 @@ func (s *PlaytimeService) Report(
 	// the largest. Showing the forum's own figure would contradict the page.
 	got, err := s.catalog.MyPlaytime(ctx, accessToken, workID)
 	if err != nil || got == nil {
+		if playtimeWithdrawn(minutes) {
+			return nil, nil
+		}
 		return &dto.GalgameMyPlaytime{Minutes: minutes, Status: status, Clients: 1}, nil
+	}
+	if playtimeWithdrawn(got.Minutes) {
+		return nil, nil
 	}
 	return &dto.GalgameMyPlaytime{Minutes: got.Minutes, Status: got.Status, Clients: got.Clients}, nil
 }
@@ -233,6 +249,9 @@ func (s *PlaytimeService) fold(ctx context.Context, rows []catalogclient.Playtim
 			continue
 		}
 		f := byWork[workID]
+		if playtimeWithdrawn(f.minutes) {
+			continue
+		}
 		f.gid = gid
 		out = append(out, f)
 	}
