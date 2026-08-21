@@ -113,6 +113,7 @@ type NextMoeGalgameDetailFull struct {
 	EffectivePortraitHeight    int                        `json:"effective_portrait_height,omitempty"`
 	EffectivePortraitThumbhash string                     `json:"effective_portrait_thumbhash,omitempty"`
 	ExternalRatings            []GalgameExternalRating    `json:"external_ratings"`
+	Playtimes                  []GalgamePlaytime          `json:"playtimes"`
 	Covers                     []NextMoeGalgameCover      `json:"covers"`
 	Screenshots                []NextMoeGalgameScreenshot `json:"screenshots"`
 	Alias                      []NextMoeAlias             `json:"alias"`

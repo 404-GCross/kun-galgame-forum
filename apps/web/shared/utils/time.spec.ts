@@ -3,6 +3,7 @@ import {
   formatTimeDifference,
   hourDiff,
   formatDate,
+  formatDurationMinutes,
   toYMD,
   getReleaseDateText
 } from './time'
@@ -162,5 +163,34 @@ describe('getReleaseDateText', () => {
   it('trims whitespace-only date strings', () => {
     expect(getReleaseDateText('   ', false)).toBe('未公布')
     expect(getReleaseDateText('   ', true)).toBe('未定 (TBA)')
+  })
+})
+
+describe('formatDurationMinutes', () => {
+  it('empty for nothing to show', () => {
+    expect(formatDurationMinutes(0)).toBe('')
+    expect(formatDurationMinutes(-30)).toBe('')
+    expect(formatDurationMinutes(undefined)).toBe('')
+    expect(formatDurationMinutes(null)).toBe('')
+    expect(formatDurationMinutes(NaN)).toBe('')
+  })
+
+  it('N 分钟 below an hour', () => {
+    expect(formatDurationMinutes(1)).toBe('1 分钟')
+    expect(formatDurationMinutes(59)).toBe('59 分钟')
+  })
+
+  it('drops a zero minute remainder', () => {
+    expect(formatDurationMinutes(60)).toBe('1 小时')
+    expect(formatDurationMinutes(600)).toBe('10 小时')
+  })
+
+  it('N 小时 M 分钟 otherwise', () => {
+    expect(formatDurationMinutes(384)).toBe('6 小时 24 分钟')
+    expect(formatDurationMinutes(61)).toBe('1 小时 1 分钟')
+  })
+
+  it('rounds a fractional minute', () => {
+    expect(formatDurationMinutes(59.6)).toBe('1 小时')
   })
 })

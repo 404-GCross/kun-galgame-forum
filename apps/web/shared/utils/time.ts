@@ -46,6 +46,20 @@ export const hourDiff = (upvoteTime: number | Date | string, hours: number) => {
   return differenceInHours(currentTime, time) <= hours
 }
 
+export const formatDurationMinutes = (minutes?: number | null): string => {
+  if (!Number.isFinite(minutes) || (minutes as number) <= 0) {
+    return ''
+  }
+  const total = Math.round(minutes as number)
+  const hours = Math.floor(total / 60)
+  const rest = total % 60
+
+  if (!hours) {
+    return `${rest} 分钟`
+  }
+  return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`
+}
+
 export const formatDate = (
   time: Date | string | number,
   config?: { isShowYear?: boolean; isPrecise?: boolean }

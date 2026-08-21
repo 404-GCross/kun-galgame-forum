@@ -365,3 +365,23 @@ func TestCatalogDetail_ImagesCarryTheirSource(t *testing.T) {
 		t.Errorf("screenshot sources = %+v, want vndb then getchu", f.Screenshots)
 	}
 }
+
+func TestCatalogDetail_PlaytimesCarryTheirSource(t *testing.T) {
+	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","playtimes":[
+		{"source":"vndb","minutes":384,"vote_count":39},
+		{"source":"erogamescape","minutes":240,"vote_count":0}
+	]}`
+	f := fullOf(t, body)
+
+	if len(f.Playtimes) != 2 {
+		t.Fatalf("len = %d, want 2", len(f.Playtimes))
+	}
+	vndb := f.Playtimes[0]
+	if vndb.Source != "vndb" || vndb.Minutes != 384 || vndb.VoteCount != 39 {
+		t.Errorf("vndb playtime = %+v, want source vndb 384 minutes 39 votes", vndb)
+	}
+	egs := f.Playtimes[1]
+	if egs.Source != "erogamescape" || egs.Minutes != 240 || egs.VoteCount != 0 {
+		t.Errorf("erogamescape playtime = %+v, want source erogamescape 240 minutes 0 votes", egs)
+	}
+}

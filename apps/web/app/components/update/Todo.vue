@@ -259,16 +259,29 @@ const discardTodo = async (todo: UpdateTodo) => {
             认领此任务
           </KunButton>
 
-          <template
-            v-if="isClaimer(todo) && todo.status === KUN_TODO_STATUS.CLAIMED"
+          <KunButton
+            v-if="
+              (isClaimer(todo) || canEditUpdateLog) &&
+              todo.status === KUN_TODO_STATUS.CLAIMED
+            "
+            size="sm"
+            color="primary"
+            @click="completeTodo(todo)"
           >
-            <KunButton size="sm" color="primary" @click="completeTodo(todo)">
-              完成
-            </KunButton>
-            <KunButton size="sm" color="danger" @click="discardTodo(todo)">
-              废弃
-            </KunButton>
-          </template>
+            完成
+          </KunButton>
+
+          <KunButton
+            v-if="
+              (isClaimer(todo) || canEditUpdateLog) &&
+              todo.status === KUN_TODO_STATUS.CLAIMED
+            "
+            size="sm"
+            color="danger"
+            @click="discardTodo(todo)"
+          >
+            废弃
+          </KunButton>
         </div>
       </div>
     </KunCard>

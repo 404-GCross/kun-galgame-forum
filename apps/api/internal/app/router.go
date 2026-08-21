@@ -273,10 +273,12 @@ func (a *App) setupRoutes() {
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
 
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
+	authed.Get("/galgame/playtime/mine", a.GalgamePlaytimeHandler.ListMine)
 	authed.Put("/galgame/:gid/like", a.GalgameHandler.ToggleLike)
 	// Unlike every other catalog write here, this one travels as the USER: the
 	// session's OAuth token goes out as a Bearer and the registry derives the
 	// actor from it.
+	authed.Put("/galgame/:gid/playtime", a.GalgamePlaytimeHandler.Report)
 	authed.Put("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Vote)
 	authed.Delete("/galgame/:gid/cover/:coverId/vote", a.GalgameCoverVoteHandler.Unvote)
 	authed.Post("/galgame/collection", a.GalgameCollectionHandler.Create)

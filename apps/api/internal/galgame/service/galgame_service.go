@@ -192,6 +192,7 @@ func (s *GalgameService) GetDetail(
 	detail.Rating = agg.Score
 	detail.RatingCount = agg.Count
 	s.hydrateCoverVotes(ctx, galgameID, token, detail.Covers)
+	detail.MyPlaytime = s.hydrateMyPlaytime(ctx, galgameID, token)
 	if isSFW {
 		detail.Tag = withoutSexualTags(detail.Tag)
 	}

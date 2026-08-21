@@ -197,6 +197,8 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
           :source="ratingDetailSource"
         />
 
+        <GalgameHeaderPlaytime :galgame="galgame" />
+
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-center gap-1">
             <KunReaction

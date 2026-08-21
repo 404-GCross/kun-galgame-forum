@@ -41,3 +41,13 @@ func TestScreenshotsFromNextMoe_CarriesCDNURL(t *testing.T) {
 		t.Errorf("caption mismapped: %q", out[0].Caption)
 	}
 }
+
+func TestGalgameDetailFromNextMoe_ArraysAreNeverNull(t *testing.T) {
+	out := galgameDetailFromNextMoe(dto.NextMoeGalgameDetailFull{}, nil)
+	if out.Playtimes == nil {
+		t.Error("playtimes is nil, which marshals to null; the field is contracted as an array")
+	}
+	if out.ExternalRatings == nil {
+		t.Error("external_ratings is nil, which marshals to null; the field is contracted as an array")
+	}
+}

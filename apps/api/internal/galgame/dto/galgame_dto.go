@@ -214,6 +214,12 @@ type GalgameExternalRating struct {
 	Stats        *GalgameRatingStats   `json:"stats,omitempty"`
 }
 
+type GalgamePlaytime struct {
+	Source    string `json:"source"`
+	Minutes   int    `json:"minutes"`
+	VoteCount int    `json:"vote_count"`
+}
+
 // GalgameIntro is one language's introduction. The language list is whatever
 // catalog actually carries rather than a fixed set: the four product slots this
 // replaces always shipped an empty 繁體中文, because catalog has never held a
@@ -273,9 +279,20 @@ type GalgameDetail struct {
 	Rating                     float64                  `json:"rating"`
 	RatingCount                int                      `json:"rating_count"`
 	ExternalRatings            []GalgameExternalRating  `json:"external_ratings"`
+	Playtimes                  []GalgamePlaytime        `json:"playtimes"`
 	Refs                       map[string]string        `json:"refs,omitempty"`
 	Created                    string                   `json:"created"`
 	Updated                    string                   `json:"updated"`
 	DlsitePurchaseURL          string                   `json:"dlsite_purchase_url,omitempty"`
 	DlsiteCouponURL            string                   `json:"dlsite_coupon_url,omitempty"`
+	MyPlaytime                 *GalgameMyPlaytime       `json:"my_playtime,omitempty"`
+}
+
+// Clients counts the applications the viewer has reported this work from —
+// catalog folds them with MAX(minutes), because two apps watching one save
+// file are not two playthroughs.
+type GalgameMyPlaytime struct {
+	Minutes int    `json:"minutes"`
+	Status  string `json:"status"`
+	Clients int    `json:"clients"`
 }

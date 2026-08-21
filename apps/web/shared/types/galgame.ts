@@ -91,6 +91,18 @@ export interface GalgameExternalRating {
   stats?: GalgameRatingStats
 }
 
+export interface GalgamePlaytime {
+  source: string
+  minutes: number
+  vote_count: number
+}
+
+export interface GalgameMyPlaytime {
+  minutes: number
+  status: string
+  clients: number
+}
+
 export interface GalgameIntro {
   lang: string
   intro: string
@@ -148,6 +160,8 @@ export interface GalgameDetail {
   rating?: number
   rating_count?: number
   external_ratings?: GalgameExternalRating[]
+  playtimes?: GalgamePlaytime[]
+  my_playtime?: GalgameMyPlaytime | null
   refs?: Record<string, string>
   created: Date | string
   updated: Date | string
@@ -178,6 +192,24 @@ export interface GalgameCard {
   effective_banner_height?: number
   effective_banner_thumbhash?: string
   via_official?: { id: number; name: string }
+}
+
+export interface PlaytimeMineItem {
+  galgame: GalgameCard
+  minutes: number
+  status: string
+  last_played_at?: string
+  updated_at: string
+  clients: number
+  external: boolean
+}
+
+export interface PlaytimeMinePage {
+  items: PlaytimeMineItem[]
+  total: number
+  total_minutes: number
+  finished_works: number
+  truncated: boolean
 }
 
 export interface UserClaimItem {

@@ -85,9 +85,9 @@
 | 友链 | `friend_link.create` | 创建友链 | 版主+ |
 | 友链 | `friend_link.edit` | 编辑友链 | 版主+ |
 | 友链 | `friend_link.delete` | 删除友链 | 版主+ |
-| 更新日志 | `update_log.create` | 创建更新日志 | 版主+ |
-| 更新日志 | `update_log.edit` | 编辑更新日志 | 版主+ |
-| 更新日志 | `update_log.delete` | 删除更新日志 | 版主+ |
+| 更新日志与待办 | `update_log.create` | 创建更新日志与待办 | 版主+ |
+| 更新日志与待办 | `update_log.edit` | 编辑更新日志；认领待办，并完成 / 废弃任何进行中的待办 | 版主+ |
+| 更新日志与待办 | `update_log.delete` | 删除更新日志与待办 | 版主+ |
 | 管理 | `admin.dashboard` | 管理总览与统计 | 管理员+ |
 | 管理 | `user.purge_content` | 清除用户全部内容 | 管理员+ |
 

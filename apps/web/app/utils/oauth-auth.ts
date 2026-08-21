@@ -31,7 +31,7 @@ const buildAuthorizeUrl = async (
     client_id: config.public.oauthClientId as string,
     redirect_uri: config.public.oauthRedirectUri as string,
     response_type: 'code',
-    scope: 'openid profile catalog:edit',
+    scope: 'openid profile catalog:edit playtime:read playtime:write',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256'

@@ -112,7 +112,7 @@ if (isBanned.value) {
                 :options="
                   activeGroup === 'topic'
                     ? userTopicGroupOptions
-                    : userGalgameGroupOptions
+                    : userGalgameGroupOptions(isOwner)
                 "
                 variant="pill"
                 orientation="horizontal"
