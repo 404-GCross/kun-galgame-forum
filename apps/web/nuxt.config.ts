@@ -40,8 +40,15 @@ export default defineNuxtConfig({
     'pinia-plugin-persistedstate/nuxt',
     'nuxt-schema-org',
     '@nuxtjs/sitemap',
-    'nuxt-umami'
+    'nuxt-umami',
+    '@nextmoe/edit-ui-nuxt'
   ],
+
+  // The module's default prefix is 'Edit'; this repo's templates were written
+  // against the local copy's <Editkit*> names, so the prefix is the contract.
+  editUi: {
+    prefix: 'Editkit'
+  },
 
   runtimeConfig: {
     apiBaseUrl: process.env.API_BASE_URL || 'http://127.0.0.1:2334',
