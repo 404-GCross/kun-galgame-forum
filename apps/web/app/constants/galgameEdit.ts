@@ -4,7 +4,7 @@ import type {
   EditFieldConfig,
   EditFieldConfigMap,
   EditSelectOption
-} from '~/components/editkit/types'
+} from '@nextmoe/edit-ui-vue'
 import {
   KUN_GALGAME_OFFICIAL_KIND_OPTIONS,
   KUN_GALGAME_OFFICIAL_KIND_DEVELOPER

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { editValueEqual } from '~/components/editkit/utils'
+import { editValueEqual } from '@nextmoe/edit-ui-core'
 import {
   createGalgameEditConfig,
   galgameEditLabel,

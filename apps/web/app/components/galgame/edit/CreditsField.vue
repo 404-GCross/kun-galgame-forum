@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { EditSelectOption } from '~/components/editkit/types'
+import type { EditSelectOption } from '@nextmoe/edit-ui-core'
 
 interface CreditRow {
   role_id: number
